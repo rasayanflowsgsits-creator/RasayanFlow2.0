@@ -11,8 +11,8 @@ RasayanFlow is a multi-role laboratory inventory and request management system f
 ## Structure
 
 ```text
-Backend/                         Express API, MongoDB models, controllers, routes
-Frontend/                        React frontend
+backend/                         Express API, MongoDB models, controllers, routes
+frontend/                        React frontend
 render.yaml                      Render deployment configuration
 PRODUCTION_READY.md              deployment notes / status summary
 ```
@@ -40,7 +40,7 @@ PRODUCTION_READY.md              deployment notes / status summary
 ### Backend
 
 ```bash
-cd Backend
+cd backend
 npm install
 cp .env.example .env
 npm run dev
@@ -62,7 +62,7 @@ Optional backend environment variables:
 ### Frontend
 
 ```bash
-cd Frontend
+cd frontend
 npm install
 cp .env.example .env
 npm run dev
@@ -115,14 +115,14 @@ Current MongoDB models in the backend:
 - Build the frontend before deployment:
 
 ```bash
-cd Frontend
+cd frontend
 npm run build
 ```
 
 - Start the backend in production:
 
 ```bash
-cd Backend
+cd backend
 npm start
 ```
 

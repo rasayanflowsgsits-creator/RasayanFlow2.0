@@ -6,13 +6,13 @@ services:
     type: web
     runtime: node
     plan: free
-    startCommand: cd Backend && npm start
-    buildCommand: cd Backend && npm install
+    startCommand: cd backend && npm start
+    buildCommand: cd backend && npm install
     envVars:
       - key: NODE_ENV
         value: production
       - key: CORS_ORIGIN
-        value: https://rasayanflow-1.onrender.com
+        value: https://rasayanflow.onrender.com
       - key: MONGO_URI
         scope: project
       - key: JWT_SECRET
@@ -27,8 +27,8 @@ services:
   - name: pharmlab-frontend
     type: static
     plan: free
-    buildCommand: cd Frontend && npm install && npm run build
-    staticPublishPath: Frontend/dist
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
     envVars:
       - key: VITE_API_BASE_URL
         value: https://rasayanflow.onrender.com
