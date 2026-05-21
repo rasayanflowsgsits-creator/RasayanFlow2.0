@@ -6,8 +6,8 @@ services:
     type: web
     runtime: node
     plan: free
-    startCommand: npm start
-    buildCommand: npm install
+    startCommand: cd Backend && npm start
+    buildCommand: cd Backend && npm install
     envVars:
       - key: NODE_ENV
         value: production
@@ -27,8 +27,8 @@ services:
   - name: pharmlab-frontend
     type: static
     plan: free
-    buildCommand: cd Frontendd/PharmLab_Frontend && npm install && npm run build
-    staticPublishPath: Frontendd/PharmLab_Frontend/dist
+    buildCommand: cd Frontend && npm install && npm run build
+    staticPublishPath: Frontend/dist
     envVars:
       - key: VITE_API_BASE_URL
         value: https://rasayanflow.onrender.com

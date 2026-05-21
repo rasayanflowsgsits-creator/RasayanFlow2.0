@@ -10,7 +10,7 @@ Production-ready Node.js/Express backend for a laboratory inventory system with 
 - Logging: Winston + morgan
 
 ## Setup
-1. `cd backend`
+1. `cd Backend`
 2. `npm install`
 3. copy `.env.example` to `.env`
 4. Set `.env` values:

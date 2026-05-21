@@ -120,7 +120,7 @@
 
 ### New Files Created
 ```
-Frontendd/PharmLab_Frontend/
+Frontend/
 ├── .env.production                    (Production env template)
 ├── src/components/layout/
 │   └── LazyPageLoader.jsx             (Route lazy loading)
@@ -132,7 +132,7 @@ Frontendd/PharmLab_Frontend/
 │   ├── performance.js                 (Performance tracking)
 │   └── sessionTimeout.js              (Session management)
 
-backend/
+Backend/
 └── .env.production                    (Production env template)
 
 root/
@@ -142,7 +142,7 @@ root/
 
 ### Modified Files
 ```
-Frontendd/PharmLab_Frontend/
+Frontend/
 ├── vite.config.js                     (Optimized build config)
 ├── src/App.jsx                        (Added ErrorBoundary)
 ├── src/services/api.js                (Enhanced error handling)
@@ -200,12 +200,12 @@ Frontendd/PharmLab_Frontend/
 
 ### Render Deployment
 - [ ] Create backend Web Service
-  - Build: `npm install && npm start`
+  - Build: `cd Backend && npm install && npm start`
   - Add MONGO_URI, JWT_SECRET to env
   - Deploy
 - [ ] Create frontend Static Site
-  - Build: `cd Frontendd/PharmLab_Frontend && npm install && npm run build`
-  - Publish: `Frontendd/PharmLab_Frontend/dist`
+  - Build: `cd Frontend && npm install && npm run build`
+  - Publish: `Frontend/dist`
   - Add VITE_API_BASE_URL pointing to backend
   - Deploy
 - [ ] Test deployed application
@@ -217,7 +217,7 @@ Frontendd/PharmLab_Frontend/
 
 ### Start Backend
 ```bash
-cd backend
+cd Backend
 npm install
 npm run dev
 # Server runs on http://localhost:5000
@@ -225,7 +225,7 @@ npm run dev
 
 ### Start Frontend
 ```bash
-cd Frontendd/PharmLab_Frontend
+cd Frontend
 npm install
 npm run dev
 # App runs on http://localhost:5173
