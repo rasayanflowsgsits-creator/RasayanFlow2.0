@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import api from '../services/api';
 import useAppStore from './appStore';
-import { saveToken, saveUser, clearAuthSession, onAuthCleared, getUser, getToken } from '../utils/auth';
+import { saveToken, saveRefreshToken, saveUser, clearAuthSession, onAuthCleared, getUser, getToken } from '../utils/auth';
 
 const initial = {
   initialized: false,
@@ -54,9 +54,11 @@ const useAuthStore = create((set) => ({
       const resp = await api.post('/auth/login', values);
       const payload = resp.data?.data || resp.data;
       const token = payload?.accessToken || payload?.token || null;
+      const refreshToken = payload?.refreshToken || null;
       const user = normalizeUser(payload);
 
       saveToken(token);
+      if (refreshToken) saveRefreshToken(refreshToken);
       saveUser(user);
       set({ user, token, loading: false, error: null });
       return user;

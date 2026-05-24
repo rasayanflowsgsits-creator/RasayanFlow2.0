@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import useDebounce from '../hooks/useDebounce';
 import { useNavigate } from 'react-router-dom';
 import { Clock3, Info, MapPin, PackageCheck, Search, TestTube2 } from 'lucide-react';
 import useAppStore from '../store/appStore';
@@ -59,28 +60,29 @@ export default function StudentDashboard() {
   );
 
   const [inventoryMatches, setInventoryMatches] = useState([]);
+  const debouncedInventorySearch = useDebounce(inventorySearch, 400);
 
   useEffect(() => {
-    const query = inventorySearch.trim();
-
+    const query = debouncedInventorySearch.trim();
     if (!query) {
+      setInventoryMatches([]);
       return;
     }
 
     let active = true;
-
-    const timerId = setTimeout(async () => {
-      const results = await fetchInventorySearch(query);
-      if (active) {
-        setInventoryMatches(results);
+    (async () => {
+      try {
+        const results = await fetchInventorySearch(query);
+        if (active) setInventoryMatches(results);
+      } catch (err) {
+        if (active) setInventoryMatches([]);
       }
-    }, 250);
+    })();
 
     return () => {
       active = false;
-      clearTimeout(timerId);
     };
-  }, [fetchInventorySearch, inventorySearch]);
+  }, [fetchInventorySearch, debouncedInventorySearch]);
 
   const inventorySearchGroups = useMemo(() => {
     if (!inventorySearch.trim()) return [];

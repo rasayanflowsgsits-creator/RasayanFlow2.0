@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import useDebounce from '../hooks/useDebounce';
 import { Boxes, Search, Send } from 'lucide-react';
 import useAppStore from '../store/appStore';
 import Card from '../components/ui/Card';
@@ -9,6 +10,7 @@ import Button from '../components/ui/Button';
 export default function StudentStorePage() {
   const { storeItems, fetchStoreItems, requestStoreItem, setToast } = useAppStore();
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 400);
   const [requestOpen, setRequestOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [requesting, setRequesting] = useState(false);
@@ -24,7 +26,7 @@ export default function StudentStorePage() {
   }, [fetchStoreItems]);
 
   const groupedItems = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
+    const normalizedSearch = debouncedSearch.trim().toLowerCase();
     const filtered = normalizedSearch
       ? storeItems.filter((item) =>
           [item.itemName, item.itemCode, item.category, item.subCategory]

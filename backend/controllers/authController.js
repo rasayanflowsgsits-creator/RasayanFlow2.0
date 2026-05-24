@@ -6,7 +6,12 @@ const ActivityLog = require('../models/ActivityLog');
 const SUPER_ADMIN_EMAIL = (process.env.SUPER_ADMIN_EMAIL || '').toLowerCase();
 
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '15m' });
+};
+
+const generateRefreshToken = (id) => {
+  const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
+  return jwt.sign({ id }, secret, { expiresIn: '7d' });
 };
 
 const serializeUser = (user) => ({
@@ -86,7 +91,8 @@ const register = asyncHandler(async (req, res) => {
     success: true,
     data: {
       ...serializeUser(user),
-      token: generateToken(user._id),
+      accessToken: generateToken(user._id),
+      refreshToken: generateRefreshToken(user._id),
     },
   });
 });
@@ -129,7 +135,8 @@ const login = asyncHandler(async (req, res) => {
     success: true,
     data: {
       ...serializeUser(user),
-      token: generateToken(user._id),
+      accessToken: generateToken(user._id),
+      refreshToken: generateRefreshToken(user._id),
     },
   });
 });
@@ -175,4 +182,46 @@ const changePassword = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Password updated successfully' });
 });
 
-module.exports = { register, login, me, changePassword };
+const refreshToken = asyncHandler(async (req, res) => {
+  const { refreshToken } = req.body;
+  if (!refreshToken) {
+    res.status(400);
+    throw new Error('refreshToken is required');
+  }
+
+  const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
+  let decoded;
+  try {
+    decoded = jwt.verify(refreshToken, secret);
+  } catch (err) {
+    res.status(401);
+    throw new Error('Invalid refresh token');
+  }
+
+  const user = await User.findById(decoded.id);
+  if (!user) {
+    res.status(401);
+    throw new Error('User not found');
+  }
+
+  await ensureConfiguredSuperAdmin(user);
+
+  if (user.isBlocked) {
+    res.status(403);
+    throw new Error('Account is blocked. Please contact an administrator.');
+  }
+
+  const requiresApproval = ['labAdmin', 'storeAdmin'].includes(user.role);
+  if (requiresApproval && (!SUPER_ADMIN_EMAIL || user.email.toLowerCase() !== SUPER_ADMIN_EMAIL) && !user.isApproved) {
+    res.status(403);
+    throw new Error('Account not approved yet');
+  }
+
+  // rotate tokens
+  const accessToken = generateToken(user._id);
+  const newRefreshToken = generateRefreshToken(user._id);
+
+  res.json({ success: true, data: { accessToken, refreshToken: newRefreshToken } });
+});
+
+module.exports = { register, login, me, changePassword, refreshToken };

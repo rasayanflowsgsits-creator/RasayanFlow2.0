@@ -6,8 +6,10 @@ const morgan = require('morgan');
 const dotenv = require('dotenv');
 const path = require('path');
 const { Server } = require('socket.io');
+const mongoSanitize = require('express-mongo-sanitize');
+const xss = require('xss-clean');
 const connectDB = require('./config/db');
-const rateLimiter = require('./middleware/rateLimiter');
+const { limiter } = require('./middleware/rateLimiter');
 const errorHandler = require('./middleware/errorMiddleware');
 const logger = require('./utils/logger');
 const socketHandler = require('./sockets');
@@ -107,14 +109,18 @@ app.use(cors(corsOptions));
 // This ensures OPTIONS requests are handled before hitting rate limiter or other middleware
 app.options('*', cors(corsOptions));
 
-// Body parser
-app.use(express.json());
+// Body parser with size limit to mitigate large payload attacks
+app.use(express.json({ limit: '10kb' }));
+
+// Input sanitization to prevent NoSQL injection and XSS
+app.use(mongoSanitize());
+app.use(xss());
 
 // Logging
 app.use(morgan('combined', { stream: logger.stream }));
 
 // Rate limiting (applied after CORS so preflight isn't rate limited)
-app.use(rateLimiter);
+app.use(limiter);
 
 // Routes
 app.use('/auth', require('./routes/authRoutes'));
