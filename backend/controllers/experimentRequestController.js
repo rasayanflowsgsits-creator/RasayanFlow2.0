@@ -27,7 +27,7 @@ const createExperimentRequest = asyncHandler(async (req, res) => {
   await ActivityLog.create({
     userId: req.user._id,
     action: 'experiment_request',
-    details: `Requested experiment ${experiment.title}`,
+    details: `Requested experiment ${experiment.experimentNumber}`,
     entityType: 'experimentRequest',
     entityId: request._id,
   });
@@ -99,7 +99,7 @@ const updateExperimentRequestStatus = asyncHandler(async (req, res) => {
   await ActivityLog.create({
     userId: req.user._id,
     action: status === 'approved' ? 'approve_experiment_request' : 'reject_experiment_request',
-    details: `${status === 'approved' ? 'Approved' : 'Rejected'} experiment request for ${request.experimentId?.title || 'experiment'}`,
+    details: `${status === 'approved' ? 'Approved' : 'Rejected'} experiment request for ${request.experimentId?.experimentNumber || 'experiment'}`,
     entityType: 'experimentRequest',
     entityId: request._id,
   });

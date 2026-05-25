@@ -3,7 +3,7 @@ const { body, param, query } = require('express-validator');
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
 const validateRequest = require('../middleware/validateMiddleware');
-const { createExperiment, getExperiments, deleteExperiment } = require('../controllers/experimentController');
+const { createExperiment, getExperiments, deleteExperiment, bulkImportExperiments } = require('../controllers/experimentController');
 
 const router = express.Router();
 
@@ -17,14 +17,23 @@ router.get(
 );
 
 router.post(
+  '/bulk-import',
+  roleMiddleware(['superAdmin', 'labAdmin']),
+  [
+    body('labId').isMongoId(),
+    body('experiments').isArray({ min: 1 }),
+  ],
+  validateRequest,
+  bulkImportExperiments
+);
+
+router.post(
   '/',
   roleMiddleware(['superAdmin', 'labAdmin']),
   [
     body('labId').isMongoId(),
-    body('title').notEmpty(),
+    body('experimentNumber').notEmpty().isString(),
     body('experimentObject').notEmpty(),
-    body('description').optional().isString(),
-    body('procedure').optional().isString(),
     body('requiredInventory').isArray({ min: 1 }),
     body('requiredInventory.*.inventoryItemId').isMongoId(),
     body('requiredInventory.*.quantity').isFloat({ gt: 0 }),

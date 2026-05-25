@@ -67,14 +67,14 @@ const normalizeTransaction = (tx) => ({
     name: participant?.name || '',
     email: participant?.email || '',
   })),
-  experimentTitle: tx.experimentTitle || tx.experimentId?.title || '',
-  itemName: tx.requestCategory === 'experiment' ? (tx.experimentTitle || tx.experimentId?.title || 'Experiment') : (tx.itemName || tx.itemId?.itemName || 'item'),
+  experimentTitle: tx.experimentTitle || tx.experimentId?.experimentNumber || '',
+  itemName: tx.requestCategory === 'experiment' ? (tx.experimentTitle || tx.experimentId?.experimentNumber || 'Experiment') : (tx.itemName || tx.itemId?.itemName || 'item'),
   itemCode: tx.itemCode || tx.itemId?.itemCode || '',
   requesterName: tx.requesterName || tx.userId?.name || 'Unknown',
   requesterEmail: tx.requesterEmail || tx.userId?.email || '',
   detail:
     tx.detail ||
-    `${tx.type === 'return' ? 'Returned' : tx.status === 'pending' ? 'Requested' : 'Borrowed'} ${tx.requestCategory === 'experiment' ? (tx.experimentTitle || tx.experimentId?.title || 'experiment') : (tx.itemId?.itemName || 'item')}`
+    `${tx.type === 'return' ? 'Returned' : tx.status === 'pending' ? 'Requested' : 'Borrowed'} ${tx.requestCategory === 'experiment' ? (tx.experimentTitle || tx.experimentId?.experimentNumber || 'experiment') : (tx.itemId?.itemName || 'item')}`
 });
 
 const normalizeExperiment = (experiment) => ({
@@ -169,7 +169,7 @@ const normalizeTeamAllotment = (entry) => ({
   id: entry._id || entry.id,
   requestTransactionId: entry.requestTransactionId?._id || entry.requestTransactionId || null,
   experimentId: entry.experimentId?._id || entry.experimentId || null,
-  experimentTitle: entry.experimentId?.title || entry.experimentTitle || 'Experiment',
+  experimentTitle: entry.experimentId?.experimentNumber || entry.experimentTitle || 'Experiment',
   teamId: entry.teamId?._id || entry.teamId || null,
   teamName: entry.teamId?.name || entry.teamName || 'Individual request',
   inventoryItemId: entry.inventoryItemId?._id || entry.inventoryItemId || null,
@@ -263,6 +263,10 @@ const useAppStore = create((set) => ({
     const item = normalizeInventoryItem(getPayload(response.data));
     set((state) => ({ inventory: [item, ...state.inventory] }));
     return item;
+  },
+  bulkImportInventoryItems: async ({ labId, items }) => {
+    const response = await api.post('/inventory/bulk-import', { labId, items });
+    return getPayload(response.data);
   },
   updateInventoryItem: async (itemId, updates) => {
     const payload = { ...updates };
@@ -416,6 +420,10 @@ const useAppStore = create((set) => ({
     const experiment = normalizeExperiment(getPayload(response.data));
     set((state) => ({ experiments: [experiment, ...state.experiments] }));
     return experiment;
+  },
+  bulkImportExperiments: async ({ labId, experiments }) => {
+    const response = await api.post('/experiments/bulk-import', { labId, experiments });
+    return getPayload(response.data);
   },
   deleteExperiment: async (experimentId) => {
     await api.delete(`/experiments/${experimentId}`);

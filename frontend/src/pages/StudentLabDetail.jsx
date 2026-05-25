@@ -191,7 +191,7 @@ export default function StudentLabDetail() {
     if (!query) return labExperiments;
 
     return labExperiments.filter((experiment) =>
-      [experiment.title, experiment.experimentObject, experiment.description, ...(experiment.requiredInventory || []).map((entry) => entry.chemicalName)]
+      [experiment.experimentNumber, experiment.experimentObject, ...(experiment.requiredInventory || []).map((entry) => entry.chemicalName)]
         .filter(Boolean)
         .some((value) => value.toLowerCase().includes(query))
     );
@@ -351,9 +351,8 @@ export default function StudentLabDetail() {
               <div key={experiment.id} className='rounded-xl border border-[#d9e1ca] px-4 py-4 dark:border-[#414a33]'>
                 <div className='flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between'>
                   <div>
-                    <p className='text-base font-semibold text-[#3c4e23] dark:text-[#eef4e8]'>{experiment.title}</p>
+                    <p className='text-base font-semibold text-[#3c4e23] dark:text-[#eef4e8]'>{experiment.experimentNumber}</p>
                     <p className='mt-2 text-sm text-slate-700 dark:text-slate-200'>Object: {experiment.experimentObject}</p>
-                    {experiment.description ? <p className='mt-2 text-sm text-slate-600 dark:text-slate-300'>{experiment.description}</p> : null}
                     <p className='mt-2 text-sm text-slate-600 dark:text-slate-300'>
                       Required chemicals: {experiment.requiredInventory.map((entry) => `${entry.chemicalName} (${entry.quantity} ${entry.quantityUnit})`).join(', ') || 'N/A'}
                     </p>
@@ -527,7 +526,7 @@ export default function StudentLabDetail() {
         </div>
       </Modal>
 
-      <Modal open={requestOpen} onClose={() => setRequestOpen(false)} title={selectedExperiment ? `Request ${selectedExperiment.title}` : 'Request Experiment'}>
+      <Modal open={requestOpen} onClose={() => setRequestOpen(false)} title={selectedExperiment ? `Request ${selectedExperiment.experimentNumber}` : 'Request Experiment'}>
         <div className='space-y-4'>
           <div className='rounded-lg border border-[#d9e1ca] bg-[#f9faef] p-3 dark:border-[#414a33] dark:bg-[#1f2419]'>
             <p className='text-xs font-semibold uppercase text-[#556b2f] dark:text-[#b8c5a0]'>Experiment object</p>

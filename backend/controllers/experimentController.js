@@ -49,14 +49,20 @@ const buildRequirements = async (labId, requiredInventory = [], res) => {
 };
 
 const createExperiment = asyncHandler(async (req, res) => {
-  const { labId, title, experimentObject, description, procedure, requiredInventory } = req.body;
+  const { labId, experimentNumber, experimentObject, requiredInventory } = req.body;
 
   assertLabAdminAccess(req, labId, res);
 
-  const duplicate = await Experiment.findOne({ labId, title: title.trim() });
+  const normalizedNumber = String(experimentNumber || '').trim();
+  if (!normalizedNumber) {
+    res.status(400);
+    throw new Error('experimentNumber is required');
+  }
+
+  const duplicate = await Experiment.findOne({ labId, experimentNumber: normalizedNumber });
   if (duplicate) {
     res.status(409);
-    throw new Error('This experiment already exists in the selected lab');
+    throw new Error('This experiment number already exists in the selected lab');
   }
 
   const requirements = await buildRequirements(labId, requiredInventory, res);
@@ -64,10 +70,8 @@ const createExperiment = asyncHandler(async (req, res) => {
 
   const experiment = await Experiment.create({
     labId,
-    title: title.trim(),
+    experimentNumber: normalizedNumber,
     experimentObject: experimentObject.trim(),
-    description: description?.trim() || '',
-    procedure: procedure?.trim() || '',
     requiredInventory: requirements,
     totalEstimatedExpense,
     createdBy: req.user._id,
@@ -77,7 +81,7 @@ const createExperiment = asyncHandler(async (req, res) => {
   await ActivityLog.create({
     userId: req.user._id,
     action: 'create_experiment',
-    details: `Created experiment ${experiment.title}`,
+    details: `Created experiment ${experiment.experimentNumber}`,
     entityType: 'experiment',
     entityId: experiment._id,
   });
@@ -103,9 +107,8 @@ const getExperiments = asyncHandler(async (req, res) => {
 
   if (search.trim()) {
     criteria.$or = [
-      { title: { $regex: search.trim(), $options: 'i' } },
+      { experimentNumber: { $regex: search.trim(), $options: 'i' } },
       { experimentObject: { $regex: search.trim(), $options: 'i' } },
-      { description: { $regex: search.trim(), $options: 'i' } },
       { 'requiredInventory.chemicalName': { $regex: search.trim(), $options: 'i' } },
     ];
   }
@@ -131,7 +134,7 @@ const deleteExperiment = asyncHandler(async (req, res) => {
   await ActivityLog.create({
     userId: req.user._id,
     action: 'delete_experiment',
-    details: `Deleted experiment ${experiment.title}`,
+    details: `Deleted experiment ${experiment.experimentNumber}`,
     entityType: 'experiment',
     entityId: experiment._id,
   });
@@ -140,8 +143,168 @@ const deleteExperiment = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Experiment deleted' });
 });
 
+const bulkImportExperiments = asyncHandler(async (req, res) => {
+  const { labId, experiments } = req.body;
+
+  if (!labId) {
+    res.status(400);
+    throw new Error('labId is required');
+  }
+
+  if (!Array.isArray(experiments) || experiments.length === 0) {
+    res.status(400);
+    throw new Error('experiments must be a non-empty array');
+  }
+
+  assertLabAdminAccess(req, labId, res);
+
+  const inventory = await Inventory.find({ labId }).select('_id itemCode chemicalName itemName quantityUnit costPerUnit');
+  const inventoryByCode = new Map(
+    inventory
+      .filter((item) => item.itemCode)
+      .map((item) => [String(item.itemCode).toUpperCase(), item])
+  );
+
+  const existingNumbers = await Experiment.find({
+    labId,
+    experimentNumber: { $in: experiments.map((exp) => String(exp?.experimentNumber || '').trim()).filter(Boolean) },
+  }).select('experimentNumber');
+  const existingExperimentNumbers = new Set(existingNumbers.map((entry) => String(entry.experimentNumber || '').trim()));
+
+  const created = [];
+  const skipped = [];
+  const errors = [];
+
+  for (let index = 0; index < experiments.length; index += 1) {
+    const raw = experiments[index] && typeof experiments[index] === 'object' ? experiments[index] : {};
+    const experimentNumber = String(raw.experimentNumber || '').trim();
+    const experimentObject = String(raw.experimentObject || '').trim();
+    const requiredInventory = Array.isArray(raw.requiredInventory) ? raw.requiredInventory : [];
+
+    if (!experimentNumber) {
+      errors.push({ index, code: 'MISSING_EXPERIMENT_NUMBER', message: 'experimentNumber is required' });
+      continue;
+    }
+    if (!experimentObject) {
+      errors.push({ index, code: 'MISSING_EXPERIMENT_OBJECT', message: 'experimentObject is required' });
+      continue;
+    }
+    if (existingExperimentNumbers.has(experimentNumber)) {
+      skipped.push({ index, experimentNumber, reason: 'EXPERIMENT_NUMBER_EXISTS' });
+      continue;
+    }
+
+    if (!requiredInventory.length) {
+      errors.push({ index, experimentNumber, code: 'MISSING_REQUIREMENTS', message: 'At least one requiredInventory row is required' });
+      continue;
+    }
+
+    const resolvedRequiredInventory = [];
+    let requirementsError = null;
+
+    for (let requirementIndex = 0; requirementIndex < requiredInventory.length; requirementIndex += 1) {
+      const entry = requiredInventory[requirementIndex] && typeof requiredInventory[requirementIndex] === 'object' ? requiredInventory[requirementIndex] : {};
+      const inventoryItemId = entry.inventoryItemId ? String(entry.inventoryItemId).trim() : '';
+      const itemCode = entry.itemCode ? String(entry.itemCode).trim().toUpperCase() : '';
+      const quantity = Number(entry.quantity || 0);
+      const quantityUnit = entry.quantityUnit ? String(entry.quantityUnit).trim() : '';
+
+      if (inventoryItemId) {
+        resolvedRequiredInventory.push({ inventoryItemId, quantity, quantityUnit });
+        continue;
+      }
+
+      if (!itemCode) {
+        requirementsError = {
+          index,
+          code: 'MISSING_ITEM_CODE',
+          message: `Requirement #${requirementIndex + 1}: itemCode is required (or inventoryItemId)`,
+        };
+        break;
+      }
+
+      const inventoryItem = inventoryByCode.get(itemCode);
+      if (!inventoryItem) {
+        requirementsError = {
+          index,
+          code: 'UNKNOWN_ITEM_CODE',
+          message: `Requirement #${requirementIndex + 1}: itemCode ${itemCode} not found in this lab inventory`,
+        };
+        break;
+      }
+
+      resolvedRequiredInventory.push({
+        inventoryItemId: inventoryItem._id,
+        quantity,
+        quantityUnit: quantityUnit || inventoryItem.quantityUnit,
+      });
+    }
+
+    if (requirementsError) {
+      errors.push(requirementsError);
+      continue;
+    }
+
+    try {
+      const requirements = await buildRequirements(labId, resolvedRequiredInventory, res);
+      const totalEstimatedExpense = requirements.reduce((sum, item) => sum + Number(item.estimatedCost || 0), 0);
+
+      const experiment = await Experiment.create({
+        labId,
+        experimentNumber,
+        experimentObject,
+        requiredInventory: requirements,
+        totalEstimatedExpense,
+        createdBy: req.user._id,
+        updatedAt: new Date(),
+      });
+
+      created.push(experiment);
+      existingExperimentNumbers.add(experimentNumber);
+    } catch (error) {
+      errors.push({ index, experimentNumber, code: 'CREATE_FAILED', message: error?.message || 'Failed to create experiment' });
+    }
+  }
+
+  await ActivityLog.create({
+    userId: req.user._id,
+    action: 'bulk_import_experiments',
+    details: `Bulk import experiments: created ${created.length}, skipped ${skipped.length}, errors ${errors.length}`,
+    entityType: 'experiment',
+    entityId: null,
+    metadata: {
+      labId,
+      createdCount: created.length,
+      skippedCount: skipped.length,
+      errorCount: errors.length,
+      skipped: skipped.slice(0, 50),
+      errors: errors.slice(0, 50),
+    },
+  });
+
+  getIo().emit('experiment.updated', { action: 'bulk_import', experimentId: `bulk-${Date.now()}` });
+
+  const createdPopulated = await Experiment.find({ _id: { $in: created.map((exp) => exp._id) } })
+    .populate('labId', 'labName labCode')
+    .populate('requiredInventory.inventoryItemId', 'itemName chemicalName quantity quantityUnit costPerUnit')
+    .sort({ createdAt: -1 });
+
+  res.status(201).json({
+    success: true,
+    data: {
+      created: createdPopulated,
+      createdCount: created.length,
+      skipped,
+      skippedCount: skipped.length,
+      errors,
+      errorCount: errors.length,
+    },
+  });
+});
+
 module.exports = {
   createExperiment,
   getExperiments,
   deleteExperiment,
+  bulkImportExperiments,
 };

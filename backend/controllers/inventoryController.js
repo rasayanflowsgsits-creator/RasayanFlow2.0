@@ -340,4 +340,202 @@ const fetchChemicalDataForInventory = asyncHandler(async (req, res) => {
   res.json({ success: true, data: chemicalData });
 });
 
-module.exports = { createInventory, updateInventory, deleteInventory, getInventory, getInventoryById, fetchChemicalAbstractForInventory, fetchChemicalDataForInventory };
+const bulkImportInventory = asyncHandler(async (req, res) => {
+  const { labId, items } = req.body;
+
+  if (!labId) {
+    res.status(400);
+    throw new Error('labId is required');
+  }
+
+  if (!Array.isArray(items) || items.length === 0) {
+    res.status(400);
+    throw new Error('items must be a non-empty array');
+  }
+
+  assertLabAdminAccess(req, res, labId);
+
+  const parseOptionalDate = (value, fallback = null) => {
+    if (value == null) return fallback;
+    const text = String(value).trim();
+    if (!text) return fallback;
+    const parsed = new Date(text);
+    return Number.isNaN(parsed.getTime()) ? fallback : parsed;
+  };
+
+  const normalizedItems = items.map((raw, index) => {
+    const row = raw && typeof raw === 'object' ? raw : {};
+    const chemicalName = String(row.chemicalName || row.itemName || '').trim();
+    const category = String(row.category || 'Chemical').trim() || 'Chemical';
+    const quantityUnit = String(row.quantityUnit || '').trim();
+    const itemCodeRaw = String(row.itemCode || '').trim();
+    const entryDateRaw = row.entryDate == null ? '' : String(row.entryDate).trim();
+    const expiryDateRaw = row.expiryDate == null ? '' : String(row.expiryDate).trim();
+
+    return {
+      index,
+      itemCode: itemCodeRaw ? itemCodeRaw.toUpperCase() : '',
+      itemName: chemicalName,
+      chemicalName,
+      category,
+      quantity: Number(row.quantity ?? 0),
+      quantityUnit,
+      costPerUnit: Number(row.costPerUnit ?? 0),
+      minThreshold: Number(row.minThreshold ?? 0),
+      casNumber: String(row.casNumber || '').trim(),
+      smiles: String(row.smiles || '').trim(),
+      inchi: String(row.inchi || '').trim(),
+      chemicalFormula: String(row.chemicalFormula || '').trim(),
+      manufacturingCompany: String(row.manufacturingCompany || '').trim(),
+      entryDateRaw,
+      expiryDateRaw,
+      entryDate: parseOptionalDate(row.entryDate, null),
+      storageLocation: String(row.storageLocation || '').trim(),
+      lotNumber: String(row.lotNumber || '').trim(),
+      expiryDate: parseOptionalDate(row.expiryDate, null),
+      abstract: String(row.abstract || '').trim(),
+      pubmedId: String(row.pubmedId || '').trim(),
+    };
+  });
+
+  const errors = [];
+  const validDocs = [];
+  const seenCodes = new Set();
+
+  for (const row of normalizedItems) {
+    if (!row.chemicalName) {
+      errors.push({ index: row.index, code: 'MISSING_CHEMICAL_NAME', message: 'chemicalName is required' });
+      continue;
+    }
+    if (!row.quantityUnit) {
+      errors.push({ index: row.index, code: 'MISSING_QUANTITY_UNIT', message: 'quantityUnit is required' });
+      continue;
+    }
+    if (!Number.isFinite(row.quantity) || row.quantity < 0) {
+      errors.push({ index: row.index, code: 'INVALID_QUANTITY', message: 'quantity must be a number >= 0' });
+      continue;
+    }
+    if (!Number.isFinite(row.minThreshold) || row.minThreshold < 0) {
+      errors.push({ index: row.index, code: 'INVALID_MIN_THRESHOLD', message: 'minThreshold must be a number >= 0' });
+      continue;
+    }
+    if (!Number.isFinite(row.costPerUnit) || row.costPerUnit < 0) {
+      errors.push({ index: row.index, code: 'INVALID_COST_PER_UNIT', message: 'costPerUnit must be a number >= 0' });
+      continue;
+    }
+    if (row.entryDateRaw && !row.entryDate) {
+      errors.push({ index: row.index, code: 'INVALID_ENTRY_DATE', message: 'entryDate must be a valid date (YYYY-MM-DD recommended)' });
+      continue;
+    }
+    if (row.expiryDateRaw && !row.expiryDate) {
+      errors.push({ index: row.index, code: 'INVALID_EXPIRY_DATE', message: 'expiryDate must be a valid date (YYYY-MM-DD recommended)' });
+      continue;
+    }
+
+    if (!row.itemCode) {
+      row.itemCode = buildGeneratedCode(row.chemicalName, row.casNumber, row.manufacturingCompany);
+      row.itemCode = `${row.itemCode}${String(row.index).padStart(3, '0')}`;
+    }
+
+    if (seenCodes.has(row.itemCode)) {
+      errors.push({ index: row.index, code: 'DUPLICATE_ITEM_CODE_IN_FILE', message: `Duplicate itemCode ${row.itemCode} in import file` });
+      continue;
+    }
+    seenCodes.add(row.itemCode);
+
+    validDocs.push(row);
+  }
+
+  if (validDocs.length === 0) {
+    res.status(400);
+    throw new Error('No valid rows to import');
+  }
+
+  const existing = await Inventory.find({ labId, itemCode: { $in: validDocs.map((doc) => doc.itemCode) } }).select('itemCode');
+  const existingCodes = new Set(existing.map((entry) => String(entry.itemCode || '').toUpperCase()));
+
+  const createdItems = [];
+  const skipped = [];
+
+  for (const doc of validDocs) {
+    if (existingCodes.has(doc.itemCode)) {
+      skipped.push({ index: doc.index, itemCode: doc.itemCode, reason: 'ALREADY_EXISTS' });
+      continue;
+    }
+
+    try {
+      const item = await Inventory.create({
+        labId,
+        itemCode: doc.itemCode,
+        itemName: doc.itemName,
+        chemicalName: doc.chemicalName,
+        category: doc.category,
+        quantity: doc.quantity,
+        quantityUnit: doc.quantityUnit,
+        costPerUnit: doc.costPerUnit,
+        minThreshold: doc.minThreshold,
+        casNumber: doc.casNumber,
+        smiles: doc.smiles,
+        inchi: doc.inchi,
+        chemicalFormula: doc.chemicalFormula,
+        manufacturingCompany: doc.manufacturingCompany,
+        entryDate: doc.entryDate || new Date(),
+        storageLocation: doc.storageLocation,
+        lotNumber: doc.lotNumber,
+        expiryDate: doc.expiryDate,
+        abstract: doc.abstract,
+        pubmedId: doc.pubmedId,
+        lastUpdated: new Date(),
+      });
+      createdItems.push(item);
+    } catch (error) {
+      errors.push({
+        index: doc.index,
+        code: 'CREATE_FAILED',
+        message: error?.message || 'Failed to create item',
+        itemCode: doc.itemCode,
+      });
+    }
+  }
+
+  await createAuditEntry({
+    userId: req.user._id,
+    action: 'bulk_import_inventory',
+    details: `Bulk import inventory: created ${createdItems.length}, skipped ${skipped.length}, errors ${errors.length}`,
+    entityType: 'inventory',
+    entityId: null,
+    metadata: {
+      labId,
+      createdCount: createdItems.length,
+      skippedCount: skipped.length,
+      errorCount: errors.length,
+      skipped: skipped.slice(0, 50),
+      errors: errors.slice(0, 50),
+    },
+  });
+
+  getIo().emit('inventory.updated', { action: 'bulk_import', item: { itemName: 'Bulk import', _id: `bulk-${Date.now()}` } });
+
+  res.status(201).json({
+    success: true,
+    data: {
+      created: createdItems.map((entry) => decorateInventoryAbstract(entry)),
+      createdCount: createdItems.length,
+      skipped,
+      skippedCount: skipped.length,
+      errors,
+      errorCount: errors.length,
+    },
+  });
+});
+
+module.exports = {
+  createInventory,
+  updateInventory,
+  deleteInventory,
+  getInventory,
+  getInventoryById,
+  fetchChemicalAbstractForInventory,
+  fetchChemicalDataForInventory,
+  bulkImportInventory,
+};

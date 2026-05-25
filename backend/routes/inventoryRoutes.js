@@ -3,7 +3,7 @@ const { body, param, query } = require('express-validator');
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
 const validateRequest = require('../middleware/validateMiddleware');
-const { createInventory, updateInventory, deleteInventory, getInventory, getInventoryById, fetchChemicalAbstractForInventory, fetchChemicalDataForInventory } = require('../controllers/inventoryController');
+const { createInventory, updateInventory, deleteInventory, getInventory, getInventoryById, fetchChemicalAbstractForInventory, fetchChemicalDataForInventory, bulkImportInventory } = require('../controllers/inventoryController');
 
 const router = express.Router();
 
@@ -17,6 +17,17 @@ router.get(
 );
 
 router.get('/:id', [param('id').isMongoId()], validateRequest, getInventoryById);
+
+router.post(
+  '/bulk-import',
+  roleMiddleware(['superAdmin', 'labAdmin']),
+  [
+    body('labId').isMongoId(),
+    body('items').isArray({ min: 1 }),
+  ],
+  validateRequest,
+  bulkImportInventory,
+);
 
 router.post(
   '/',

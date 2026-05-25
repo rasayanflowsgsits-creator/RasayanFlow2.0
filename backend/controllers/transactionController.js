@@ -161,7 +161,7 @@ const requestExperiment = asyncHandler(async (req, res) => {
     participantIds: participants,
     memberCount,
     requestCategory: 'experiment',
-    experimentTitle: experiment.title,
+    experimentTitle: experiment.experimentNumber,
     quantity: 1,
     type: 'borrow',
     status: 'pending',
@@ -175,7 +175,7 @@ const requestExperiment = asyncHandler(async (req, res) => {
   await ActivityLog.create({
     userId: req.user._id,
     action: team ? 'team_experiment_request' : 'experiment_request',
-    details: team ? `Requested experiment ${experiment.title} for team ${team.name}` : `Requested experiment ${experiment.title}`,
+    details: team ? `Requested experiment ${experiment.experimentNumber} for team ${team.name}` : `Requested experiment ${experiment.experimentNumber}`,
   });
   getIo().emit('borrowRequestCreated', { transaction, experiment });
 
@@ -406,7 +406,7 @@ const getTransactions = asyncHandler(async (req, res) => {
     .populate('userId', 'name email')
     .populate('participantIds', 'name email')
     .populate('itemId', 'itemName itemCode quantity quantityUnit category')
-    .populate('experimentId', 'title experimentObject totalEstimatedExpense')
+    .populate('experimentId', 'experimentNumber experimentObject totalEstimatedExpense')
     .populate('teamId', 'name leaderId memberIds')
     .populate('reviewedBy', 'name email')
     .sort({ timestamp: -1 })

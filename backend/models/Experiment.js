@@ -14,10 +14,8 @@ const experimentRequirementSchema = new mongoose.Schema(
 
 const experimentSchema = new mongoose.Schema({
   labId: { type: mongoose.Schema.Types.ObjectId, ref: 'Lab', required: true },
-  title: { type: String, required: true, trim: true },
+  experimentNumber: { type: String, required: true, trim: true },
   experimentObject: { type: String, required: true, trim: true },
-  description: { type: String, trim: true, default: '' },
-  procedure: { type: String, trim: true, default: '' },
   requiredInventory: { type: [experimentRequirementSchema], default: [] },
   totalEstimatedExpense: { type: Number, min: 0, default: 0 },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -25,6 +23,11 @@ const experimentSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now },
 });
 
-experimentSchema.index({ labId: 1, title: 1 }, { unique: true });
+experimentSchema.index(
+  { labId: 1, experimentNumber: 1 },
+  {
+    unique: true,
+  }
+);
 
 module.exports = mongoose.model('Experiment', experimentSchema);

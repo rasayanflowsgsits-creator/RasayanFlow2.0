@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Download, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Download, FileDown, Pencil, Plus, Trash2, Upload } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
 import useAppStore from '../store/appStore';
@@ -9,11 +9,12 @@ import Table from '../components/ui/Table';
 import Modal from '../components/ui/Modal';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
+import { parseCsv } from '../utils/csv';
 
 const UNIT_OPTIONS = ['mg', 'g', 'kg', 'mcg', 'mL', 'L', 'uL', 'tablets', 'capsules', 'bottles', 'boxes', 'packs', 'vials', 'ampoules', 'units'];
 const getTodayDate = () => new Date().toISOString().slice(0, 10);
 const EMPTY_ITEM = { itemCode: '', chemicalName: '', category: 'Chemical', quantity: '', quantityUnit: 'mL', costPerUnit: '', minThreshold: '5', casNumber: '', smiles: '', inchi: '', chemicalFormula: '', manufacturingCompany: '', entryDate: getTodayDate(), storageLocation: '', lotNumber: '', expiryDate: '', abstract: '', pubmedId: '' };
-const EMPTY_EXPERIMENT = { title: '', experimentObject: '', description: '', procedure: '', requiredInventory: [{ inventoryItemId: '', quantity: '', quantityUnit: 'mL' }] };
+const EMPTY_EXPERIMENT = { experimentNumber: '', experimentObject: '', requiredInventory: [{ inventoryItemId: '', quantity: '', quantityUnit: 'mL' }] };
 
 const SelectUnit = ({ value, onChange }) => (
   <label className='relative block text-sm text-slate-700 dark:text-slate-300'>
@@ -65,6 +66,16 @@ export default function LabAdminDashboard() {
   const [casLookupType, setCasLookupType] = useState('');
   const [editCasLookupMessage, setEditCasLookupMessage] = useState('');
   const [editCasLookupType, setEditCasLookupType] = useState('');
+  const [importOpen, setImportOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importFileName, setImportFileName] = useState('');
+  const [importItems, setImportItems] = useState([]);
+  const [importIssues, setImportIssues] = useState([]);
+  const [experimentImportOpen, setExperimentImportOpen] = useState(false);
+  const [experimentImporting, setExperimentImporting] = useState(false);
+  const [experimentImportFileName, setExperimentImportFileName] = useState('');
+  const [experimentImportExperiments, setExperimentImportExperiments] = useState([]);
+  const [experimentImportIssues, setExperimentImportIssues] = useState([]);
 
   useEffect(() => { fetchLabs(); fetchUsers(); }, [fetchLabs, fetchUsers]);
   useEffect(() => {
@@ -139,10 +150,10 @@ export default function LabAdminDashboard() {
 
   const handleCreateExperiment = async () => {
     const requiredInventory = experimentForm.requiredInventory.filter((entry) => entry.inventoryItemId && Number(entry.quantity) > 0).map((entry) => ({ ...entry, quantity: Number(entry.quantity) }));
-    if (!labId || !experimentForm.title.trim() || !experimentForm.experimentObject.trim() || !requiredInventory.length) return;
+    if (!labId || !experimentForm.experimentNumber.trim() || !experimentForm.experimentObject.trim() || !requiredInventory.length) return;
     setSavingExperiment(true);
     try {
-      await store.createExperiment({ labId, title: experimentForm.title.trim(), experimentObject: experimentForm.experimentObject.trim(), description: experimentForm.description.trim(), procedure: experimentForm.procedure.trim(), requiredInventory });
+      await store.createExperiment({ labId, experimentNumber: experimentForm.experimentNumber.trim(), experimentObject: experimentForm.experimentObject.trim(), requiredInventory });
       store.setToast({ type: 'success', message: 'Experiment created.' });
       setExperimentOpen(false);
       setExperimentForm(EMPTY_EXPERIMENT);
@@ -230,7 +241,7 @@ export default function LabAdminDashboard() {
     { key: 'actions', label: 'Actions', render: (row) => <div className='flex flex-wrap gap-2'><Button variant='outline' className='px-3 py-1 text-xs' onClick={() => openEditModal(row)}><Pencil size={14} /> Edit</Button><Button variant='outline' className='px-3 py-1 text-xs text-red-700 dark:text-red-300' onClick={() => setDeleteTarget(row)}><Trash2 size={14} /> Delete</Button></div> }
   ];
   const experimentHeaders = [
-    { key: 'title', label: 'Experiment' },
+    { key: 'experimentNumber', label: 'Experiment No.' },
     { key: 'experimentObject', label: 'Experiment Object' },
     { key: 'requiredInventory', label: 'Required Chemicals', render: (row) => row.requiredInventory.map((entry) => entry.chemicalName).join(', ') || '--' },
     { key: 'totalEstimatedExpense', label: 'Expense', render: (row) => `Rs. ${Number(row.totalEstimatedExpense || 0).toFixed(2)}` },
@@ -244,6 +255,184 @@ export default function LabAdminDashboard() {
     doc.setFontSize(16); doc.text('Lab Transactions Report', 40, y); y += 20;
     store.transactions.forEach((tx) => { if (y > 760) { doc.addPage(); y = 40; } doc.setFontSize(10); doc.text(`${new Date(tx.timestamp || tx.createdAt || Date.now()).toLocaleDateString()} | ${tx.itemName} | ${tx.quantity} ${tx.itemId?.quantityUnit || ''} | ${tx.requesterName} | ${tx.status}`, 40, y); y += 16; });
     doc.save(`lab-transactions-${new Date().toISOString().slice(0, 10)}.pdf`);
+  };
+
+  const downloadInventoryImportTemplate = () => {
+    const headers = [
+      'itemCode',
+      'chemicalName',
+      'quantity',
+      'quantityUnit',
+      'minThreshold',
+      'costPerUnit',
+      'casNumber',
+      'chemicalFormula',
+      'manufacturingCompany',
+      'storageLocation',
+      'lotNumber',
+      'expiryDate',
+    ];
+    const sample = ['CHEM001', 'Acetone', '500', 'mL', '5', '0', '67-64-1', 'C3H6O', 'Generic', 'Shelf A1', 'LOT-123', '2030-12-31'];
+    const csv = `${headers.join(',')}\n${sample.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')}\n`;
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'inventory-import-template.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportFile = async (file) => {
+    if (!file) return;
+    const text = await file.text();
+    const { records } = parseCsv(text);
+    const issues = [];
+    const items = [];
+
+    records.forEach((record, index) => {
+      const chemicalName = String(record.chemicalName || record.itemName || '').trim();
+      const quantityUnit = String(record.quantityUnit || '').trim();
+      const quantity = record.quantity === '' ? 0 : Number(record.quantity);
+      const minThreshold = record.minThreshold === '' ? 5 : Number(record.minThreshold);
+
+      if (!chemicalName) issues.push({ index, message: 'Missing chemicalName' });
+      if (!quantityUnit) issues.push({ index, message: 'Missing quantityUnit' });
+      if (!Number.isFinite(quantity) || quantity < 0) issues.push({ index, message: 'Invalid quantity' });
+      if (!Number.isFinite(minThreshold) || minThreshold < 0) issues.push({ index, message: 'Invalid minThreshold' });
+
+      items.push({
+        itemCode: String(record.itemCode || '').trim(),
+        chemicalName,
+        category: String(record.category || 'Chemical').trim() || 'Chemical',
+        quantity,
+        quantityUnit,
+        costPerUnit: record.costPerUnit === '' ? 0 : Number(record.costPerUnit),
+        minThreshold,
+        casNumber: String(record.casNumber || '').trim(),
+        smiles: String(record.smiles || '').trim(),
+        inchi: String(record.inchi || '').trim(),
+        chemicalFormula: String(record.chemicalFormula || '').trim(),
+        manufacturingCompany: String(record.manufacturingCompany || '').trim(),
+        entryDate: String(record.entryDate || '').trim(),
+        storageLocation: String(record.storageLocation || '').trim(),
+        lotNumber: String(record.lotNumber || '').trim(),
+        expiryDate: String(record.expiryDate || '').trim(),
+        abstract: String(record.abstract || '').trim(),
+        pubmedId: String(record.pubmedId || '').trim(),
+      });
+    });
+
+    setImportItems(items);
+    setImportIssues(issues.slice(0, 50));
+  };
+
+  const submitBulkImport = async () => {
+    if (!labId || importing || !importItems.length) return;
+    setImporting(true);
+    try {
+      const result = await store.bulkImportInventoryItems({ labId, items: importItems });
+      await store.fetchInventory(labId);
+      store.setToast({
+        type: result?.errorCount ? 'warning' : 'success',
+        message: `Import done: ${result?.createdCount ?? 0} created, ${result?.skippedCount ?? 0} skipped, ${result?.errorCount ?? 0} errors.`,
+      });
+      setImportOpen(false);
+      setImportFileName('');
+      setImportItems([]);
+      setImportIssues([]);
+    } catch (error) {
+      store.setToast({ type: 'error', message: error?.response?.data?.message || 'Bulk import failed.' });
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const downloadExperimentsImportTemplate = () => {
+    const headers = ['experimentNumber', 'experimentObject', 'requirements'];
+    const sample = [
+      'EXP-001',
+      'Measure pH of sample',
+      'CHEM001:10:mL;CHEM002:5:g',
+    ];
+    const csv = `${headers.join(',')}\n${sample.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')}\n`;
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'experiments-import-template.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const parseRequirementsCell = (value) => {
+    const text = String(value || '').trim();
+    if (!text) return [];
+    return text
+      .split(';')
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+      .map((entry) => {
+        const [itemCode, quantity, quantityUnit] = entry.split(':').map((part) => String(part || '').trim());
+        return {
+          itemCode,
+          quantity: Number(quantity || 0),
+          quantityUnit: quantityUnit || '',
+        };
+      });
+  };
+
+  const handleExperimentImportFile = async (file) => {
+    if (!file) return;
+    const text = await file.text();
+    const { records } = parseCsv(text);
+    const issues = [];
+    const experiments = [];
+
+    records.forEach((record, index) => {
+      const experimentNumber = String(record.experimentNumber || '').trim();
+      const experimentObject = String(record.experimentObject || '').trim();
+      const requiredInventory = parseRequirementsCell(record.requirements);
+
+      if (!experimentNumber) issues.push({ index, message: 'Missing experimentNumber' });
+      if (!experimentObject) issues.push({ index, message: 'Missing experimentObject' });
+      if (!requiredInventory.length) issues.push({ index, message: 'Missing requirements (use ITEMCODE:QTY:UNIT;...)' });
+
+      requiredInventory.forEach((req, reqIndex) => {
+        if (!req.itemCode) issues.push({ index, message: `Requirement #${reqIndex + 1} missing itemCode` });
+        if (!Number.isFinite(req.quantity) || req.quantity <= 0) issues.push({ index, message: `Requirement #${reqIndex + 1} invalid quantity` });
+      });
+
+      experiments.push({
+        experimentNumber,
+        experimentObject,
+        requiredInventory,
+      });
+    });
+
+    setExperimentImportExperiments(experiments);
+    setExperimentImportIssues(issues.slice(0, 50));
+  };
+
+  const submitExperimentBulkImport = async () => {
+    if (!labId || experimentImporting || !experimentImportExperiments.length) return;
+    setExperimentImporting(true);
+    try {
+      const result = await store.bulkImportExperiments({ labId, experiments: experimentImportExperiments });
+      await store.fetchExperiments({ labId });
+      store.setToast({
+        type: result?.errorCount ? 'warning' : 'success',
+        message: `Experiment import done: ${result?.createdCount ?? 0} created, ${result?.skippedCount ?? 0} skipped, ${result?.errorCount ?? 0} errors.`,
+      });
+      setExperimentImportOpen(false);
+      setExperimentImportFileName('');
+      setExperimentImportExperiments([]);
+      setExperimentImportIssues([]);
+    } catch (error) {
+      store.setToast({ type: 'error', message: error?.response?.data?.message || 'Experiment import failed.' });
+    } finally {
+      setExperimentImporting(false);
+    }
   };
 
   if (!assignedLabs.length) return <Card title='Lab Not Assigned' subtitle='This lab admin account is not linked to a lab yet'><p className='text-sm text-slate-500 dark:text-slate-400'>Ask the super admin to assign this account to a lab from the Manage dialog.</p></Card>;
@@ -288,17 +477,19 @@ export default function LabAdminDashboard() {
     <div className='rounded-xl border border-[#d9e1ca] bg-[#f9faef] px-4 py-3 dark:border-[#414a33] dark:bg-[#1f2419]'><div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'><div><p className='text-sm font-medium text-[#3c4e23] dark:text-[#eef4e8]'>You are admin of {assignedLabs.length} lab{assignedLabs.length > 1 ? 's' : ''}</p><p className='mt-1 text-xs text-[#71805a] dark:text-[#c5d0b5]'>Current dashboard: {currentLab?.name || 'Assigned Lab'}</p></div><div className='flex flex-wrap gap-2'>{assignedLabs.map((lab) => { const labKey = String(lab.id || lab._id); return <Button key={labKey} variant={labKey === String(labId) ? 'primary' : 'outline'} className='px-3 py-1 text-xs' onClick={() => { setSelectedLabId(labKey); localStorage.setItem('pharmlab-active-lab', labKey); }}>{lab.labName || lab.name || 'Lab'}</Button>; })}</div></div></div>
     <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-4'><Card title='Tracked Chemicals' subtitle='Current inventory count'><p className='text-3xl font-semibold'>{store.inventory.length}</p></Card><Card title='Inventory Value' subtitle='Based on cost per unit'><p className='text-3xl font-semibold'>Rs. {totalInventoryValue.toFixed(2)}</p></Card><Card title='Experiments' subtitle='Configured for this lab'><p className='text-3xl font-semibold'>{store.experiments.length}</p></Card><Card title='Pending Requests' subtitle='All shown in borrow and transactions'><p className='text-3xl font-semibold'>{pendingBorrowRequests.length}</p></Card></div>
     {!isTransactionsPage && !isAnalyticsPage ? <>
-      <div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'><h2 className='text-xl font-semibold'>Chemical Inventory</h2><Button variant='outline' onClick={() => setCreateOpen(true)}><Plus size={16} /> Add Chemical</Button></div>
+      <div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'><h2 className='text-xl font-semibold'>Chemical Inventory</h2><div className='flex flex-wrap gap-2'><Button variant='outline' onClick={downloadInventoryImportTemplate}><FileDown size={16} /> Template CSV</Button><Button variant='outline' onClick={() => setImportOpen(true)}><Upload size={16} /> Bulk Import</Button><Button variant='outline' onClick={() => setCreateOpen(true)}><Plus size={16} /> Add Chemical</Button></div></div>
       <Table headers={inventoryHeaders} rows={store.inventory.map((item) => ({ ...item, highlight: Number(item.quantity || 0) <= Number(item.minThreshold || 0) }))} />
-      <div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'><div><h2 className='text-xl font-semibold'>Experiments In This Lab</h2><p className='text-sm text-slate-500 dark:text-slate-400'>Experiment object, required inventory, and estimated expense are managed together here.</p></div><div className='flex gap-2'><Button variant='outline' onClick={() => setCreateOpen(true)}><Plus size={16} /> Add Inventory First</Button><Button onClick={() => setExperimentOpen(true)}><Plus size={16} /> Add Experiment</Button></div></div>
+      <div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'><div><h2 className='text-xl font-semibold'>Experiments In This Lab</h2><p className='text-sm text-slate-500 dark:text-slate-400'>Experiment object, required inventory, and estimated expense are managed together here.</p></div><div className='flex flex-wrap gap-2'><Button variant='outline' onClick={downloadExperimentsImportTemplate}><FileDown size={16} /> Template CSV</Button><Button variant='outline' onClick={() => setExperimentImportOpen(true)}><Upload size={16} /> Import Experiments</Button><Button variant='outline' onClick={() => setCreateOpen(true)}><Plus size={16} /> Add Inventory First</Button><Button onClick={() => setExperimentOpen(true)}><Plus size={16} /> Add Experiment</Button></div></div>
       <Table headers={experimentHeaders} rows={store.experiments} />
       <Card title='Pending Borrow Requests' subtitle='Both chemical and experiment requests are reviewed here'><div className='space-y-3'>{pendingBorrowRequests.length ? pendingBorrowRequests.map((tx) => <div key={tx.id} className='rounded-lg bg-slate-50 p-4 dark:bg-slate-800'><p className='text-sm font-semibold text-slate-900 dark:text-slate-100'>{tx.requestCategory === 'experiment' ? `${tx.experimentTitle || tx.itemName} experiment request` : `${tx.itemName} requested`} by {tx.requesterName}</p><p className='mt-1 text-xs text-slate-500 dark:text-slate-400'>{tx.requestCategory === 'experiment' ? `${tx.teamName ? `${tx.teamName} • ` : ''}${tx.memberCount || 1} participant${Number(tx.memberCount || 1) > 1 ? 's' : ''}` : `${tx.quantity} ${tx.itemId?.quantityUnit || ''}`} | {tx.requesterEmail}</p><p className='mt-2 text-sm text-slate-600 dark:text-slate-300'>Purpose: {tx.purpose || 'N/A'}</p><div className='mt-3 flex gap-2'>{tx.requestCategory === 'experiment' ? <><Button className='px-3 py-1 text-xs' onClick={() => reviewExperimentRequest(tx.id, 'approved')} disabled={reviewingExperimentRequestId === tx.id}>{reviewingExperimentRequestId === tx.id ? 'Working...' : 'Approve'}</Button><Button variant='outline' className='px-3 py-1 text-xs' onClick={() => reviewExperimentRequest(tx.id, 'rejected')} disabled={reviewingExperimentRequestId === tx.id}>Reject</Button></> : <><Button className='px-3 py-1 text-xs' onClick={() => reviewBorrow(tx.id, 'approved')} disabled={reviewingId === tx.id}>{reviewingId === tx.id ? 'Working...' : 'Approve'}</Button><Button variant='outline' className='px-3 py-1 text-xs' onClick={() => reviewBorrow(tx.id, 'rejected')} disabled={reviewingId === tx.id}>Reject</Button></>}</div></div>) : <p className='text-sm text-slate-500'>No pending borrow requests right now.</p>}</div></Card>
       <Card title='Student Access Control' subtitle='Block or unblock users if needed'><div className='space-y-3'>{students.length ? students.map((student) => <div key={student.id} className='flex items-start justify-between gap-3 rounded-lg bg-slate-50 p-4 dark:bg-slate-800'><div><p className='text-sm font-semibold text-slate-900 dark:text-slate-100'>{student.name}</p><p className='mt-1 text-xs text-slate-500 dark:text-slate-400'>{student.email}</p><p className={`mt-2 text-xs font-medium ${student.isBlocked ? 'text-rose-600 dark:text-rose-300' : 'text-emerald-600 dark:text-emerald-300'}`}>{student.isBlocked ? 'Blocked' : 'Active'}</p></div><Button variant='outline' className={`px-3 py-1 text-xs ${student.isBlocked ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`} onClick={() => toggleStudentBlock(student)} disabled={blockingUserId === student.id}>{blockingUserId === student.id ? 'Saving...' : student.isBlocked ? 'Unblock' : 'Block'}</Button></div>) : <p className='text-sm text-slate-500'>No students linked yet.</p>}</div></Card>
     </> : isAnalyticsPage ? <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-4'><Card title='Low Stock Chemicals' subtitle='At or below threshold'><p className='text-3xl font-semibold'>{lowStockCount}</p></Card><Card title='Estimated Experiment Spend' subtitle='Total experiment expenses'><p className='text-3xl font-semibold'>Rs. {experimentSpend.toFixed(2)}</p></Card><Card title='Pending Inventory Borrows' subtitle='Chemical requests awaiting review'><p className='text-3xl font-semibold'>{pendingInventoryRequests.length}</p></Card><Card title='Pending Experiment Borrows' subtitle='Experiment requests awaiting review'><p className='text-3xl font-semibold'>{pendingExperimentRequests.length}</p></Card></div> : <div className='space-y-4'><div className='flex items-center justify-between gap-3'><h2 className='text-xl font-semibold'>Transactions</h2><Button variant='outline' onClick={downloadTransactionsPdf} disabled={!store.transactions.length}><Download size={16} /> Download PDF</Button></div><Card title='Recent Transactions' subtitle='Borrow, experiment-request, and return activity'>{store.transactions.length ? <div className='space-y-3'>{store.transactions.map((tx) => <div key={tx.id} className='rounded-lg bg-slate-50 p-4 dark:bg-slate-800'><p className='text-sm font-semibold text-slate-900 dark:text-slate-100'>{tx.requestCategory === 'experiment' ? `${tx.experimentTitle || tx.itemName} | Complete experiment request` : `${tx.itemName} | ${tx.quantity} ${tx.itemId?.quantityUnit || ''}`} | {tx.requesterName}</p><p className='mt-1 text-xs text-slate-500 dark:text-slate-400'>{tx.requesterEmail} | {tx.status}</p><p className='mt-2 text-sm text-slate-600 dark:text-slate-300'>Purpose: {tx.purpose || 'N/A'}</p></div>)}</div> : <p className='text-sm text-slate-500'>No transactions yet.</p>}</Card></div>}
+    <Modal open={importOpen} onClose={() => { if (!importing) setImportOpen(false); }} title='Bulk Import Inventory'><div className='space-y-4'><div className='rounded-lg border border-[#d9e1ca] bg-[#f7f8f1] p-4 text-xs text-[#71805a] dark:border-[#414a33] dark:bg-[#28301f] dark:text-[#c5d0b5]'><p className='font-medium text-[#3c4e23] dark:text-[#eef4e8]'>Upload a CSV to create many chemicals at once.</p><p className='mt-1'>Required columns: <span className='font-semibold'>chemicalName</span>, <span className='font-semibold'>quantityUnit</span>. Optional: itemCode, quantity, minThreshold, costPerUnit, casNumber, chemicalFormula, manufacturingCompany, storageLocation, lotNumber, expiryDate.</p></div><label className='block text-sm text-slate-700 dark:text-slate-300'><span className='mb-1 block text-xs font-medium tracking-wide'>CSV file</span><input type='file' accept='.csv,text/csv' className='block w-full cursor-pointer rounded-lg border border-[#cfd8bd] bg-[#fffef8] px-3 py-2 text-sm text-[#3c4e23] file:mr-3 file:rounded-md file:border-0 file:bg-[#556b2f] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-[#f0f4e8] hover:file:bg-[#6f7d45] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]' onChange={async (e) => { const file = e.target.files?.[0]; setImportFileName(file?.name || ''); setImportItems([]); setImportIssues([]); if (file) await handleImportFile(file); }} /></label>{importFileName ? <div className='text-xs text-[#71805a] dark:text-[#c5d0b5]'>Selected: <span className='font-medium'>{importFileName}</span> • Rows: <span className='font-medium'>{importItems.length}</span> • Issues: <span className='font-medium'>{importIssues.length}</span></div> : null}{importIssues.length ? <div className='rounded-lg border border-[#d9e1ca] bg-[#fffef8] p-3 text-xs text-slate-600 dark:border-[#414a33] dark:bg-[#20251a] dark:text-slate-300'><p className='mb-2 font-medium'>Issues (first {importIssues.length})</p><div className='max-h-40 overflow-auto space-y-1'>{importIssues.map((issue) => <p key={`issue-${issue.index}`}>Row {issue.index + 2}: {issue.message}</p>)}</div></div> : null}<Button className='w-full' onClick={submitBulkImport} disabled={importing || !labId || !importItems.length}>{importing ? 'Importing...' : 'Import now'}</Button></div></Modal>
+    <Modal open={experimentImportOpen} onClose={() => { if (!experimentImporting) setExperimentImportOpen(false); }} title='Import Experiments'><div className='space-y-4'><div className='rounded-lg border border-[#d9e1ca] bg-[#f7f8f1] p-4 text-xs text-[#71805a] dark:border-[#414a33] dark:bg-[#28301f] dark:text-[#c5d0b5]'><p className='font-medium text-[#3c4e23] dark:text-[#eef4e8]'>Upload a CSV to add many experiments with required chemicals.</p><p className='mt-1'>Use the <span className='font-semibold'>requirements</span> column format: <span className='font-semibold'>ITEMCODE:QTY:UNIT;ITEMCODE2:QTY:UNIT</span>.</p><p className='mt-1'>Tip: itemCode must match your inventory (download the inventory list from your system if needed).</p></div><label className='block text-sm text-slate-700 dark:text-slate-300'><span className='mb-1 block text-xs font-medium tracking-wide'>CSV file</span><input type='file' accept='.csv,text/csv' className='block w-full cursor-pointer rounded-lg border border-[#cfd8bd] bg-[#fffef8] px-3 py-2 text-sm text-[#3c4e23] file:mr-3 file:rounded-md file:border-0 file:bg-[#556b2f] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-[#f0f4e8] hover:file:bg-[#6f7d45] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]' onChange={async (e) => { const file = e.target.files?.[0]; setExperimentImportFileName(file?.name || ''); setExperimentImportExperiments([]); setExperimentImportIssues([]); if (file) await handleExperimentImportFile(file); }} /></label>{experimentImportFileName ? <div className='text-xs text-[#71805a] dark:text-[#c5d0b5]'>Selected: <span className='font-medium'>{experimentImportFileName}</span> • Rows: <span className='font-medium'>{experimentImportExperiments.length}</span> • Issues: <span className='font-medium'>{experimentImportIssues.length}</span></div> : null}{experimentImportIssues.length ? <div className='rounded-lg border border-[#d9e1ca] bg-[#fffef8] p-3 text-xs text-slate-600 dark:border-[#414a33] dark:bg-[#20251a] dark:text-slate-300'><p className='mb-2 font-medium'>Issues (first {experimentImportIssues.length})</p><div className='max-h-40 overflow-auto space-y-1'>{experimentImportIssues.map((issue) => <p key={`exp-issue-${issue.index}`}>Row {issue.index + 2}: {issue.message}</p>)}</div></div> : null}<Button className='w-full' onClick={submitExperimentBulkImport} disabled={experimentImporting || !labId || !experimentImportExperiments.length}>{experimentImporting ? 'Importing...' : 'Import experiments'}</Button></div></Modal>
     <Modal open={createOpen} onClose={() => setCreateOpen(false)} title='Add Chemical To Inventory'><div className='space-y-4'>{modalFields(newItem, setNewItem, autofillingCas, lastAutofilledCas, setAutofillingCas, setLastAutofilledCas, casLookupMessage, casLookupType, setCasLookupMessage, setCasLookupType)}<div className='rounded-lg border border-dashed border-[#cfd8bd] bg-[#f9faef] px-4 py-3 text-xs text-[#71805a] dark:border-[#4e5d35] dark:bg-[#1f2419] dark:text-[#c5d0b5]'>PubChem autofill does not save automatically. Review the fields, enter quantity, then click Save chemical.</div><Button className='w-full' onClick={handleAddItem} disabled={savingItem || !labId || autofillingCas}>{savingItem ? 'Saving...' : 'Save chemical'}</Button></div></Modal>
     <Modal open={editOpen} onClose={() => setEditOpen(false)} title='Edit Chemical'><div className='space-y-4'>{modalFields(editItem, setEditItem, editAutofillingCas, lastEditAutofilledCas, setEditAutofillingCas, setLastEditAutofilledCas, editCasLookupMessage, editCasLookupType, setEditCasLookupMessage, setEditCasLookupType)}<Button className='w-full' onClick={handleEditItem} disabled={savingEdit || editAutofillingCas}>{savingEdit ? 'Saving...' : 'Save changes'}</Button></div></Modal>
-    <Modal open={experimentOpen} onClose={() => setExperimentOpen(false)} title='Add Experiment'><div className='space-y-4'><Input label='Experiment title' value={experimentForm.title} onChange={(e) => setExperimentForm((s) => ({ ...s, title: e.target.value }))} /><Input label='Experiment object' value={experimentForm.experimentObject} onChange={(e) => setExperimentForm((s) => ({ ...s, experimentObject: e.target.value }))} /><textarea value={experimentForm.description} onChange={(e) => setExperimentForm((s) => ({ ...s, description: e.target.value }))} placeholder='Experiment description' rows={3} className='w-full rounded-lg border border-[#cfd8bd] bg-[#fffef8] px-3 py-2 text-sm text-[#3c4e23] focus:outline-none focus:ring-2 focus:ring-[#6f7d45] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]' /><textarea value={experimentForm.procedure} onChange={(e) => setExperimentForm((s) => ({ ...s, procedure: e.target.value }))} placeholder='Procedure / steps' rows={4} className='w-full rounded-lg border border-[#cfd8bd] bg-[#fffef8] px-3 py-2 text-sm text-[#3c4e23] focus:outline-none focus:ring-2 focus:ring-[#6f7d45] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]' /><div className='rounded-xl border border-[#d9e1ca] p-4 dark:border-[#414a33]'><div className='mb-3 flex items-center justify-between'><div><p className='font-medium text-[#3c4e23] dark:text-[#eef4e8]'>Required Inventory</p><p className='text-xs text-[#71805a] dark:text-[#c5d0b5]'>If a chemical is missing, add it first from this same dashboard.</p></div><Button variant='outline' className='px-3 py-1 text-xs' onClick={() => setCreateOpen(true)}><Plus size={14} /> Add Chemical</Button></div><div className='space-y-3'>{experimentForm.requiredInventory.map((entry, index) => <div key={`req-${index}`} className='grid gap-3 rounded-lg bg-[#f7f8f1] p-3 dark:bg-[#28301f] lg:grid-cols-[1.4fr_0.8fr_0.8fr_auto]'><label className='relative block text-sm text-slate-700 dark:text-slate-300'><span className='mb-1 block text-xs font-medium tracking-wide'>Chemical</span><select value={entry.inventoryItemId} onChange={(e) => { const selected = store.inventory.find((item) => item.id === e.target.value); setExperimentForm((s) => ({ ...s, requiredInventory: s.requiredInventory.map((current, i) => i === index ? { ...current, inventoryItemId: e.target.value, quantityUnit: selected?.quantityUnit || 'mL' } : current) })); }} className='w-full rounded-lg border border-[#cfd8bd] bg-[#fffef8] px-3 py-2 text-[#3c4e23] focus:outline-none focus:ring-2 focus:ring-[#6f7d45] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]'><option value=''>Select chemical</option>{store.inventory.map((item) => <option key={item.id} value={item.id}>{item.chemicalName} ({item.quantity} {item.quantityUnit})</option>)}</select></label><Input label='Required qty' type='number' value={entry.quantity} onChange={(e) => setExperimentForm((s) => ({ ...s, requiredInventory: s.requiredInventory.map((current, i) => i === index ? { ...current, quantity: e.target.value } : current) }))} /><SelectUnit value={entry.quantityUnit} onChange={(e) => setExperimentForm((s) => ({ ...s, requiredInventory: s.requiredInventory.map((current, i) => i === index ? { ...current, quantityUnit: e.target.value } : current) }))} /><div className='flex items-end'><Button variant='outline' className='px-3 py-2 text-xs text-red-700 dark:text-red-300' onClick={() => setExperimentForm((s) => ({ ...s, requiredInventory: s.requiredInventory.filter((_, i) => i !== index) }))} disabled={experimentForm.requiredInventory.length === 1}>Remove</Button></div></div>)}</div><Button variant='outline' className='mt-3 px-3 py-1 text-xs' onClick={() => setExperimentForm((s) => ({ ...s, requiredInventory: [...s.requiredInventory, { inventoryItemId: '', quantity: '', quantityUnit: 'mL' }] }))}><Plus size={14} /> Add Another Chemical</Button></div><Button className='w-full' onClick={handleCreateExperiment} disabled={savingExperiment}>{savingExperiment ? 'Saving...' : 'Save experiment'}</Button></div></Modal>
+    <Modal open={experimentOpen} onClose={() => setExperimentOpen(false)} title='Add Experiment'><div className='space-y-4'><Input label='Experiment number' value={experimentForm.experimentNumber} onChange={(e) => setExperimentForm((s) => ({ ...s, experimentNumber: e.target.value }))} placeholder='EXP-001' /><Input label='Experiment object' value={experimentForm.experimentObject} onChange={(e) => setExperimentForm((s) => ({ ...s, experimentObject: e.target.value }))} /><div className='rounded-xl border border-[#d9e1ca] p-4 dark:border-[#414a33]'><div className='mb-3 flex items-center justify-between'><div><p className='font-medium text-[#3c4e23] dark:text-[#eef4e8]'>Required Inventory</p><p className='text-xs text-[#71805a] dark:text-[#c5d0b5]'>If a chemical is missing, add it first from this same dashboard.</p></div><Button variant='outline' className='px-3 py-1 text-xs' onClick={() => setCreateOpen(true)}><Plus size={14} /> Add Chemical</Button></div><div className='space-y-3'>{experimentForm.requiredInventory.map((entry, index) => <div key={`req-${index}`} className='grid gap-3 rounded-lg bg-[#f7f8f1] p-3 dark:bg-[#28301f] lg:grid-cols-[1.4fr_0.8fr_0.8fr_auto]'><label className='relative block text-sm text-slate-700 dark:text-slate-300'><span className='mb-1 block text-xs font-medium tracking-wide'>Chemical</span><select value={entry.inventoryItemId} onChange={(e) => { const selected = store.inventory.find((item) => item.id === e.target.value); setExperimentForm((s) => ({ ...s, requiredInventory: s.requiredInventory.map((current, i) => i === index ? { ...current, inventoryItemId: e.target.value, quantityUnit: selected?.quantityUnit || 'mL' } : current) })); }} className='w-full rounded-lg border border-[#cfd8bd] bg-[#fffef8] px-3 py-2 text-[#3c4e23] focus:outline-none focus:ring-2 focus:ring-[#6f7d45] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]'><option value=''>Select chemical</option>{store.inventory.map((item) => <option key={item.id} value={item.id}>{item.chemicalName} ({item.quantity} {item.quantityUnit})</option>)}</select></label><Input label='Required qty' type='number' value={entry.quantity} onChange={(e) => setExperimentForm((s) => ({ ...s, requiredInventory: s.requiredInventory.map((current, i) => i === index ? { ...current, quantity: e.target.value } : current) }))} /><SelectUnit value={entry.quantityUnit} onChange={(e) => setExperimentForm((s) => ({ ...s, requiredInventory: s.requiredInventory.map((current, i) => i === index ? { ...current, quantityUnit: e.target.value } : current) }))} /><div className='flex items-end'><Button variant='outline' className='px-3 py-2 text-xs text-red-700 dark:text-red-300' onClick={() => setExperimentForm((s) => ({ ...s, requiredInventory: s.requiredInventory.filter((_, i) => i !== index) }))} disabled={experimentForm.requiredInventory.length === 1}>Remove</Button></div></div>)}</div><Button variant='outline' className='mt-3 px-3 py-1 text-xs' onClick={() => setExperimentForm((s) => ({ ...s, requiredInventory: [...s.requiredInventory, { inventoryItemId: '', quantity: '', quantityUnit: 'mL' }] }))}><Plus size={14} /> Add Another Chemical</Button></div><Button className='w-full' onClick={handleCreateExperiment} disabled={savingExperiment}>{savingExperiment ? 'Saving...' : 'Save experiment'}</Button></div></Modal>
     <Modal open={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} title='Delete Chemical'><div className='space-y-4'><p className='text-sm text-slate-600 dark:text-slate-300'>{deleteTarget ? `Delete ${deleteTarget.chemicalName || deleteTarget.name} from inventory?` : ''}</p><div className='flex gap-3'><Button variant='outline' className='w-full' onClick={() => setDeleteTarget(null)}>Cancel</Button><Button variant='danger' className='w-full' onClick={async () => { try { await store.deleteInventoryItem(deleteTarget.id); store.setToast({ type: 'success', message: `${deleteTarget.chemicalName || deleteTarget.name} deleted.` }); setDeleteTarget(null); } catch (error) { store.setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to delete chemical.' }); } }}>Delete</Button></div></div></Modal>
-    <Modal open={Boolean(deleteExperimentTarget)} onClose={() => setDeleteExperimentTarget(null)} title='Delete Experiment'><div className='space-y-4'><p className='text-sm text-slate-600 dark:text-slate-300'>{deleteExperimentTarget ? `Delete experiment ${deleteExperimentTarget.title}?` : ''}</p><div className='flex gap-3'><Button variant='outline' className='w-full' onClick={() => setDeleteExperimentTarget(null)}>Cancel</Button><Button variant='danger' className='w-full' onClick={async () => { try { await store.deleteExperiment(deleteExperimentTarget.id); store.setToast({ type: 'success', message: `${deleteExperimentTarget.title} deleted.` }); setDeleteExperimentTarget(null); } catch (error) { store.setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to delete experiment.' }); } }}>Delete</Button></div></div></Modal>
+    <Modal open={Boolean(deleteExperimentTarget)} onClose={() => setDeleteExperimentTarget(null)} title='Delete Experiment'><div className='space-y-4'><p className='text-sm text-slate-600 dark:text-slate-300'>{deleteExperimentTarget ? `Delete experiment ${deleteExperimentTarget.experimentNumber || deleteExperimentTarget.experimentObject || deleteExperimentTarget.id}?` : ''}</p><div className='flex gap-3'><Button variant='outline' className='w-full' onClick={() => setDeleteExperimentTarget(null)}>Cancel</Button><Button variant='danger' className='w-full' onClick={async () => { try { await store.deleteExperiment(deleteExperimentTarget.id); store.setToast({ type: 'success', message: `${deleteExperimentTarget.experimentNumber || deleteExperimentTarget.experimentObject || 'Experiment'} deleted.` }); setDeleteExperimentTarget(null); } catch (error) { store.setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to delete experiment.' }); } }}>Delete</Button></div></div></Modal>
   </div>;
 }
