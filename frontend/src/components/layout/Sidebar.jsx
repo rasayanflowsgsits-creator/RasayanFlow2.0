@@ -60,7 +60,7 @@ export default function Sidebar({ collapsed }) {
         </div>
         {!collapsed ? (
           <div>
-            <p className="text-sm font-bold font-serif tracking-wide text-[#3c4e23] dark:text-[#eef4e8]">
+            <p className="text-lg font-bold font-serif tracking-wide text-[#3c4e23] dark:text-[#eef4e8]">
               RasayanFlow
             </p>
 
