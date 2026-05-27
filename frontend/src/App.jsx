@@ -54,9 +54,17 @@ function App() {
   }, [darkMode]);
 
   useEffect(() => {
-    if (!socket.connected) {
+    if (user && !socket.connected) {
       socket.connect();
     }
+
+    if (!user && socket.connected) {
+      socket.disconnect();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
 
     socket.on('inventory.updated', (payload) => {
       const itemName = payload?.item?.itemName || payload?.item?.name || payload?.name || 'Item';
@@ -107,7 +115,7 @@ function App() {
       socket.off('store:request_approved');
       socket.off('store:request_rejected');
     };
-  }, [setHighlight, setToast, user]);
+  }, [user?._id, user?.role, setHighlight, setToast]);
 
   if (!initialized) {
     return (

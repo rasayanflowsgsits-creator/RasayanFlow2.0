@@ -48,25 +48,22 @@ export default function Sidebar({ collapsed }) {
     <aside
       className={`fixed inset-y-0 left-0 z-20 overflow-y-auto border-r border-[#d9e1ca] bg-[#fdfdf7] pt-6 pb-6 transition-all duration-300 dark:border-[#3c452f] dark:bg-[#1c2117] ${collapsed ? "-translate-x-full md:translate-x-0 md:w-20 md:px-3" : "translate-x-0 w-72 px-4"}`}
     >
-      <div
-        className={`mb-8 flex px-1 ${collapsed ? "md:justify-center" : "items-center gap-2"}`}
-      >
-        <div className="h-14 w-15">
+      <div className={`mb-8 flex px-1 ${collapsed ? "md:justify-center" : "items-center gap-3"}`}>
+        <div className="h-11 w-11 shrink-0 overflow-hidden rounded-[10px] border border-[#d9e1ca] bg-[#f4f5eb] dark:border-[#3c452f] dark:bg-[#28301f]">
           <img
             src="/RasayanFlow_logo.png"
             alt="RasayanFlow Logo"
-            className="block w-full h-full"
+            className="h-full w-full object-cover"
           />
         </div>
         {!collapsed ? (
-          <div>
-            <p className="text-lg font-bold font-serif tracking-wide text-[#3c4e23] dark:text-[#eef4e8]">
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <p className="text-[15px] font-semibold leading-tight tracking-tight text-[#2e3d19] dark:text-[#eef4e8] truncate">
               RasayanFlow
             </p>
-
-            <p className="text-xs text-[#71805a] dark:text-[#c5d0b5]">
-              {role.replace("-", " ").toUpperCase()}
-            </p>
+            <span className="inline-flex w-fit items-center rounded-full bg-[#e8efd9] px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.4px] text-[#4a6022] dark:bg-[#2a3320] dark:text-[#a8be8a]">
+              {role.replace(/-/g, " ")}
+            </span>
           </div>
         ) : null}
       </div>
