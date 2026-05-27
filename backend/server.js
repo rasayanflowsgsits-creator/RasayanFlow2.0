@@ -14,21 +14,7 @@ const errorHandler = require('./middleware/errorMiddleware');
 const logger = require('./utils/logger');
 const socketHandler = require('./sockets');
 const seedSuperAdmin = require('./scripts/seedSuperAdmin');
-const express = require("express");
-const http = require("http");
-const cors = require("cors");
-const helmet = require("helmet");
-const morgan = require("morgan");
-const dotenv = require("dotenv");
-const path = require("path");
-const { Server } = require("socket.io");
-const connectDB = require("./config/db");
 const rateLimiter = require("./middleware/rateLimiter");
-const errorHandler = require("./middleware/errorMiddleware");
-const logger = require("./utils/logger");
-const socketHandler = require("./sockets");
-const seedSuperAdmin = require("./scripts/seedSuperAdmin");
-
 dotenv.config({ path: path.join(__dirname, ".env") });
 
 if (!process.env.JWT_SECRET) {
