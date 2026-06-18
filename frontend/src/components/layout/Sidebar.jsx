@@ -29,7 +29,10 @@ const linksMap = {
     { to: "/about", label: "About Us", icon: Info },
   ],
   "store-admin": [
-    { to: "/store-dashboard", label: "Store Inventory", icon: Store },
+    { to: "/store/dashboard", label: "Dashboard", icon: Store },
+    { to: "/store/inventory", label: "Inventory", icon: Boxes },
+    { to: "/store/requests", label: "Requests", icon: ClipboardList },
+    { to: "/store/history", label: "History", icon: History },
     { to: "/about", label: "About Us", icon: Info },
   ],
   student: [

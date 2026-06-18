@@ -11,6 +11,10 @@ import RegisterPage from './pages/RegisterPage';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import LabAdminDashboard from './pages/LabAdminDashboard';
 import StoreDashboard from './pages/StoreDashboard';
+import StoreManagerDashboard from './store/StoreDashboard';
+import StoreInventory from './store/StoreInventory';
+import StoreRequests from './store/StoreRequests';
+import StoreHistory from './store/StoreHistory';
 import StudentDashboard from './pages/StudentDashboard';
 import StudentBorrowingsPage from './pages/StudentBorrowingsPage';
 import StudentLabDetail from './pages/StudentLabDetail';
@@ -157,6 +161,10 @@ function App() {
                     <Route path='analytics' element={role === 'lab-admin' ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='transactions' element={role === 'lab-admin' ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='store-dashboard' element={role === 'store-admin' ? <StoreDashboard /> : <Navigate to='/' replace />} />
+                    <Route path='store/dashboard' element={role === 'store-admin' ? <StoreManagerDashboard /> : <Navigate to='/' replace />} />
+                    <Route path='store/inventory' element={role === 'store-admin' ? <StoreInventory /> : <Navigate to='/' replace />} />
+                    <Route path='store/requests' element={role === 'store-admin' ? <StoreRequests /> : <Navigate to='/' replace />} />
+                    <Route path='store/history' element={role === 'store-admin' ? <StoreHistory /> : <Navigate to='/' replace />} />
                     <Route path='store' element={role === 'student' ? <StudentStorePage /> : <Navigate to='/' replace />} />
                     <Route path='my-borrowings' element={role === 'student' ? <StudentBorrowingsPage /> : <Navigate to='/' replace />} />
                     <Route path='approval' element={role === 'super-admin' ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
