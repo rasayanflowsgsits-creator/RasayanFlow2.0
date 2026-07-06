@@ -6,6 +6,7 @@ import Input from '../components/ui/Input';
 import Table from '../components/ui/Table';
 import StoreLayout from './StoreLayout';
 import useStoreManagerMock from './storeManagerMock';
+import { generateReceiptPDF } from '../utils/pdfGenerator';
 
 function toCsvCell(value) {
   return `"${String(value ?? '').replaceAll('"', '""')}"`;
@@ -13,6 +14,8 @@ function toCsvCell(value) {
 
 export default function StoreHistory() {
   const history = useStoreManagerMock((state) => state.history);
+  const chemicals = useStoreManagerMock((state) => state.chemicals);
+  const requests = useStoreManagerMock((state) => state.requests);
   const [search, setSearch] = useState('');
 
   const rows = useMemo(() => {
@@ -71,6 +74,27 @@ export default function StoreHistory() {
         {r.status === 'Approved' ? '✅' : '❌'} {r.status}
       </span>
     ) },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (r) => {
+        if (r.status !== 'Approved') return null;
+        return (
+          <Button 
+            variant='outline'
+            className="px-3 py-1 text-xs border-[#71805a] text-[#556b2f] hover:bg-[#eef4e4] dark:border-[#4e5d35] dark:text-[#c5d0b5] dark:hover:bg-[#28301f]"
+            onClick={(e) => {
+              e.stopPropagation();
+              const chem = chemicals.find(c => c['Chemical ID'] === r.chemicalId || c['Chemical Name'] === r.chemicalName) || {};
+              const req = requests.find(req => req.receiptNumber === r.receiptNumber) || { id: 'N/A' };
+              generateReceiptPDF(req, chem, r);
+            }}
+          >
+            <Download size={14} className="mr-1" /> Receipt
+          </Button>
+        );
+      }
+    }
   ];
 
   return (

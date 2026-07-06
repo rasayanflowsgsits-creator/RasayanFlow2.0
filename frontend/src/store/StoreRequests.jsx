@@ -7,6 +7,7 @@ import Modal from '../components/ui/Modal';
 import useAppStore from './appStore';
 import StoreLayout from './StoreLayout';
 import useStoreManagerMock, { formatQuantity, parsePackSize } from './storeManagerMock';
+import { generateReceiptPDF } from '../utils/pdfGenerator';
 
 const filters = ['All', 'Pending', 'Approved', 'Rejected'];
 
@@ -23,6 +24,7 @@ function toCsvCell(value) {
 export default function StoreRequests() {
   const requests = useStoreManagerMock((state) => state.requests);
   const chemicals = useStoreManagerMock((state) => state.chemicals);
+  const history = useStoreManagerMock((state) => state.history);
   const reviewRequest = useStoreManagerMock((state) => state.reviewRequest);
   const setToast = useAppStore((state) => state.setToast);
   
@@ -111,19 +113,38 @@ export default function StoreRequests() {
     {
       key: 'actions',
       label: 'Actions',
-      render: (row) =>
-        row.status === 'Pending' ? (
-          <div className='flex flex-wrap gap-2'>
-            <Button className='px-3 py-1 text-xs' onClick={() => setApproveTarget(row)}>
-              <CheckCircle2 size={14} className="mr-1" /> Approve
-            </Button>
-            <Button variant='outline' className='px-3 py-1 text-xs text-red-700 dark:text-red-300 border-red-200 hover:bg-red-50' onClick={() => setRejectTarget(row)}>
-              <XCircle size={14} className="mr-1" /> Reject
-            </Button>
+      render: (row) => {
+        if (row.status === 'Pending') {
+          return (
+            <div className='flex flex-wrap gap-2'>
+              <Button className='px-3 py-1 text-xs' onClick={() => setApproveTarget(row)}>
+                <CheckCircle2 size={14} className="mr-1" /> Approve
+              </Button>
+              <Button variant='outline' className='px-3 py-1 text-xs text-red-700 dark:text-red-300 border-red-200 hover:bg-red-50' onClick={() => setRejectTarget(row)}>
+                <XCircle size={14} className="mr-1" /> Reject
+              </Button>
+            </div>
+          );
+        }
+        return (
+          <div className="flex items-center gap-3">
+            <span className='text-xs font-semibold text-[#71805a] dark:text-[#c5d0b5] uppercase'>Reviewed</span>
+            {row.status === 'Approved' && (
+              <Button 
+                variant='outline'
+                className="px-3 py-1 text-xs border-[#71805a] text-[#556b2f] hover:bg-[#eef4e4] dark:border-[#4e5d35] dark:text-[#c5d0b5] dark:hover:bg-[#28301f]"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const matchingHistory = history.find(h => h.receiptNumber === row.receiptNumber);
+                  generateReceiptPDF(row, row.chem || {}, matchingHistory);
+                }}
+              >
+                <Download size={14} className="mr-1" /> Receipt
+              </Button>
+            )}
           </div>
-        ) : (
-          <span className='text-xs font-semibold text-[#71805a] dark:text-[#c5d0b5] uppercase'>Reviewed</span>
-        ),
+        );
+      },
     },
   ];
 

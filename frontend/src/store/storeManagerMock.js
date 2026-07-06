@@ -13,32 +13,32 @@ export const INITIAL_REQUESTS = [
   { id: 'req-3', lab: 'Biology Lab 1', chemicalName: 'ACRYLAMIDE LR', chemicalId: '37045-K05', quantity: 50, unit: 'g', status: 'Pending', date: new Date().toISOString() },
   { id: 'req-4', lab: 'Chemistry Lab 2', chemicalName: 'AMMONIA SOLN 30%', chemicalId: '37139-L05', quantity: 250, unit: 'ml', status: 'Pending', date: new Date().toISOString() },
   // Approved Mock Data (June)
-  { id: 'req-jun-1', lab: 'Chemistry Lab 1', chemicalName: 'ACETONE LR', chemicalId: '37022-125', quantity: 500, unit: 'ml', status: 'Approved', date: '2026-06-15T10:00:00Z' },
-  { id: 'req-jun-2', lab: 'Biology Lab 1', chemicalName: 'AMMONIA SOLN 30%', chemicalId: '37139-L05', quantity: 250, unit: 'ml', status: 'Approved', date: '2026-06-20T10:00:00Z' },
-  { id: 'req-jun-3', lab: 'Physics Lab 1', chemicalName: 'ACRYLAMIDE LR', chemicalId: '37045-K05', quantity: 50, unit: 'g', status: 'Approved', date: '2026-06-25T10:00:00Z' },
+  { id: 'req-jun-1', lab: 'Chemistry Lab 1', chemicalName: 'ACETONE LR', chemicalId: '37022-125', quantity: 500, unit: 'ml', status: 'Approved', date: '2026-06-15T10:00:00Z', receiptNumber: 'RF-2026-7' },
+  { id: 'req-jun-2', lab: 'Biology Lab 1', chemicalName: 'AMMONIA SOLN 30%', chemicalId: '37139-L05', quantity: 250, unit: 'ml', status: 'Approved', date: '2026-06-20T10:00:00Z', receiptNumber: 'RF-2026-8' },
+  { id: 'req-jun-3', lab: 'Physics Lab 1', chemicalName: 'ACRYLAMIDE LR', chemicalId: '37045-K05', quantity: 50, unit: 'g', status: 'Approved', date: '2026-06-25T10:00:00Z', receiptNumber: 'RF-2026-9' },
   // Approved Mock Data (May)
-  { id: 'req-may-1', lab: 'Chemistry Lab 2', chemicalName: 'ACETONE LR', chemicalId: '37022-125', quantity: 1000, unit: 'ml', status: 'Approved', date: '2026-05-10T10:00:00Z' },
-  { id: 'req-may-2', lab: 'Chemistry Lab 1', chemicalName: 'ACETYLACETONE LR', chemicalId: '37035-L02', quantity: 100, unit: 'ml', status: 'Approved', date: '2026-05-15T10:00:00Z' },
-  { id: 'req-may-3', lab: 'Biology Lab 1', chemicalName: 'AMMONIA SOLN 30%', chemicalId: '37139-L05', quantity: 500, unit: 'ml', status: 'Approved', date: '2026-05-20T10:00:00Z' },
+  { id: 'req-may-1', lab: 'Chemistry Lab 2', chemicalName: 'ACETONE LR', chemicalId: '37022-125', quantity: 1000, unit: 'ml', status: 'Approved', date: '2026-05-10T10:00:00Z', receiptNumber: 'RF-2026-4' },
+  { id: 'req-may-2', lab: 'Chemistry Lab 1', chemicalName: 'ACETYLACETONE LR', chemicalId: '37035-L02', quantity: 100, unit: 'ml', status: 'Approved', date: '2026-05-15T10:00:00Z', receiptNumber: 'RF-2026-5' },
+  { id: 'req-may-3', lab: 'Biology Lab 1', chemicalName: 'AMMONIA SOLN 30%', chemicalId: '37139-L05', quantity: 500, unit: 'ml', status: 'Approved', date: '2026-05-20T10:00:00Z', receiptNumber: 'RF-2026-6' },
   // Approved Mock Data (April)
-  { id: 'req-apr-1', lab: 'Chemistry Lab 3', chemicalName: 'ACRYLAMIDE LR', chemicalId: '37045-K05', quantity: 100, unit: 'g', status: 'Approved', date: '2026-04-05T10:00:00Z' },
-  { id: 'req-apr-2', lab: 'Physics Lab 1', chemicalName: 'ACETONE LR', chemicalId: '37022-125', quantity: 750, unit: 'ml', status: 'Approved', date: '2026-04-12T10:00:00Z' },
-  { id: 'req-apr-3', lab: 'Biology Lab 1', chemicalName: 'ACETYLACETONE LR', chemicalId: '37035-L02', quantity: 200, unit: 'ml', status: 'Approved', date: '2026-04-18T10:00:00Z' },
+  { id: 'req-apr-1', lab: 'Chemistry Lab 3', chemicalName: 'ACRYLAMIDE LR', chemicalId: '37045-K05', quantity: 100, unit: 'g', status: 'Approved', date: '2026-04-05T10:00:00Z', receiptNumber: 'RF-2026-1' },
+  { id: 'req-apr-2', lab: 'Physics Lab 1', chemicalName: 'ACETONE LR', chemicalId: '37022-125', quantity: 750, unit: 'ml', status: 'Approved', date: '2026-04-12T10:00:00Z', receiptNumber: 'RF-2026-2' },
+  { id: 'req-apr-3', lab: 'Biology Lab 1', chemicalName: 'ACETYLACETONE LR', chemicalId: '37035-L02', quantity: 200, unit: 'ml', status: 'Approved', date: '2026-04-18T10:00:00Z', receiptNumber: 'RF-2026-3' },
 ];
 
 export const INITIAL_HISTORY = [
   // June 2026 approvals
-  { id: 'hist-jun-1', chemicalName: 'ACETONE LR', chemicalId: '37022-125', lab: 'Chemistry Lab 1', qtyRequestedBase: 500, baseUnit: 'ml', qtyBefore: 10, totalValueBefore: 10000, totalValueAfter: 10000 - 761, status: 'Approved', date: '2026-06-15T10:00:00Z' },
-  { id: 'hist-jun-2', chemicalName: 'AMMONIA SOLN 30%', chemicalId: '37139-L05', lab: 'Biology Lab 1', qtyRequestedBase: 250, baseUnit: 'ml', qtyBefore: 10, totalValueBefore: 5000, totalValueAfter: 5000 - 165.50, status: 'Approved', date: '2026-06-20T10:00:00Z' },
-  { id: 'hist-jun-3', chemicalName: 'ACRYLAMIDE LR', chemicalId: '37045-K05', lab: 'Physics Lab 1', qtyRequestedBase: 50, baseUnit: 'g', qtyBefore: 5, totalValueBefore: 1000, totalValueAfter: 1000 - 63.80, status: 'Approved', date: '2026-06-25T10:00:00Z' },
+  { id: 'hist-jun-1', chemicalName: 'ACETONE LR', chemicalId: '37022-125', lab: 'Chemistry Lab 1', qtyRequestedBase: 500, baseUnit: 'ml', qtyBefore: 10, totalValueBefore: 10000, totalValueAfter: 10000 - 761, status: 'Approved', date: '2026-06-15T10:00:00Z', receiptNumber: 'RF-2026-7' },
+  { id: 'hist-jun-2', chemicalName: 'AMMONIA SOLN 30%', chemicalId: '37139-L05', lab: 'Biology Lab 1', qtyRequestedBase: 250, baseUnit: 'ml', qtyBefore: 10, totalValueBefore: 5000, totalValueAfter: 5000 - 165.50, status: 'Approved', date: '2026-06-20T10:00:00Z', receiptNumber: 'RF-2026-8' },
+  { id: 'hist-jun-3', chemicalName: 'ACRYLAMIDE LR', chemicalId: '37045-K05', lab: 'Physics Lab 1', qtyRequestedBase: 50, baseUnit: 'g', qtyBefore: 5, totalValueBefore: 1000, totalValueAfter: 1000 - 63.80, status: 'Approved', date: '2026-06-25T10:00:00Z', receiptNumber: 'RF-2026-9' },
   // May 2026 approvals
-  { id: 'hist-may-1', chemicalName: 'ACETONE LR', chemicalId: '37022-125', lab: 'Chemistry Lab 2', qtyRequestedBase: 1000, baseUnit: 'ml', qtyBefore: 15, totalValueBefore: 15000, totalValueAfter: 15000 - 1521, status: 'Approved', date: '2026-05-10T10:00:00Z' },
-  { id: 'hist-may-2', chemicalName: 'ACETYLACETONE LR', chemicalId: '37035-L02', lab: 'Chemistry Lab 1', qtyRequestedBase: 100, baseUnit: 'ml', qtyBefore: 5, totalValueBefore: 5000, totalValueAfter: 5000 - 362, status: 'Approved', date: '2026-05-15T10:00:00Z' },
-  { id: 'hist-may-3', chemicalName: 'AMMONIA SOLN 30%', chemicalId: '37139-L05', lab: 'Biology Lab 1', qtyRequestedBase: 500, baseUnit: 'ml', qtyBefore: 12, totalValueBefore: 6000, totalValueAfter: 6000 - 331, status: 'Approved', date: '2026-05-20T10:00:00Z' },
+  { id: 'hist-may-1', chemicalName: 'ACETONE LR', chemicalId: '37022-125', lab: 'Chemistry Lab 2', qtyRequestedBase: 1000, baseUnit: 'ml', qtyBefore: 15, totalValueBefore: 15000, totalValueAfter: 15000 - 1521, status: 'Approved', date: '2026-05-10T10:00:00Z', receiptNumber: 'RF-2026-4' },
+  { id: 'hist-may-2', chemicalName: 'ACETYLACETONE LR', chemicalId: '37035-L02', lab: 'Chemistry Lab 1', qtyRequestedBase: 100, baseUnit: 'ml', qtyBefore: 5, totalValueBefore: 5000, totalValueAfter: 5000 - 362, status: 'Approved', date: '2026-05-15T10:00:00Z', receiptNumber: 'RF-2026-5' },
+  { id: 'hist-may-3', chemicalName: 'AMMONIA SOLN 30%', chemicalId: '37139-L05', lab: 'Biology Lab 1', qtyRequestedBase: 500, baseUnit: 'ml', qtyBefore: 12, totalValueBefore: 6000, totalValueAfter: 6000 - 331, status: 'Approved', date: '2026-05-20T10:00:00Z', receiptNumber: 'RF-2026-6' },
   // April 2026 approvals
-  { id: 'hist-apr-1', chemicalName: 'ACRYLAMIDE LR', chemicalId: '37045-K05', lab: 'Chemistry Lab 3', qtyRequestedBase: 100, baseUnit: 'g', qtyBefore: 6, totalValueBefore: 1200, totalValueAfter: 1200 - 127.60, status: 'Approved', date: '2026-04-05T10:00:00Z' },
-  { id: 'hist-apr-2', chemicalName: 'ACETONE LR', chemicalId: '37022-125', lab: 'Physics Lab 1', qtyRequestedBase: 750, baseUnit: 'ml', qtyBefore: 20, totalValueBefore: 20000, totalValueAfter: 20000 - 1140.75, status: 'Approved', date: '2026-04-12T10:00:00Z' },
-  { id: 'hist-apr-3', chemicalName: 'ACETYLACETONE LR', chemicalId: '37035-L02', lab: 'Biology Lab 1', qtyRequestedBase: 200, baseUnit: 'ml', qtyBefore: 6, totalValueBefore: 6000, totalValueAfter: 6000 - 724, status: 'Approved', date: '2026-04-18T10:00:00Z' },
+  { id: 'hist-apr-1', chemicalName: 'ACRYLAMIDE LR', chemicalId: '37045-K05', lab: 'Chemistry Lab 3', qtyRequestedBase: 100, baseUnit: 'g', qtyBefore: 6, totalValueBefore: 1200, totalValueAfter: 1200 - 127.60, status: 'Approved', date: '2026-04-05T10:00:00Z', receiptNumber: 'RF-2026-1' },
+  { id: 'hist-apr-2', chemicalName: 'ACETONE LR', chemicalId: '37022-125', lab: 'Physics Lab 1', qtyRequestedBase: 750, baseUnit: 'ml', qtyBefore: 20, totalValueBefore: 20000, totalValueAfter: 20000 - 1140.75, status: 'Approved', date: '2026-04-12T10:00:00Z', receiptNumber: 'RF-2026-2' },
+  { id: 'hist-apr-3', chemicalName: 'ACETYLACETONE LR', chemicalId: '37035-L02', lab: 'Biology Lab 1', qtyRequestedBase: 200, baseUnit: 'ml', qtyBefore: 6, totalValueBefore: 6000, totalValueAfter: 6000 - 724, status: 'Approved', date: '2026-04-18T10:00:00Z', receiptNumber: 'RF-2026-3' },
   
   // Example invalid dummy entry to test ignoring
   { id: 'hist-invalid-1', chemicalName: 'OLD DUMMY', chemicalId: '000-00', lab: 'Test', qtyRequestedBase: 100, baseUnit: 'g', qtyBefore: 0, totalValueBefore: 0, totalValueAfter: 0, status: 'Approved', date: '2026-06-10T10:00:00Z' }
@@ -225,6 +225,7 @@ const useStoreManagerMock = create((set, get) => ({
   history: INITIAL_HISTORY,
   trackingLogs: INITIAL_TRACKING_LOGS,
   alertThreshold: 15,
+  receiptCounter: 10,
   setAlertThreshold: (value) => set({ alertThreshold: value }),
   addChemical: (chemical) => {
     let normalized;
@@ -369,6 +370,8 @@ const useStoreManagerMock = create((set, get) => ({
           if (nextStatus === 'Approved') {
             const remainingBase = Math.max(0, totalBaseAvailable - reqQty);
             const nextQuantityUNT = Math.round((remainingBase / packData.value) * 100) / 100;
+            const newReceiptNum = `RF-2026-${state.receiptCounter}`;
+            reviewedRequest.receiptNumber = newReceiptNum;
             
             newHistoryEntry = {
               id: `hist-${Date.now()}`,
@@ -387,7 +390,8 @@ const useStoreManagerMock = create((set, get) => ({
               actionBy: 'Store Manager',
               date: new Date().toISOString(),
               status: 'Approved',
-              reason
+              reason,
+              receiptNumber: newReceiptNum
             };
             return normalizeChemical({ ...chemical, 'Available Quantity': nextQuantityUNT, quantity: nextQuantityUNT });
           }
@@ -428,6 +432,7 @@ const useStoreManagerMock = create((set, get) => ({
         chemicals,
         requests: state.requests.map((entry) => (entry.id === requestId ? reviewedRequest : entry)),
         history: newHistoryEntry ? [newHistoryEntry, ...state.history] : state.history,
+        receiptCounter: nextStatus === 'Approved' ? state.receiptCounter + 1 : state.receiptCounter,
       };
     });
 
