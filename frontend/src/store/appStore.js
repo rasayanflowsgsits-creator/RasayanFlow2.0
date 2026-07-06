@@ -502,6 +502,10 @@ const useAppStore = create((set) => ({
     set((state) => ({ storeItems: [createdItem, ...state.storeItems] }));
     return createdItem;
   },
+  bulkImportStoreItems: async ({ items, importMode }) => {
+    const response = await api.post('/store-items/bulk-import', { items, importMode });
+    return getPayload(response.data);
+  },
   updateStoreItem: async (itemId, updates) => {
     const response = await api.put(`/store-items/${itemId}`, updates);
     const updatedItem = normalizeStoreItem(getPayload(response.data));

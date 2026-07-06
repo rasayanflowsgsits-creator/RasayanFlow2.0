@@ -229,4 +229,78 @@ const fetchChemicalAbstract = asyncHandler(async (req, res) => {
   }
 });
 
-module.exports = { listStoreItems, createStoreItem, updateStoreItem, deleteStoreItem, fetchChemicalAbstract };
+const bulkImportStoreItems = asyncHandler(async (req, res) => {
+  const { items, importMode } = req.body;
+
+  if (!Array.isArray(items)) {
+    res.status(400);
+    throw new Error('Items must be an array');
+  }
+
+  if (importMode === 'replace') {
+    // Replace all existing central store items
+    await StoreItem.deleteMany({});
+  }
+
+  const processedItems = [];
+  const errors = [];
+
+  for (let i = 0; i < items.length; i++) {
+    const rawItem = items[i];
+    try {
+      const normalizedCategory = normalizeStoreCategory(rawItem.category || 'Chemical');
+      const normalizedUnit = normalizeStoreUnit(normalizedCategory, rawItem.quantityUnit || 'units');
+      validateStorePayload({ category: normalizedCategory, quantityUnit: normalizedUnit });
+
+      const normalizedCode = String(rawItem.itemCode || `AUTO-${Date.now()}-${i}`).trim().toUpperCase();
+      
+      const payload = {
+        itemCode: normalizedCode,
+        itemName: String(rawItem.itemName || rawItem.chemicalName || 'Unnamed Item').trim(),
+        category: normalizedCategory,
+        subCategory: String(rawItem.subCategory || 'Miscellaneous').trim(),
+        quantity: Number(rawItem.quantity) || 0,
+        quantityUnit: normalizedUnit,
+        storageLocation: rawItem.storageLocation?.trim() || '',
+        description: rawItem.description?.trim() || '',
+        abstract: rawItem.abstract?.trim() || '',
+        pubmedId: rawItem.pubmedId?.trim() || '',
+        lastUpdated: new Date(),
+      };
+
+      if (importMode === 'merge') {
+        const existing = await StoreItem.findOne({ itemCode: normalizedCode });
+        if (existing) {
+          Object.assign(existing, payload);
+          await existing.save();
+          processedItems.push(existing);
+          continue;
+        }
+      }
+
+      const newItem = await StoreItem.create(payload);
+      processedItems.push(newItem);
+    } catch (err) {
+      errors.push({ row: i + 1, itemCode: rawItem.itemCode, error: err.message });
+    }
+  }
+
+  await createStoreLog({
+    userId: req.user._id,
+    action: 'bulk_import_store_items',
+    details: `Bulk imported ${processedItems.length} items using mode: ${importMode}`,
+    metadata: { mode: importMode, successCount: processedItems.length, errorCount: errors.length },
+  });
+
+  res.status(201).json({
+    success: true,
+    data: processedItems,
+    summary: {
+      imported: processedItems.length,
+      failed: errors.length,
+      errors
+    }
+  });
+});
+
+module.exports = { listStoreItems, createStoreItem, updateStoreItem, deleteStoreItem, fetchChemicalAbstract, bulkImportStoreItems };

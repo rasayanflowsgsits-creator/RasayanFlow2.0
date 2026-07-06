@@ -10,9 +10,13 @@ import {
   Boxes,
   PackageSearch,
   Info,
+  Activity,
+  AlertTriangle,
+  FileText
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import useAuthStore from "../../store/authStore";
+import useStoreManagerMock, { parsePackSize } from "../../store/storeManagerMock";
 
 const linksMap = {
   "super-admin": [
@@ -29,7 +33,14 @@ const linksMap = {
     { to: "/about", label: "About Us", icon: Info },
   ],
   "store-admin": [
-    { to: "/store-dashboard", label: "Store Inventory", icon: Store },
+    { to: "/store/dashboard", label: "Dashboard", icon: Store },
+    { to: "/store/inventory", label: "Inventory", icon: Boxes },
+    { to: "/store/tracking", label: "Tracking", icon: Activity },
+    { to: "/store/lowstock", label: "Low Stock", icon: AlertTriangle },
+    { to: "/store/overview", label: "Overview", icon: BarChart3 },
+    { to: "/store/requests", label: "Requests", icon: ClipboardList },
+    { to: "/store/history", label: "History", icon: History },
+    { to: "/store/reports", label: "Reports", icon: FileText },
     { to: "/about", label: "About Us", icon: Info },
   ],
   student: [
@@ -43,6 +54,27 @@ const linksMap = {
 export default function Sidebar({ collapsed }) {
   const user = useAuthStore((state) => state.user);
   const role = user?.role || "student";
+  
+  const chemicals = useStoreManagerMock((state) => state.chemicals);
+  const alertThreshold = useStoreManagerMock((state) => state.alertThreshold);
+
+  let lowStockCount = 0;
+  if (role === 'store-admin') {
+    chemicals.forEach(chem => {
+      const received = Number(chem['Received Quantity'] || 0);
+      const available = Number(chem['Available Quantity'] || 0);
+      const packData = parsePackSize(chem['Pack Size']);
+      const totalBase = received * packData.value;
+      const availableBase = available * packData.value;
+      
+      if (totalBase > 0) {
+        const percentage = (availableBase / totalBase) * 100;
+        if (percentage < alertThreshold) {
+          lowStockCount++;
+        }
+      }
+    });
+  }
 
   return (
     <aside
@@ -77,11 +109,16 @@ export default function Sidebar({ collapsed }) {
               to={item.to}
               title={collapsed ? item.label : undefined}
               className={({ isActive }) =>
-                `group flex items-center rounded-xl px-3 py-2 text-sm font-medium transition ${collapsed ? "md:justify-center" : "gap-2"} ${isActive ? "bg-[#556b2f] text-[#f0f4e8]" : "text-[#4e5d35] hover:bg-[#f4f6ee] dark:text-[#d5ddbf] dark:hover:bg-[#28301f]"}`
+                `group flex items-center justify-between rounded-xl px-3 py-2 text-sm font-medium transition ${collapsed ? "md:justify-center" : "gap-2"} ${isActive ? "bg-[#556b2f] text-[#f0f4e8]" : "text-[#4e5d35] hover:bg-[#f4f6ee] dark:text-[#d5ddbf] dark:hover:bg-[#28301f]"}`
               }
             >
-              <Icon size={16} className="shrink-0" />
-              {!collapsed ? item.label : null}
+              <div className="flex items-center gap-2">
+                <Icon size={16} className="shrink-0" />
+                {!collapsed ? item.label : null}
+              </div>
+              {!collapsed && item.to === "/store/lowstock" && lowStockCount > 0 ? (
+                <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{lowStockCount}</span>
+              ) : null}
             </NavLink>
           );
         })}

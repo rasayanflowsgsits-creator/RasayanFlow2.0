@@ -8,7 +8,7 @@ import Input from '../components/ui/Input';
 export default function LoginPage() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
-  const { login, user } = useAuthStore((state) => ({ login: state.login, user: state.user }));
+  const { login, setUser, user } = useAuthStore((state) => ({ login: state.login, setUser: state.setUser, user: state.user }));
   const navigate = useNavigate();
   const location = useLocation();
   const message = location.state?.message || '';
@@ -29,6 +29,17 @@ export default function LoginPage() {
     } catch (err) {
       setError(err.message || 'Invalid email or password.');
     }
+  };
+
+  const previewStoreDashboard = () => {
+    setUser({
+      id: 'local-store-preview',
+      name: 'Store Manager Preview',
+      email: 'store.preview@local.test',
+      role: 'store-admin',
+      isApproved: true,
+    });
+    navigate('/store/dashboard');
   };
 
   return (
@@ -55,6 +66,9 @@ export default function LoginPage() {
             </div>
           )}
           <Button type='submit' className='w-full'>Sign in</Button>
+          <Button type='button' variant='outline' className='w-full' onClick={previewStoreDashboard}>
+            Preview Store Manager
+          </Button>
         </form>
         <p className='mt-4 text-center text-sm text-[#71805a] dark:text-[#c5d0b5]'>
           Need an account?{' '}
