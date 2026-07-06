@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pencil, Plus, Send, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Pencil, Plus, Send, Trash2, ChevronDown, ChevronRight, FileSpreadsheet } from 'lucide-react';
 import useAppStore from '../store/appStore';
 import socket from '../services/socket';
 import Card from '../components/ui/Card';
@@ -7,6 +7,7 @@ import Table from '../components/ui/Table';
 import Modal from '../components/ui/Modal';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
+import ImportModal from '../components/ImportModal';
 
 const CATEGORY_OPTIONS = ['Glassware', 'Chemical'];
 const CHEMICAL_UNITS = ['mL', 'L', 'uL', 'mg', 'g', 'kg'];
@@ -50,6 +51,7 @@ export default function StoreDashboard() {
     setHighlight,
   } = useAppStore();
   const [createOpen, setCreateOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [newItem, setNewItem] = useState(EMPTY_STORE_ITEM);
@@ -313,6 +315,14 @@ export default function StoreDashboard() {
         </Card>
       </div>
 
+      {/* Quick Actions */}
+      <div className='flex items-center gap-3'>
+        <Button variant='outline' onClick={() => setImportOpen(true)} className='bg-white shadow-sm border-[#cfd8bd] hover:bg-[#f4f5eb] dark:bg-[#23281d] dark:border-[#4e5d35] dark:hover:bg-[#20251a]'>
+          <FileSpreadsheet size={18} className='mr-2 text-[#4e5d35] dark:text-[#a3b87a]' />
+          Import from Google Sheets
+        </Button>
+      </div>
+
       {/* Central Store Inventory Section - MAIN SECTION, NOT COLLAPSIBLE */}
       <div className='rounded-2xl border-2 border-[#4e5d35] bg-white p-6 shadow-md dark:border-[#6b7a4a] dark:bg-[#23281d]'>
         <div className='flex items-center justify-between gap-3 mb-4'>
@@ -320,9 +330,14 @@ export default function StoreDashboard() {
             <h2 className='text-2xl font-bold text-[#3c4e23] dark:text-[#eef4e8]'>📦 Store Inventory</h2>
             <p className='mt-1 text-sm text-slate-600 dark:text-slate-300'>Manage all store items - Add, Edit, Delete inventory</p>
           </div>
-          <Button variant='outline' onClick={() => setCreateOpen(true)} className='text-sm'>
-            <Plus size={18} /> Add Item
-          </Button>
+          <div className='flex items-center gap-3'>
+            <Button variant='outline' onClick={() => setImportOpen(true)} className='text-sm bg-white dark:bg-[#20251a]'>
+              <FileSpreadsheet size={16} className='mr-1 text-[#4e5d35] dark:text-[#a3b87a]' /> Import
+            </Button>
+            <Button variant='outline' onClick={() => setCreateOpen(true)} className='text-sm'>
+              <Plus size={18} /> Add Item
+            </Button>
+          </div>
         </div>
 
         <div className='space-y-4'>
@@ -632,6 +647,12 @@ export default function StoreDashboard() {
           </div>
         </div>
       </Modal>
+
+      <ImportModal 
+        open={importOpen} 
+        onClose={() => setImportOpen(false)} 
+        onImportSuccess={fetchStoreItems} 
+      />
     </div>
   );
 }

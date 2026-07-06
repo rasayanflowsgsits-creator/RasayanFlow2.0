@@ -5,7 +5,7 @@ import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Table from '../components/ui/Table';
 import StoreLayout from './StoreLayout';
-import useStoreManagerMock, { formatQuantity } from './storeManagerMock';
+import useStoreManagerMock from './storeManagerMock';
 
 function toCsvCell(value) {
   return `"${String(value ?? '').replaceAll('"', '""')}"`;
@@ -17,51 +17,88 @@ export default function StoreHistory() {
 
   const rows = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return history
-      .filter((entry) => !query || entry.chemicalName.toLowerCase().includes(query) || entry.lab.toLowerCase().includes(query))
-      .map((entry) => ({ ...entry, quantityDisplay: formatQuantity(entry.quantity, entry.unit) }));
+    return history.filter((entry) => !query || entry.chemicalName?.toLowerCase().includes(query) || entry.lab?.toLowerCase().includes(query));
   }, [history, search]);
 
-  const exportCsv = () => {
-    const lines = [
-      ['chemicalName', 'lab', 'quantity', 'unit', 'status'].map(toCsvCell).join(','),
-      ...rows.map((entry) => [entry.chemicalName, entry.lab, entry.quantity, entry.unit, entry.status].map(toCsvCell).join(',')),
-    ];
-    const blob = new Blob([`${lines.join('\n')}\n`], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'store-history.csv';
+    const exportCsv = () => {
+      const lines = [
+        ['Chemical ID', 'Chemical Name', 'Lab Name', 'Qty Before', 'Requested', 'Qty After', 'Unit Price (₹)', 'Value Before (₹)', 'Value After (₹)', 'Action By', 'Date', 'Status'].map(toCsvCell).join(','),
+        ...rows.map((entry) => [
+          entry.chemicalId,
+          entry.chemicalName,
+          entry.lab,
+          `${(entry.qtyBeforeBase || 0).toLocaleString()} ${entry.baseUnit || 'ml'}`,
+          `${(entry.qtyRequestedBase || entry.qtyRequested || 0).toLocaleString()} ${entry.baseUnit || 'ml'}`,
+          `${(entry.qtyAfterBase || 0).toLocaleString()} ${entry.baseUnit || 'ml'}`,
+          entry.unitPrice,
+          entry.totalValueBefore,
+          entry.totalValueAfter,
+          entry.actionBy,
+          new Date(entry.date).toLocaleString(),
+          entry.status
+        ].map(toCsvCell).join(',')),
+      ];
+      const blob = new Blob([`${lines.join('\n')}\n`], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'RasayanFlow_History.csv';
     link.click();
     URL.revokeObjectURL(url);
   };
 
+  const statusClass = {
+    Approved: 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800',
+    Rejected: 'bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-800',
+  };
+
+  const formatPrice = (val) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(val || 0);
+
+  const headers = [
+    { key: 'chemicalName', label: 'Chemical Name' },
+    { key: 'chemicalId', label: 'Chemical ID' },
+    { key: 'lab', label: 'Lab Name' },
+    { key: 'qtyBefore', label: 'Qty Before', render: (r) => `Before: ${(r.qtyBeforeBase || 0).toLocaleString()} ${r.baseUnit || 'ml'}` },
+    { key: 'qtyRequested', label: 'Requested', render: (r) => `Req: ${(r.qtyRequestedBase || r.qtyRequested || 0).toLocaleString()} ${r.baseUnit || 'ml'}` },
+    { key: 'qtyAfter', label: 'Qty After', render: (r) => `After: ${(r.qtyAfterBase || 0).toLocaleString()} ${r.baseUnit || 'ml'}` },
+    { key: 'unitPrice', label: 'Unit Price (₹)', render: (r) => formatPrice(r.unitPrice) },
+    { key: 'totalValueBefore', label: 'Value Before', render: (r) => formatPrice(r.totalValueBefore) },
+    { key: 'totalValueAfter', label: 'Value After', render: (r) => formatPrice(r.totalValueAfter) },
+    { key: 'actionBy', label: 'Action By' },
+    { key: 'date', label: 'Date', render: (r) => new Date(r.date).toLocaleString() },
+    { key: 'status', label: 'Status', render: (r) => (
+      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold border ${statusClass[r.status] || ''}`}>
+        {r.status === 'Approved' ? '✅' : '❌'} {r.status}
+      </span>
+    ) },
+  ];
+
   return (
     <StoreLayout
       title='History'
-      subtitle='Search and export dummy allotment history.'
+      subtitle='Full audit log of all lab requests and allotments.'
       actions={
-        <Button variant='outline' onClick={exportCsv} disabled={!rows.length}>
-          <Download size={16} /> Export CSV
+        <Button variant='outline' onClick={exportCsv} disabled={!rows.length} className='border-[#71805a] text-[#556b2f] hover:bg-[#eef4e4] dark:border-[#4e5d35] dark:text-[#c5d0b5] dark:hover:bg-[#28301f]'>
+          <Download size={16} className='mr-2' /> Export CSV
         </Button>
       }
     >
-      <Card title='History Table' subtitle='Search by chemical name or lab name.'>
+      <Card title='Request History' subtitle='Search by chemical name or lab name.'>
         <div className='mb-4 max-w-md'>
-          <Input label='Search history' value={search} onChange={(event) => setSearch(event.target.value)} placeholder='Search chemical or lab' />
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <Input className="pl-9" value={search} onChange={(event) => setSearch(event.target.value)} placeholder='Search chemical or lab...' />
+          </div>
           <div className='mt-2 flex items-center gap-2 text-xs text-[#71805a] dark:text-[#c5d0b5]'>
-            <Search size={14} /> {rows.length} matching row{rows.length === 1 ? '' : 's'}
+            {rows.length} matching row{rows.length === 1 ? '' : 's'}
           </div>
         </div>
-        <Table
-          headers={[
-            { key: 'chemicalName', label: 'Chemical' },
-            { key: 'lab', label: 'Lab' },
-            { key: 'quantityDisplay', label: 'Quantity' },
-            { key: 'status', label: 'Status' },
-          ]}
-          rows={rows}
-        />
+        <div className="overflow-x-auto border border-[#e3e9d8] dark:border-[#343b2b] rounded-lg">
+          <style>{`
+            table th, table td { white-space: nowrap; }
+          `}</style>
+          <Table headers={headers} rows={rows} />
+        </div>
       </Card>
     </StoreLayout>
   );

@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Moon, Sun, LogOut, Bell } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
 import useAppStore from '../../store/appStore';
+import useStoreManagerMock, { parsePackSize } from '../../store/storeManagerMock';
 import { getUserAvatarUrl } from '../../utils/avatar';
 
 export default function Navbar({ onToggleSidebar, isDark, toggleTheme }) {
@@ -12,6 +14,33 @@ export default function Navbar({ onToggleSidebar, isDark, toggleTheme }) {
   const userName = user?.name || 'PharmLab User';
   const avatarUrl = getUserAvatarUrl(user);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const navigate = useNavigate();
+  
+  const chemicals = useStoreManagerMock((state) => state.chemicals);
+  const alertThreshold = useStoreManagerMock((state) => state.alertThreshold);
+
+  const storeLowStockAlerts = useMemo(() => {
+    if (user?.role !== 'store-admin') return [];
+    
+    const alerts = [];
+    chemicals.forEach(chem => {
+      const received = Number(chem['Received Quantity'] || 0);
+      const available = Number(chem['Available Quantity'] || 0);
+      const packData = parsePackSize(chem['Pack Size']);
+      
+      const totalBase = received * packData.value;
+      const availableBase = available * packData.value;
+      
+      if (totalBase > 0) {
+        const percentage = (availableBase / totalBase) * 100;
+        if (percentage < alertThreshold) {
+          alerts.push({ chem, percentage });
+        }
+      }
+    });
+    
+    return alerts.sort((a, b) => a.percentage - b.percentage);
+  }, [chemicals, alertThreshold, user?.role]);
 
   const notifications = useMemo(() => {
     const lowStockItems = inventory.filter((item) => Number(item.quantity || 0) <= Number(item.minThreshold || 5));
@@ -78,21 +107,50 @@ export default function Navbar({ onToggleSidebar, isDark, toggleTheme }) {
               aria-label='Toggle notifications'
             >
               <Bell size={18} />
+              {user?.role === 'store-admin' && storeLowStockAlerts.length > 0 && (
+                <span className="absolute top-1 right-1.5 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full shadow-sm">
+                  {storeLowStockAlerts.length}
+                </span>
+              )}
             </button>
             {notificationsOpen ? (
-              <div className='fixed left-4 right-4 top-20 z-40 max-h-[70vh] overflow-y-auto rounded-xl border border-[#d9e1ca] bg-[#fffef8] p-3 shadow-soft md:absolute md:left-auto md:right-0 md:top-12 md:w-72 dark:border-[#414a33] dark:bg-[#20251a]'>
-                <p className='mb-2 text-sm font-semibold text-[#3c4e23] dark:text-[#eef4e8]'>Notifications</p>
-                {notifications.length ? (
-                  <div className='space-y-2'>
-                    {notifications.map((item) => (
-                      <div key={item.id} className='rounded-lg bg-[#f4f5eb] px-3 py-2 dark:bg-[#28301f]'>
-                        <p className='text-sm font-medium text-[#3c4e23] dark:text-[#eef4e8]'>{item.title}</p>
-                        <p className='text-xs text-[#71805a] dark:text-[#c5d0b5]'>{item.detail}</p>
-                      </div>
-                    ))}
-                  </div>
+              <div className='fixed left-4 right-4 top-20 z-40 max-h-[70vh] overflow-y-auto rounded-xl border border-[#d9e1ca] bg-[#fffef8] p-3 shadow-soft md:absolute md:left-auto md:right-0 md:top-12 md:w-80 dark:border-[#414a33] dark:bg-[#20251a]'>
+                <p className='mb-2 text-sm font-semibold text-[#3c4e23] dark:text-[#eef4e8]'>{user?.role === 'store-admin' ? 'Low Stock Alerts' : 'Notifications'}</p>
+                {user?.role === 'store-admin' ? (
+                  storeLowStockAlerts.length > 0 ? (
+                    <div className='space-y-2'>
+                      {storeLowStockAlerts.slice(0, 5).map((item) => (
+                        <div key={item.chem.id} className='rounded-lg bg-rose-50 px-3 py-2 border border-rose-100 dark:bg-rose-900/10 dark:border-rose-900/30 flex justify-between items-center'>
+                          <p className='text-sm font-medium text-slate-800 dark:text-slate-200 truncate pr-2'>{item.chem['Chemical Name']}</p>
+                          <p className='text-xs font-bold text-rose-600 dark:text-rose-400 whitespace-nowrap'>{item.percentage === 0 ? '0%' : `${item.percentage.toFixed(1)}%`} rem {item.percentage === 0 ? '❌' : item.percentage < 5 ? '🔴' : '⚠️'}</p>
+                        </div>
+                      ))}
+                      <button 
+                        onClick={() => {
+                          setNotificationsOpen(false);
+                          navigate('/store/lowstock');
+                        }}
+                        className='w-full mt-2 rounded-lg bg-[#556b2f] px-3 py-2 text-xs font-semibold text-white hover:bg-[#6f7d45] transition-colors'
+                      >
+                        View All Alerts
+                      </button>
+                    </div>
+                  ) : (
+                    <p className='text-sm text-[#71805a] dark:text-[#c5d0b5]'>All stock is currently safe.</p>
+                  )
                 ) : (
-                  <p className='text-sm text-[#71805a] dark:text-[#c5d0b5]'>No new notifications.</p>
+                  notifications.length ? (
+                    <div className='space-y-2'>
+                      {notifications.map((item) => (
+                        <div key={item.id} className='rounded-lg bg-[#f4f5eb] px-3 py-2 dark:bg-[#28301f]'>
+                          <p className='text-sm font-medium text-[#3c4e23] dark:text-[#eef4e8]'>{item.title}</p>
+                          <p className='text-xs text-[#71805a] dark:text-[#c5d0b5]'>{item.detail}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className='text-sm text-[#71805a] dark:text-[#c5d0b5]'>No new notifications.</p>
+                  )
                 )}
               </div>
             ) : null}

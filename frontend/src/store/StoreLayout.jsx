@@ -1,9 +1,10 @@
-import { BarChart3, ClipboardList, History, LayoutDashboard } from 'lucide-react';
+import { BarChart3, ClipboardList, History, LayoutDashboard, Activity } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
 const storeLinks = [
   { to: '/store/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/store/inventory', label: 'Inventory', icon: ClipboardList },
+  { to: '/store/tracking', label: 'Tracking', icon: Activity },
   { to: '/store/requests', label: 'Requests', icon: BarChart3 },
   { to: '/store/history', label: 'History', icon: History },
 ];

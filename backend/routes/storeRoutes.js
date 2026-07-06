@@ -3,7 +3,7 @@ const { body, param, query } = require('express-validator');
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
 const validateRequest = require('../middleware/validateMiddleware');
-const { listStoreItems, createStoreItem, updateStoreItem, deleteStoreItem, fetchChemicalAbstract } = require('../controllers/storeController');
+const { listStoreItems, createStoreItem, updateStoreItem, deleteStoreItem, fetchChemicalAbstract, bulkImportStoreItems } = require('../controllers/storeController');
 
 const router = express.Router();
 
@@ -73,5 +73,16 @@ router.put(
 );
 
 router.delete('/:id', roleMiddleware(['superAdmin', 'storeAdmin']), [param('id').isMongoId()], validateRequest, deleteStoreItem);
+
+router.post(
+  '/bulk-import',
+  roleMiddleware(['superAdmin', 'storeAdmin']),
+  [
+    body('items').isArray(),
+    body('importMode').isIn(['replace', 'merge']),
+  ],
+  validateRequest,
+  bulkImportStoreItems
+);
 
 module.exports = router;
