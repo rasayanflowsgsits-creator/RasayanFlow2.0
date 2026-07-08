@@ -1,4 +1,4 @@
-import { CheckCircle2, XCircle, Download } from 'lucide-react';
+import { CheckCircle2, XCircle, Download, Eye } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
@@ -8,6 +8,7 @@ import useAppStore from './appStore';
 import StoreLayout from './StoreLayout';
 import useStoreManagerMock, { formatQuantity, parsePackSize } from './storeManagerMock';
 import { generateReceiptPDF } from '../utils/pdfGenerator';
+import ReceiptPreviewModal from './ReceiptPreviewModal';
 
 const filters = ['All', 'Pending', 'Approved', 'Rejected'];
 
@@ -33,6 +34,7 @@ export default function StoreRequests() {
   const [approveTarget, setApproveTarget] = useState(null);
   const [rejectTarget, setRejectTarget] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [previewData, setPreviewData] = useState(null);
 
   const rows = useMemo(() => {
     return requests
@@ -130,17 +132,29 @@ export default function StoreRequests() {
           <div className="flex items-center gap-3">
             <span className='text-xs font-semibold text-[#71805a] dark:text-[#c5d0b5] uppercase'>Reviewed</span>
             {row.status === 'Approved' && (
-              <Button 
-                variant='outline'
-                className="px-3 py-1 text-xs border-[#71805a] text-[#556b2f] hover:bg-[#eef4e4] dark:border-[#4e5d35] dark:text-[#c5d0b5] dark:hover:bg-[#28301f]"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const matchingHistory = history.find(h => h.receiptNumber === row.receiptNumber);
-                  generateReceiptPDF(row, row.chem || {}, matchingHistory);
-                }}
-              >
-                <Download size={14} className="mr-1" /> Receipt
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant='outline'
+                  className="px-3 py-1 text-xs border-[#71805a] text-[#556b2f] hover:bg-[#eef4e4] dark:border-[#4e5d35] dark:text-[#c5d0b5] dark:hover:bg-[#28301f]"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const matchingHistory = history.find(h => h.receiptNumber === row.receiptNumber);
+                    setPreviewData({ requestData: row, chemicalData: row.chem || {}, historyData: matchingHistory });
+                  }}
+                >
+                  <Eye size={14} className="mr-1" /> View
+                </Button>
+                <Button 
+                  className="px-3 py-1 text-xs bg-[#556b2f] text-white hover:bg-[#3d4d22]"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const matchingHistory = history.find(h => h.receiptNumber === row.receiptNumber);
+                    generateReceiptPDF(row, row.chem || {}, matchingHistory);
+                  }}
+                >
+                  <Download size={14} className="mr-1" /> Receipt
+                </Button>
+              </div>
             )}
           </div>
         );
@@ -237,6 +251,12 @@ export default function StoreRequests() {
           </div>
         )}
       </Modal>
+
+      <ReceiptPreviewModal 
+        isOpen={Boolean(previewData)} 
+        onClose={() => setPreviewData(null)} 
+        {...(previewData || {})}
+      />
     </StoreLayout>
   );
 }
