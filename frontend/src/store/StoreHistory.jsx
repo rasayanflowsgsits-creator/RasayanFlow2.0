@@ -1,4 +1,4 @@
-import { Download, Search } from 'lucide-react';
+import { Download, Search, Eye } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
@@ -7,6 +7,7 @@ import Table from '../components/ui/Table';
 import StoreLayout from './StoreLayout';
 import useStoreManagerMock from './storeManagerMock';
 import { generateReceiptPDF } from '../utils/pdfGenerator';
+import ReceiptPreviewModal from './ReceiptPreviewModal';
 
 function toCsvCell(value) {
   return `"${String(value ?? '').replaceAll('"', '""')}"`;
@@ -17,6 +18,7 @@ export default function StoreHistory() {
   const chemicals = useStoreManagerMock((state) => state.chemicals);
   const requests = useStoreManagerMock((state) => state.requests);
   const [search, setSearch] = useState('');
+  const [previewData, setPreviewData] = useState(null);
 
   const rows = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -80,18 +82,31 @@ export default function StoreHistory() {
       render: (r) => {
         if (r.status !== 'Approved') return null;
         return (
-          <Button 
-            variant='outline'
-            className="px-3 py-1 text-xs border-[#71805a] text-[#556b2f] hover:bg-[#eef4e4] dark:border-[#4e5d35] dark:text-[#c5d0b5] dark:hover:bg-[#28301f]"
-            onClick={(e) => {
-              e.stopPropagation();
-              const chem = chemicals.find(c => c['Chemical ID'] === r.chemicalId || c['Chemical Name'] === r.chemicalName) || {};
-              const req = requests.find(req => req.receiptNumber === r.receiptNumber) || { id: 'N/A' };
-              generateReceiptPDF(req, chem, r);
-            }}
-          >
-            <Download size={14} className="mr-1" /> Receipt
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant='outline'
+              className="px-3 py-1 text-xs border-[#71805a] text-[#556b2f] hover:bg-[#eef4e4] dark:border-[#4e5d35] dark:text-[#c5d0b5] dark:hover:bg-[#28301f]"
+              onClick={(e) => {
+                e.stopPropagation();
+                const chem = chemicals.find(c => c['Chemical ID'] === r.chemicalId || c['Chemical Name'] === r.chemicalName) || {};
+                const req = requests.find(req => req.receiptNumber === r.receiptNumber) || { id: 'N/A' };
+                setPreviewData({ requestData: req, chemicalData: chem, historyData: r });
+              }}
+            >
+              <Eye size={14} className="mr-1" /> View
+            </Button>
+            <Button 
+              className="px-3 py-1 text-xs bg-[#556b2f] text-white hover:bg-[#3d4d22]"
+              onClick={(e) => {
+                e.stopPropagation();
+                const chem = chemicals.find(c => c['Chemical ID'] === r.chemicalId || c['Chemical Name'] === r.chemicalName) || {};
+                const req = requests.find(req => req.receiptNumber === r.receiptNumber) || { id: 'N/A' };
+                generateReceiptPDF(req, chem, r);
+              }}
+            >
+              <Download size={14} className="mr-1" /> Receipt
+            </Button>
+          </div>
         );
       }
     }
@@ -124,6 +139,12 @@ export default function StoreHistory() {
           <Table headers={headers} rows={rows} />
         </div>
       </Card>
+      
+      <ReceiptPreviewModal 
+        isOpen={Boolean(previewData)} 
+        onClose={() => setPreviewData(null)} 
+        {...(previewData || {})}
+      />
     </StoreLayout>
   );
 }
