@@ -165,14 +165,14 @@ function App() {
                     <Route path='analytics' element={role === 'lab-admin' ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='transactions' element={role === 'lab-admin' ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='store-dashboard' element={role === 'store-admin' ? <StoreDashboard /> : <Navigate to='/' replace />} />
-                    <Route path='store/dashboard' element={role === 'store-admin' ? <StoreManagerDashboard /> : <Navigate to='/' replace />} />
-                    <Route path='store/inventory' element={role === 'store-admin' ? <StoreInventory /> : <Navigate to='/' replace />} />
-                    <Route path='store/tracking' element={role === 'store-admin' ? <StoreTracking /> : <Navigate to='/' replace />} />
-                    <Route path='store/lowstock' element={role === 'store-admin' ? <StoreAlerts /> : <Navigate to='/' replace />} />
-                    <Route path='store/overview' element={role === 'store-admin' ? <StoreStockOverview /> : <Navigate to='/' replace />} />
-                    <Route path='store/requests' element={role === 'store-admin' ? <StoreRequests /> : <Navigate to='/' replace />} />
-                    <Route path='store/history' element={role === 'store-admin' ? <StoreHistory /> : <Navigate to='/' replace />} />
-                    <Route path='store/reports' element={role === 'store-admin' ? <StoreReports /> : <Navigate to='/' replace />} />
+                    <Route path='store/dashboard' element={role === 'store_admin' ? <StoreManagerDashboard /> : <Navigate to='/login' replace />} />
+                    <Route path='store/inventory' element={role === 'store_admin' ? <StoreInventory /> : <Navigate to='/login' replace />} />
+                    <Route path='store/tracking' element={role === 'store_admin' ? <StoreTracking /> : <Navigate to='/login' replace />} />
+                    <Route path='store/lowstock' element={role === 'store_admin' ? <StoreAlerts /> : <Navigate to='/login' replace />} />
+                    <Route path='store/overview' element={role === 'store_admin' ? <StoreStockOverview /> : <Navigate to='/login' replace />} />
+                    <Route path='store/requests' element={role === 'store_admin' ? <StoreRequests /> : <Navigate to='/login' replace />} />
+                    <Route path='store/history' element={role === 'store_admin' ? <StoreHistory /> : <Navigate to='/login' replace />} />
+                    <Route path='store/reports' element={role === 'store_admin' ? <StoreReports /> : <Navigate to='/login' replace />} />
                     <Route path='store' element={role === 'student' ? <StudentStorePage /> : <Navigate to='/' replace />} />
                     <Route path='my-borrowings' element={role === 'student' ? <StudentBorrowingsPage /> : <Navigate to='/' replace />} />
                     <Route path='approval' element={role === 'super-admin' ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
