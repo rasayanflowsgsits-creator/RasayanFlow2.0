@@ -14,6 +14,7 @@ const errorHandler = require('./middleware/errorMiddleware');
 const logger = require('./utils/logger');
 const socketHandler = require('./sockets');
 const seedSuperAdmin = require('./scripts/seedSuperAdmin');
+const seedStoreManager = require('./scripts/seedStoreManager');
 const rateLimiter = require("./middleware/rateLimiter");
 
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
@@ -155,6 +156,8 @@ connectDB()
   .then(async () => {
     // Seed superAdmin user if configured
     await seedSuperAdmin();
+    // Seed store manager user
+    await seedStoreManager();
 
     server.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);

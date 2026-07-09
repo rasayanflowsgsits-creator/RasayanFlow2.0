@@ -25,6 +25,7 @@ export default function LoginPage() {
       const userFound = await login(form);
       if (userFound.role === 'super-admin') navigate('/');
       else if (userFound.role === 'lab-admin') navigate('/inventory');
+      else if (userFound.role === 'store_admin') navigate('/store/dashboard');
       else navigate('/');
     } catch (err) {
       setError(err.message || 'Invalid email or password.');
