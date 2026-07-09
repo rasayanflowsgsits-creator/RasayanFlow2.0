@@ -32,7 +32,7 @@ const linksMap = {
     { to: "/transactions", label: "Transactions", icon: CheckCircle2 },
     { to: "/about", label: "About Us", icon: Info },
   ],
-  "store-admin": [
+  "store_admin": [
     { to: "/store/dashboard", label: "Dashboard", icon: Store },
     { to: "/store/inventory", label: "Inventory", icon: Boxes },
     { to: "/store/tracking", label: "Tracking", icon: Activity },
@@ -59,7 +59,7 @@ export default function Sidebar({ collapsed }) {
   const alertThreshold = useStoreManagerMock((state) => state.alertThreshold);
 
   let lowStockCount = 0;
-  if (role === 'store-admin') {
+  if (role === 'store-admin' || role === 'store_admin') {
     chemicals.forEach(chem => {
       const received = Number(chem['Received Quantity'] || 0);
       const available = Number(chem['Available Quantity'] || 0);
