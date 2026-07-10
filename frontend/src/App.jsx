@@ -23,6 +23,8 @@ import StudentDashboard from './pages/StudentDashboard';
 import StudentBorrowingsPage from './pages/StudentBorrowingsPage';
 import StudentLabDetail from './pages/StudentLabDetail';
 import StudentStorePage from './pages/StudentStorePage';
+import LabStoreRequests from './pages/LabStoreRequests';
+import LabNotifications from './pages/LabNotifications';
 import AboutPage from './pages/AboutPage';
 import NotFound from './pages/NotFound';
 import socket from './services/socket';
@@ -83,7 +85,7 @@ function App() {
 
     socket.on('store:new_request', (payload) => {
       // Notify all users and refresh store allotments for store admin
-      if (user?.role === 'store-admin') {
+      if (user?.role === 'store-admin' || user?.role === 'store_admin') {
         setToast({ 
           type: 'info', 
           message: `New store request: ${payload.itemName} from ${payload.studentName}` 
@@ -99,7 +101,7 @@ function App() {
         message: `Store request approved: ${payload.itemName} for ${payload.studentName}` 
       });
       // Refresh store allotments if on store admin dashboard
-      if (user?.role === 'store-admin') {
+      if (user?.role === 'store-admin' || user?.role === 'store_admin') {
         const appStore = useAppStore.getState();
         appStore.fetchStoreAllotments();
       }
@@ -111,7 +113,7 @@ function App() {
         message: `Store request rejected: ${payload.itemName} for ${payload.studentName}` 
       });
       // Refresh store allotments if on store admin dashboard
-      if (user?.role === 'store-admin') {
+      if (user?.role === 'store-admin' || user?.role === 'store_admin') {
         const appStore = useAppStore.getState();
         appStore.fetchStoreAllotments();
       }
@@ -159,12 +161,14 @@ function App() {
                 <Navbar onToggleSidebar={() => setSidebarCollapsed((value) => !value)} isDark={darkMode} toggleTheme={() => setDarkMode((value) => !value)} />
                 <main className='mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8'>
                   <Routes>
-                    <Route index element={role === 'super-admin' ? <SuperAdminDashboard /> : role === 'lab-admin' ? <LabAdminDashboard /> : role === 'store-admin' ? <StoreDashboard /> : <StudentDashboard />} />
+                    <Route index element={role === 'super-admin' ? <SuperAdminDashboard /> : role === 'lab-admin' ? <LabAdminDashboard /> : (role === 'store-admin' || role === 'store_admin') ? <StoreManagerDashboard /> : <StudentDashboard />} />
                     <Route path='labs' element={role === 'super-admin' ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='inventory' element={role === 'lab-admin' ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='analytics' element={role === 'lab-admin' ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='transactions' element={role === 'lab-admin' ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
-                    <Route path='store-dashboard' element={role === 'store-admin' ? <StoreDashboard /> : <Navigate to='/' replace />} />
+                    <Route path='lab/store-requests' element={role === 'lab-admin' ? <LabStoreRequests /> : <Navigate to='/' replace />} />
+                    <Route path='lab/notifications' element={role === 'lab-admin' ? <LabNotifications /> : <Navigate to='/' replace />} />
+                    <Route path='store-dashboard' element={(role === 'store-admin' || role === 'store_admin') ? <StoreDashboard /> : <Navigate to='/' replace />} />
                     <Route path='store/dashboard' element={role === 'store_admin' ? <StoreManagerDashboard /> : <Navigate to='/login' replace />} />
                     <Route path='store/inventory' element={role === 'store_admin' ? <StoreInventory /> : <Navigate to='/login' replace />} />
                     <Route path='store/tracking' element={role === 'store_admin' ? <StoreTracking /> : <Navigate to='/login' replace />} />

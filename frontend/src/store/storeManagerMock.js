@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import useAppStore from './appStore';
 
 export const INITIAL_CHEMICALS = [
   { 'Chemical ID': 'chem-1', 'Chemical Name': 'Hydrochloric Acid', 'Grade': 'LR', 'Pack Size': '500ml', 'Available Quantity': 500, 'Standard Unit': 'ml', 'Unit Price (INR)': 2, 'Hazard Class': 'Acid' },
@@ -24,6 +25,10 @@ export const INITIAL_REQUESTS = [
   { id: 'req-apr-1', lab: 'Chemistry Lab 3', chemicalName: 'ACRYLAMIDE LR', chemicalId: '37045-K05', quantity: 100, unit: 'g', status: 'Approved', date: '2026-04-05T10:00:00Z', receiptNumber: 'RF-2026-1' },
   { id: 'req-apr-2', lab: 'Physics Lab 1', chemicalName: 'ACETONE LR', chemicalId: '37022-125', quantity: 750, unit: 'ml', status: 'Approved', date: '2026-04-12T10:00:00Z', receiptNumber: 'RF-2026-2' },
   { id: 'req-apr-3', lab: 'Biology Lab 1', chemicalName: 'ACETYLACETONE LR', chemicalId: '37035-L02', quantity: 200, unit: 'ml', status: 'Approved', date: '2026-04-18T10:00:00Z', receiptNumber: 'RF-2026-3' },
+  // Dummy requests for harsh lab
+  { id: 'REQ-dummy-1', lab: 'harsh lab', chemicalName: 'Hydrochloric Acid', casNumber: '7647-01-0', quantity: 500, unit: 'ml', status: 'Pending', date: new Date().toISOString() },
+  { id: 'REQ-dummy-2', lab: 'harsh lab', chemicalName: 'Sodium Hydroxide', casNumber: '1310-73-2', quantity: 200, unit: 'g', status: 'Approved', date: new Date(Date.now() - 86400000).toISOString(), receiptNumber: 'RF-2026-dummy' },
+  { id: 'REQ-dummy-3', lab: 'harsh lab', chemicalName: 'Ethanol Absolute', casNumber: '64-17-5', quantity: 1000, unit: 'ml', status: 'Rejected', reason: 'Insufficient stock', date: new Date(Date.now() - 3 * 86400000).toISOString() },
 ];
 
 export const INITIAL_HISTORY = [
@@ -224,9 +229,14 @@ const useStoreManagerMock = create((set, get) => ({
   requests: INITIAL_REQUESTS,
   history: INITIAL_HISTORY,
   trackingLogs: INITIAL_TRACKING_LOGS,
+  notifications: [],
   alertThreshold: 15,
   receiptCounter: 10,
   setAlertThreshold: (value) => set({ alertThreshold: value }),
+  createStoreRequest: (request) => set((state) => ({ requests: [request, ...state.requests] })),
+  addNotification: (notification) => set((state) => ({ notifications: [notification, ...state.notifications] })),
+  markNotificationAsRead: (id) => set((state) => ({ notifications: state.notifications.map(n => n.id === id ? { ...n, isRead: true } : n) })),
+  markAllNotificationsAsRead: () => set((state) => ({ notifications: state.notifications.map(n => ({ ...n, isRead: true })) })),
   addChemical: (chemical) => {
     let normalized;
     set((state) => {
@@ -427,6 +437,63 @@ const useStoreManagerMock = create((set, get) => ({
           reason
         };
       }
+
+      // Handle Notifications and Lab Inventory Updates Sync
+      setTimeout(() => {
+        if (nextStatus === 'Approved') {
+          // Update Lab Inventory
+          const appStoreState = useAppStore.getState();
+          const labInv = appStoreState.inventory;
+          const existingItem = labInv.find(item => item.labName === request.lab && item.chemicalName === request.chemicalName);
+          
+          if (existingItem) {
+            useAppStore.setState({
+              inventory: labInv.map(item => 
+                item.id === existingItem.id 
+                  ? { ...item, quantity: Number(item.quantity) + Number(request.quantity) }
+                  : item
+              )
+            });
+          } else {
+            const chemicalInfo = state.chemicals.find(c => c['Chemical ID'] === request.chemicalId || c['Chemical Name'] === request.chemicalName) || {};
+            const newItem = {
+              id: `lab-chem-${Date.now()}`,
+              labName: request.lab,
+              chemicalName: request.chemicalName,
+              casNumber: request.casNumber || chemicalInfo['CAS Number'] || '',
+              quantity: Number(request.quantity),
+              quantityUnit: request.unit,
+              costPerUnit: chemicalInfo['Unit Price (INR)'] || 0,
+              manufacturingCompany: chemicalInfo['Supplier'] || chemicalInfo['Company'] || '',
+              entryDate: new Date().toISOString(),
+              source: "Store Transfer",
+              status: "In Stock"
+            };
+            useAppStore.setState({ inventory: [newItem, ...labInv] });
+          }
+
+          // Notification
+          get().addNotification({
+            id: `notif-${Date.now()}`,
+            type: "approved",
+            message: `Your request for ${request.chemicalName} ${request.quantity}${request.unit} has been Approved by Store Manager`,
+            chemicalName: request.chemicalName,
+            quantity: request.quantity,
+            unit: request.unit,
+            requestId: request.id,
+            isRead: false,
+            createdAt: new Date().toISOString()
+          });
+        } else if (nextStatus === 'Rejected') {
+          get().addNotification({
+            id: `notif-${Date.now()}`,
+            type: "rejected",
+            message: `Your request for ${request.chemicalName} has been Rejected. Reason: ${reason}`,
+            isRead: false,
+            createdAt: new Date().toISOString()
+          });
+        }
+      }, 0);
 
       return {
         chemicals,
