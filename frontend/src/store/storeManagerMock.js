@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import useAppStore from './appStore';
 
 export const INITIAL_CHEMICALS = [
@@ -224,287 +225,299 @@ function createTrackingLog(chemical, updateType, previousQty, previousPrice, new
   };
 }
 
-const useStoreManagerMock = create((set, get) => ({
-  chemicals: INITIAL_CHEMICALS,
-  requests: INITIAL_REQUESTS,
-  history: INITIAL_HISTORY,
-  trackingLogs: INITIAL_TRACKING_LOGS,
-  notifications: [],
-  alertThreshold: 15,
-  receiptCounter: 10,
-  setAlertThreshold: (value) => set({ alertThreshold: value }),
-  createStoreRequest: (request) => set((state) => ({ requests: [request, ...state.requests] })),
-  addNotification: (notification) => set((state) => ({ notifications: [notification, ...state.notifications] })),
-  markNotificationAsRead: (id) => set((state) => ({ notifications: state.notifications.map(n => n.id === id ? { ...n, isRead: true } : n) })),
-  markAllNotificationsAsRead: () => set((state) => ({ notifications: state.notifications.map(n => ({ ...n, isRead: true })) })),
-  addChemical: (chemical) => {
-    let normalized;
-    set((state) => {
-      normalized = normalizeChemical({
-        ...chemical,
-        id: `chem-${Date.now()}`,
-        status: chemical.status || getChemicalStatus(chemical.quantity),
-      });
-      const logEntry = createTrackingLog(normalized, 'Added New', 0, 0, normalized['Available Quantity'], normalized['Unit Price (INR)']);
-      return { 
-        chemicals: [normalized, ...state.chemicals],
-        trackingLogs: [logEntry, ...state.trackingLogs]
-      };
-    });
-    return normalized;
-  },
-  addChemicals: (chemicals, mode = 'merge') => {
-    let added = 0;
-    let updated = 0;
-
-    set((state) => {
-      const newLogs = [];
-      let newChemicalsList = [...state.chemicals];
-
-      chemicals.forEach((chemical, index) => {
-        const chemId = String(chemical['Chemical ID'] || chemical.id || '').trim();
-        const chemName = String(chemical['Chemical Name'] || chemical.name || '').trim().toLowerCase();
-
-        let existingIndex = -1;
-        if (chemId) {
-          existingIndex = newChemicalsList.findIndex(c => c['Chemical ID'] === chemId || c.id === chemId);
-        }
-        if (existingIndex === -1 && chemName) {
-          existingIndex = newChemicalsList.findIndex(c => String(c['Chemical Name'] || '').trim().toLowerCase() === chemName);
-        }
-
-        if (existingIndex !== -1) {
-          updated++;
-          const oldChem = newChemicalsList[existingIndex];
-          
-          const uploadedAvailableQty = Number(chemical['Available Quantity'] || chemical.quantity || 0);
-          const uploadedReceivedQty = Number(chemical['Received Quantity'] || 0);
-          
-          const newChemRaw = {
-            ...oldChem,
-            'Unit Price (INR)': chemical['Unit Price (INR)'] !== undefined && chemical['Unit Price (INR)'] !== '' ? chemical['Unit Price (INR)'] : oldChem['Unit Price (INR)'],
-            'Purchase Price (INR)': chemical['Purchase Price (INR)'] !== undefined && chemical['Purchase Price (INR)'] !== '' ? chemical['Purchase Price (INR)'] : oldChem['Purchase Price (INR)'],
-            'Pack Size': chemical['Pack Size'] !== undefined && chemical['Pack Size'] !== '' ? chemical['Pack Size'] : oldChem['Pack Size'],
-            'Available Quantity': oldChem['Available Quantity'] + uploadedAvailableQty,
-            'Received Quantity': oldChem['Received Quantity'] + uploadedReceivedQty,
-          };
-          
-          const newChem = normalizeChemical({
-            ...newChemRaw,
-            id: oldChem.id,
-            'Chemical ID': oldChem['Chemical ID'],
-            'Chemical Name': oldChem['Chemical Name'],
-            'CAS Number': oldChem['CAS Number'],
-            'Molecular Formula': oldChem['Molecular Formula'],
-            'SMILES ID': oldChem['SMILES ID'],
-            'Grade': oldChem['Grade'],
-            'Hazard Class': oldChem['Hazard Class'],
-            'Safety Wear': oldChem['Safety Wear'],
-          });
-          
-          newChemicalsList[existingIndex] = newChem;
-          newLogs.push(createTrackingLog(
-            newChem, 
-            'Stock Replenishment', 
-            oldChem['Available Quantity'], 
-            oldChem['Unit Price (INR)'],
-            newChem['Available Quantity'],
-            newChem['Unit Price (INR)']
-          ));
-        } else {
-          added++;
-          const newChem = normalizeChemical({
+const useStoreManagerMock = create(
+  persist(
+    (set, get) => ({
+      chemicals: INITIAL_CHEMICALS,
+      requests: INITIAL_REQUESTS,
+      history: INITIAL_HISTORY,
+      trackingLogs: INITIAL_TRACKING_LOGS,
+      notifications: [],
+      alertThreshold: 15,
+      receiptCounter: 10,
+      setAlertThreshold: (value) => set({ alertThreshold: value }),
+      createStoreRequest: (request) => set((state) => ({ requests: [request, ...state.requests] })),
+      addNotification: (notification) => set((state) => ({ notifications: [notification, ...state.notifications] })),
+      markNotificationAsRead: (id) => set((state) => ({ notifications: state.notifications.map(n => n.id === id ? { ...n, isRead: true } : n) })),
+      markAllNotificationsAsRead: () => set((state) => ({ notifications: state.notifications.map(n => ({ ...n, isRead: true })) })),
+      addChemical: (chemical) => {
+        let normalized;
+        set((state) => {
+          normalized = normalizeChemical({
             ...chemical,
-            id: chemId || `bulk-${Date.now()}-${index}`,
+            id: `chem-${Date.now()}`,
+            status: chemical.status || getChemicalStatus(chemical.quantity),
           });
-          newChemicalsList.unshift(newChem);
-          newLogs.push(createTrackingLog(newChem, 'Bulk Upload', 0, 0, newChem['Available Quantity'], newChem['Unit Price (INR)']));
-        }
-      });
-
-      return { chemicals: newChemicalsList, trackingLogs: [...newLogs, ...state.trackingLogs] };
-    });
-
-    return { added, updated };
-  },
-  updateChemical: (chemicalId, updates) => {
-    set((state) => {
-      const newChemicals = [...state.chemicals];
-      const newLogs = [];
-      
-      const idx = newChemicals.findIndex(c => c.id === chemicalId || c['Chemical ID'] === chemicalId);
-      if (idx !== -1) {
-        const oldChem = newChemicals[idx];
-        const newChem = normalizeChemical({
-          ...oldChem,
-          ...updates,
-          id: oldChem.id,
+          const logEntry = createTrackingLog(normalized, 'Added New', 0, 0, normalized['Available Quantity'], normalized['Unit Price (INR)']);
+          return { 
+            chemicals: [normalized, ...state.chemicals],
+            trackingLogs: [logEntry, ...state.trackingLogs]
+          };
         });
-        newChemicals[idx] = newChem;
-        newLogs.push(createTrackingLog(
-          newChem,
-          'Manual Edit',
-          oldChem['Available Quantity'],
-          oldChem['Unit Price (INR)'],
-          newChem['Available Quantity'],
-          newChem['Unit Price (INR)']
-        ));
-      }
-      
-      return { 
-        chemicals: newChemicals,
-        trackingLogs: newLogs.length ? [...newLogs, ...state.trackingLogs] : state.trackingLogs
-      };
-    });
-  },
-  deleteChemical: (chemicalId) => {
-    set((state) => ({ chemicals: state.chemicals.filter((chemical) => chemical.id !== chemicalId) }));
-  },
-  reviewRequest: (requestId, nextStatus, reason = '') => {
-    const request = get().requests.find((entry) => entry.id === requestId);
-    if (!request) return null;
+        return normalized;
+      },
+      addChemicals: (chemicals, mode = 'merge') => {
+        let added = 0;
+        let updated = 0;
 
-    set((state) => {
-      const reviewedRequest = { ...request, status: nextStatus };
-      let newHistoryEntry = null;
+        set((state) => {
+          const newLogs = [];
+          let newChemicalsList = [...state.chemicals];
 
-      const chemicals = state.chemicals.map((chemical) => {
-        if (chemical['Chemical ID'] === request.chemicalId || chemical['Chemical Name'] === request.chemicalName) {
-          const currentQty = Number(chemical['Available Quantity'] || 0);
-          const unitPrice = Number(chemical['Unit Price (INR)'] || 0);
-          const reqQty = Number(request.quantity || 0);
+          chemicals.forEach((chemical, index) => {
+            const chemId = String(chemical['Chemical ID'] || chemical.id || '').trim();
+            const chemName = String(chemical['Chemical Name'] || chemical.name || '').trim().toLowerCase();
+
+            let existingIndex = -1;
+            if (chemId) {
+              existingIndex = newChemicalsList.findIndex(c => c['Chemical ID'] === chemId || c.id === chemId);
+            }
+            if (existingIndex === -1 && chemName) {
+              existingIndex = newChemicalsList.findIndex(c => String(c['Chemical Name'] || '').trim().toLowerCase() === chemName);
+            }
+
+            if (existingIndex !== -1) {
+              updated++;
+              const oldChem = newChemicalsList[existingIndex];
+              
+              const uploadedAvailableQty = Number(chemical['Available Quantity'] || chemical.quantity || 0);
+              const uploadedReceivedQty = Number(chemical['Received Quantity'] || 0);
+              
+              const newChemRaw = {
+                ...oldChem,
+                'Unit Price (INR)': chemical['Unit Price (INR)'] !== undefined && chemical['Unit Price (INR)'] !== '' ? chemical['Unit Price (INR)'] : oldChem['Unit Price (INR)'],
+                'Purchase Price (INR)': chemical['Purchase Price (INR)'] !== undefined && chemical['Purchase Price (INR)'] !== '' ? chemical['Purchase Price (INR)'] : oldChem['Purchase Price (INR)'],
+                'Pack Size': chemical['Pack Size'] !== undefined && chemical['Pack Size'] !== '' ? chemical['Pack Size'] : oldChem['Pack Size'],
+                'Available Quantity': oldChem['Available Quantity'] + uploadedAvailableQty,
+                'Received Quantity': oldChem['Received Quantity'] + uploadedReceivedQty,
+              };
+              
+              const newChem = normalizeChemical({
+                ...newChemRaw,
+                id: oldChem.id,
+                'Chemical ID': oldChem['Chemical ID'],
+                'Chemical Name': oldChem['Chemical Name'],
+                'CAS Number': oldChem['CAS Number'],
+                'Molecular Formula': oldChem['Molecular Formula'],
+                'SMILES ID': oldChem['SMILES ID'],
+                'Grade': oldChem['Grade'],
+                'Hazard Class': oldChem['Hazard Class'],
+                'Safety Wear': oldChem['Safety Wear'],
+              });
+              
+              newChemicalsList[existingIndex] = newChem;
+              newLogs.push(createTrackingLog(
+                newChem, 
+                'Stock Replenishment', 
+                oldChem['Available Quantity'], 
+                oldChem['Unit Price (INR)'],
+                newChem['Available Quantity'],
+                newChem['Unit Price (INR)']
+              ));
+            } else {
+              added++;
+              const newChem = normalizeChemical({
+                ...chemical,
+                id: chemId || `bulk-${Date.now()}-${index}`,
+              });
+              newChemicalsList.unshift(newChem);
+              newLogs.push(createTrackingLog(newChem, 'Bulk Upload', 0, 0, newChem['Available Quantity'], newChem['Unit Price (INR)']));
+            }
+          });
+
+          return { chemicals: newChemicalsList, trackingLogs: [...newLogs, ...state.trackingLogs] };
+        });
+
+        return { added, updated };
+      },
+      updateChemical: (chemicalId, updates) => {
+        set((state) => {
+          const newChemicals = [...state.chemicals];
+          const newLogs = [];
           
-          const packData = parsePackSize(chemical['Pack Size']);
-          const totalBaseAvailable = currentQty * packData.value;
+          const idx = newChemicals.findIndex(c => c.id === chemicalId || c['Chemical ID'] === chemicalId);
+          if (idx !== -1) {
+            const oldChem = newChemicals[idx];
+            const newChem = normalizeChemical({
+              ...oldChem,
+              ...updates,
+              id: oldChem.id,
+            });
+            newChemicals[idx] = newChem;
+            newLogs.push(createTrackingLog(
+              newChem,
+              'Manual Edit',
+              oldChem['Available Quantity'],
+              oldChem['Unit Price (INR)'],
+              newChem['Available Quantity'],
+              newChem['Unit Price (INR)']
+            ));
+          }
+          
+          return { 
+            chemicals: newChemicals,
+            trackingLogs: newLogs.length ? [...newLogs, ...state.trackingLogs] : state.trackingLogs
+          };
+        });
+      },
+      deleteChemical: (chemicalId) => {
+        set((state) => ({ chemicals: state.chemicals.filter((chemical) => chemical.id !== chemicalId) }));
+      },
+      reviewRequest: (requestId, nextStatus, reason = '') => {
+        const request = get().requests.find((entry) => entry.id === requestId);
+        if (!request) return null;
 
-          if (nextStatus === 'Approved') {
-            const remainingBase = Math.max(0, totalBaseAvailable - reqQty);
-            const nextQuantityUNT = Math.round((remainingBase / packData.value) * 100) / 100;
-            const newReceiptNum = `RF-2026-${state.receiptCounter}`;
-            reviewedRequest.receiptNumber = newReceiptNum;
+        set((state) => {
+          const reviewedRequest = { ...request, status: nextStatus };
+          let newHistoryEntry = null;
+
+          const chemicals = state.chemicals.map((chemical) => {
+            if (chemical['Chemical ID'] === request.chemicalId || chemical['Chemical Name'] === request.chemicalName) {
+              const currentQty = Number(chemical['Available Quantity'] || 0);
+              const unitPrice = Number(chemical['Unit Price (INR)'] || 0);
+              const reqQty = Number(request.quantity || 0);
+              
+              const packData = parsePackSize(chemical['Pack Size']);
+              const totalBaseAvailable = currentQty * packData.value;
+
+              if (nextStatus === 'Approved') {
+                const remainingBase = Math.max(0, totalBaseAvailable - reqQty);
+                const nextQuantityUNT = Math.round((remainingBase / packData.value) * 100) / 100;
+                const newReceiptNum = `RF-2026-${state.receiptCounter}`;
+                reviewedRequest.receiptNumber = newReceiptNum;
+                
+                newHistoryEntry = {
+                  id: `hist-${Date.now()}`,
+                  chemicalName: chemical['Chemical Name'],
+                  chemicalId: chemical['Chemical ID'],
+                  lab: request.lab,
+                  qtyBefore: currentQty,
+                  qtyBeforeBase: totalBaseAvailable,
+                  qtyRequestedBase: reqQty,
+                  qtyAfter: nextQuantityUNT,
+                  qtyAfterBase: remainingBase,
+                  baseUnit: packData.unit,
+                  unitPrice,
+                  totalValueBefore: currentQty * unitPrice,
+                  totalValueAfter: nextQuantityUNT * unitPrice,
+                  actionBy: 'Store Manager',
+                  date: new Date().toISOString(),
+                  status: 'Approved',
+                  reason,
+                  receiptNumber: newReceiptNum
+                };
+                return normalizeChemical({ ...chemical, 'Available Quantity': nextQuantityUNT, quantity: nextQuantityUNT });
+              }
+            }
+            return chemical;
+          });
+
+          if (nextStatus === 'Rejected') {
+            const chemical = state.chemicals.find(c => c['Chemical ID'] === request.chemicalId || c['Chemical Name'] === request.chemicalName) || {};
+            const currentQty = Number(chemical['Available Quantity'] || 0);
+            const unitPrice = Number(chemical['Unit Price (INR)'] || 0);
+            const packData = parsePackSize(chemical['Pack Size']);
+            const totalBaseAvailable = currentQty * packData.value;
+            const reqQty = Number(request.quantity || 0);
             
             newHistoryEntry = {
               id: `hist-${Date.now()}`,
-              chemicalName: chemical['Chemical Name'],
-              chemicalId: chemical['Chemical ID'],
+              chemicalName: request.chemicalName,
+              chemicalId: request.chemicalId,
               lab: request.lab,
               qtyBefore: currentQty,
               qtyBeforeBase: totalBaseAvailable,
               qtyRequestedBase: reqQty,
-              qtyAfter: nextQuantityUNT,
-              qtyAfterBase: remainingBase,
+              qtyAfter: currentQty,
+              qtyAfterBase: totalBaseAvailable,
               baseUnit: packData.unit,
               unitPrice,
               totalValueBefore: currentQty * unitPrice,
-              totalValueAfter: nextQuantityUNT * unitPrice,
+              totalValueAfter: currentQty * unitPrice,
               actionBy: 'Store Manager',
               date: new Date().toISOString(),
-              status: 'Approved',
-              reason,
-              receiptNumber: newReceiptNum
+              status: 'Rejected',
+              reason
             };
-            return normalizeChemical({ ...chemical, 'Available Quantity': nextQuantityUNT, quantity: nextQuantityUNT });
-          }
-        }
-        return chemical;
-      });
-
-      if (nextStatus === 'Rejected') {
-        const chemical = state.chemicals.find(c => c['Chemical ID'] === request.chemicalId || c['Chemical Name'] === request.chemicalName) || {};
-        const currentQty = Number(chemical['Available Quantity'] || 0);
-        const unitPrice = Number(chemical['Unit Price (INR)'] || 0);
-        const packData = parsePackSize(chemical['Pack Size']);
-        const totalBaseAvailable = currentQty * packData.value;
-        const reqQty = Number(request.quantity || 0);
-        
-        newHistoryEntry = {
-          id: `hist-${Date.now()}`,
-          chemicalName: request.chemicalName,
-          chemicalId: request.chemicalId,
-          lab: request.lab,
-          qtyBefore: currentQty,
-          qtyBeforeBase: totalBaseAvailable,
-          qtyRequestedBase: reqQty,
-          qtyAfter: currentQty,
-          qtyAfterBase: totalBaseAvailable,
-          baseUnit: packData.unit,
-          unitPrice,
-          totalValueBefore: currentQty * unitPrice,
-          totalValueAfter: currentQty * unitPrice,
-          actionBy: 'Store Manager',
-          date: new Date().toISOString(),
-          status: 'Rejected',
-          reason
-        };
-      }
-
-      // Handle Notifications and Lab Inventory Updates Sync
-      setTimeout(() => {
-        if (nextStatus === 'Approved') {
-          // Update Lab Inventory
-          const appStoreState = useAppStore.getState();
-          const labInv = appStoreState.inventory;
-          const existingItem = labInv.find(item => item.labName === request.lab && item.chemicalName === request.chemicalName);
-          
-          if (existingItem) {
-            useAppStore.setState({
-              inventory: labInv.map(item => 
-                item.id === existingItem.id 
-                  ? { ...item, quantity: Number(item.quantity) + Number(request.quantity) }
-                  : item
-              )
-            });
-          } else {
-            const chemicalInfo = state.chemicals.find(c => c['Chemical ID'] === request.chemicalId || c['Chemical Name'] === request.chemicalName) || {};
-            const newItem = {
-              id: `lab-chem-${Date.now()}`,
-              labName: request.lab,
-              chemicalName: request.chemicalName,
-              casNumber: request.casNumber || chemicalInfo['CAS Number'] || '',
-              quantity: Number(request.quantity),
-              quantityUnit: request.unit,
-              costPerUnit: chemicalInfo['Unit Price (INR)'] || 0,
-              manufacturingCompany: chemicalInfo['Supplier'] || chemicalInfo['Company'] || '',
-              entryDate: new Date().toISOString(),
-              source: "Store Transfer",
-              status: "In Stock"
-            };
-            useAppStore.setState({ inventory: [newItem, ...labInv] });
           }
 
-          // Notification
-          get().addNotification({
-            id: `notif-${Date.now()}`,
-            type: "approved",
-            message: `Your request for ${request.chemicalName} ${request.quantity}${request.unit} has been Approved by Store Manager`,
-            chemicalName: request.chemicalName,
-            quantity: request.quantity,
-            unit: request.unit,
-            requestId: request.id,
-            isRead: false,
-            createdAt: new Date().toISOString()
-          });
-        } else if (nextStatus === 'Rejected') {
-          get().addNotification({
-            id: `notif-${Date.now()}`,
-            type: "rejected",
-            message: `Your request for ${request.chemicalName} has been Rejected. Reason: ${reason}`,
-            isRead: false,
-            createdAt: new Date().toISOString()
-          });
-        }
-      }, 0);
+          // Handle Notifications and Lab Inventory Updates Sync
+          setTimeout(() => {
+            if (nextStatus === 'Approved') {
+              // Update Lab Inventory
+              const appStoreState = useAppStore.getState();
+              const labInv = appStoreState.inventory;
+              const existingItem = labInv.find(item => item.labName === request.lab && item.chemicalName === request.chemicalName);
+              
+              if (existingItem) {
+                useAppStore.setState({
+                  inventory: labInv.map(item => 
+                    item.id === existingItem.id 
+                      ? { 
+                          ...item, 
+                          quantity: Number(item.quantity) + Number(request.quantity),
+                          entryDate: new Date().toISOString()
+                        }
+                      : item
+                  )
+                });
+              } else {
+                const chemicalInfo = state.chemicals.find(c => c['Chemical ID'] === request.chemicalId || c['Chemical Name'] === request.chemicalName) || {};
+                const newItem = {
+                  id: `lab-chem-${Date.now()}`,
+                  labName: request.lab,
+                  chemicalName: request.chemicalName,
+                  casNumber: request.casNumber || chemicalInfo['CAS Number'] || '',
+                  quantity: Number(request.quantity),
+                  quantityUnit: request.unit,
+                  costPerUnit: Number(chemicalInfo['Unit Price (INR)'] || 0),
+                  entryDate: new Date().toISOString(),
+                  source: "Store Transfer",
+                  approvedBy: "Store Manager",
+                  requestId: request.id,
+                  status: "In Stock"
+                };
+                useAppStore.setState({ inventory: [newItem, ...labInv] });
+              }
 
-      return {
-        chemicals,
-        requests: state.requests.map((entry) => (entry.id === requestId ? reviewedRequest : entry)),
-        history: newHistoryEntry ? [newHistoryEntry, ...state.history] : state.history,
-        receiptCounter: nextStatus === 'Approved' ? state.receiptCounter + 1 : state.receiptCounter,
-      };
-    });
+              // Notification
+              get().addNotification({
+                id: `notif-${Date.now()}`,
+                type: "approved",
+                message: `Your request for ${request.chemicalName} ${request.quantity}${request.unit} has been Approved by Store Manager`,
+                chemicalName: request.chemicalName,
+                quantity: request.quantity,
+                unit: request.unit,
+                requestId: request.id,
+                isRead: false,
+                createdAt: new Date().toISOString()
+              });
+            } else if (nextStatus === 'Rejected') {
+              get().addNotification({
+                id: `notif-${Date.now()}`,
+                type: "rejected",
+                message: `Your request for ${request.chemicalName} has been Rejected. Reason: ${reason}`,
+                isRead: false,
+                createdAt: new Date().toISOString()
+              });
+            }
+          }, 0);
 
-    return { ...request, status: nextStatus };
-  },
-}));
+          return {
+            chemicals,
+            requests: state.requests.map((entry) => (entry.id === requestId ? reviewedRequest : entry)),
+            history: newHistoryEntry ? [newHistoryEntry, ...state.history] : state.history,
+            receiptCounter: nextStatus === 'Approved' ? state.receiptCounter + 1 : state.receiptCounter,
+          };
+        });
+
+        return { ...request, status: nextStatus };
+      },
+    }),
+    {
+      name: 'store-manager-mock',
+    }
+  )
+);
 
 export default useStoreManagerMock;
