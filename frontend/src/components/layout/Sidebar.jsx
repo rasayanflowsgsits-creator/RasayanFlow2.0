@@ -12,7 +12,8 @@ import {
   Info,
   Activity,
   AlertTriangle,
-  FileText
+  FileText,
+  Bell
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import useAuthStore from "../../store/authStore";
@@ -30,6 +31,8 @@ const linksMap = {
     { to: "/inventory", label: "Inventory", icon: ClipboardList },
     { to: "/analytics", label: "Analytics", icon: BarChart3 },
     { to: "/transactions", label: "Transactions", icon: CheckCircle2 },
+    { to: "/lab/store-requests", label: "Store Requests", icon: Store },
+    { to: "/lab/notifications", label: "Notifications", icon: Bell },
     { to: "/about", label: "About Us", icon: Info },
   ],
   "store_admin": [
@@ -56,6 +59,7 @@ export default function Sidebar({ collapsed }) {
   const role = user?.role || "student";
   
   const chemicals = useStoreManagerMock((state) => state.chemicals);
+  const requests = useStoreManagerMock((state) => state.requests);
   const alertThreshold = useStoreManagerMock((state) => state.alertThreshold);
 
   let lowStockCount = 0;
@@ -74,6 +78,12 @@ export default function Sidebar({ collapsed }) {
         }
       }
     });
+  }
+
+  let storeRequestsCount = 0;
+  if (role === 'lab-admin') {
+    const labName = user?.labName || 'harsh lab';
+    storeRequestsCount = requests.filter(r => r.lab === labName && r.status === 'Pending').length;
   }
 
   return (
@@ -118,6 +128,9 @@ export default function Sidebar({ collapsed }) {
               </div>
               {!collapsed && item.to === "/store/lowstock" && lowStockCount > 0 ? (
                 <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{lowStockCount}</span>
+              ) : null}
+              {!collapsed && item.to === "/lab/store-requests" && storeRequestsCount > 0 ? (
+                <span className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-500 text-[10px] font-bold px-2 py-0.5 rounded-full">{storeRequestsCount}</span>
               ) : null}
             </NavLink>
           );

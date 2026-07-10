@@ -23,6 +23,8 @@ import StudentDashboard from './pages/StudentDashboard';
 import StudentBorrowingsPage from './pages/StudentBorrowingsPage';
 import StudentLabDetail from './pages/StudentLabDetail';
 import StudentStorePage from './pages/StudentStorePage';
+import LabStoreRequests from './pages/LabStoreRequests';
+import LabNotifications from './pages/LabNotifications';
 import AboutPage from './pages/AboutPage';
 import NotFound from './pages/NotFound';
 import socket from './services/socket';
@@ -164,6 +166,8 @@ function App() {
                     <Route path='inventory' element={role === 'lab-admin' ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='analytics' element={role === 'lab-admin' ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='transactions' element={role === 'lab-admin' ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
+                    <Route path='lab/store-requests' element={role === 'lab-admin' ? <LabStoreRequests /> : <Navigate to='/' replace />} />
+                    <Route path='lab/notifications' element={role === 'lab-admin' ? <LabNotifications /> : <Navigate to='/' replace />} />
                     <Route path='store-dashboard' element={(role === 'store-admin' || role === 'store_admin') ? <StoreDashboard /> : <Navigate to='/' replace />} />
                     <Route path='store/dashboard' element={role === 'store_admin' ? <StoreManagerDashboard /> : <Navigate to='/login' replace />} />
                     <Route path='store/inventory' element={role === 'store_admin' ? <StoreInventory /> : <Navigate to='/login' replace />} />

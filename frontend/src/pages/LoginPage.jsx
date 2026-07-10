@@ -37,7 +37,7 @@ export default function LoginPage() {
       id: 'local-store-preview',
       name: 'Store Manager Preview',
       email: 'store.preview@local.test',
-      role: 'store-admin',
+      role: 'store_admin',
       isApproved: true,
     });
     navigate('/store/dashboard');

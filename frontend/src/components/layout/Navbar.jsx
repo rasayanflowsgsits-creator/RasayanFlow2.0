@@ -20,7 +20,7 @@ export default function Navbar({ onToggleSidebar, isDark, toggleTheme }) {
   const alertThreshold = useStoreManagerMock((state) => state.alertThreshold);
 
   const storeLowStockAlerts = useMemo(() => {
-    if (user?.role !== 'store-admin') return [];
+    if (user?.role !== 'store-admin' && user?.role !== 'store_admin') return [];
     
     const alerts = [];
     chemicals.forEach(chem => {
@@ -41,6 +41,15 @@ export default function Navbar({ onToggleSidebar, isDark, toggleTheme }) {
     
     return alerts.sort((a, b) => a.percentage - b.percentage);
   }, [chemicals, alertThreshold, user?.role]);
+
+  const notificationsState = useStoreManagerMock((state) => state.notifications);
+  const markNotificationAsRead = useStoreManagerMock((state) => state.markNotificationAsRead);
+  const markAllNotificationsAsRead = useStoreManagerMock((state) => state.markAllNotificationsAsRead);
+
+  const unreadLabNotifications = useMemo(() => {
+    if (user?.role !== 'lab-admin') return [];
+    return notificationsState.filter(n => !n.isRead);
+  }, [notificationsState, user?.role]);
 
   const notifications = useMemo(() => {
     const lowStockItems = inventory.filter((item) => Number(item.quantity || 0) <= Number(item.minThreshold || 5));
@@ -107,16 +116,23 @@ export default function Navbar({ onToggleSidebar, isDark, toggleTheme }) {
               aria-label='Toggle notifications'
             >
               <Bell size={18} />
-              {user?.role === 'store-admin' && storeLowStockAlerts.length > 0 && (
+              {(user?.role === 'store-admin' || user?.role === 'store_admin') && storeLowStockAlerts.length > 0 && (
                 <span className="absolute top-1 right-1.5 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full shadow-sm">
                   {storeLowStockAlerts.length}
+                </span>
+              )}
+              {user?.role === 'lab-admin' && unreadLabNotifications.length > 0 && (
+                <span className="absolute top-1 right-1.5 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full shadow-sm">
+                  {unreadLabNotifications.length}
                 </span>
               )}
             </button>
             {notificationsOpen ? (
               <div className='fixed left-4 right-4 top-20 z-40 max-h-[70vh] overflow-y-auto rounded-xl border border-[#d9e1ca] bg-[#fffef8] p-3 shadow-soft md:absolute md:left-auto md:right-0 md:top-12 md:w-80 dark:border-[#414a33] dark:bg-[#20251a]'>
-                <p className='mb-2 text-sm font-semibold text-[#3c4e23] dark:text-[#eef4e8]'>{user?.role === 'store-admin' ? 'Low Stock Alerts' : 'Notifications'}</p>
-                {user?.role === 'store-admin' ? (
+                <p className='mb-2 text-sm font-semibold text-[#3c4e23] dark:text-[#eef4e8]'>
+                  {(user?.role === 'store-admin' || user?.role === 'store_admin') ? 'Low Stock Alerts' : user?.role === 'lab-admin' ? 'Store Notifications' : 'Notifications'}
+                </p>
+                {(user?.role === 'store-admin' || user?.role === 'store_admin') ? (
                   storeLowStockAlerts.length > 0 ? (
                     <div className='space-y-2'>
                       {storeLowStockAlerts.slice(0, 5).map((item) => (
@@ -137,6 +153,32 @@ export default function Navbar({ onToggleSidebar, isDark, toggleTheme }) {
                     </div>
                   ) : (
                     <p className='text-sm text-[#71805a] dark:text-[#c5d0b5]'>All stock is currently safe.</p>
+                  )
+                ) : user?.role === 'lab-admin' ? (
+                  notificationsState.length > 0 ? (
+                    <div className='space-y-2'>
+                      {notificationsState.slice(0, 5).map((item) => (
+                        <div key={item.id} className={`rounded-lg px-3 py-2 cursor-pointer ${item.isRead ? 'bg-[#f4f5eb] dark:bg-[#28301f]' : 'bg-[#e8efd9] dark:bg-[#313a26]'}`} onClick={() => {
+                          markNotificationAsRead(item.id);
+                          setNotificationsOpen(false);
+                          navigate('/lab/store-requests');
+                        }}>
+                          <div className='flex items-start gap-2'>
+                            <span className="mt-0.5">{item.type === 'approved' ? '✅' : '❌'}</span>
+                            <div>
+                              <p className='text-sm font-medium text-[#3c4e23] dark:text-[#eef4e8] line-clamp-2'>{item.message}</p>
+                              <p className='text-[10px] mt-1 text-[#71805a] dark:text-[#c5d0b5]'>{new Date(item.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="flex gap-2 mt-2">
+                        <button onClick={() => markAllNotificationsAsRead()} className='flex-1 rounded-lg border border-[#cfd8bd] bg-transparent px-3 py-2 text-xs font-semibold text-[#556b2f] hover:bg-[#f4f6ee] dark:border-[#4e5d35] dark:text-[#c5d0b5] dark:hover:bg-[#28301f] transition-colors'>Mark all read</button>
+                        <button onClick={() => { setNotificationsOpen(false); navigate('/lab/notifications'); }} className='flex-1 rounded-lg bg-[#556b2f] px-3 py-2 text-xs font-semibold text-white hover:bg-[#6f7d45] transition-colors'>View All</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className='text-sm text-[#71805a] dark:text-[#c5d0b5]'>No store notifications.</p>
                   )
                 ) : (
                   notifications.length ? (
