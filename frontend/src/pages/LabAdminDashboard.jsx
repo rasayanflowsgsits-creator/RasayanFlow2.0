@@ -10,6 +10,7 @@ import Modal from '../components/ui/Modal';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import { parseCsv } from '../utils/csv';
+import useStoreManagerMock from '../store/storeManagerMock';
 
 const UNIT_OPTIONS = ['mg', 'g', 'kg', 'mcg', 'mL', 'L', 'uL', 'tablets', 'capsules', 'bottles', 'boxes', 'packs', 'vials', 'ampoules', 'units'];
 const getTodayDate = () => new Date().toISOString().slice(0, 10);
@@ -96,6 +97,8 @@ export default function LabAdminDashboard() {
 
   const currentLab = assignedLabs.find((lab) => String(lab.id || lab._id) === String(labId)) || store.labs.find((lab) => String(lab.id || lab._id) === String(labId));
   const pendingBorrowRequests = store.transactions.filter((tx) => tx.status === 'pending' && tx.type === 'borrow');
+  const storeRequests = useStoreManagerMock(state => state.requests);
+  const pendingStoreRequestsCount = storeRequests.filter(r => r.lab === currentLab?.name && r.status === 'Pending').length;
   const pendingExperimentRequests = pendingBorrowRequests.filter((tx) => tx.requestCategory === 'experiment');
   const pendingInventoryRequests = pendingBorrowRequests.filter((tx) => tx.requestCategory !== 'experiment');
   const students = store.users.filter((entry) => entry.role === 'student' && (!entry.labId || String(entry.labId) === String(labId)));
@@ -233,11 +236,13 @@ export default function LabAdminDashboard() {
   const inventoryHeaders = [
     { key: 'chemicalName', label: 'Chemical Name' },
     { key: 'casNumber', label: 'CAS No.' },
-    { key: 'chemicalFormula', label: 'Formula' },
-    { key: 'manufacturingCompany', label: 'Company' },
-    { key: 'costPerUnit', label: 'Cost/Unit', render: (row) => `Rs. ${Number(row.costPerUnit || 0).toFixed(2)}` },
     { key: 'quantity', label: 'Stock', render: (row) => `${row.quantity} ${row.quantityUnit || ''}`.trim() },
-    { key: 'entryDate', label: 'Entry Date', render: (row) => row.entryDate ? new Date(row.entryDate).toLocaleDateString() : 'N/A' },
+    { key: 'costPerUnit', label: 'Cost/Unit', render: (row) => `Rs. ${Number(row.costPerUnit || 0).toFixed(2)}` },
+    { key: 'source', label: 'Source', render: (row) => {
+        const isStore = row.source === 'Store Transfer';
+        return <span className={`inline-block px-2 py-1 rounded-md text-xs font-medium ${isStore ? 'bg-[#6f7d45] text-white' : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'}`}>{row.source || 'Manual Entry'}</span>
+    }},
+    { key: 'entryDate', label: 'Entry Date', render: (row) => row.entryDate ? new Date(row.entryDate).toLocaleString('en-US', { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A' },
     { key: 'actions', label: 'Actions', render: (row) => <div className='flex flex-wrap gap-2'><Button variant='outline' className='px-3 py-1 text-xs' onClick={() => openEditModal(row)}><Pencil size={14} /> Edit</Button><Button variant='outline' className='px-3 py-1 text-xs text-red-700 dark:text-red-300' onClick={() => setDeleteTarget(row)}><Trash2 size={14} /> Delete</Button></div> }
   ];
   const experimentHeaders = [
@@ -475,7 +480,7 @@ export default function LabAdminDashboard() {
 
   return <div className='space-y-6 pb-10'>
     <div className='rounded-xl border border-[#d9e1ca] bg-[#f9faef] px-4 py-3 dark:border-[#414a33] dark:bg-[#1f2419]'><div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'><div><p className='text-sm font-medium text-[#3c4e23] dark:text-[#eef4e8]'>You are admin of {assignedLabs.length} lab{assignedLabs.length > 1 ? 's' : ''}</p><p className='mt-1 text-xs text-[#71805a] dark:text-[#c5d0b5]'>Current dashboard: {currentLab?.name || 'Assigned Lab'}</p></div><div className='flex flex-wrap gap-2'>{assignedLabs.map((lab) => { const labKey = String(lab.id || lab._id); return <Button key={labKey} variant={labKey === String(labId) ? 'primary' : 'outline'} className='px-3 py-1 text-xs' onClick={() => { setSelectedLabId(labKey); localStorage.setItem('pharmlab-active-lab', labKey); }}>{lab.labName || lab.name || 'Lab'}</Button>; })}</div></div></div>
-    <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-4'><Card title='Tracked Chemicals' subtitle='Current inventory count'><p className='text-3xl font-semibold'>{store.inventory.length}</p></Card><Card title='Inventory Value' subtitle='Based on cost per unit'><p className='text-3xl font-semibold'>Rs. {totalInventoryValue.toFixed(2)}</p></Card><Card title='Experiments' subtitle='Configured for this lab'><p className='text-3xl font-semibold'>{store.experiments.length}</p></Card><Card title='Pending Requests' subtitle='All shown in borrow and transactions'><p className='text-3xl font-semibold'>{pendingBorrowRequests.length}</p></Card></div>
+    <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-4'><Card title='Tracked Chemicals' subtitle='Current inventory count'><p className='text-3xl font-semibold'>{store.inventory.length}</p></Card><Card title='Inventory Value' subtitle='Based on cost per unit'><p className='text-3xl font-semibold'>Rs. {totalInventoryValue.toFixed(2)}</p></Card><Card title='Experiments' subtitle='Configured for this lab'><p className='text-3xl font-semibold'>{store.experiments.length}</p></Card><Card title='Pending Requests' subtitle='Awaiting Store Manager approval'><p className='text-3xl font-semibold'>{pendingStoreRequestsCount}</p></Card></div>
     {!isTransactionsPage && !isAnalyticsPage ? <>
       <div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'><h2 className='text-xl font-semibold'>Chemical Inventory</h2><div className='flex flex-wrap gap-2'><Button variant='outline' onClick={downloadInventoryImportTemplate}><FileDown size={16} /> Template CSV</Button><Button variant='outline' onClick={() => setImportOpen(true)}><Upload size={16} /> Bulk Import</Button><Button variant='outline' onClick={() => setCreateOpen(true)}><Plus size={16} /> Add Chemical</Button></div></div>
       <Table headers={inventoryHeaders} rows={store.inventory.map((item) => ({ ...item, highlight: Number(item.quantity || 0) <= Number(item.minThreshold || 0) }))} />

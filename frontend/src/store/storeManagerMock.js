@@ -453,7 +453,11 @@ const useStoreManagerMock = create(
                 useAppStore.setState({
                   inventory: labInv.map(item => 
                     item.id === existingItem.id 
-                      ? { ...item, quantity: Number(item.quantity) + Number(request.quantity) }
+                      ? { 
+                          ...item, 
+                          quantity: Number(item.quantity) + Number(request.quantity),
+                          entryDate: new Date().toISOString()
+                        }
                       : item
                   )
                 });
@@ -466,10 +470,11 @@ const useStoreManagerMock = create(
                   casNumber: request.casNumber || chemicalInfo['CAS Number'] || '',
                   quantity: Number(request.quantity),
                   quantityUnit: request.unit,
-                  costPerUnit: chemicalInfo['Unit Price (INR)'] || 0,
-                  manufacturingCompany: chemicalInfo['Supplier'] || chemicalInfo['Company'] || '',
+                  costPerUnit: Number(chemicalInfo['Unit Price (INR)'] || 0),
                   entryDate: new Date().toISOString(),
                   source: "Store Transfer",
+                  approvedBy: "Store Manager",
+                  requestId: request.id,
                   status: "In Stock"
                 };
                 useAppStore.setState({ inventory: [newItem, ...labInv] });
