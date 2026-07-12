@@ -148,6 +148,12 @@ app.use("/teams", require("./routes/teamRoutes"));
 app.use("/users", require("./routes/userRoutes"));
 app.use("/logs", require("./routes/logRoutes"));
 
+// New Store Backend Routes
+app.use("/api/store", require("./routes/storeInventoryRoutes"));
+app.use("/api/store", require("./routes/storeRequestRoutes"));
+app.use("/api/store", require("./routes/storeHistoryRoutes"));
+app.use("/api/notifications", require("./routes/notificationRoutes"));
+
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;

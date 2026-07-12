@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const logger = require("../utils/logger");
+const User = require("../models/User");
 
 let ioInstance = null;
 
@@ -29,6 +30,17 @@ const socketHandler = (io) => {
 
   io.on("connection", (socket) => {
     logger.info(`Socket connected: ${socket.id}`);
+
+    if (socket.userId) {
+      User.findById(socket.userId).then(user => {
+        if (user && user.labId) {
+          socket.join(user.labId.toString());
+          logger.info(`Socket ${socket.id} joined lab room: ${user.labId}`);
+        }
+      }).catch(err => {
+        logger.error(`Error fetching user for socket lab join: ${err.message}`);
+      });
+    }
 
     socket.on("disconnect", () => {
       logger.info(`Socket disconnected: ${socket.id}`);
