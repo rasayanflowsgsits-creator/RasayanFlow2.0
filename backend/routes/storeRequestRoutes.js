@@ -12,17 +12,17 @@ const {
 
 router.use(authMiddleware);
 
-router.route('/requests')
+router.route('/')
   .post(roleMiddleware(['labAdmin', 'superAdmin']), createRequest)
   .get(roleMiddleware(['storeAdmin', 'store_admin', 'superAdmin']), getAllRequests);
 
-router.route('/requests/my')
+router.route('/my')
   .get(roleMiddleware(['labAdmin', 'superAdmin']), getMyRequests);
 
-router.route('/requests/:id/approve')
+router.route('/:id/approve')
   .put(roleMiddleware(['storeAdmin', 'store_admin', 'superAdmin']), approveRequest);
 
-router.route('/requests/:id/reject')
+router.route('/:id/reject')
   .put(roleMiddleware(['storeAdmin', 'store_admin', 'superAdmin']), rejectRequest);
 
 module.exports = router;

@@ -6,7 +6,7 @@ const { getHistory } = require('../controllers/storeHistoryController');
 
 router.use(authMiddleware);
 
-router.route('/history')
+router.route('/')
   .get(roleMiddleware(['storeAdmin', 'store_admin', 'superAdmin']), getHistory);
 
 module.exports = router;
