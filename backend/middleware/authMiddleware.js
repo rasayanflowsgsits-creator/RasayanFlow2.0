@@ -68,7 +68,7 @@ const authMiddleware = asyncHandler(async (req, res, next) => {
 
   await ensureConfiguredSuperAdmin(user);
 
-  const requiresApproval = ['labAdmin', 'storeAdmin'].includes(user.role);
+  const requiresApproval = ['labAdmin', 'storeAdmin', 'store_admin'].includes(user.role);
 
   if (requiresApproval && (!SUPER_ADMIN_EMAIL || user.email.toLowerCase() !== SUPER_ADMIN_EMAIL) && !user.isApproved) {
     res.status(403);

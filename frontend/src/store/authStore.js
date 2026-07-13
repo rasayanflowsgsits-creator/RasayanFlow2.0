@@ -23,6 +23,7 @@ const normalizeRole = (role) => {
   if (role === 'superAdmin') return 'super-admin';
   if (role === 'labAdmin') return 'lab-admin';
   if (role === 'storeAdmin') return 'store-admin';
+  if (role === 'store_admin') return 'store-admin';
   return role || 'student';
 };
 
