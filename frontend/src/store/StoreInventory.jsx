@@ -12,6 +12,8 @@ import useAppStore from './appStore';
 import StoreImportModal from './StoreImportModal';
 import StoreLayout from './StoreLayout';
 import useStoreManagerMock, { formatQuantity, getChemicalStatus, SHEET_IMPORT_HEADERS } from './storeManagerMock';
+import api from '../services/api';
+import { toFrontendChemical, toBackendChemical } from '../utils/storeMapper';
 
 const EMPTY_CHEMICAL = SHEET_IMPORT_HEADERS.reduce((acc, header) => {
   acc[header] = '';
@@ -45,10 +47,9 @@ function SectionHeading({ title }) {
 
 
 export default function StoreInventory() {
-  const chemicals = useStoreManagerMock((state) => state.chemicals);
-  const addChemical = useStoreManagerMock((state) => state.addChemical);
-  const updateChemical = useStoreManagerMock((state) => state.updateChemical);
-  const deleteChemical = useStoreManagerMock((state) => state.deleteChemical);
+  const [chemicals, setChemicals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
   const setToast = useAppStore((state) => state.setToast);
 
   const [addOpen, setAddOpen] = useState(false);
@@ -58,7 +59,24 @@ export default function StoreInventory() {
   const [viewTarget, setViewTarget] = useState(null);
   const [activeTab, setActiveTab] = useState('details');
   const [chemicalForm, setChemicalForm] = useState(EMPTY_CHEMICAL);
-  const trackingLogs = useStoreManagerMock((state) => state.trackingLogs);
+  // Tracking history could be fetched separately, for now we will just show empty or mock
+  const trackingLogs = []; // Placeholder or you could fetch it if a history endpoint exists
+
+  const fetchInventory = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/store/inventory');
+      setChemicals((res.data || []).map(toFrontendChemical));
+    } catch (err) {
+      setToast({ type: 'error', message: 'Failed to fetch inventory.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchInventory();
+  }, []);
 
   const rows = useMemo(() => chemicals.map((chemical) => ({ ...chemical })), [chemicals]);
 
@@ -80,29 +98,47 @@ export default function StoreInventory() {
     return true;
   };
 
-  const saveChemical = () => {
+  const saveChemical = async () => {
     if (!validateForm(chemicalForm)) return;
-    addChemical(chemicalForm);
-    setToast({ type: 'success', message: `${chemicalForm['Chemical Name'].trim()} added to inventory.` });
-    closeAdd();
+    try {
+      // For create, we use import API endpoint since there is no single POST
+      const backendChem = toBackendChemical(chemicalForm);
+      await api.post('/store/inventory/import', [backendChem]);
+      setToast({ type: 'success', message: `${chemicalForm['Chemical Name'].trim()} added to inventory.` });
+      closeAdd();
+      fetchInventory();
+    } catch (err) {
+      setToast({ type: 'error', message: 'Failed to add chemical.' });
+    }
   };
 
   const openEdit = (chemical) => {
     setEditTarget({ ...EMPTY_CHEMICAL, ...chemical });
   };
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!validateForm(editTarget)) return;
-    updateChemical(editTarget.id, editTarget);
-    setToast({ type: 'success', message: `${editTarget['Chemical Name']} updated.` });
-    setEditTarget(null);
+    try {
+      const backendChem = toBackendChemical(editTarget);
+      await api.put(`/store/inventory/${editTarget.id}`, backendChem);
+      setToast({ type: 'success', message: `${editTarget['Chemical Name']} updated.` });
+      setEditTarget(null);
+      fetchInventory();
+    } catch (err) {
+      setToast({ type: 'error', message: 'Failed to update chemical.' });
+    }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteTarget) return;
-    deleteChemical(deleteTarget.id);
-    setToast({ type: 'success', message: `${deleteTarget['Chemical Name']} removed from inventory.` });
-    setDeleteTarget(null);
+    try {
+      await api.delete(`/store/inventory/${deleteTarget.id}`);
+      setToast({ type: 'success', message: `${deleteTarget['Chemical Name']} removed from inventory.` });
+      setDeleteTarget(null);
+      fetchInventory();
+    } catch (err) {
+      setToast({ type: 'error', message: 'Failed to delete chemical.' });
+    }
   };
 
   const headers = [
@@ -319,15 +355,19 @@ export default function StoreInventory() {
             }
           `}</style>
           <div className="overflow-x-auto w-full">
-            <Table 
-              headers={headers} 
-              rows={rows} 
-            />
+            {loading ? (
+              <div className="flex justify-center p-8"><span className="text-[#556b2f]">Loading inventory...</span></div>
+            ) : (
+              <Table 
+                headers={headers} 
+                rows={rows} 
+              />
+            )}
           </div>
         </div>
       </Card>
 
-      <StoreImportModal open={sheetImportOpen} onClose={() => setSheetImportOpen(false)} />
+      <StoreImportModal open={sheetImportOpen} onClose={() => { setSheetImportOpen(false); fetchInventory(); }} />
 
       <Modal open={addOpen} onClose={closeAdd} title='Add Chemical' panelClassName='max-w-3xl'>
         <div className='space-y-4'>

@@ -1,19 +1,38 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search, Plus, Filter, FileText, CheckCircle2, Clock, XCircle, FileDown, Eye } from 'lucide-react';
 import useAuthStore from '../store/authStore';
-import useStoreManagerMock from '../store/storeManagerMock';
+import api from '../services/api';
+import useAppStore from '../store/appStore';
+import { toFrontendRequest } from '../utils/storeMapper';
 
 export default function LabStoreRequests() {
   const user = useAuthStore((state) => state.user);
   const labName = user?.labName || 'harsh lab';
   
-  const requests = useStoreManagerMock((state) => state.requests);
-  const createStoreRequest = useStoreManagerMock((state) => state.createStoreRequest);
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const setToast = useAppStore((state) => state.setToast);
   
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [previewReceipt, setPreviewReceipt] = useState(null);
+
+  const fetchRequests = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/store/requests/my');
+      setRequests((res.data || []).map(toFrontendRequest));
+    } catch (err) {
+      setToast({ type: 'error', message: 'Failed to fetch requests' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRequests();
+  }, []);
 
   // New Request Form State
   const [formData, setFormData] = useState({
@@ -41,24 +60,26 @@ export default function LabStoreRequests() {
     { label: 'Rejected', value: labRequests.filter(r => r.status === 'Rejected').length, icon: XCircle, color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-900/30' }
   ];
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if(!formData.chemicalName || !formData.quantity) return;
 
-    createStoreRequest({
-      id: `REQ-${Date.now()}`,
-      lab: labName,
-      chemicalName: formData.chemicalName,
-      casNumber: formData.casNumber,
-      quantity: Number(formData.quantity),
-      unit: formData.unit,
-      status: 'Pending',
-      reason: formData.reason,
-      date: new Date().toISOString()
-    });
-
-    setIsModalOpen(false);
-    setFormData({ chemicalName: '', casNumber: '', quantity: '', unit: 'ml', reason: '' });
+    try {
+      await api.post('/store/requests', {
+        chemicalName: formData.chemicalName,
+        casNumber: formData.casNumber,
+        quantityRequested: Number(formData.quantity),
+        unit: formData.unit,
+        reason: formData.reason,
+        labName: labName
+      });
+      setToast({ type: 'success', message: 'Request submitted successfully' });
+      setIsModalOpen(false);
+      setFormData({ chemicalName: '', casNumber: '', quantity: '', unit: 'ml', reason: '' });
+      fetchRequests();
+    } catch (err) {
+      setToast({ type: 'error', message: 'Failed to submit request' });
+    }
   };
 
   return (

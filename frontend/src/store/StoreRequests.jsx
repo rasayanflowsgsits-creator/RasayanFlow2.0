@@ -6,9 +6,12 @@ import Table from '../components/ui/Table';
 import Modal from '../components/ui/Modal';
 import useAppStore from './appStore';
 import StoreLayout from './StoreLayout';
-import useStoreManagerMock, { formatQuantity, parsePackSize } from './storeManagerMock';
+import { formatQuantity, parsePackSize } from './storeManagerMock';
 import { generateReceiptPDF } from '../utils/pdfGenerator';
 import ReceiptPreviewModal from './ReceiptPreviewModal';
+import api from '../services/api';
+import { toFrontendRequest, toFrontendChemical, toFrontendHistory } from '../utils/storeMapper';
+import { useEffect } from 'react';
 
 const filters = ['All', 'Pending', 'Approved', 'Rejected'];
 
@@ -23,10 +26,11 @@ function toCsvCell(value) {
 }
 
 export default function StoreRequests() {
-  const requests = useStoreManagerMock((state) => state.requests);
-  const chemicals = useStoreManagerMock((state) => state.chemicals);
-  const history = useStoreManagerMock((state) => state.history);
-  const reviewRequest = useStoreManagerMock((state) => state.reviewRequest);
+  const [requests, setRequests] = useState([]);
+  const [chemicals, setChemicals] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const setToast = useAppStore((state) => state.setToast);
   
   const [activeFilter, setActiveFilter] = useState('All');
@@ -35,6 +39,28 @@ export default function StoreRequests() {
   const [rejectTarget, setRejectTarget] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [previewData, setPreviewData] = useState(null);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [reqsRes, chemRes, histRes] = await Promise.all([
+        api.get('/store/requests'),
+        api.get('/store/inventory'),
+        api.get('/store/history')
+      ]);
+      setRequests((reqsRes.data || []).map(toFrontendRequest));
+      setChemicals((chemRes.data || []).map(toFrontendChemical));
+      setHistory((histRes.data || []).map(toFrontendHistory));
+    } catch (err) {
+      setToast({ type: 'error', message: 'Failed to fetch data' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const rows = useMemo(() => {
     return requests
@@ -81,26 +107,34 @@ export default function StoreRequests() {
     };
   }
 
-  const confirmApprove = () => {
+  const confirmApprove = async () => {
     if (!approveTarget) return;
-    const request = reviewRequest(approveTarget.id, 'Approved');
-    if (request && approveData) {
-      setToast({ 
-        type: 'success', 
-        message: `Approved! ${request.chemicalName}: ${approveTarget.currentStock} UNT \u2192 ${approveData.newUNT} UNT` 
-      });
+    try {
+      await api.put(`/store/requests/${approveTarget.id}/approve`);
+      if (approveData) {
+        setToast({ 
+          type: 'success', 
+          message: `Approved! ${approveTarget.chemicalName}: ${approveTarget.currentStock} UNT \u2192 ${approveData.newUNT} UNT` 
+        });
+      }
+      setApproveTarget(null);
+      fetchData();
+    } catch (err) {
+      setToast({ type: 'error', message: err.response?.data?.message || 'Failed to approve request' });
     }
-    setApproveTarget(null);
   };
 
-  const confirmReject = () => {
+  const confirmReject = async () => {
     if (!rejectTarget) return;
-    const request = reviewRequest(rejectTarget.id, 'Rejected', rejectReason);
-    if (request) {
+    try {
+      await api.put(`/store/requests/${rejectTarget.id}/reject`, { reason: rejectReason });
       setToast({ type: 'warning', message: `Request rejected` });
+      setRejectTarget(null);
+      setRejectReason('');
+      fetchData();
+    } catch (err) {
+      setToast({ type: 'error', message: err.response?.data?.message || 'Failed to reject request' });
     }
-    setRejectTarget(null);
-    setRejectReason('');
   };
 
   const headers = [
@@ -203,8 +237,12 @@ export default function StoreRequests() {
             </Button>
           ))}
         </div>
-        <div className="overflow-x-auto border border-[#e3e9d8] dark:border-[#343b2b] rounded-lg">
-          <Table headers={headers} rows={rows} />
+        <div className="overflow-x-auto border border-[#e3e9d8] dark:border-[#343b2b] rounded-lg w-full">
+          {loading ? (
+            <div className="flex justify-center p-8"><span className="text-[#556b2f]">Loading requests...</span></div>
+          ) : (
+            <Table headers={headers} rows={rows} />
+          )}
         </div>
       </Card>
 
