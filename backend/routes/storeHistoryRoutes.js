@@ -1,9 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { protect, authorize } = require('../middleware/authMiddleware');
+const authMiddleware = require('../middleware/authMiddleware');
+const roleMiddleware = require('../middleware/roleMiddleware');
 const { getHistory } = require('../controllers/storeHistoryController');
 
+router.use(authMiddleware);
+
 router.route('/history')
-  .get(protect, authorize('store-admin', 'super-admin'), getHistory);
+  .get(roleMiddleware(['storeAdmin', 'superAdmin']), getHistory);
 
 module.exports = router;

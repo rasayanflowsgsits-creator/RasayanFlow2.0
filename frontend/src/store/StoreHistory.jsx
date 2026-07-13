@@ -5,20 +5,48 @@ import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Table from '../components/ui/Table';
 import StoreLayout from './StoreLayout';
-import useStoreManagerMock from './storeManagerMock';
 import { generateReceiptPDF } from '../utils/pdfGenerator';
 import ReceiptPreviewModal from './ReceiptPreviewModal';
+import api from '../services/api';
+import { toFrontendHistory, toFrontendChemical, toFrontendRequest } from '../utils/storeMapper';
+import { useEffect } from 'react';
+import useAppStore from './appStore';
 
 function toCsvCell(value) {
   return `"${String(value ?? '').replaceAll('"', '""')}"`;
 }
 
 export default function StoreHistory() {
-  const history = useStoreManagerMock((state) => state.history);
-  const chemicals = useStoreManagerMock((state) => state.chemicals);
-  const requests = useStoreManagerMock((state) => state.requests);
+  const [history, setHistory] = useState([]);
+  const [chemicals, setChemicals] = useState([]);
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const setToast = useAppStore((state) => state.setToast);
+  
   const [search, setSearch] = useState('');
   const [previewData, setPreviewData] = useState(null);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [histRes, chemRes, reqsRes] = await Promise.all([
+        api.get('/store/history'),
+        api.get('/store/inventory'),
+        api.get('/store/requests')
+      ]);
+      setHistory((histRes.data || []).map(toFrontendHistory));
+      setChemicals((chemRes.data || []).map(toFrontendChemical));
+      setRequests((reqsRes.data || []).map(toFrontendRequest));
+    } catch (err) {
+      setToast({ type: 'error', message: 'Failed to fetch history data' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const rows = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -136,7 +164,11 @@ export default function StoreHistory() {
           <style>{`
             table th, table td { white-space: nowrap; }
           `}</style>
-          <Table headers={headers} rows={rows} />
+          {loading ? (
+            <div className="flex justify-center p-8"><span className="text-[#556b2f]">Loading history...</span></div>
+          ) : (
+            <Table headers={headers} rows={rows} />
+          )}
         </div>
       </Card>
       

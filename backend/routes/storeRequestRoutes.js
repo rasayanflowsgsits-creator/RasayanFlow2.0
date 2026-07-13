@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { protect, authorize } = require('../middleware/authMiddleware');
+const authMiddleware = require('../middleware/authMiddleware');
+const roleMiddleware = require('../middleware/roleMiddleware');
 const {
   createRequest,
   getAllRequests,
@@ -9,17 +10,19 @@ const {
   rejectRequest
 } = require('../controllers/storeRequestController');
 
+router.use(authMiddleware);
+
 router.route('/requests')
-  .post(protect, authorize('lab-admin', 'super-admin'), createRequest)
-  .get(protect, authorize('store-admin', 'super-admin'), getAllRequests);
+  .post(roleMiddleware(['labAdmin', 'superAdmin']), createRequest)
+  .get(roleMiddleware(['storeAdmin', 'superAdmin']), getAllRequests);
 
 router.route('/requests/my')
-  .get(protect, authorize('lab-admin', 'super-admin'), getMyRequests);
+  .get(roleMiddleware(['labAdmin', 'superAdmin']), getMyRequests);
 
 router.route('/requests/:id/approve')
-  .put(protect, authorize('store-admin', 'super-admin'), approveRequest);
+  .put(roleMiddleware(['storeAdmin', 'superAdmin']), approveRequest);
 
 router.route('/requests/:id/reject')
-  .put(protect, authorize('store-admin', 'super-admin'), rejectRequest);
+  .put(roleMiddleware(['storeAdmin', 'superAdmin']), rejectRequest);
 
 module.exports = router;

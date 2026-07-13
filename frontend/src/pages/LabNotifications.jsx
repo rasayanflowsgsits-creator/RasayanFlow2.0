@@ -1,21 +1,64 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Bell, CheckCircle2, XCircle, Trash2, Check, Filter } from 'lucide-react';
-import useStoreManagerMock from '../store/storeManagerMock';
+import api from '../services/api';
+import socket from '../services/socket';
+import useAppStore from '../store/appStore';
 
 export default function LabNotifications() {
-  const notificationsState = useStoreManagerMock((state) => state.notifications);
-  const markNotificationAsRead = useStoreManagerMock((state) => state.markNotificationAsRead);
-  const markAllNotificationsAsRead = useStoreManagerMock((state) => state.markAllNotificationsAsRead);
-  
+  const [notifications, setNotifications] = useState([]);
   const [filter, setFilter] = useState('All');
+  const setToast = useAppStore((state) => state.setToast);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await api.get('/notifications');
+      setNotifications(res.data || []);
+    } catch (err) {
+      setToast({ type: 'error', message: 'Failed to fetch notifications' });
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+
+    const handleNewNotification = () => {
+      fetchNotifications();
+    };
+
+    socket.on('request-approved', handleNewNotification);
+    socket.on('request-rejected', handleNewNotification);
+
+    return () => {
+      socket.off('request-approved', handleNewNotification);
+      socket.off('request-rejected', handleNewNotification);
+    };
+  }, []);
+
+  const markNotificationAsRead = async (id) => {
+    try {
+      await api.put(`/notifications/${id}/read`);
+      setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
+    } catch (err) {
+      setToast({ type: 'error', message: 'Failed to mark notification as read' });
+    }
+  };
+
+  const markAllNotificationsAsRead = async () => {
+    try {
+      await api.put('/notifications/read-all');
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch (err) {
+      setToast({ type: 'error', message: 'Failed to mark all as read' });
+    }
+  };
   
   const filteredNotifications = useMemo(() => {
-    return notificationsState.filter(n => {
+    return notifications.filter(n => {
       if (filter === 'Unread') return !n.isRead;
       if (filter === 'Read') return n.isRead;
       return true;
     });
-  }, [notificationsState, filter]);
+  }, [notifications, filter]);
 
   return (
     <div className="space-y-6">
@@ -28,7 +71,7 @@ export default function LabNotifications() {
         </div>
         <button 
           onClick={markAllNotificationsAsRead}
-          disabled={notificationsState.every(n => n.isRead)}
+          disabled={notifications.every(n => n.isRead)}
           className="flex items-center gap-2 bg-[#f4f5eb] text-[#556b2f] border border-[#cfd8bd] px-4 py-2 rounded-lg hover:bg-[#e8efd9] transition-colors disabled:opacity-50 disabled:cursor-not-allowed dark:bg-[#28301f] dark:border-[#4e5d35] dark:text-[#c5d0b5] dark:hover:bg-[#313a26]"
         >
           <Check size={18} /> Mark all as read
@@ -75,7 +118,7 @@ export default function LabNotifications() {
                   
                   {!notif.isRead && (
                     <button 
-                      onClick={() => markNotificationAsRead(notif.id)}
+                      onClick={() => markNotificationAsRead(notif._id)}
                       className="mt-3 text-xs font-semibold text-[#556b2f] hover:text-[#3c4e23] dark:text-[#8b9874] dark:hover:text-[#c5d0b5] transition-colors"
                     >
                       Mark as read

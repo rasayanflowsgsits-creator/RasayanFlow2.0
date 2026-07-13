@@ -7,12 +7,13 @@ const StoreNotification = require('../models/StoreNotification');
 const { getNextReceiptNumber } = require('../utils/receiptCounter');
 const { getIo } = require('../sockets');
 
+const Inventory = require('../models/Inventory');
+
 const createRequest = asyncHandler(async (req, res) => {
   const requestData = req.body;
   
   const timestamp = Date.now();
   requestData.requestId = `REQ-${timestamp}`;
-  // For lab_admin, labId might be attached to req.user
   requestData.labId = req.user.labId; 
   
   const newRequest = await StoreRequest.create(requestData);
@@ -52,7 +53,6 @@ const approveRequest = asyncHandler(async (req, res) => {
     const packSize = parseFloat(chemical.packSize) || 1;
     const availableQty = chemical.availableQty || 0;
     
-    // totalBase = availableQty × packSize, subtract requestedQty, newAvailableQty = result ÷ packSize
     const totalBase = availableQty * packSize;
     if (totalBase < request.quantityRequested) {
       throw new Error("Insufficient stock");
@@ -73,6 +73,35 @@ const approveRequest = asyncHandler(async (req, res) => {
     chemical.totalValue = chemical.availableQty * (chemical.unitPrice || 0);
     chemical.updatedAt = Date.now();
     await chemical.save({ session });
+
+    // Update Lab Inventory automatically
+    if (request.labId) {
+      let labInventory = await Inventory.findOne({ labId: request.labId, chemicalName: chemical.name }).session(session);
+      if (labInventory) {
+        labInventory.quantity += request.quantityRequested;
+        labInventory.entryDate = Date.now();
+        labInventory.lastUpdated = Date.now();
+        await labInventory.save({ session });
+      } else {
+        await Inventory.create([{
+          labId: request.labId,
+          itemCode: `CHEM-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          itemName: chemical.name,
+          chemicalName: chemical.name,
+          category: chemical.grade || 'General',
+          quantity: request.quantityRequested,
+          quantityUnit: request.unit,
+          costPerUnit: chemical.unitPrice || 0,
+          minThreshold: 0,
+          casNumber: chemical.cas || '',
+          smiles: chemical.smiles || '',
+          inchi: chemical.inchiKey || '',
+          chemicalFormula: chemical.formula || '',
+          manufacturingCompany: chemical.supplier || '',
+          entryDate: Date.now()
+        }], { session });
+      }
+    }
 
     request.status = "Approved";
     request.approvedBy = req.user._id;
@@ -114,7 +143,9 @@ const approveRequest = asyncHandler(async (req, res) => {
     session.endSession();
 
     const io = getIo();
-    io.to(request.labId.toString()).emit('request-approved', request);
+    if (request.labId) {
+      io.to(request.labId.toString()).emit('request-approved', request);
+    }
     if (chemical.status === 'Low Stock' || chemical.status === 'Out of Stock') {
        io.emit('low-stock-alert', chemical);
     }
@@ -172,7 +203,9 @@ const rejectRequest = asyncHandler(async (req, res) => {
   });
 
   const io = getIo();
-  io.to(request.labId.toString()).emit('request-rejected', request);
+  if (request.labId) {
+    io.to(request.labId.toString()).emit('request-rejected', request);
+  }
 
   res.status(200).json(request);
 });

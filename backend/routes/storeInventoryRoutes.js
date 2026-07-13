@@ -1,23 +1,26 @@
 const express = require('express');
 const router = express.Router();
-const { protect, authorize } = require('../middleware/authMiddleware');
+const authMiddleware = require('../middleware/authMiddleware');
+const roleMiddleware = require('../middleware/roleMiddleware');
 const {
-  getAllChemicals,
-  importChemicals,
-  updateChemical,
-  deleteChemical
+  getInventory,
+  addInventory,
+  updateInventory,
+  deleteInventory,
+  bulkImport
 } = require('../controllers/storeInventoryController');
 
-// Any logged in user can view the store inventory
-router.route('/inventory')
-  .get(protect, getAllChemicals);
+router.use(authMiddleware);
 
-// Store Admin only routes
+router.route('/inventory')
+  .get(roleMiddleware(['storeAdmin', 'superAdmin', 'labAdmin']), getInventory)
+  .post(roleMiddleware(['storeAdmin', 'superAdmin']), addInventory);
+
 router.route('/inventory/import')
-  .post(protect, authorize('store-admin', 'super-admin'), importChemicals);
+  .post(roleMiddleware(['storeAdmin', 'superAdmin']), bulkImport);
 
 router.route('/inventory/:id')
-  .put(protect, authorize('store-admin', 'super-admin'), updateChemical)
-  .delete(protect, authorize('store-admin', 'super-admin'), deleteChemical);
+  .put(roleMiddleware(['storeAdmin', 'superAdmin']), updateInventory)
+  .delete(roleMiddleware(['storeAdmin', 'superAdmin']), deleteInventory);
 
 module.exports = router;

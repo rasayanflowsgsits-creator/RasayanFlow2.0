@@ -180,22 +180,31 @@ export default function StoreImportModal({ open, onClose }) {
     await parseExcelFile(file);
   };
 
-  const confirmImport = (mode) => {
+  const confirmImport = async (mode) => {
     const chemicals = validRows.map((row, index) => mapSheetRowToChemical(row.record, index));
     if (!chemicals.length) {
       setToast({ type: 'error', message: 'No valid chemicals ready to import.' });
       return;
     }
 
-    const { added, updated } = addChemicals(chemicals, mode);
-    setToast({ 
-      type: 'success', 
-      message: `Import complete:
-${added} chemicals added,
-${updated} chemicals updated,
+    try {
+      // Map to backend keys before sending
+      const { toBackendChemical } = await import('../utils/storeMapper');
+      const backendChemicals = chemicals.map(toBackendChemical);
+      
+      const { data } = await (await import('../services/api')).default.post('/store/inventory/import', backendChemicals);
+      
+      setToast({ 
+        type: 'success', 
+        message: `Import complete:
+${data.added} chemicals added,
+${data.updated} chemicals updated,
 ${invalidRows.length} rows skipped (missing Chemical ID)` 
-    });
-    closeModal();
+      });
+      closeModal();
+    } catch (error) {
+      setToast({ type: 'error', message: 'Import failed. Please try again.' });
+    }
   };
 
   return (
