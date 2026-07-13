@@ -3,24 +3,22 @@ const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
 const {
-  getInventory,
-  addInventory,
-  updateInventory,
-  deleteInventory,
-  bulkImport
+  getAllChemicals,
+  importChemicals,
+  updateChemical,
+  deleteChemical
 } = require('../controllers/storeInventoryController');
 
 router.use(authMiddleware);
 
 router.route('/inventory')
-  .get(roleMiddleware(['storeAdmin', 'superAdmin', 'labAdmin']), getInventory)
-  .post(roleMiddleware(['storeAdmin', 'superAdmin']), addInventory);
+  .get(roleMiddleware(['storeAdmin', 'superAdmin', 'labAdmin']), getAllChemicals);
 
 router.route('/inventory/import')
-  .post(roleMiddleware(['storeAdmin', 'superAdmin']), bulkImport);
+  .post(roleMiddleware(['storeAdmin', 'superAdmin']), importChemicals);
 
 router.route('/inventory/:id')
-  .put(roleMiddleware(['storeAdmin', 'superAdmin']), updateInventory)
-  .delete(roleMiddleware(['storeAdmin', 'superAdmin']), deleteInventory);
+  .put(roleMiddleware(['storeAdmin', 'superAdmin']), updateChemical)
+  .delete(roleMiddleware(['storeAdmin', 'superAdmin']), deleteChemical);
 
 module.exports = router;
