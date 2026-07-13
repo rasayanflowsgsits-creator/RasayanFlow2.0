@@ -3,11 +3,52 @@ const asyncHandler = require('express-async-handler');
 const StoreRequest = require('../models/StoreRequest');
 const StoreInventory = require('../models/StoreInventory');
 const StoreHistory = require('../models/StoreHistory');
+const StoreTracking = require('../models/StoreTracking');
 const StoreNotification = require('../models/StoreNotification');
 const { getNextReceiptNumber } = require('../utils/receiptCounter');
 const { getIo } = require('../sockets');
 
 const Inventory = require('../models/Inventory');
+
+const calculateStatus = (qty, reorderLevel) => {
+  if (qty <= 0) return 'Out of Stock';
+  if (qty <= (reorderLevel || 2)) return 'Low Stock';
+  return 'In Stock';
+};
+
+const calcTotalChemical = (qty, packSizeStr) => {
+  if (!packSizeStr) return '--';
+  const str = String(packSizeStr).trim();
+  if (str.toUpperCase().includes('UNT')) return str;
+  const match = str.match(/^([\d.]+)\s*(.*)$/);
+  if (match) {
+    const num = Number(match[1]);
+    const unit = match[2].trim();
+    if (Number.isFinite(num)) return `${qty * num} ${unit}`;
+  }
+  return str;
+};
+
+const buildTrackingLog = (chemical, updateType, previousQty, previousPrice, newQty, newPrice) => ({
+  chemicalId: chemical.chemicalId,
+  chemicalName: chemical.name,
+  casNumber: chemical.cas || '',
+  formula: chemical.formula || '',
+  smiles: chemical.smiles || '',
+  grade: chemical.grade || '',
+  packSize: chemical.packSize || '',
+  updateType,
+  previousQty,
+  newQty,
+  qtyChange: newQty - previousQty,
+  previousPrice,
+  newPrice,
+  totalChemical: calcTotalChemical(newQty, chemical.packSize),
+  totalPrice: newQty * newPrice,
+  totalValue: newQty * newPrice,
+  status: calculateStatus(newQty, chemical.reorderLevel),
+  snapshot: typeof chemical.toObject === 'function' ? chemical.toObject() : chemical,
+});
 
 const createRequest = asyncHandler(async (req, res) => {
   const requestData = req.body;
@@ -63,6 +104,7 @@ const approveRequest = asyncHandler(async (req, res) => {
     
     const qtyBefore = chemical.availableQty;
     const valueBefore = chemical.totalValue;
+    const priceBefore = chemical.unitPrice || 0;
 
     chemical.availableQty = newAvailableQty;
     const reorderLevel = chemical.reorderLevel || 2;
@@ -73,6 +115,15 @@ const approveRequest = asyncHandler(async (req, res) => {
     chemical.totalValue = chemical.availableQty * (chemical.unitPrice || 0);
     chemical.updatedAt = Date.now();
     await chemical.save({ session });
+
+    await StoreTracking.create([buildTrackingLog(
+      chemical,
+      'Issued to Lab',
+      qtyBefore || 0,
+      priceBefore,
+      chemical.availableQty || 0,
+      chemical.unitPrice || 0
+    )], { session });
 
     // Update Lab Inventory automatically
     if (request.labId) {

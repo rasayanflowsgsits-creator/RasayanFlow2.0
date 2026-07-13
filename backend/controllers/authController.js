@@ -118,7 +118,7 @@ const login = asyncHandler(async (req, res) => {
     throw new Error('Account is blocked. Please contact an administrator.');
   }
 
-  const requiresApproval = ['labAdmin', 'storeAdmin'].includes(user.role);
+  const requiresApproval = ['labAdmin', 'storeAdmin', 'store_admin'].includes(user.role);
 
   if (requiresApproval && (!SUPER_ADMIN_EMAIL || user.email.toLowerCase() !== SUPER_ADMIN_EMAIL) && !user.isApproved) {
     res.status(403);
@@ -211,7 +211,7 @@ const refreshToken = asyncHandler(async (req, res) => {
     throw new Error('Account is blocked. Please contact an administrator.');
   }
 
-  const requiresApproval = ['labAdmin', 'storeAdmin'].includes(user.role);
+  const requiresApproval = ['labAdmin', 'storeAdmin', 'store_admin'].includes(user.role);
   if (requiresApproval && (!SUPER_ADMIN_EMAIL || user.email.toLowerCase() !== SUPER_ADMIN_EMAIL) && !user.isApproved) {
     res.status(403);
     throw new Error('Account not approved yet');

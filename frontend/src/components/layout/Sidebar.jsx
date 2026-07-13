@@ -57,6 +57,7 @@ const linksMap = {
 export default function Sidebar({ collapsed }) {
   const user = useAuthStore((state) => state.user);
   const role = user?.role || "student";
+  const navRole = role === "store-admin" ? "store_admin" : role;
   
   const chemicals = useStoreManagerMock((state) => state.chemicals);
   const requests = useStoreManagerMock((state) => state.requests);
@@ -111,7 +112,7 @@ export default function Sidebar({ collapsed }) {
       </div>
 
       <nav className="space-y-1">
-        {linksMap[role]?.map((item) => {
+        {linksMap[navRole]?.map((item) => {
           const Icon = item.icon;
           return (
             <NavLink
