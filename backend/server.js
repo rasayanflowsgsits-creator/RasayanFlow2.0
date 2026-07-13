@@ -122,8 +122,9 @@ app.use(cors(corsOptions));
 // This ensures OPTIONS requests are handled before hitting rate limiter or other middleware
 app.options("*", cors(corsOptions));
 
-// Body parser with size limit to mitigate large payload attacks
-app.use(express.json({ limit: '10kb' }));
+// Body parser with size limit to mitigate large payload attacks but allow bulk imports
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Input sanitization to prevent NoSQL injection and XSS
 app.use(mongoSanitize());
