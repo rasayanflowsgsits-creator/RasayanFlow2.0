@@ -14,8 +14,7 @@ const storeInventorySchema = new mongoose.Schema({
   batchNumber: { type: String },
   invoiceNumber: { type: String },
   grade: {
-    type: String,
-    enum: ["LR", "AR", "EP"]
+    type: String
   },
   packSize: { type: String },
   unit: { type: String },

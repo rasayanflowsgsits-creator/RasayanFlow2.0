@@ -25,42 +25,48 @@ const importChemicals = asyncHandler(async (req, res) => {
   for (const chem of chemicals) {
     if (!chem.chemicalId && !chem.name) continue;
 
-    const existing = await StoreInventory.findOne({
-      $or: [
-        { chemicalId: chem.chemicalId },
-        { name: chem.name }
-      ]
-    });
+    try {
+      const orConditions = [];
+      if (chem.chemicalId) orConditions.push({ chemicalId: chem.chemicalId });
+      if (chem.name) orConditions.push({ name: chem.name });
 
-    if (existing) {
-      existing.packSize = chem.packSize || existing.packSize;
-      existing.unitPrice = chem.unitPrice || existing.unitPrice;
-      existing.purchasePrice = chem.purchasePrice || existing.purchasePrice;
-      const newReceived = Number(chem.receivedQty) || 0;
-      existing.receivedQty = (existing.receivedQty || 0) + newReceived;
-      existing.availableQty = (existing.availableQty || 0) + newReceived;
-      existing.reorderLevel = chem.reorderLevel !== undefined ? chem.reorderLevel : existing.reorderLevel;
-      
-      existing.status = calculateStatus(existing.availableQty, existing.reorderLevel);
-      existing.totalValue = existing.unitPrice * existing.availableQty;
-      existing.updatedAt = Date.now();
-      
-      await existing.save();
-      updated++;
-    } else {
-      const availableQty = Number(chem.receivedQty) || 0;
-      const reorderLevel = chem.reorderLevel !== undefined ? chem.reorderLevel : 2;
-      const status = calculateStatus(availableQty, reorderLevel);
-      const totalValue = (chem.unitPrice || 0) * availableQty;
+      const existing = await StoreInventory.findOne({ $or: orConditions });
 
-      await StoreInventory.create({
-        ...chem,
-        availableQty,
-        status,
-        totalValue,
-        reorderLevel
-      });
-      added++;
+      if (existing) {
+        existing.packSize = chem.packSize || existing.packSize;
+        existing.unitPrice = chem.unitPrice || existing.unitPrice;
+        existing.purchasePrice = chem.purchasePrice || existing.purchasePrice;
+        const newReceived = Number(chem.receivedQty) || 0;
+        existing.receivedQty = (existing.receivedQty || 0) + newReceived;
+        existing.availableQty = (existing.availableQty || 0) + newReceived;
+        existing.reorderLevel = chem.reorderLevel !== undefined ? chem.reorderLevel : existing.reorderLevel;
+        existing.grade = chem.grade || existing.grade;
+        
+        existing.status = calculateStatus(existing.availableQty, existing.reorderLevel);
+        existing.totalValue = existing.unitPrice * existing.availableQty;
+        existing.updatedAt = Date.now();
+        
+        await existing.save();
+        updated++;
+      } else {
+        const availableQty = Number(chem.receivedQty) || 0;
+        const reorderLevel = chem.reorderLevel !== undefined ? chem.reorderLevel : 2;
+        const status = calculateStatus(availableQty, reorderLevel);
+        const totalValue = (chem.unitPrice || 0) * availableQty;
+
+        await StoreInventory.create({
+          ...chem,
+          chemicalId: chem.chemicalId || `chem-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          availableQty,
+          status,
+          totalValue,
+          reorderLevel
+        });
+        added++;
+      }
+    } catch (err) {
+      console.error(`Error importing chemical ${chem.name || chem.chemicalId}:`, err);
+      // Continue to the next row instead of crashing the whole batch
     }
   }
 
