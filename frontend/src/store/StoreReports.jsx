@@ -1,10 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Calendar, Download, ArrowUpRight, ArrowDownRight, TrendingUp, Filter, Boxes, PackageX, AlertTriangle, Activity } from 'lucide-react';
 import StoreLayout from './StoreLayout';
 import Card from '../components/ui/Card';
-import useStoreManagerMock, { parsePackSize } from './storeManagerMock';
+import { parsePackSize } from './storeManagerMock';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
+import api from '../services/api';
+import { toFrontendChemical } from '../utils/storeMapper';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const YEARS = [2024, 2025, 2026];
@@ -48,14 +50,35 @@ function StatCard({ title, value, prevValue, type = 'number', unit = '' }) {
 }
 
 export default function StoreReports() {
-  const historyRaw = useStoreManagerMock(state => state.history);
-  const requestsRaw = useStoreManagerMock(state => state.requests);
-  const chemicalsRaw = useStoreManagerMock(state => state.chemicals);
-  const alertThreshold = useStoreManagerMock(state => state.alertThreshold);
+  const [historyRaw, setHistoryRaw] = useState([]);
+  const [requestsRaw, setRequestsRaw] = useState([]);
+  const [chemicalsRaw, setChemicalsRaw] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const alertThreshold = 15; // Set a static 15% threshold for reports since we are no longer using the mock store
 
   const [tab, setTab] = useState('monthly');
   const [month, setMonth] = useState(new Date().getMonth());
   const [year, setYear] = useState(2026);
+
+  useEffect(() => {
+    const fetchReportsData = async () => {
+      try {
+        const [invRes, reqRes, histRes] = await Promise.all([
+          api.get('/store/inventory'),
+          api.get('/store/requests'),
+          api.get('/store/history')
+        ]);
+        setChemicalsRaw((invRes.data || []).map(toFrontendChemical));
+        setRequestsRaw(reqRes.data || []);
+        setHistoryRaw(histRes.data || []);
+      } catch (error) {
+        console.error('Failed to load reports data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchReportsData();
+  }, []);
 
   // Filter valid history: qtyBefore > 0 and totalValueBefore > 0 and Approved
   const history = useMemo(() => {

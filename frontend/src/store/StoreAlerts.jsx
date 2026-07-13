@@ -1,8 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { AlertTriangle, PackageX, AlertCircle, Settings2 } from 'lucide-react';
 import StoreLayout from './StoreLayout';
 import Card from '../components/ui/Card';
-import useStoreManagerMock, { parsePackSize } from './storeManagerMock';
+import { parsePackSize } from './storeManagerMock';
+import api from '../services/api';
+import { toFrontendChemical } from '../utils/storeMapper';
 
 function AlertCard({ chemical, alertThreshold }) {
   const received = Number(chemical['Received Quantity'] || 0);
@@ -87,9 +89,23 @@ function AlertCard({ chemical, alertThreshold }) {
 }
 
 export default function StoreAlerts() {
-  const chemicals = useStoreManagerMock((state) => state.chemicals);
-  const alertThreshold = useStoreManagerMock((state) => state.alertThreshold);
-  const setAlertThreshold = useStoreManagerMock((state) => state.setAlertThreshold);
+  const [chemicals, setChemicals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const alertThreshold = 15;
+
+  useEffect(() => {
+    const fetchInventory = async () => {
+      try {
+        const res = await api.get('/store/inventory');
+        setChemicals((res.data || []).map(toFrontendChemical));
+      } catch (error) {
+        console.error('Failed to load inventory for alerts:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchInventory();
+  }, []);
 
   const alerts = useMemo(() => {
     const list = [];
@@ -134,15 +150,9 @@ export default function StoreAlerts() {
           </div>
         </div>
         <div className="flex items-center gap-4 w-full md:w-auto justify-end">
-          <input 
-            type="range" 
-            min="1" 
-            max="50" 
-            value={alertThreshold} 
-            onChange={(e) => setAlertThreshold(Number(e.target.value))}
-            className="w-full md:w-48 accent-[#556b2f] dark:accent-[#a8be8a]"
-          />
-          <span className="font-bold text-lg text-slate-800 dark:text-slate-100 min-w-[3rem] text-right">{alertThreshold}%</span>
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Alert threshold: <span className="font-bold text-slate-900 dark:text-slate-100">{alertThreshold}%</span></span>
+          </div>
         </div>
       </div>
 

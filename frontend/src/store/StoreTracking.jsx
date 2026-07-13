@@ -1,5 +1,5 @@
 import { Download, Search, Activity, Eye, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
@@ -7,7 +7,7 @@ import Input from '../components/ui/Input';
 import Table from '../components/ui/Table';
 import Modal from '../components/ui/Modal';
 import StoreLayout from './StoreLayout';
-import useStoreManagerMock from './storeManagerMock';
+import api from '../services/api';
 
 function SectionHeading({ title }) {
   return (
@@ -37,13 +37,27 @@ export function UpdateTypeBadge({ type }) {
 }
 
 export default function StoreTracking() {
-  const trackingLogs = useStoreManagerMock((state) => state.trackingLogs);
-  const chemicals = useStoreManagerMock((state) => state.chemicals);
+  const [trackingLogs, setTrackingLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('All');
   const [filterDate, setFilterDate] = useState('All Time');
   const [filterStatus, setFilterStatus] = useState('All');
   const [viewTarget, setViewTarget] = useState(null);
+
+  useEffect(() => {
+    const fetchTrackingLogs = async () => {
+      try {
+        const res = await api.get('/store/tracking');
+        setTrackingLogs(res.data || []);
+      } catch (error) {
+        console.error('Failed to load tracking logs:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTrackingLogs();
+  }, []);
 
   const filteredLogs = useMemo(() => {
     return trackingLogs.filter(log => {

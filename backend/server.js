@@ -150,9 +150,10 @@ app.use("/users", require("./routes/userRoutes"));
 app.use("/logs", require("./routes/logRoutes"));
 
 // New Store Backend Routes
-app.use("/store", require("./routes/storeInventoryRoutes"));
-app.use("/store", require("./routes/storeRequestRoutes"));
-app.use("/store", require("./routes/storeHistoryRoutes"));
+app.use("/store/inventory", require("./routes/storeInventoryRoutes"));
+app.use("/store/requests", require("./routes/storeRequestRoutes"));
+app.use("/store/history", require("./routes/storeHistoryRoutes"));
+app.use("/store/tracking", require("./routes/storeTrackingRoutes"));
 app.use("/notifications", require("./routes/notificationRoutes"));
 
 app.use(errorHandler);

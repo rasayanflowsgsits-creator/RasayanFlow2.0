@@ -1,23 +1,48 @@
 import { AlertTriangle, Boxes, ClipboardList, FileSpreadsheet, PackageX, IndianRupee, TrendingUp, TrendingDown, Minus, CheckCircle2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Card from '../components/ui/Card';
 import StoreImportModal from './StoreImportModal';
 import StoreLayout from './StoreLayout';
 import { UpdateTypeBadge } from './StoreTracking';
-import useStoreManagerMock, { formatQuantity, parsePackSize } from './storeManagerMock';
+import { formatQuantity, parsePackSize } from './storeManagerMock';
+import api from '../services/api';
+import { toFrontendChemical } from '../utils/storeMapper';
 
 export default function StoreDashboard() {
-  const chemicals = useStoreManagerMock((state) => state.chemicals);
-  const requests = useStoreManagerMock((state) => state.requests);
-  const history = useStoreManagerMock((state) => state.history);
-  const trackingLogs = useStoreManagerMock((state) => state.trackingLogs);
+  const [chemicals, setChemicals] = useState([]);
+  const [requests, setRequests] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [trackingLogs, setTrackingLogs] = useState([]);
   const [importOpen, setImportOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const [invRes, reqRes, histRes, trackRes] = await Promise.all([
+          api.get('/store/inventory'),
+          api.get('/store/requests'),
+          api.get('/store/history'),
+          api.get('/store/tracking')
+        ]);
+        setChemicals((invRes.data || []).map(toFrontendChemical));
+        setRequests(reqRes.data || []);
+        setHistory(histRes.data || []);
+        setTrackingLogs(trackRes.data || []);
+      } catch (error) {
+        console.error('Failed to load dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboardData();
+  }, []);
 
   const pendingRequests = requests.filter((request) => request.status === 'Pending').length;
   const lowStock = chemicals.filter((chemical) => chemical.status === 'Low Stock').length;
   const outOfStock = chemicals.filter((chemical) => chemical.status === 'Out of Stock').length;
-  const categories = new Set(chemicals.map((chemical) => chemical.category)).size;
+  const categories = new Set(chemicals.map((chemical) => chemical.category || chemical['Hazard Class'])).size;
 
   const totalInventoryValue = chemicals.reduce((acc, chem) => acc + (chem['Total Current Value (INR)'] || 0), 0);
   const mostExpensiveChem = chemicals.reduce((max, chem) => ((chem['Unit Price (INR)'] || 0) > (max['Unit Price (INR)'] || 0) ? chem : max), chemicals[0] || {});
@@ -29,7 +54,7 @@ export default function StoreDashboard() {
     .filter(chem => chem.status === 'Out of Stock')
     .reduce((acc, chem) => acc + ((chem['Unit Price (INR)'] || 0) * (chem['Received Quantity'] || 0)), 0);
 
-  const alertThreshold = useStoreManagerMock((state) => state.alertThreshold);
+  const alertThreshold = 15; // Set to 15% directly instead of using mock state
 
   const lowStockAlerts = [...chemicals].reduce((acc, chem) => {
     const received = Number(chem['Received Quantity'] || 0);
@@ -222,7 +247,7 @@ export default function StoreDashboard() {
         </div>
       </Card>
       
-      <StoreImportModal open={importOpen} onClose={() => setImportOpen(false)} />
+      <StoreImportModal open={importOpen} onClose={() => { setImportOpen(false); window.location.reload(); }} />
     </StoreLayout>
   );
 }
