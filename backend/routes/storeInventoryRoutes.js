@@ -2,23 +2,18 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
-const {
-  getAllChemicals,
-  importChemicals,
-  updateChemical,
-  deleteChemical
-} = require('../controllers/storeInventoryController');
+const storeInventoryController = require('../controllers/storeInventoryController');
 
 router.use(authMiddleware);
 
-router.route('/inventory')
-  .get(roleMiddleware(['storeAdmin', 'store_admin', 'superAdmin', 'labAdmin']), getAllChemicals);
+router.route('/')
+  .get(roleMiddleware(['storeAdmin', 'store_admin', 'superAdmin', 'labAdmin']), (req, res, next) => storeInventoryController.getAllChemicals(req, res, next));
 
-router.route('/inventory/import')
-  .post(roleMiddleware(['storeAdmin', 'store_admin', 'superAdmin']), importChemicals);
+router.route('/import')
+  .post(roleMiddleware(['storeAdmin', 'store_admin', 'superAdmin']), (req, res, next) => storeInventoryController.importChemicals(req, res, next));
 
-router.route('/inventory/:id')
-  .put(roleMiddleware(['storeAdmin', 'store_admin', 'superAdmin']), updateChemical)
-  .delete(roleMiddleware(['storeAdmin', 'store_admin', 'superAdmin']), deleteChemical);
+router.route('/:id')
+  .put(roleMiddleware(['storeAdmin', 'store_admin', 'superAdmin']), (req, res, next) => storeInventoryController.updateChemical(req, res, next))
+  .delete(roleMiddleware(['storeAdmin', 'store_admin', 'superAdmin']), (req, res, next) => storeInventoryController.deleteChemical(req, res, next));
 
 module.exports = router;
