@@ -12,13 +12,13 @@ const {
 router.use(authMiddleware);
 
 router.route('/inventory')
-  .get(roleMiddleware(['storeAdmin', 'superAdmin', 'labAdmin']), getAllChemicals);
+  .get(roleMiddleware(['storeAdmin', 'store_admin', 'superAdmin', 'labAdmin']), getAllChemicals);
 
 router.route('/inventory/import')
-  .post(roleMiddleware(['storeAdmin', 'superAdmin']), importChemicals);
+  .post(roleMiddleware(['storeAdmin', 'store_admin', 'superAdmin']), importChemicals);
 
 router.route('/inventory/:id')
-  .put(roleMiddleware(['storeAdmin', 'superAdmin']), updateChemical)
-  .delete(roleMiddleware(['storeAdmin', 'superAdmin']), deleteChemical);
+  .put(roleMiddleware(['storeAdmin', 'store_admin', 'superAdmin']), updateChemical)
+  .delete(roleMiddleware(['storeAdmin', 'store_admin', 'superAdmin']), deleteChemical);
 
 module.exports = router;

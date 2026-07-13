@@ -14,15 +14,15 @@ router.use(authMiddleware);
 
 router.route('/requests')
   .post(roleMiddleware(['labAdmin', 'superAdmin']), createRequest)
-  .get(roleMiddleware(['storeAdmin', 'superAdmin']), getAllRequests);
+  .get(roleMiddleware(['storeAdmin', 'store_admin', 'superAdmin']), getAllRequests);
 
 router.route('/requests/my')
   .get(roleMiddleware(['labAdmin', 'superAdmin']), getMyRequests);
 
 router.route('/requests/:id/approve')
-  .put(roleMiddleware(['storeAdmin', 'superAdmin']), approveRequest);
+  .put(roleMiddleware(['storeAdmin', 'store_admin', 'superAdmin']), approveRequest);
 
 router.route('/requests/:id/reject')
-  .put(roleMiddleware(['storeAdmin', 'superAdmin']), rejectRequest);
+  .put(roleMiddleware(['storeAdmin', 'store_admin', 'superAdmin']), rejectRequest);
 
 module.exports = router;
