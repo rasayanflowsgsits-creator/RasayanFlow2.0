@@ -5,7 +5,8 @@ import Card from '../components/ui/Card';
 import StoreImportModal from './StoreImportModal';
 import StoreLayout from './StoreLayout';
 import { UpdateTypeBadge } from './StoreTracking';
-import { formatQuantity, parsePackSize } from './storeManagerMock';
+import { formatQuantity } from './storeManagerMock';
+import { safeRound, totalStock } from '../utils/storeHelpers';
 import api from '../services/api';
 import { toFrontendChemical } from '../utils/storeMapper';
 
@@ -44,35 +45,34 @@ export default function StoreDashboard() {
   const outOfStock = chemicals.filter((chemical) => chemical.status === 'Out of Stock').length;
   const categories = new Set(chemicals.map((chemical) => chemical.category || chemical['Hazard Class'])).size;
 
-  const totalInventoryValue = chemicals.reduce((acc, chem) => acc + (chem['Total Current Value (INR)'] || 0), 0);
+  const totalInventoryValue = safeRound(chemicals.reduce((acc, chem) => acc + (chem['Total Current Value (INR)'] || 0), 0));
   const mostExpensiveChem = chemicals.reduce((max, chem) => ((chem['Unit Price (INR)'] || 0) > (max['Unit Price (INR)'] || 0) ? chem : max), chemicals[0] || {});
   
   const inStockChems = chemicals.filter(chem => (chem['Total Current Value (INR)'] || 0) > 0);
   const lowestStockChem = inStockChems.reduce((min, chem) => ((chem['Total Current Value (INR)'] || 0) < (min['Total Current Value (INR)'] || Infinity) ? chem : min), inStockChems[0] || {});
 
-  const outOfStockLoss = chemicals
+  const outOfStockLoss = safeRound(chemicals
     .filter(chem => chem.status === 'Out of Stock')
-    .reduce((acc, chem) => acc + ((chem['Unit Price (INR)'] || 0) * (chem['Received Quantity'] || 0)), 0);
+    .reduce((acc, chem) => acc + ((chem['Unit Price (INR)'] || 0) * (chem['Received Quantity'] || 0)), 0));
 
   const alertThreshold = 15; // Set to 15% directly instead of using mock state
 
   const lowStockAlerts = [...chemicals].reduce((acc, chem) => {
-    const received = Number(chem['Received Quantity'] || 0);
-    const available = Number(chem['Available Quantity'] || 0);
-    const packData = parsePackSize(chem['Pack Size']);
-    const totalBase = received * packData.value;
-    const availableBase = available * packData.value;
+    const receivedStock = totalStock(chem['Received Quantity'], chem['Pack Size']);
+    const availableStock = totalStock(chem['Available Quantity'], chem['Pack Size']);
+    const totalBase = receivedStock.total;
+    const availableBase = availableStock.total;
     if (totalBase > 0) {
-      const percentage = (availableBase / totalBase) * 100;
+      const percentage = safeRound((availableBase / totalBase) * 100);
       if (percentage < alertThreshold) {
-        acc.push({ chem, percentage, availableBase, unit: packData.unit });
+        acc.push({ chem, percentage, availableBase, unit: availableStock.unit });
       }
     }
     return acc;
   }, []).sort((a, b) => a.percentage - b.percentage);
 
   const stats = [
-    { title: 'Total Chemicals', subtitle: 'Dummy inventory records', value: chemicals.length, icon: Boxes, gradient: 'from-blue-50 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/20', iconColor: 'text-blue-600 dark:text-blue-400', trend: TrendingUp },
+    { title: 'Total Chemicals', subtitle: 'Total distinct chemicals', value: chemicals.length, icon: Boxes, gradient: 'from-blue-50 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/20', iconColor: 'text-blue-600 dark:text-blue-400', trend: TrendingUp },
     { title: 'Pending Requests', subtitle: 'Awaiting store action', value: pendingRequests, icon: ClipboardList, gradient: 'from-emerald-50 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/20', iconColor: 'text-emerald-600 dark:text-emerald-400', trend: Minus },
     { title: 'Low Stock', subtitle: 'Refill should be planned', value: lowStock, icon: AlertTriangle, gradient: 'from-amber-50 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/20', iconColor: 'text-amber-600 dark:text-amber-400', trend: TrendingDown },
     { title: 'Out of Stock', subtitle: 'Unavailable right now', value: outOfStock, icon: PackageX, gradient: 'from-rose-50 to-red-100 dark:from-rose-900/30 dark:to-red-900/20', iconColor: 'text-rose-600 dark:text-rose-400', trend: TrendingDown },

@@ -6,7 +6,8 @@ import Table from '../components/ui/Table';
 import Modal from '../components/ui/Modal';
 import useAppStore from './appStore';
 import StoreLayout from './StoreLayout';
-import { formatQuantity, parsePackSize } from './storeManagerMock';
+import { formatQuantity } from './storeManagerMock';
+import { parsePackSize, safeRound } from '../utils/storeHelpers';
 import { generateReceiptPDF } from '../utils/pdfGenerator';
 import ReceiptPreviewModal from './ReceiptPreviewModal';
 import api from '../services/api';
@@ -90,11 +91,11 @@ export default function StoreRequests() {
   let approveData = null;
   if (approveTarget) {
     const packData = parsePackSize(approveTarget.chem?.['Pack Size']);
-    const totalBaseAvailable = approveTarget.currentStock * packData.value;
+    const totalBaseAvailable = safeRound(approveTarget.currentStock * packData.value);
     const requestedBase = approveTarget.quantity;
-    const remainingBase = Math.max(0, totalBaseAvailable - requestedBase);
-    const newUNT = Math.round((remainingBase / packData.value) * 100) / 100;
-    const newPrice = newUNT * Number(approveTarget.chem?.['Unit Price (INR)'] || 0);
+    const remainingBase = Math.max(0, safeRound(totalBaseAvailable - requestedBase));
+    const newUNT = safeRound(remainingBase / packData.value);
+    const newPrice = safeRound(newUNT * Number(approveTarget.chem?.['Unit Price (INR)'] || 0));
 
     approveData = {
       ...approveTarget,

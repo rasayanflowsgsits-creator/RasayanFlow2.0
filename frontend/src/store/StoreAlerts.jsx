@@ -2,22 +2,21 @@ import React, { useMemo, useEffect, useState } from 'react';
 import { AlertTriangle, PackageX, AlertCircle, Settings2 } from 'lucide-react';
 import StoreLayout from './StoreLayout';
 import Card from '../components/ui/Card';
-import { parsePackSize } from './storeManagerMock';
+import { parsePackSize, safeRound, totalStock } from '../utils/storeHelpers';
 import api from '../services/api';
 import { toFrontendChemical } from '../utils/storeMapper';
 
 function AlertCard({ chemical, alertThreshold }) {
-  const received = Number(chemical['Received Quantity'] || 0);
-  const available = Number(chemical['Available Quantity'] || 0);
-  const packData = parsePackSize(chemical['Pack Size']);
-  const unit = packData.unit;
+  const receivedStock = totalStock(chemical['Received Quantity'], chemical['Pack Size']);
+  const availableStock = totalStock(chemical['Available Quantity'], chemical['Pack Size']);
+  const unit = availableStock.unit;
   
-  const totalBase = received * packData.value;
-  const availableBase = available * packData.value;
+  const totalBase = receivedStock.total;
+  const availableBase = availableStock.total;
   
   let percentage = 0;
   if (totalBase > 0) {
-    percentage = (availableBase / totalBase) * 100;
+    percentage = safeRound((availableBase / totalBase) * 100);
   } else if (availableBase > 0) {
     percentage = 100;
   }
@@ -114,15 +113,14 @@ export default function StoreAlerts() {
     let warning = 0;
 
     chemicals.forEach(chem => {
-      const received = Number(chem['Received Quantity'] || 0);
-      const available = Number(chem['Available Quantity'] || 0);
-      const packData = parsePackSize(chem['Pack Size']);
+      const receivedStock = totalStock(chem['Received Quantity'], chem['Pack Size']);
+      const availableStock = totalStock(chem['Available Quantity'], chem['Pack Size']);
       
-      const totalBase = received * packData.value;
-      const availableBase = available * packData.value;
+      const totalBase = receivedStock.total;
+      const availableBase = availableStock.total;
       
       if (totalBase > 0) {
-        const percentage = (availableBase / totalBase) * 100;
+        const percentage = safeRound((availableBase / totalBase) * 100);
         if (percentage < alertThreshold) {
           list.push({ chem, percentage, totalBase });
           if (percentage === 0) outOfStock++;
