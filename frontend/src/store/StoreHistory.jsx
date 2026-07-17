@@ -11,6 +11,7 @@ import api from '../services/api';
 import { toFrontendHistory, toFrontendChemical, toFrontendRequest } from '../utils/storeMapper';
 import { useEffect } from 'react';
 import useAppStore from './appStore';
+import { safeRound } from '../utils/storeHelpers';
 
 function toCsvCell(value) {
   return `"${String(value ?? '').replaceAll('"', '""')}"`;
@@ -91,12 +92,12 @@ export default function StoreHistory() {
     { key: 'chemicalName', label: 'Chemical Name' },
     { key: 'chemicalId', label: 'Chemical ID' },
     { key: 'lab', label: 'Lab Name' },
-    { key: 'qtyBefore', label: 'Qty Before', render: (r) => `Before: ${(r.qtyBeforeBase || 0).toLocaleString()} ${r.baseUnit || 'ml'}` },
-    { key: 'qtyRequested', label: 'Requested', render: (r) => `Req: ${(r.qtyRequestedBase || r.qtyRequested || 0).toLocaleString()} ${r.baseUnit || 'ml'}` },
-    { key: 'qtyAfter', label: 'Qty After', render: (r) => `After: ${(r.qtyAfterBase || 0).toLocaleString()} ${r.baseUnit || 'ml'}` },
-    { key: 'unitPrice', label: 'Unit Price (₹)', render: (r) => formatPrice(r.unitPrice) },
-    { key: 'totalValueBefore', label: 'Value Before', render: (r) => formatPrice(r.totalValueBefore) },
-    { key: 'totalValueAfter', label: 'Value After', render: (r) => formatPrice(r.totalValueAfter) },
+    { key: 'qtyBefore', label: 'Qty Before', render: (r) => `Before: ${safeRound(r.qtyBeforeBase || 0).toLocaleString()} ${r.baseUnit || 'ml'}` },
+    { key: 'qtyRequested', label: 'Requested', render: (r) => `Req: ${safeRound(r.qtyRequestedBase || r.qtyRequested || 0).toLocaleString()} ${r.baseUnit || 'ml'}` },
+    { key: 'qtyAfter', label: 'Qty After', render: (r) => `After: ${safeRound(r.qtyAfterBase || 0).toLocaleString()} ${r.baseUnit || 'ml'}` },
+    { key: 'unitPrice', label: 'Unit Price (₹)', render: (r) => formatPrice(safeRound(r.unitPrice)) },
+    { key: 'totalValueBefore', label: 'Value Before', render: (r) => formatPrice(safeRound(r.totalValueBefore)) },
+    { key: 'totalValueAfter', label: 'Value After', render: (r) => formatPrice(safeRound(r.totalValueAfter)) },
     { key: 'actionBy', label: 'Action By' },
     { key: 'date', label: 'Date', render: (r) => new Date(r.date).toLocaleString() },
     { key: 'status', label: 'Status', render: (r) => (

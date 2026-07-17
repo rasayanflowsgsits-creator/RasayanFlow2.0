@@ -2,6 +2,8 @@ const StoreInventory = require('../models/StoreInventory');
 const StoreTracking = require('../models/StoreTracking');
 const asyncHandler = require('express-async-handler');
 
+const { safeRound, totalStock } = require('../utils/storeHelpers');
+
 const calculateStatus = (qty, reorderLevel) => {
   if (qty <= 0) return 'Out of Stock';
   if (qty <= (reorderLevel || 2)) return 'Low Stock';
@@ -9,18 +11,8 @@ const calculateStatus = (qty, reorderLevel) => {
 };
 
 const createTrackingLog = async (chemical, updateType, previousQty, previousPrice, newQty, newPrice) => {
-  const calcTotalChemical = (qty, packSizeStr) => {
-    if (!packSizeStr) return '--';
-    const str = String(packSizeStr).trim();
-    if (str.toUpperCase().includes('UNT')) return str;
-    const match = str.match(/^([\d.]+)\s*(.*)$/);
-    if (match) {
-      const num = Number(match[1]);
-      const unit = match[2].trim();
-      if (!isNaN(num)) return `${qty * num} ${unit}`;
-    }
-    return str;
-  };
+  const stockData = totalStock(newQty, chemical.packSize);
+  const totalChemStr = newQty ? `${stockData.total} ${stockData.unit}` : '--';
 
   await StoreTracking.create({
     chemicalId: chemical.chemicalId,
@@ -31,14 +23,14 @@ const createTrackingLog = async (chemical, updateType, previousQty, previousPric
     grade: chemical.grade || '',
     packSize: chemical.packSize || '',
     updateType,
-    previousQty,
-    newQty,
-    qtyChange: newQty - previousQty,
-    previousPrice,
-    newPrice,
-    totalChemical: calcTotalChemical(newQty, chemical.packSize),
-    totalPrice: newQty * newPrice,
-    totalValue: newQty * newPrice,
+    previousQty: safeRound(previousQty),
+    newQty: safeRound(newQty),
+    qtyChange: safeRound(newQty - previousQty),
+    previousPrice: safeRound(previousPrice),
+    newPrice: safeRound(newPrice),
+    totalChemical: totalChemStr,
+    totalPrice: safeRound(newQty * newPrice),
+    totalValue: safeRound(newQty * newPrice),
     status: calculateStatus(newQty, chemical.reorderLevel),
     snapshot: chemical
   });
@@ -77,13 +69,13 @@ const importChemicals = asyncHandler(async (req, res) => {
         existing.unitPrice = chem.unitPrice || existing.unitPrice;
         existing.purchasePrice = chem.purchasePrice || existing.purchasePrice;
         const newReceived = Number(chem.receivedQty) || 0;
-        existing.receivedQty = (existing.receivedQty || 0) + newReceived;
-        existing.availableQty = (existing.availableQty || 0) + newReceived;
+        existing.receivedQty = safeRound((existing.receivedQty || 0) + newReceived);
+        existing.availableQty = safeRound((existing.availableQty || 0) + newReceived);
         existing.reorderLevel = chem.reorderLevel !== undefined ? chem.reorderLevel : existing.reorderLevel;
         existing.grade = chem.grade || existing.grade;
         
         existing.status = calculateStatus(existing.availableQty, existing.reorderLevel);
-        existing.totalValue = existing.unitPrice * existing.availableQty;
+        existing.totalValue = safeRound(existing.unitPrice * existing.availableQty);
         existing.updatedAt = Date.now();
         
         const saved = await existing.save();
@@ -91,10 +83,10 @@ const importChemicals = asyncHandler(async (req, res) => {
 
         await createTrackingLog(saved, chem.receivedQty ? 'Import' : 'Manual Edit', previousQty, previousPrice, saved.availableQty, saved.unitPrice);
       } else {
-        const availableQty = Number(chem.receivedQty) || 0;
+        const availableQty = safeRound(Number(chem.receivedQty) || 0);
         const reorderLevel = chem.reorderLevel !== undefined ? chem.reorderLevel : 2;
         const status = calculateStatus(availableQty, reorderLevel);
-        const totalValue = (chem.unitPrice || 0) * availableQty;
+        const totalValue = safeRound((chem.unitPrice || 0) * availableQty);
 
         const newChem = await StoreInventory.create({
           ...chem,
@@ -133,7 +125,7 @@ const updateChemical = asyncHandler(async (req, res) => {
   });
 
   chemical.status = calculateStatus(chemical.availableQty, chemical.reorderLevel);
-  chemical.totalValue = (chemical.unitPrice || 0) * (chemical.availableQty || 0);
+  chemical.totalValue = safeRound((chemical.unitPrice || 0) * (chemical.availableQty || 0));
   chemical.updatedAt = Date.now();
 
   const updatedChemical = await chemical.save();

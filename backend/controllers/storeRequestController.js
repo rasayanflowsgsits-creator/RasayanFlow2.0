@@ -7,6 +7,7 @@ const StoreTracking = require('../models/StoreTracking');
 const StoreNotification = require('../models/StoreNotification');
 const { getNextReceiptNumber } = require('../utils/receiptCounter');
 const { getIo } = require('../sockets');
+const { parsePackSize, safeRound, totalStock } = require('../utils/storeHelpers');
 
 const Inventory = require('../models/Inventory');
 
@@ -16,20 +17,10 @@ const calculateStatus = (qty, reorderLevel) => {
   return 'In Stock';
 };
 
-const calcTotalChemical = (qty, packSizeStr) => {
-  if (!packSizeStr) return '--';
-  const str = String(packSizeStr).trim();
-  if (str.toUpperCase().includes('UNT')) return str;
-  const match = str.match(/^([\d.]+)\s*(.*)$/);
-  if (match) {
-    const num = Number(match[1]);
-    const unit = match[2].trim();
-    if (Number.isFinite(num)) return `${qty * num} ${unit}`;
-  }
-  return str;
-};
-
-const buildTrackingLog = (chemical, updateType, previousQty, previousPrice, newQty, newPrice) => ({
+const buildTrackingLog = (chemical, updateType, previousQty, previousPrice, newQty, newPrice) => {
+  const stockData = totalStock(newQty, chemical.packSize);
+  const totalChemStr = newQty ? `${stockData.total} ${stockData.unit}` : '--';
+  return {
   chemicalId: chemical.chemicalId,
   chemicalName: chemical.name,
   casNumber: chemical.cas || '',
@@ -38,17 +29,18 @@ const buildTrackingLog = (chemical, updateType, previousQty, previousPrice, newQ
   grade: chemical.grade || '',
   packSize: chemical.packSize || '',
   updateType,
-  previousQty,
-  newQty,
-  qtyChange: newQty - previousQty,
-  previousPrice,
-  newPrice,
-  totalChemical: calcTotalChemical(newQty, chemical.packSize),
-  totalPrice: newQty * newPrice,
-  totalValue: newQty * newPrice,
+  previousQty: safeRound(previousQty),
+  newQty: safeRound(newQty),
+  qtyChange: safeRound(newQty - previousQty),
+  previousPrice: safeRound(previousPrice),
+  newPrice: safeRound(newPrice),
+  totalChemical: totalChemStr,
+  totalPrice: safeRound(newQty * newPrice),
+  totalValue: safeRound(newQty * newPrice),
   status: calculateStatus(newQty, chemical.reorderLevel),
   snapshot: typeof chemical.toObject === 'function' ? chemical.toObject() : chemical,
-});
+};
+};
 
 const createRequest = asyncHandler(async (req, res) => {
   const requestData = req.body;
@@ -91,16 +83,22 @@ const approveRequest = asyncHandler(async (req, res) => {
 
     if (!chemical) throw new Error("Chemical not found in store inventory");
 
-    const packSize = parseFloat(chemical.packSize) || 1;
+    const packData = parsePackSize(chemical.packSize);
     const availableQty = chemical.availableQty || 0;
+    const totalBase = safeRound(availableQty * packData.value);
+
+    // Convert requested unit to base unit if necessary (e.g. request 5kg but pack size is 500g)
+    let requestedBase = request.quantityRequested;
+    const reqUnit = request.unit.toLowerCase().replace(/\s+/g, '');
+    if (reqUnit.includes('kg') && packData.unit === 'g') requestedBase *= 1000;
+    else if (reqUnit.includes('l') && reqUnit !== 'ml' && packData.unit === 'ml') requestedBase *= 1000;
     
-    const totalBase = availableQty * packSize;
-    if (totalBase < request.quantityRequested) {
+    if (totalBase < requestedBase) {
       throw new Error("Insufficient stock");
     }
     
-    const newBase = totalBase - request.quantityRequested;
-    const newAvailableQty = newBase / packSize;
+    const newBase = safeRound(totalBase - requestedBase);
+    const newAvailableQty = safeRound(newBase / packData.value);
     
     const qtyBefore = chemical.availableQty;
     const valueBefore = chemical.totalValue;
@@ -112,7 +110,7 @@ const approveRequest = asyncHandler(async (req, res) => {
     else if (chemical.availableQty <= reorderLevel) chemical.status = 'Low Stock';
     else chemical.status = 'In Stock';
     
-    chemical.totalValue = chemical.availableQty * (chemical.unitPrice || 0);
+    chemical.totalValue = safeRound(chemical.availableQty * (chemical.unitPrice || 0));
     chemical.updatedAt = Date.now();
     await chemical.save({ session });
 
@@ -171,8 +169,8 @@ const approveRequest = asyncHandler(async (req, res) => {
       quantityAfter: chemical.availableQty,
       unit: request.unit,
       unitPrice: chemical.unitPrice,
-      valueBefore: valueBefore,
-      valueAfter: chemical.totalValue,
+      valueBefore: safeRound(valueBefore),
+      valueAfter: safeRound(chemical.totalValue),
       receiptNumber: request.receiptNumber,
       action: "Approved",
       approvedBy: req.user.name,

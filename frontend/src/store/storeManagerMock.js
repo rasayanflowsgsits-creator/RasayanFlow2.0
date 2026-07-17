@@ -50,37 +50,13 @@ export const INITIAL_HISTORY = [
   { id: 'hist-invalid-1', chemicalName: 'OLD DUMMY', chemicalId: '000-00', lab: 'Test', qtyRequestedBase: 100, baseUnit: 'g', qtyBefore: 0, totalValueBefore: 0, totalValueAfter: 0, status: 'Approved', date: '2026-06-10T10:00:00Z' }
 ];
 
-export function parsePackSize(packSizeStr) {
-  if (!packSizeStr) return { value: 1, unit: 'ml' };
-  const str = packSizeStr.toLowerCase().trim();
-  const match = str.match(/^([\d.]+)\s*(ml|l|g|kg|mg)$/);
-  if (!match) return { value: 1, unit: 'ml' };
-  
-  let val = parseFloat(match[1]);
-  let unit = match[2];
-  
-  if (unit === 'l') { val *= 1000; unit = 'ml'; }
-  else if (unit === 'kg') { val *= 1000; unit = 'g'; }
-  else if (unit === 'mg') { val /= 1000; unit = 'g'; }
-  
-  return { value: val, unit };
-}
+import { parsePackSize, safeRound, totalStock } from '../utils/storeHelpers';
+export { parsePackSize, safeRound };
 
 export function calcTotalChemical(qty, packSizeStr) {
-  if (!packSizeStr) return '--';
-  const str = String(packSizeStr).trim();
-  if (str.toUpperCase().includes('UNT')) {
-    return str;
-  }
-  const match = str.match(/^([\d.]+)\s*(.*)$/);
-  if (match) {
-    const num = Number(match[1]);
-    const unit = match[2].trim();
-    if (!isNaN(num)) {
-      return `${qty * num} ${unit}`;
-    }
-  }
-  return str;
+  const stockData = totalStock(qty, packSizeStr);
+  if (!qty) return '--';
+  return `${stockData.total} ${stockData.unit}`;
 }
 
 export const INITIAL_TRACKING_LOGS = INITIAL_CHEMICALS.map(c => ({

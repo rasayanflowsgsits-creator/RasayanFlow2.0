@@ -9,6 +9,7 @@ import Table from '../components/ui/Table';
 import api from '../services/api';
 import { toFrontendChemical } from '../utils/storeMapper';
 import StoreLayout from './StoreLayout';
+import { calcTotalChemical, safeRound } from './storeManagerMock';
 
 function StatusBadge({ status }) {
   const colors = {
@@ -176,15 +177,16 @@ export default function StoreTracking() {
     { key: 'formula', label: 'Formula' },
     { key: 'grade', label: 'Grade' },
     { key: 'packSize', label: 'Pack Size' },
-    { key: 'previousQty', label: 'Prev Qty' },
-    { key: 'newQty', label: 'New Qty' },
+    { key: 'previousQty', label: 'Prev Qty', render: (row) => `${safeRound(row.previousQty)} UNT (${calcTotalChemical(row.previousQty, row.packSize)})` },
+    { key: 'newQty', label: 'New Qty', render: (row) => `${safeRound(row.newQty)} UNT (${calcTotalChemical(row.newQty, row.packSize)})` },
     {
       key: 'qtyChange',
       label: 'Qty Change',
       render: (row) => {
-        if (row.qtyChange === 0) return <span className='rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400'>0</span>;
-        if (row.qtyChange > 0) return <span className='rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400'>+{row.qtyChange}</span>;
-        return <span className='rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-900/30 dark:text-red-400'>{row.qtyChange}</span>;
+        const change = safeRound(row.qtyChange);
+        if (change === 0) return <span className='rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400'>0</span>;
+        if (change > 0) return <span className='rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400'>+{change}</span>;
+        return <span className='rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-900/30 dark:text-red-400'>{change}</span>;
       },
     },
     { key: 'newPrice', label: 'Unit Price', render: (row) => moneyWithCurrency(row.newPrice) },

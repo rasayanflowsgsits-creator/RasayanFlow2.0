@@ -29,7 +29,6 @@ function isEmptyRecord(record) {
 
 function getMissingFields(record) {
   const missing = [];
-  if (!String(record['Chemical ID'] ?? '').trim()) missing.push('Chemical ID');
   if (!String(record['Chemical Name'] ?? '').trim()) missing.push('Chemical Name');
   return missing;
 }
@@ -199,7 +198,7 @@ export default function StoreImportModal({ open, onClose }) {
         message: `Import complete:
 ${data.added} chemicals added,
 ${data.updated} chemicals updated,
-${invalidRows.length} rows skipped (missing Chemical ID)` 
+${invalidRows.length} rows skipped (missing Chemical Name)` 
       });
       closeModal();
     } catch (error) {
