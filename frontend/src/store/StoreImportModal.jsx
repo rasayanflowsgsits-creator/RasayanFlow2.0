@@ -191,7 +191,12 @@ export default function StoreImportModal({ open, onClose }) {
       const { toBackendChemical } = await import('../utils/storeMapper');
       const backendChemicals = chemicals.map(toBackendChemical);
       
-      const { data } = await (await import('../services/api')).default.post('/store/inventory/import', backendChemicals);
+      const payload = {
+        chemicals: backendChemicals,
+        importMode: mode
+      };
+      
+      const { data } = await (await import('../services/api')).default.post('/store/inventory/import', payload);
       
       setToast({ 
         type: 'success', 

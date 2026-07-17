@@ -1,3 +1,12 @@
+export const parseNumber = (value) => {
+  if (value === null || value === undefined || value === '') return 0;
+  if (typeof value === 'number') return isNaN(value) ? 0 : value;
+  const cleaned = String(value).replace(/,/g, '').trim();
+  if (!cleaned) return 0;
+  const number = Number(cleaned);
+  return Number.isFinite(number) ? number : 0;
+};
+
 export const toFrontendChemical = (chem) => ({
   id: chem._id || chem.id,
   'Chemical ID': chem.chemicalId || '',
@@ -43,11 +52,11 @@ export const toBackendChemical = (chem) => ({
   grade: chem['Grade'] || 'LR',
   packSize: chem['Pack Size'] || '',
   unit: chem['Standard Unit'] || 'UNT',
-  purchasePrice: Number(chem['Purchase Price (INR)']) || 0,
-  unitPrice: Number(chem['Unit Price (INR)']) || 0,
-  pricePerUnit: Number(chem['Price Per Unit (1g / 1ml)']) || 0,
-  receivedQty: Number(chem['Received Quantity']) || 0,
-  availableQty: Number(chem['Available Quantity']) || 0,
+  purchasePrice: parseNumber(chem['Purchase Price (INR)']),
+  unitPrice: parseNumber(chem['Unit Price (INR)']),
+  pricePerUnit: parseNumber(chem['Price Per Unit (1g / 1ml)']),
+  receivedQty: parseNumber(chem['Received Quantity']),
+  availableQty: parseNumber(chem['Available Quantity']),
   hazard: chem['Hazard Class'] || '',
   safety: chem['Safety Wear'] || '',
   reorderLevel: 2

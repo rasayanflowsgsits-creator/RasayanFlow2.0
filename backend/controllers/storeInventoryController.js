@@ -42,7 +42,11 @@ const getAllChemicals = asyncHandler(async (req, res) => {
 });
 
 const importChemicals = asyncHandler(async (req, res) => {
-  const chemicals = req.body;
+  // Support both direct array (legacy) and object payload
+  const isObjectPayload = !Array.isArray(req.body) && req.body.chemicals;
+  const chemicals = isObjectPayload ? req.body.chemicals : req.body;
+  const importMode = isObjectPayload ? req.body.importMode : 'merge';
+
   if (!Array.isArray(chemicals)) {
     res.status(400);
     throw new Error('Invalid data format. Expected an array of chemicals.');
@@ -68,9 +72,18 @@ const importChemicals = asyncHandler(async (req, res) => {
         existing.packSize = chem.packSize || existing.packSize;
         existing.unitPrice = chem.unitPrice || existing.unitPrice;
         existing.purchasePrice = chem.purchasePrice || existing.purchasePrice;
+        
         const newReceived = Number(chem.receivedQty) || 0;
-        existing.receivedQty = safeRound((existing.receivedQty || 0) + newReceived);
-        existing.availableQty = safeRound((existing.availableQty || 0) + newReceived);
+        
+        // Handle Replace vs Merge logic
+        if (importMode === 'replace') {
+          existing.receivedQty = safeRound(newReceived);
+          existing.availableQty = safeRound(newReceived);
+        } else {
+          existing.receivedQty = safeRound((existing.receivedQty || 0) + newReceived);
+          existing.availableQty = safeRound((existing.availableQty || 0) + newReceived);
+        }
+
         existing.reorderLevel = chem.reorderLevel !== undefined ? chem.reorderLevel : existing.reorderLevel;
         existing.grade = chem.grade || existing.grade;
         
@@ -81,7 +94,7 @@ const importChemicals = asyncHandler(async (req, res) => {
         const saved = await existing.save();
         updated++;
 
-        await createTrackingLog(saved, chem.receivedQty ? 'Import' : 'Manual Edit', previousQty, previousPrice, saved.availableQty, saved.unitPrice);
+        await createTrackingLog(saved, importMode === 'replace' ? 'Import (Replace)' : 'Import (Merge)', previousQty, previousPrice, saved.availableQty, saved.unitPrice);
       } else {
         const availableQty = safeRound(Number(chem.receivedQty) || 0);
         const reorderLevel = chem.reorderLevel !== undefined ? chem.reorderLevel : 2;
