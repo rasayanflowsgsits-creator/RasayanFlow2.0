@@ -3,11 +3,6 @@ import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'r
 import useAuthStore from './store/authStore';
 import useAppStore from './store/appStore';
 import ErrorBoundary from './components/ui/ErrorBoundary';
-import { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
-import useAuthStore from './store/authStore';
-import useAppStore from './store/appStore';
-import ErrorBoundary from './components/ui/ErrorBoundary';
 import Sidebar from './components/layout/Sidebar';
 import Navbar from './components/layout/Navbar';
 import Toast from './components/ui/Toast';
