@@ -341,7 +341,11 @@ const fetchChemicalDataForInventory = asyncHandler(async (req, res) => {
 });
 
 const bulkImportInventory = asyncHandler(async (req, res) => {
-  const { labId, items } = req.body;
+  // Support both direct payload array and { labId, items, importMode } payload
+  const isObjectPayload = !Array.isArray(req.body) && req.body.items;
+  const labId = isObjectPayload ? req.body.labId : req.body.labId; // Note: Even in old format, labId and items were inside req.body
+  const items = isObjectPayload ? req.body.items : req.body.items;
+  const importMode = isObjectPayload ? req.body.importMode || 'merge' : 'merge';
 
   if (!labId) {
     res.status(400);
@@ -451,66 +455,108 @@ const bulkImportInventory = asyncHandler(async (req, res) => {
     throw new Error('No valid rows to import');
   }
 
-  const existing = await Inventory.find({ labId, itemCode: { $in: validDocs.map((doc) => doc.itemCode) } }).select('itemCode');
-  const existingCodes = new Set(existing.map((entry) => String(entry.itemCode || '').toUpperCase()));
+  const existingItems = await Inventory.find({ labId, itemCode: { $in: validDocs.map((doc) => doc.itemCode) } });
+  const existingMap = new Map();
+  for (const item of existingItems) {
+    existingMap.set(String(item.itemCode || '').toUpperCase(), item);
+  }
 
   const createdItems = [];
-  const skipped = [];
+  const updatedItems = [];
+  const skipped = []; // kept for compatibility if needed
+
+  // Custom safeRound helper since we're dealing with numbers
+  const safeRound = (val) => Math.round(val * 100) / 100;
 
   for (const doc of validDocs) {
-    if (existingCodes.has(doc.itemCode)) {
-      skipped.push({ index: doc.index, itemCode: doc.itemCode, reason: 'ALREADY_EXISTS' });
-      continue;
-    }
+    const existingItem = existingMap.get(doc.itemCode);
 
-    try {
-      const item = await Inventory.create({
-        labId,
-        itemCode: doc.itemCode,
-        itemName: doc.itemName,
-        chemicalName: doc.chemicalName,
-        category: doc.category,
-        quantity: doc.quantity,
-        quantityUnit: doc.quantityUnit,
-        costPerUnit: doc.costPerUnit,
-        minThreshold: doc.minThreshold,
-        casNumber: doc.casNumber,
-        smiles: doc.smiles,
-        inchi: doc.inchi,
-        chemicalFormula: doc.chemicalFormula,
-        manufacturingCompany: doc.manufacturingCompany,
-        entryDate: doc.entryDate || new Date(),
-        storageLocation: doc.storageLocation,
-        lotNumber: doc.lotNumber,
-        expiryDate: doc.expiryDate,
-        abstract: doc.abstract,
-        pubmedId: doc.pubmedId,
-        lastUpdated: new Date(),
-      });
-      createdItems.push(item);
-    } catch (error) {
-      errors.push({
-        index: doc.index,
-        code: 'CREATE_FAILED',
-        message: error?.message || 'Failed to create item',
-        itemCode: doc.itemCode,
-      });
+    if (existingItem) {
+      try {
+        existingItem.category = doc.category || existingItem.category;
+        existingItem.quantityUnit = doc.quantityUnit || existingItem.quantityUnit;
+        existingItem.costPerUnit = doc.costPerUnit || existingItem.costPerUnit;
+        existingItem.minThreshold = doc.minThreshold || existingItem.minThreshold;
+        
+        const newQty = Number(doc.quantity) || 0;
+        if (importMode === 'replace') {
+          existingItem.quantity = safeRound(newQty);
+        } else {
+          existingItem.quantity = safeRound((existingItem.quantity || 0) + newQty);
+        }
+
+        existingItem.casNumber = doc.casNumber || existingItem.casNumber;
+        existingItem.smiles = doc.smiles || existingItem.smiles;
+        existingItem.inchi = doc.inchi || existingItem.inchi;
+        existingItem.chemicalFormula = doc.chemicalFormula || existingItem.chemicalFormula;
+        existingItem.manufacturingCompany = doc.manufacturingCompany || existingItem.manufacturingCompany;
+        existingItem.storageLocation = doc.storageLocation || existingItem.storageLocation;
+        existingItem.lotNumber = doc.lotNumber || existingItem.lotNumber;
+        existingItem.expiryDate = doc.expiryDate || existingItem.expiryDate;
+        existingItem.abstract = doc.abstract || existingItem.abstract;
+        existingItem.pubmedId = doc.pubmedId || existingItem.pubmedId;
+        existingItem.lastUpdated = new Date();
+
+        await existingItem.save();
+        updatedItems.push(existingItem);
+      } catch (error) {
+        errors.push({
+          index: doc.index,
+          code: 'UPDATE_FAILED',
+          message: error?.message || 'Failed to update item',
+          itemCode: doc.itemCode,
+        });
+      }
+    } else {
+      try {
+        const item = await Inventory.create({
+          labId,
+          itemCode: doc.itemCode,
+          itemName: doc.itemName,
+          chemicalName: doc.chemicalName,
+          category: doc.category,
+          quantity: safeRound(doc.quantity),
+          quantityUnit: doc.quantityUnit,
+          costPerUnit: doc.costPerUnit,
+          minThreshold: doc.minThreshold,
+          casNumber: doc.casNumber,
+          smiles: doc.smiles,
+          inchi: doc.inchi,
+          chemicalFormula: doc.chemicalFormula,
+          manufacturingCompany: doc.manufacturingCompany,
+          entryDate: doc.entryDate || new Date(),
+          storageLocation: doc.storageLocation,
+          lotNumber: doc.lotNumber,
+          expiryDate: doc.expiryDate,
+          abstract: doc.abstract,
+          pubmedId: doc.pubmedId,
+          lastUpdated: new Date(),
+        });
+        createdItems.push(item);
+      } catch (error) {
+        errors.push({
+          index: doc.index,
+          code: 'CREATE_FAILED',
+          message: error?.message || 'Failed to create item',
+          itemCode: doc.itemCode,
+        });
+      }
     }
   }
 
   await createAuditEntry({
     userId: req.user._id,
     action: 'bulk_import_inventory',
-    details: `Bulk import inventory: created ${createdItems.length}, skipped ${skipped.length}, errors ${errors.length}`,
+    details: `Bulk import inventory: created ${createdItems.length}, updated ${updatedItems.length}, errors ${errors.length}`,
     entityType: 'inventory',
     entityId: null,
     metadata: {
       labId,
       createdCount: createdItems.length,
-      skippedCount: skipped.length,
+      updatedCount: updatedItems.length,
       errorCount: errors.length,
-      skipped: skipped.slice(0, 50),
       errors: errors.slice(0, 50),
+      importMode
     },
   });
 
@@ -521,8 +567,8 @@ const bulkImportInventory = asyncHandler(async (req, res) => {
     data: {
       created: createdItems.map((entry) => decorateInventoryAbstract(entry)),
       createdCount: createdItems.length,
-      skipped,
-      skippedCount: skipped.length,
+      updatedCount: updatedItems.length,
+      skippedCount: 0,
       errors,
       errorCount: errors.length,
     },
