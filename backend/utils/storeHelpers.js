@@ -1,28 +1,33 @@
 // Parse pack size to base unit value and unit
-function parsePackSize(packSize) {
-  if (!packSize) return { value: 1, unit: 'UNT' };
+function parsePackSize(packStr) {
+  if (!packStr) return { baseValue: 1, baseUnit: 'UNT', value: 1, unit: 'UNT' };
   
-  const str = packSize.toString()
+  const s = packStr.toString()
     .trim().toLowerCase()
     .replace(/\s+/g, '');
   
-  const num = parseFloat(str);
-  if (isNaN(num)) return { value: 1, unit: 'UNT' };
-  
-  if (str.includes('kg')) 
-    return { value: Math.round(num * 1000 * 100) / 100, unit: 'g' };
-  if (str.includes('gm'))
-    return { value: num, unit: 'g' };
-  if (str.includes('mg'))
-    return { value: num, unit: 'mg' };
-  if (str.includes('g'))
-    return { value: num, unit: 'g' };
-  if (str.includes('ml'))
-    return { value: num, unit: 'ml' };
-  if (str.includes('l'))
-    return { value: Math.round(num * 1000 * 100) / 100, unit: 'ml' };
-  
-  return { value: num, unit: 'UNT' };
+  const num = parseFloat(s) || 1;
+  let baseValue = num;
+  let baseUnit = 'UNT';
+
+  if (s.includes('kg')) {
+    baseValue = safeRound(num * 1000);
+    baseUnit = 'g';
+  } else if (s.includes('mg')) {
+    baseValue = num;
+    baseUnit = 'mg';
+  } else if (s.includes('gm') || s.includes('g')) {
+    baseValue = num;
+    baseUnit = 'g';
+  } else if (s.includes('ml')) {
+    baseValue = num;
+    baseUnit = 'ml';
+  } else if (s.includes('l')) {
+    baseValue = safeRound(num * 1000);
+    baseUnit = 'ml';
+  }
+
+  return { baseValue, baseUnit, value: baseValue, unit: baseUnit };
 }
 
 // Round to 2 decimal places always

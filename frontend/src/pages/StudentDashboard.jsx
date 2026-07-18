@@ -38,7 +38,8 @@ export default function StudentDashboard() {
     fetchLabs();
     fetchTransactions();
     fetchStoreAllotments();
-  }, [fetchLabs, fetchStoreAllotments, fetchTransactions]);
+    store.fetchMyLabRequests();
+  }, [fetchLabs, fetchStoreAllotments, fetchTransactions, store.fetchMyLabRequests]);
 
   const borrowings = useMemo(
     () => transactions.filter((tx) => tx.type === 'borrow'),
@@ -49,6 +50,8 @@ export default function StudentDashboard() {
     () => borrowings.filter((tx) => tx.status === 'approved' || tx.status === 'pending'),
     [borrowings]
   );
+
+  const myLabRequests = store.labRequests || [];
 
   const overdueStoreItems = useMemo(
     () =>
@@ -121,23 +124,25 @@ export default function StudentDashboard() {
   };
 
   const submitBorrowRequest = async () => {
-    if (!selectedItem || !borrowForm.quantity || !borrowForm.purpose.trim() || !borrowForm.neededUntil) {
-      setToast({ type: 'error', message: 'Quantity, purpose, and needed-until date are required.' });
+    if (!selectedItem || !borrowForm.quantity || !borrowForm.purpose.trim()) {
+      setToast({ type: 'error', message: 'Quantity and purpose are required.' });
       return;
     }
 
     setSubmittingBorrow(true);
     try {
-      await createBorrowRequest({
-        itemId: selectedItem.id,
-        quantity: borrowForm.quantity,
+      await store.createLabRequest({
+        labId: selectedItem.labId,
+        labName: selectedItem.labName,
+        chemicalName: selectedItem.chemicalName,
+        quantityRequested: borrowForm.quantity,
+        unit: selectedItem.quantityUnit,
         purpose: borrowForm.purpose.trim(),
-        neededUntil: borrowForm.neededUntil,
-        notes: borrowForm.notes.trim(),
+        groupName: borrowForm.notes.trim(), // Reusing notes field for groupName temporarily
       });
       setToast({ type: 'success', message: `Borrow request sent for ${selectedItem.name}.` });
       setBorrowOpen(false);
-      await fetchTransactions();
+      await store.fetchMyLabRequests();
     } catch (error) {
       setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to submit borrow request.' });
     } finally {
@@ -275,7 +280,23 @@ export default function StudentDashboard() {
         ))}
       </div>
 
-      <Card title='My Borrowings' subtitle='All lab borrowing requests and current deadlines'>
+      <Card title='My Lab Requests' subtitle='Direct chemical requests made to a lab'>
+        <Table
+          headers={[
+            { key: 'chemicalName', label: 'Chemical' },
+            { key: 'labName', label: 'Lab' },
+            { key: 'quantityDisplay', label: 'Quantity' },
+            { key: 'purpose', label: 'Purpose' },
+            { key: 'status', label: 'Status' },
+          ]}
+          rows={myLabRequests.map((req) => ({
+            ...req,
+            quantityDisplay: `${req.quantityRequested} ${req.unit}`.trim(),
+          }))}
+        />
+      </Card>
+      
+      <Card title='Legacy Borrowings' subtitle='Old architecture lab borrowing requests'>
         <Table
           headers={[
             { key: 'itemName', label: 'Item' },

@@ -155,6 +155,11 @@ app.use("/store/requests", require("./routes/storeRequestRoutes"));
 app.use("/store/history", require("./routes/storeHistoryRoutes"));
 app.use("/store/tracking", require("./routes/storeTrackingRoutes"));
 app.use("/notifications", require("./routes/notificationRoutes"));
+
+// New Lab backend routes
+app.use("/lab/requests", require("./routes/labRequestRoutes"));
+app.use("/lab/history", require("./routes/labHistoryRoutes"));
+
 // Serve frontend in production
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../frontend/dist')));

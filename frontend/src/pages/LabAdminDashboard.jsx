@@ -94,10 +94,13 @@ export default function LabAdminDashboard() {
     fetchInventory(labId);
     fetchTransactions({ labId });
     fetchExperiments({ labId });
-  }, [fetchExperiments, fetchInventory, fetchTransactions, labId]);
+    store.fetchLabRequests();
+  }, [fetchExperiments, fetchInventory, fetchTransactions, labId, store.fetchLabRequests]);
 
   const currentLab = assignedLabs.find((lab) => String(lab.id || lab._id) === String(labId)) || store.labs.find((lab) => String(lab.id || lab._id) === String(labId));
   const pendingBorrowRequests = store.transactions.filter((tx) => tx.status === 'pending' && tx.type === 'borrow');
+  const pendingLabRequests = store.labRequests.filter(r => r.labId === labId && r.status === 'Pending');
+  
   const storeRequests = useStoreManagerMock(state => state.requests);
   const pendingStoreRequestsCount = storeRequests.filter(r => r.lab === currentLab?.name && r.status === 'Pending').length;
   const pendingExperimentRequests = pendingBorrowRequests.filter((tx) => tx.requestCategory === 'experiment');
@@ -214,6 +217,15 @@ export default function LabAdminDashboard() {
       await Promise.all([store.fetchInventory(labId), store.fetchTransactions({ labId })]);
       store.setToast({ type: 'success', message: `Borrow request ${status}.` });
     } catch (error) { store.setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to update borrow request.' }); } finally { setReviewingId(''); }
+  };
+
+  const reviewLabRequest = async (id, status) => {
+    setReviewingId(id);
+    try {
+      if (status === 'approved') await store.approveLabRequest(id); else await store.rejectLabRequest(id, 'Rejected by Lab Admin');
+      await Promise.all([store.fetchInventory(labId), store.fetchLabRequests()]);
+      store.setToast({ type: 'success', message: `Student lab request ${status}.` });
+    } catch (error) { store.setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to process student request.' }); } finally { setReviewingId(''); }
   };
 
   const reviewExperimentRequest = async (id, status) => {
@@ -487,7 +499,24 @@ export default function LabAdminDashboard() {
       <Table headers={inventoryHeaders} rows={store.inventory.map((item) => ({ ...item, highlight: Number(item.quantity || 0) <= Number(item.minThreshold || 0) }))} />
       <div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'><div><h2 className='text-xl font-semibold'>Experiments In This Lab</h2><p className='text-sm text-slate-500 dark:text-slate-400'>Experiment object, required inventory, and estimated expense are managed together here.</p></div><div className='flex flex-wrap gap-2'><Button variant='outline' onClick={downloadExperimentsImportTemplate}><FileDown size={16} /> Template CSV</Button><Button variant='outline' onClick={() => setExperimentImportOpen(true)}><Upload size={16} /> Import Experiments</Button><Button variant='outline' onClick={() => setCreateOpen(true)}><Plus size={16} /> Add Inventory First</Button><Button onClick={() => setExperimentOpen(true)}><Plus size={16} /> Add Experiment</Button></div></div>
       <Table headers={experimentHeaders} rows={store.experiments} />
-      <Card title='Pending Borrow Requests' subtitle='Both chemical and experiment requests are reviewed here'><div className='space-y-3'>{pendingBorrowRequests.length ? pendingBorrowRequests.map((tx) => <div key={tx.id} className='rounded-lg bg-slate-50 p-4 dark:bg-slate-800'><p className='text-sm font-semibold text-slate-900 dark:text-slate-100'>{tx.requestCategory === 'experiment' ? `${tx.experimentTitle || tx.itemName} experiment request` : `${tx.itemName} requested`} by {tx.requesterName}</p><p className='mt-1 text-xs text-slate-500 dark:text-slate-400'>{tx.requestCategory === 'experiment' ? `${tx.teamName ? `${tx.teamName} • ` : ''}${tx.memberCount || 1} participant${Number(tx.memberCount || 1) > 1 ? 's' : ''}` : `${tx.quantity} ${tx.itemId?.quantityUnit || ''}`} | {tx.requesterEmail}</p><p className='mt-2 text-sm text-slate-600 dark:text-slate-300'>Purpose: {tx.purpose || 'N/A'}</p><div className='mt-3 flex gap-2'>{tx.requestCategory === 'experiment' ? <><Button className='px-3 py-1 text-xs' onClick={() => reviewExperimentRequest(tx.id, 'approved')} disabled={reviewingExperimentRequestId === tx.id}>{reviewingExperimentRequestId === tx.id ? 'Working...' : 'Approve'}</Button><Button variant='outline' className='px-3 py-1 text-xs' onClick={() => reviewExperimentRequest(tx.id, 'rejected')} disabled={reviewingExperimentRequestId === tx.id}>Reject</Button></> : <><Button className='px-3 py-1 text-xs' onClick={() => reviewBorrow(tx.id, 'approved')} disabled={reviewingId === tx.id}>{reviewingId === tx.id ? 'Working...' : 'Approve'}</Button><Button variant='outline' className='px-3 py-1 text-xs' onClick={() => reviewBorrow(tx.id, 'rejected')} disabled={reviewingId === tx.id}>Reject</Button></>}</div></div>) : <p className='text-sm text-slate-500'>No pending borrow requests right now.</p>}</div></Card>
+      
+      <Card title='Pending Student Lab Requests' subtitle='Direct requests from students to this lab'>
+        <div className='space-y-3'>
+          {pendingLabRequests.length ? pendingLabRequests.map((req) => (
+            <div key={req._id} className='rounded-lg bg-slate-50 p-4 dark:bg-slate-800'>
+              <p className='text-sm font-semibold text-slate-900 dark:text-slate-100'>{req.chemicalName} requested by {req.studentName}</p>
+              <p className='mt-1 text-xs text-slate-500 dark:text-slate-400'>{req.quantityRequested} {req.unit} | Group: {req.groupName || 'None'}</p>
+              <p className='mt-2 text-sm text-slate-600 dark:text-slate-300'>Purpose: {req.purpose || 'N/A'}</p>
+              <div className='mt-3 flex gap-2'>
+                <Button className='px-3 py-1 text-xs' onClick={() => reviewLabRequest(req._id, 'approved')} disabled={reviewingId === req._id}>{reviewingId === req._id ? 'Working...' : 'Approve'}</Button>
+                <Button variant='outline' className='px-3 py-1 text-xs' onClick={() => reviewLabRequest(req._id, 'rejected')} disabled={reviewingId === req._id}>Reject</Button>
+              </div>
+            </div>
+          )) : <p className='text-sm text-slate-500'>No pending student requests.</p>}
+        </div>
+      </Card>
+      
+      <Card title='Legacy Borrow Requests' subtitle='Old architecture borrow requests (Pending Deprecation)'><div className='space-y-3'>{pendingBorrowRequests.length ? pendingBorrowRequests.map((tx) => <div key={tx.id} className='rounded-lg bg-slate-50 p-4 dark:bg-slate-800'><p className='text-sm font-semibold text-slate-900 dark:text-slate-100'>{tx.requestCategory === 'experiment' ? `${tx.experimentTitle || tx.itemName} experiment request` : `${tx.itemName} requested`} by {tx.requesterName}</p><p className='mt-1 text-xs text-slate-500 dark:text-slate-400'>{tx.requestCategory === 'experiment' ? `${tx.teamName ? `${tx.teamName} • ` : ''}${tx.memberCount || 1} participant${Number(tx.memberCount || 1) > 1 ? 's' : ''}` : `${tx.quantity} ${tx.itemId?.quantityUnit || ''}`} | {tx.requesterEmail}</p><p className='mt-2 text-sm text-slate-600 dark:text-slate-300'>Purpose: {tx.purpose || 'N/A'}</p><div className='mt-3 flex gap-2'>{tx.requestCategory === 'experiment' ? <><Button className='px-3 py-1 text-xs' onClick={() => reviewExperimentRequest(tx.id, 'approved')} disabled={reviewingExperimentRequestId === tx.id}>{reviewingExperimentRequestId === tx.id ? 'Working...' : 'Approve'}</Button><Button variant='outline' className='px-3 py-1 text-xs' onClick={() => reviewExperimentRequest(tx.id, 'rejected')} disabled={reviewingExperimentRequestId === tx.id}>Reject</Button></> : <><Button className='px-3 py-1 text-xs' onClick={() => reviewBorrow(tx.id, 'approved')} disabled={reviewingId === tx.id}>{reviewingId === tx.id ? 'Working...' : 'Approve'}</Button><Button variant='outline' className='px-3 py-1 text-xs' onClick={() => reviewBorrow(tx.id, 'rejected')} disabled={reviewingId === tx.id}>Reject</Button></>}</div></div>) : <p className='text-sm text-slate-500'>No pending legacy borrow requests right now.</p>}</div></Card>
       <Card title='Student Access Control' subtitle='Block or unblock users if needed'><div className='space-y-3'>{students.length ? students.map((student) => <div key={student.id} className='flex items-start justify-between gap-3 rounded-lg bg-slate-50 p-4 dark:bg-slate-800'><div><p className='text-sm font-semibold text-slate-900 dark:text-slate-100'>{student.name}</p><p className='mt-1 text-xs text-slate-500 dark:text-slate-400'>{student.email}</p><p className={`mt-2 text-xs font-medium ${student.isBlocked ? 'text-rose-600 dark:text-rose-300' : 'text-emerald-600 dark:text-emerald-300'}`}>{student.isBlocked ? 'Blocked' : 'Active'}</p></div><Button variant='outline' className={`px-3 py-1 text-xs ${student.isBlocked ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`} onClick={() => toggleStudentBlock(student)} disabled={blockingUserId === student.id}>{blockingUserId === student.id ? 'Saving...' : student.isBlocked ? 'Unblock' : 'Block'}</Button></div>) : <p className='text-sm text-slate-500'>No students linked yet.</p>}</div></Card>
     </> : isAnalyticsPage ? <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-4'><Card title='Low Stock Chemicals' subtitle='At or below threshold'><p className='text-3xl font-semibold'>{lowStockCount}</p></Card><Card title='Estimated Experiment Spend' subtitle='Total experiment expenses'><p className='text-3xl font-semibold'>Rs. {experimentSpend.toFixed(2)}</p></Card><Card title='Pending Inventory Borrows' subtitle='Chemical requests awaiting review'><p className='text-3xl font-semibold'>{pendingInventoryRequests.length}</p></Card><Card title='Pending Experiment Borrows' subtitle='Experiment requests awaiting review'><p className='text-3xl font-semibold'>{pendingExperimentRequests.length}</p></Card></div> : <div className='space-y-4'><div className='flex items-center justify-between gap-3'><h2 className='text-xl font-semibold'>Transactions</h2><Button variant='outline' onClick={downloadTransactionsPdf} disabled={!store.transactions.length}><Download size={16} /> Download PDF</Button></div><Card title='Recent Transactions' subtitle='Borrow, experiment-request, and return activity'>{store.transactions.length ? <div className='space-y-3'>{store.transactions.map((tx) => <div key={tx.id} className='rounded-lg bg-slate-50 p-4 dark:bg-slate-800'><p className='text-sm font-semibold text-slate-900 dark:text-slate-100'>{tx.requestCategory === 'experiment' ? `${tx.experimentTitle || tx.itemName} | Complete experiment request` : `${tx.itemName} | ${tx.quantity} ${tx.itemId?.quantityUnit || ''}`} | {tx.requesterName}</p><p className='mt-1 text-xs text-slate-500 dark:text-slate-400'>{tx.requesterEmail} | {tx.status}</p><p className='mt-2 text-sm text-slate-600 dark:text-slate-300'>Purpose: {tx.purpose || 'N/A'}</p></div>)}</div> : <p className='text-sm text-slate-500'>No transactions yet.</p>}</Card></div>}
     <LabImportModal open={importOpen} onClose={() => setImportOpen(false)} labId={labId} />

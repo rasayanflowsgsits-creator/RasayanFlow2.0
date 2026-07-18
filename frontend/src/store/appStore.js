@@ -199,6 +199,7 @@ const useAppStore = create((set) => ({
   storeAllotments: [],
   transactions: [],
   activityLogs: [],
+  labRequests: [],
   loading: false,
   filters: { search: '', lab: 'All' },
   toast: null,
@@ -611,6 +612,52 @@ const useAppStore = create((set) => ({
     } catch {
       set({ transactions: [], loading: false });
     }
+  },
+  fetchLabRequests: async () => {
+    try {
+      const { data } = await api.get('/lab/requests');
+      set({ labRequests: getPayload(data) || [] });
+    } catch {
+      set({ labRequests: [] });
+    }
+  },
+  createLabRequest: async ({ labId, labName, chemicalName, quantityRequested, unit, purpose, groupName = '' }) => {
+    const response = await api.post('/lab/requests', {
+      labId,
+      labName,
+      chemicalName,
+      quantityRequested: Number(quantityRequested),
+      unit,
+      purpose,
+      groupName
+    });
+    const request = getPayload(response.data);
+    set((state) => ({ labRequests: [request, ...state.labRequests] }));
+    return request;
+  },
+  fetchMyLabRequests: async () => {
+    try {
+      const { data } = await api.get('/lab/requests/my');
+      set({ labRequests: getPayload(data) || [] });
+    } catch {
+      set({ labRequests: [] });
+    }
+  },
+  approveLabRequest: async (requestId) => {
+    const response = await api.put(`/lab/requests/${requestId}/approve`);
+    const updated = getPayload(response.data);
+    set((state) => ({
+      labRequests: state.labRequests.map((entry) => (entry._id === updated._id ? updated : entry))
+    }));
+    return updated;
+  },
+  rejectLabRequest: async (requestId, rejectionReason = '') => {
+    const response = await api.put(`/lab/requests/${requestId}/reject`, { rejectionReason });
+    const updated = getPayload(response.data);
+    set((state) => ({
+      labRequests: state.labRequests.map((entry) => (entry._id === updated._id ? updated : entry))
+    }));
+    return updated;
   },
   fetchActivityLogs: async (filters = {}) => {
     set({ loading: true });
