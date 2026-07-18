@@ -3,6 +3,11 @@ import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'r
 import useAuthStore from './store/authStore';
 import useAppStore from './store/appStore';
 import ErrorBoundary from './components/ui/ErrorBoundary';
+import { useEffect, useState } from 'react';
+import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
+import useAuthStore from './store/authStore';
+import useAppStore from './store/appStore';
+import ErrorBoundary from './components/ui/ErrorBoundary';
 import Sidebar from './components/layout/Sidebar';
 import Navbar from './components/layout/Navbar';
 import Toast from './components/ui/Toast';
@@ -25,6 +30,7 @@ import StudentLabDetail from './pages/StudentLabDetail';
 import StudentStorePage from './pages/StudentStorePage';
 import LabStoreRequests from './pages/LabStoreRequests';
 import LabNotifications from './pages/LabNotifications';
+import LabHistory from './pages/LabHistory';
 import AboutPage from './pages/AboutPage';
 import NotFound from './pages/NotFound';
 import socket from './services/socket';
@@ -168,6 +174,7 @@ function App() {
                     <Route path='analytics' element={role === 'lab-admin' ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='transactions' element={role === 'lab-admin' ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='lab/store-requests' element={role === 'lab-admin' ? <LabStoreRequests /> : <Navigate to='/' replace />} />
+                    <Route path='lab/history' element={role === 'lab-admin' ? <LabHistory /> : <Navigate to='/' replace />} />
                     <Route path='lab/notifications' element={role === 'lab-admin' ? <LabNotifications /> : <Navigate to='/' replace />} />
                     <Route path='store-dashboard' element={isStoreAdmin ? <StoreDashboard /> : <Navigate to='/' replace />} />
                     <Route path='store/dashboard' element={isStoreAdmin ? <StoreManagerDashboard /> : <Navigate to='/' replace />} />

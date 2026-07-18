@@ -83,66 +83,89 @@ const approveRequest = asyncHandler(async (req, res) => {
 
     if (!chemical) throw new Error("Chemical not found in store inventory");
 
+    // A & B: Parse pack size
     const packData = parsePackSize(chemical.packSize);
-    const availableQty = chemical.availableQty || 0;
-    const totalBase = safeRound(availableQty * packData.value);
+    const availableQtyUNT = chemical.availableQty || 0;
+    
+    // C: Calculate total base stock
+    const totalBase = safeRound(availableQtyUNT * packData.baseValue);
 
-    // Convert requested unit to base unit if necessary (e.g. request 5kg but pack size is 500g)
+    // Convert requested unit to base unit if necessary
     let requestedBase = request.quantityRequested;
     const reqUnit = request.unit.toLowerCase().replace(/\s+/g, '');
-    if (reqUnit.includes('kg') && packData.unit === 'g') requestedBase *= 1000;
-    else if (reqUnit.includes('l') && reqUnit !== 'ml' && packData.unit === 'ml') requestedBase *= 1000;
+    if (reqUnit.includes('kg') && packData.baseUnit === 'g') requestedBase *= 1000;
+    else if (reqUnit.includes('l') && reqUnit !== 'ml' && packData.baseUnit === 'ml') requestedBase *= 1000;
     
     if (totalBase < requestedBase) {
-      throw new Error("Insufficient stock");
+      throw new Error(`Insufficient stock. Total base available: ${totalBase}, Requested: ${requestedBase}`);
     }
     
-    const newBase = safeRound(totalBase - requestedBase);
-    const newAvailableQty = safeRound(newBase / packData.value);
+    // D: Subtract requested quantity
+    const remainingBase = safeRound(totalBase - requestedBase);
     
-    const qtyBefore = chemical.availableQty;
+    // E: Convert back to UNT
+    const newAvailableQtyUNT = safeRound(remainingBase / packData.baseValue);
+    
+    const qtyBeforeUNT = availableQtyUNT;
     const valueBefore = chemical.totalValue;
-    const priceBefore = chemical.unitPrice || 0;
+    const unitPrice = chemical.unitPrice || 0;
 
-    chemical.availableQty = newAvailableQty;
+    // F: Update storeInventory
+    chemical.availableQty = newAvailableQtyUNT;
     const reorderLevel = chemical.reorderLevel || 2;
     if (chemical.availableQty <= 0) chemical.status = 'Out of Stock';
     else if (chemical.availableQty <= reorderLevel) chemical.status = 'Low Stock';
     else chemical.status = 'In Stock';
     
-    chemical.totalValue = safeRound(chemical.availableQty * (chemical.unitPrice || 0));
+    chemical.totalValue = safeRound(chemical.availableQty * unitPrice);
     chemical.updatedAt = Date.now();
     await chemical.save({ session });
 
     await StoreTracking.create([buildTrackingLog(
       chemical,
       'Issued to Lab',
-      qtyBefore || 0,
-      priceBefore,
-      chemical.availableQty || 0,
-      chemical.unitPrice || 0
+      qtyBeforeUNT,
+      unitPrice,
+      chemical.availableQty,
+      unitPrice
     )], { session });
 
-    // Update Lab Inventory automatically
+    // Calculate costPerBase
+    const costPerBase = safeRound(unitPrice / packData.baseValue);
+
+    // G: Add to labInventory
     if (request.labId) {
       let labInventory = await Inventory.findOne({ labId: request.labId, chemicalName: chemical.name }).session(session);
+      
       if (labInventory) {
-        labInventory.quantity += request.quantityRequested;
-        labInventory.entryDate = Date.now();
+        labInventory.quantityAvailable = safeRound((labInventory.quantityAvailable || 0) + requestedBase);
+        labInventory.quantityReceived = safeRound((labInventory.quantityReceived || 0) + requestedBase);
+        labInventory.costPerBase = costPerBase; // Update to latest store price
+        labInventory.totalValue = safeRound(labInventory.quantityAvailable * costPerBase);
         labInventory.lastUpdated = Date.now();
         await labInventory.save({ session });
       } else {
         await Inventory.create([{
           labId: request.labId,
+          labName: request.labName,
           itemCode: `CHEM-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
           itemName: chemical.name,
           chemicalName: chemical.name,
-          category: chemical.grade || 'General',
-          quantity: request.quantityRequested,
-          quantityUnit: request.unit,
-          costPerUnit: chemical.unitPrice || 0,
-          minThreshold: 0,
+          chemicalId: chemical.chemicalId || '',
           casNumber: chemical.cas || '',
+          grade: chemical.grade || '',
+          category: chemical.grade || 'General',
+          quantityReceived: requestedBase,
+          quantityAvailable: requestedBase,
+          quantityUnit: packData.baseUnit,
+          costPerBase: costPerBase,
+          totalValue: safeRound(requestedBase * costPerBase),
+          source: "Store Transfer",
+          requestId: request._id,
+          receivedDate: Date.now(),
+          status: "In Stock",
+          
+          minThreshold: 0,
           smiles: chemical.smiles || '',
           inchi: chemical.inchiKey || '',
           chemicalFormula: chemical.formula || '',
@@ -152,48 +175,67 @@ const approveRequest = asyncHandler(async (req, res) => {
       }
     }
 
+    // I: Update storeRequest
     request.status = "Approved";
     request.approvedBy = req.user._id;
     request.approvedAt = Date.now();
     request.receiptNumber = await getNextReceiptNumber();
     await request.save({ session });
 
+    // H: Save storeHistory
+    const valueReleased = safeRound(valueBefore - chemical.totalValue);
+    
     await StoreHistory.create([{
+      type: "Store to Lab Transfer",
       requestId: request._id,
       chemicalName: chemical.name,
       chemicalId: chemical.chemicalId,
       labName: request.labName,
       labId: request.labId,
-      quantityBefore: qtyBefore,
-      quantityRequested: request.quantityRequested,
-      quantityAfter: chemical.availableQty,
-      unit: request.unit,
-      unitPrice: chemical.unitPrice,
+      
+      qtyBeforeUNT: qtyBeforeUNT,
+      qtyAfterUNT: chemical.availableQty,
+      qtyBeforeBase: totalBase,
+      qtyRequestedBase: requestedBase,
+      qtyAfterBase: remainingBase,
+      baseUnit: packData.baseUnit,
+      unit: request.unit, // original requested unit
+      
+      unitPrice: unitPrice,
+      costPerBase: costPerBase,
       valueBefore: safeRound(valueBefore),
       valueAfter: safeRound(chemical.totalValue),
+      valueReleased: valueReleased,
+      
       receiptNumber: request.receiptNumber,
       action: "Approved",
       approvedBy: req.user.name,
       timestamp: Date.now()
     }], { session });
 
-    const notification = await StoreNotification.create([{
-      userId: req.user._id, // typically sent to the user who requested, but we send it generally for lab
+    // J: Create notification
+    await StoreNotification.create([{
+      userId: req.user._id,
       labId: request.labId,
       type: "request_approved",
-      message: `Your request for ${request.quantityRequested} ${request.unit} of ${request.chemicalName} has been approved.`,
+      message: `${request.chemicalName} ${request.quantityRequested}${request.unit} approved by Store Manager`,
       chemicalName: request.chemicalName,
       quantity: request.quantityRequested,
       unit: request.unit,
       requestId: request._id
     }], { session });
 
+    // K: Commit Transaction
     await session.commitTransaction();
     session.endSession();
 
     const io = getIo();
     if (request.labId) {
-      io.to(request.labId.toString()).emit('request-approved', request);
+      io.to(request.labId.toString()).emit('request-approved', {
+        chemical: chemical.name,
+        quantity: request.quantityRequested,
+        unit: request.unit
+      });
     }
     if (chemical.status === 'Low Stock' || chemical.status === 'Out of Stock') {
        io.emit('low-stock-alert', chemical);

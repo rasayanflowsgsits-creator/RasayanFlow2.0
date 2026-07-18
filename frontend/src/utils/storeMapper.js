@@ -1,7 +1,15 @@
 export const parseNumber = (value) => {
   if (value === null || value === undefined || value === '') return 0;
   if (typeof value === 'number') return isNaN(value) ? 0 : value;
-  const cleaned = String(value).replace(/,/g, '').trim();
+  let str = String(value).trim();
+  
+  if (str.includes(',') && !str.includes('.')) {
+    if (/,(\d{1,2})$/.test(str)) {
+      str = str.replace(',', '.');
+    }
+  }
+  
+  const cleaned = str.replace(/,/g, '');
   if (!cleaned) return 0;
   const number = Number(cleaned);
   return Number.isFinite(number) ? number : 0;
@@ -79,17 +87,29 @@ export const toFrontendRequest = (req) => ({
 
 export const toFrontendHistory = (hist) => ({
   id: hist._id || hist.id,
+  type: hist.type || 'Store Transfer',
   chemicalName: hist.chemicalName || '',
   chemicalId: hist.chemicalId || '',
   lab: hist.labName || (hist.labId ? hist.labId.name : null) || hist.labId || 'Unknown Lab',
-  qtyRequestedBase: hist.quantityRequested || 0,
-  qtyRequested: hist.quantityRequested || 0,
-  baseUnit: hist.unit || '',
-  qtyBeforeBase: hist.quantityBefore || 0,
-  qtyAfterBase: hist.quantityAfter || 0,
+  
+  qtyBeforeUNT: hist.qtyBeforeUNT || 0,
+  qtyAfterUNT: hist.qtyAfterUNT || 0,
+  
+  qtyRequestedBase: hist.qtyRequestedBase || hist.quantityRequested || 0,
+  qtyRequested: hist.quantityRequested || hist.qtyRequestedBase || 0,
+  qtyBeforeBase: hist.qtyBeforeBase || hist.quantityBefore || 0,
+  qtyAfterBase: hist.qtyAfterBase || hist.quantityAfter || 0,
+  
+  baseUnit: hist.baseUnit || hist.unit || '',
+  unit: hist.unit || hist.baseUnit || '',
+  
   totalValueBefore: hist.valueBefore || 0,
   totalValueAfter: hist.valueAfter || 0,
+  valueReleased: hist.valueReleased || 0,
+  
   unitPrice: hist.unitPrice || 0,
+  costPerBase: hist.costPerBase || 0,
+  
   status: hist.action || '',
   date: hist.timestamp || hist.createdAt || new Date().toISOString(),
   receiptNumber: hist.receiptNumber || '',

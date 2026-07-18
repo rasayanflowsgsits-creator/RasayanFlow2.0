@@ -32,6 +32,7 @@ const linksMap = {
     { to: "/analytics", label: "Analytics", icon: BarChart3 },
     { to: "/transactions", label: "Transactions", icon: CheckCircle2 },
     { to: "/lab/store-requests", label: "Store Requests", icon: Store },
+    { to: "/lab/history", label: "History", icon: History },
     { to: "/lab/notifications", label: "Notifications", icon: Bell },
     { to: "/about", label: "About Us", icon: Info },
   ],
