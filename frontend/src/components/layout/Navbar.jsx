@@ -127,9 +127,9 @@ export default function Navbar({ onToggleSidebar, isDark, toggleTheme }) {
                   {storeLowStockAlerts.length}
                 </span>
               )}
-              {user?.role === 'lab-admin' && unreadLabNotifications.length > 0 && (
+              {user?.role === 'lab-admin' && unreadNotificationCount > 0 && (
                 <span className="absolute top-1 right-1.5 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full shadow-sm">
-                  {unreadLabNotifications.length}
+                  {unreadNotificationCount}
                 </span>
               )}
             </button>
