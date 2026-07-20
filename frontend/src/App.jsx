@@ -120,11 +120,33 @@ function App() {
       }
     });
 
+    socket.on('request-approved', (payload) => {
+      if (user?.role === 'lab-admin') {
+        const message = `${payload.chemical} ${payload.quantity}${payload.unit} has been approved by Store Manager`;
+        setToast({ type: 'success', message });
+        const appStore = useAppStore.getState();
+        appStore.fetchUnreadNotificationCount();
+        appStore.fetchNotifications();
+      }
+    });
+
+    socket.on('request-rejected', (payload) => {
+      if (user?.role === 'lab-admin') {
+        const message = `Your request for ${payload.chemicalName} has been rejected.`;
+        setToast({ type: 'error', message });
+        const appStore = useAppStore.getState();
+        appStore.fetchUnreadNotificationCount();
+        appStore.fetchNotifications();
+      }
+    });
+
     return () => {
       socket.off('inventory.updated');
       socket.off('store:new_request');
       socket.off('store:request_approved');
       socket.off('store:request_rejected');
+      socket.off('request-approved');
+      socket.off('request-rejected');
     };
   }, [user?._id, user?.role, setHighlight, setToast]);
 

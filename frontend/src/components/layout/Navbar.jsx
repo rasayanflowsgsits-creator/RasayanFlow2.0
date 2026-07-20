@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Moon, Sun, LogOut, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
@@ -42,14 +42,20 @@ export default function Navbar({ onToggleSidebar, isDark, toggleTheme }) {
     return alerts.sort((a, b) => a.percentage - b.percentage);
   }, [chemicals, alertThreshold, user?.role]);
 
-  const notificationsState = useStoreManagerMock((state) => state.notifications);
-  const markNotificationAsRead = useStoreManagerMock((state) => state.markNotificationAsRead);
-  const markAllNotificationsAsRead = useStoreManagerMock((state) => state.markAllNotificationsAsRead);
+  const notificationsState = useAppStore((state) => state.notifications);
+  const unreadNotificationCount = useAppStore((state) => state.unreadNotificationCount);
+  const markNotificationAsRead = useAppStore((state) => state.markNotificationAsRead);
+  const markAllNotificationsAsRead = useAppStore((state) => state.markAllNotificationsAsRead);
+  const fetchUnreadNotificationCount = useAppStore((state) => state.fetchUnreadNotificationCount);
+  const fetchNotifications = useAppStore((state) => state.fetchNotifications);
 
-  const unreadLabNotifications = useMemo(() => {
-    if (user?.role !== 'lab-admin') return [];
-    return notificationsState.filter(n => !n.isRead);
-  }, [notificationsState, user?.role]);
+  useEffect(() => {
+    if (user?.role === 'lab-admin') {
+      fetchUnreadNotificationCount();
+      // Fetch initial notifications for the dropdown
+      fetchNotifications();
+    }
+  }, [user?.role, fetchUnreadNotificationCount, fetchNotifications]);
 
   const notifications = useMemo(() => {
     const lowStockItems = inventory.filter((item) => Number(item.quantity || 0) <= Number(item.minThreshold || 5));

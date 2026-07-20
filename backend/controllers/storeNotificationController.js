@@ -33,8 +33,14 @@ const markAllAsRead = asyncHandler(async (req, res) => {
   res.status(200).json({ message: 'All notifications marked as read' });
 });
 
+const getUnreadCount = asyncHandler(async (req, res) => {
+  const count = await StoreNotification.countDocuments({ userId: req.user._id, isRead: false });
+  res.status(200).json({ count });
+});
+
 module.exports = {
   getNotifications,
+  getUnreadCount,
   markAsRead,
   markAllAsRead
 };
