@@ -11,7 +11,7 @@ import Table from '../components/ui/Table';
 import Modal from '../components/ui/Modal';
 
 export default function StudentDashboard() {
-  const { labs, transactions, storeAllotments, fetchLabs, fetchTransactions, fetchStoreAllotments, fetchInventorySearch, createBorrowRequest, setToast } = useAppStore();
+  const { labs, transactions, storeAllotments, fetchLabs, fetchTransactions, fetchStoreAllotments, fetchInventorySearch, createBorrowRequest, setToast, fetchMyLabRequests, createLabRequest, labRequests } = useAppStore();
   const user = useAuthStore((state) => state.user);
   const navigate = useNavigate();
   const [inventorySearch, setInventorySearch] = useState('');
@@ -38,8 +38,8 @@ export default function StudentDashboard() {
     fetchLabs();
     fetchTransactions();
     fetchStoreAllotments();
-    store.fetchMyLabRequests();
-  }, [fetchLabs, fetchStoreAllotments, fetchTransactions, store.fetchMyLabRequests]);
+    fetchMyLabRequests();
+  }, [fetchLabs, fetchStoreAllotments, fetchTransactions, fetchMyLabRequests]);
 
   const borrowings = useMemo(
     () => transactions.filter((tx) => tx.type === 'borrow'),
@@ -51,7 +51,7 @@ export default function StudentDashboard() {
     [borrowings]
   );
 
-  const myLabRequests = store.labRequests || [];
+  const myLabRequests = labRequests || [];
 
   const overdueStoreItems = useMemo(
     () =>
@@ -131,7 +131,7 @@ export default function StudentDashboard() {
 
     setSubmittingBorrow(true);
     try {
-      await store.createLabRequest({
+      await createLabRequest({
         labId: selectedItem.labId,
         labName: selectedItem.labName,
         chemicalName: selectedItem.chemicalName,
@@ -142,7 +142,7 @@ export default function StudentDashboard() {
       });
       setToast({ type: 'success', message: `Borrow request sent for ${selectedItem.name}.` });
       setBorrowOpen(false);
-      await store.fetchMyLabRequests();
+      await fetchMyLabRequests();
     } catch (error) {
       setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to submit borrow request.' });
     } finally {

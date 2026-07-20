@@ -3,7 +3,7 @@ const { query, param, body } = require('express-validator');
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
 const validateRequest = require('../middleware/validateMiddleware');
-const { getUsers, approveUser, setUserBlockedState, createSuperAdmin } = require('../controllers/userController');
+const { getUsers, approveUser, setUserBlockedState, createSuperAdmin, createLabAdmin, createStoreAdmin } = require('../controllers/userController');
 
 const router = express.Router();
 
@@ -22,6 +22,30 @@ router.post(
 	],
 	validateRequest,
 	createSuperAdmin,
+);
+
+router.post(
+	'/lab-admins',
+	roleMiddleware(['superAdmin']),
+	[
+		body('name').trim().notEmpty().withMessage('Name is required'),
+		body('email').isEmail().withMessage('Valid email required'),
+		body('password').isLength({ min: 6 }).withMessage('Password min 6 chars'),
+	],
+	validateRequest,
+	createLabAdmin,
+);
+
+router.post(
+	'/store-admins',
+	roleMiddleware(['superAdmin']),
+	[
+		body('name').trim().notEmpty().withMessage('Name is required'),
+		body('email').isEmail().withMessage('Valid email required'),
+		body('password').isLength({ min: 6 }).withMessage('Password min 6 chars'),
+	],
+	validateRequest,
+	createStoreAdmin,
 );
 
 module.exports = router;
