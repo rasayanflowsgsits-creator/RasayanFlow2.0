@@ -343,11 +343,11 @@ const useAppStore = create((set) => ({
     return getPayload(response.data);
   },
   createLabAdmin: async ({ name, email, password }) => {
-    const response = await api.post('/auth/register', { name, email, password, role: 'labAdmin' });
+    const response = await api.post('/users/lab-admins', { name, email, password });
     return normalizeUser(getPayload(response.data));
   },
   createStoreAdmin: async ({ name, email, password }) => {
-    const response = await api.post('/auth/register', { name, email, password, role: 'storeAdmin' });
+    const response = await api.post('/users/store-admins', { name, email, password });
     return normalizeUser(getPayload(response.data));
   },
   createSuperAdmin: async ({ name, email, password }) => {
