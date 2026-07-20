@@ -22,6 +22,7 @@ const storeNotificationSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "StoreRequest"
   },
+  receiptNumber: { type: String },
   isRead: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 });

@@ -214,16 +214,23 @@ const approveRequest = asyncHandler(async (req, res) => {
     }], { session });
 
     // J: Create notification
-    await StoreNotification.create([{
-      userId: req.user._id,
-      labId: request.labId,
-      type: "request_approved",
-      message: `${request.chemicalName} ${request.quantityRequested}${request.unit} approved by Store Manager`,
-      chemicalName: request.chemicalName,
-      quantity: request.quantityRequested,
-      unit: request.unit,
-      requestId: request._id
-    }], { session });
+    const User = require('../models/User');
+    const labAdmins = await User.find({ labId: request.labId, role: 'labAdmin' }).session(session);
+    
+    if (labAdmins.length > 0) {
+      const notifications = labAdmins.map(admin => ({
+        userId: admin._id,
+        labId: request.labId,
+        type: "request_approved",
+        message: `${request.chemicalName} ${request.quantityRequested}${request.unit} approved by Store Manager`,
+        chemicalName: request.chemicalName,
+        quantity: request.quantityRequested,
+        unit: request.unit,
+        requestId: request._id,
+        receiptNumber: request.receiptNumber
+      }));
+      await StoreNotification.create(notifications, { session });
+    }
 
     // K: Commit Transaction
     await session.commitTransaction();
@@ -282,16 +289,22 @@ const rejectRequest = asyncHandler(async (req, res) => {
     timestamp: Date.now()
   });
 
-  await StoreNotification.create({
-    userId: req.user._id,
-    labId: request.labId,
-    type: "request_rejected",
-    message: `Your request for ${request.chemicalName} has been rejected. Reason: ${rejectionReason}`,
-    chemicalName: request.chemicalName,
-    quantity: request.quantityRequested,
-    unit: request.unit,
-    requestId: request._id
-  });
+  const User = require('../models/User');
+  const labAdmins = await User.find({ labId: request.labId, role: 'labAdmin' });
+  
+  if (labAdmins.length > 0) {
+    const notifications = labAdmins.map(admin => ({
+      userId: admin._id,
+      labId: request.labId,
+      type: "request_rejected",
+      message: `Your request for ${request.chemicalName} has been rejected. Reason: ${rejectionReason}`,
+      chemicalName: request.chemicalName,
+      quantity: request.quantityRequested,
+      unit: request.unit,
+      requestId: request._id
+    }));
+    await StoreNotification.create(notifications);
+  }
 
   const io = getIo();
   if (request.labId) {

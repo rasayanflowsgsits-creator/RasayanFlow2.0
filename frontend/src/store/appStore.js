@@ -621,6 +621,47 @@ const useAppStore = create((set) => ({
       set({ labRequests: [] });
     }
   },
+  notifications: [],
+  unreadNotificationCount: 0,
+  fetchNotifications: async () => {
+    try {
+      const { data } = await api.get('/notifications');
+      const notifs = getPayload(data) || [];
+      set({ notifications: notifs, unreadNotificationCount: notifs.filter(n => !n.isRead).length });
+    } catch {
+      set({ notifications: [], unreadNotificationCount: 0 });
+    }
+  },
+  fetchUnreadNotificationCount: async () => {
+    try {
+      const { data } = await api.get('/notifications/unread-count');
+      set({ unreadNotificationCount: getPayload(data)?.count || 0 });
+    } catch {
+      set({ unreadNotificationCount: 0 });
+    }
+  },
+  markNotificationAsRead: async (id) => {
+    try {
+      await api.put(`/notifications/${id}/read`);
+      set((state) => {
+        const notifs = state.notifications.map(n => n._id === id ? { ...n, isRead: true } : n);
+        return { notifications: notifs, unreadNotificationCount: notifs.filter(n => !n.isRead).length };
+      });
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
+  },
+  markAllNotificationsAsRead: async () => {
+    try {
+      await api.put('/notifications/read-all');
+      set((state) => {
+        const notifs = state.notifications.map(n => ({ ...n, isRead: true }));
+        return { notifications: notifs, unreadNotificationCount: 0 };
+      });
+    } catch (error) {
+      console.error('Failed to mark all notifications as read:', error);
+    }
+  },
   createLabRequest: async ({ labId, labName, chemicalName, quantityRequested, unit, purpose, groupName = '' }) => {
     const response = await api.post('/lab/requests', {
       labId,
