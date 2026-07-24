@@ -13,7 +13,14 @@ router.use(authMiddleware, roleMiddleware(['superAdmin']));
 
 router.post(
   '/',
-  [body('labName').notEmpty(), body('labCode').notEmpty()],
+  [
+    body('labName').notEmpty(),
+    body('labCode').notEmpty(),
+    body('courseType').optional().isString(),
+    body('department').optional().isString(),
+    body('year').optional().isString(),
+    body('semester').optional().isString(),
+  ],
   validateRequest,
   createLab,
 );

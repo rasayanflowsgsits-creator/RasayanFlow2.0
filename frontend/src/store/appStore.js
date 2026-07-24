@@ -8,7 +8,11 @@ const normalizeLab = (lab) => ({
   id: lab._id || lab.id,
   name: lab.name || lab.labName || 'Unnamed Lab',
   location: lab.location || lab.labCode || 'N/A',
-  admin: lab.admin || (Array.isArray(lab.admins) && lab.admins.length ? lab.admins.map((admin) => admin.name).join(', ') : 'Unassigned')
+  admin: lab.admin || (Array.isArray(lab.admins) && lab.admins.length ? lab.admins.map((admin) => admin.name).join(', ') : 'Unassigned'),
+  courseType: lab.courseType || '',
+  department: lab.department || '',
+  year: lab.year || '',
+  semester: lab.semester || '',
 });
 
 const normalizeRole = (role) => {
@@ -214,8 +218,15 @@ const useAppStore = create((set) => ({
       set({ labs: [], loading: false });
     }
   },
-  createLab: async ({ name, code }) => {
-    const { data } = await api.post('/labs', { labName: name, labCode: code });
+  createLab: async ({ name, code, courseType, department, year, semester }) => {
+    const { data } = await api.post('/labs', {
+      labName: name,
+      labCode: code,
+      courseType: courseType || 'B.Pharm',
+      department: department || '',
+      year: year || '',
+      semester: semester || '',
+    });
     const createdLab = normalizeLab(getPayload(data));
     set((state) => ({ labs: [createdLab, ...state.labs] }));
     return createdLab;
