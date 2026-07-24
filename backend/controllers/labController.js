@@ -7,7 +7,7 @@ const Transaction = require('../models/Transaction');
 const ActivityLog = require('../models/ActivityLog');
 
 const createLab = asyncHandler(async (req, res) => {
-  const { labName, labCode } = req.body;
+  const { labName, labCode, courseType, department, year, semester } = req.body;
 
   if (!labName || !labCode) {
     res.status(400);
@@ -20,9 +20,18 @@ const createLab = asyncHandler(async (req, res) => {
     throw new Error('labCode already exists');
   }
 
-  const lab = await Lab.create({ labName, labCode, createdBy: req.user._id, admins: [] });
+  const lab = await Lab.create({
+    labName,
+    labCode,
+    courseType: courseType || 'B.Pharm',
+    department: department || '',
+    year: year || '',
+    semester: semester || '',
+    createdBy: req.user._id,
+    admins: [],
+  });
 
-  await ActivityLog.create({ userId: req.user._id, action: 'create_lab', details: `Lab ${labName} (${labCode}) created` });
+  await ActivityLog.create({ userId: req.user._id, action: 'create_lab', details: `Lab ${labName} (${labCode}) created — ${courseType || 'B.Pharm'} Year ${year || '?'} Sem ${semester || '?'}` });
 
   res.status(201).json({ success: true, data: lab });
 });

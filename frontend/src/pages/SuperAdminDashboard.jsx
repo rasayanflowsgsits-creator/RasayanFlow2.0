@@ -41,7 +41,7 @@ export default function SuperAdminDashboard() {
   const [approvingUserId, setApprovingUserId] = useState('');
   const [selectedLab, setSelectedLab] = useState(null);
   const [selectedAdminId, setSelectedAdminId] = useState('');
-  const [newLab, setNewLab] = useState({ name: '', code: '' });
+  const [newLab, setNewLab] = useState({ name: '', code: '', courseType: 'B.Pharm', department: '', year: '', semester: '' });
   const currentView = location.pathname === '/labs' ? 'labs' : location.pathname === '/approval' ? 'approval' : location.pathname === '/activity' ? 'activity' : 'overview';
   const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '' });
   const [newStoreAdmin, setNewStoreAdmin] = useState({ name: '', email: '', password: '' });
@@ -89,6 +89,8 @@ export default function SuperAdminDashboard() {
   const headers = [
     { key: 'name', label: 'Lab Name' },
     { key: 'location', label: 'Lab Code' },
+    { key: 'courseType', label: 'Course', render: (row) => row.courseType || 'N/A' },
+    { key: 'yearSem', label: 'Year/Sem', render: (row) => row.year && row.semester ? `Yr ${row.year} / Sem ${row.semester}` : 'N/A' },
     { key: 'admin', label: 'Admin' },
     {
       key: 'actions',
@@ -151,13 +153,17 @@ export default function SuperAdminDashboard() {
     try {
       const createdLab = await createLab({
         name: newLab.name.trim(),
-        code: newLab.code.trim().toUpperCase()
+        code: newLab.code.trim().toUpperCase(),
+        courseType: newLab.courseType,
+        department: newLab.department,
+        year: newLab.year,
+        semester: newLab.semester
       });
       await fetchActivityLogs({ limit: 100 });
       setToast({ type: 'success', message: `Created ${createdLab.name}.` });
       setCreateOpen(false);
       setHighlight(createdLab.id);
-      setNewLab({ name: '', code: '' });
+      setNewLab({ name: '', code: '', courseType: 'B.Pharm', department: '', year: '', semester: '' });
     } catch (error) {
       setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to create lab.' });
     } finally {
@@ -507,6 +513,58 @@ export default function SuperAdminDashboard() {
         <div className='space-y-4'>
           <Input label='Lab name' value={newLab.name} onChange={(e) => setNewLab({ ...newLab, name: e.target.value })} />
           <Input label='Lab code' value={newLab.code} onChange={(e) => setNewLab({ ...newLab, code: e.target.value })} />
+          
+          <div className='space-y-3'>
+            <label className='block text-sm text-[#4e5d35] dark:text-[#d5ddbf]'>
+              <span className='mb-1 block text-xs font-medium tracking-wide'>Course Type</span>
+              <select
+                value={newLab.courseType}
+                onChange={(e) => {
+                  setNewLab({ ...newLab, courseType: e.target.value, year: '', semester: '' });
+                }}
+                className='w-full rounded-lg border border-[#cfd8bd] bg-[#fffef8] px-3 py-2 text-sm text-[#3c4e23] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]'
+              >
+                <option value='B.Pharm'>B.Pharm</option>
+                <option value='M.Pharm'>M.Pharm</option>
+                <option value='PhD'>PhD</option>
+                <option value='Other'>Other</option>
+              </select>
+            </label>
+
+            <Input label='Department (optional)' placeholder='e.g. Pharmacy, Chemistry' value={newLab.department} onChange={(e) => setNewLab({ ...newLab, department: e.target.value })} />
+
+            <div className='grid grid-cols-2 gap-3'>
+              <label className='block text-sm text-[#4e5d35] dark:text-[#d5ddbf]'>
+                <span className='mb-1 block text-xs font-medium tracking-wide'>Year</span>
+                <select
+                  value={newLab.year}
+                  onChange={(e) => setNewLab({ ...newLab, year: e.target.value, semester: '' })}
+                  className='w-full rounded-lg border border-[#cfd8bd] bg-[#fffef8] px-3 py-2 text-sm text-[#3c4e23] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]'
+                >
+                  <option value=''>Select Year</option>
+                  {(newLab.courseType === 'B.Pharm' ? ['1', '2', '3', '4'] : newLab.courseType === 'M.Pharm' ? ['1', '2'] : ['1', '2', '3', '4', '5']).map(y => (
+                    <option key={y} value={y}>Year {y}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className='block text-sm text-[#4e5d35] dark:text-[#d5ddbf]'>
+                <span className='mb-1 block text-xs font-medium tracking-wide'>Semester</span>
+                <select
+                  value={newLab.semester}
+                  onChange={(e) => setNewLab({ ...newLab, semester: e.target.value })}
+                  className='w-full rounded-lg border border-[#cfd8bd] bg-[#fffef8] px-3 py-2 text-sm text-[#3c4e23] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]'
+                  disabled={!newLab.year}
+                >
+                  <option value=''>Select Sem</option>
+                  {newLab.year ? [(parseInt(newLab.year) * 2 - 1).toString(), (parseInt(newLab.year) * 2).toString()].map(s => (
+                    <option key={s} value={s}>Semester {s}</option>
+                  )) : null}
+                </select>
+              </label>
+            </div>
+          </div>
+
           <Button onClick={handleCreateLab} className='w-full' disabled={creating}>
             {creating ? 'Creating...' : 'Create Lab'}
           </Button>
