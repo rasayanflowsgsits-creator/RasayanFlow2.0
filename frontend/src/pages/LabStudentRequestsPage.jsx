@@ -110,43 +110,55 @@ export default function LabStudentRequestsPage() {
         </div>
       </div>
 
-      <Card title='Pending & Recent Requests'>
-        <Table
-          headers={[
-            { key: 'studentName', label: 'Student' },
-            { key: 'rollNumber', label: 'Roll No' },
-            { key: 'group', label: 'Group' },
-            { key: 'subject', label: 'Subject' },
-            { key: 'experimentNo', label: 'Exp No' },
-            { 
-              key: 'overallStatus', 
-              label: 'Status',
-              render: (row) => (
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  row.overallStatus === 'Approved' ? 'bg-emerald-100 text-emerald-700' :
-                  row.overallStatus === 'Rejected' ? 'bg-red-100 text-red-700' :
-                  row.overallStatus === 'Partial' ? 'bg-amber-100 text-amber-700' :
-                  'bg-blue-100 text-blue-700'
-                }`}>
-                  {row.overallStatus}
-                </span>
-              )
-            },
-            {
-              key: 'actions',
-              label: 'Actions',
-              render: (row) => (
-                row.overallStatus === 'Pending' ? (
-                  <Button size="sm" onClick={() => handleReviewClick(row)}>Review</Button>
-                ) : (
-                  <Button size="sm" variant="outline" onClick={() => handleReviewClick(row)}>View Details</Button>
+      {studentRequests.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#cfd8bd] bg-[#fdfdf7] py-16 text-center dark:border-[#4e5d35] dark:bg-[#1a1d16]">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#f4f5eb] dark:bg-[#28301f]">
+            <PackageSearch size={28} className="text-[#87996c]" />
+          </div>
+          <h3 className="mb-2 text-lg font-semibold text-[#3c4e23] dark:text-[#eef4e8]">No Requests Yet</h3>
+          <p className="max-w-sm text-sm text-[#71805a] dark:text-[#c5d0b5]">
+            There are currently no student experiment requests for {currentLab?.name}. When students request chemicals, they will appear here for your review.
+          </p>
+        </div>
+      ) : (
+        <Card title='Pending & Recent Requests' subtitle='Review and approve student chemical requirements'>
+          <Table
+            headers={[
+              { key: 'studentName', label: 'Student' },
+              { key: 'rollNumber', label: 'Roll No' },
+              { key: 'group', label: 'Group' },
+              { key: 'subject', label: 'Subject' },
+              { key: 'experimentNo', label: 'Exp No' },
+              { 
+                key: 'overallStatus', 
+                label: 'Status',
+                render: (row) => (
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                    row.overallStatus === 'Approved' ? 'bg-emerald-100 text-emerald-700' :
+                    row.overallStatus === 'Rejected' ? 'bg-red-100 text-red-700' :
+                    row.overallStatus === 'Partial' ? 'bg-amber-100 text-amber-700' :
+                    'bg-blue-100 text-blue-700'
+                  }`}>
+                    {row.overallStatus}
+                  </span>
                 )
-              )
-            }
-          ]}
-          rows={studentRequests}
-        />
-      </Card>
+              },
+              {
+                key: 'actions',
+                label: 'Actions',
+                render: (row) => (
+                  row.overallStatus === 'Pending' ? (
+                    <Button size="sm" onClick={() => handleReviewClick(row)}>Review</Button>
+                  ) : (
+                    <Button size="sm" variant="outline" onClick={() => handleReviewClick(row)}>View Details</Button>
+                  )
+                )
+              }
+            ]}
+            rows={studentRequests}
+          />
+        </Card>
+      )}
 
       <Modal open={isReviewModalOpen} onClose={() => setIsReviewModalOpen(false)} title="Review Request">
         {selectedRequest && (
