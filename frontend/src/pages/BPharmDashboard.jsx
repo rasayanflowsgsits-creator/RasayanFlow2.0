@@ -109,7 +109,15 @@ export default function BPharmDashboard() {
             ))}
           </div>
         ) : (
-          <div className='p-6 text-center text-slate-500'>No experiments assigned to this lab yet.</div>
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#cfd8bd] bg-[#fdfdf7] py-16 text-center dark:border-[#4e5d35] dark:bg-[#1a1d16]">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#f4f5eb] dark:bg-[#28301f]">
+              <PackageOpen size={28} className="text-[#87996c]" />
+            </div>
+            <h3 className="mb-2 text-lg font-semibold text-[#3c4e23] dark:text-[#eef4e8]">No Experiments Assigned</h3>
+            <p className="max-w-sm text-sm text-[#71805a] dark:text-[#c5d0b5]">
+              Your Lab Admin hasn't uploaded any experiments for this lab yet. Please check back later.
+            </p>
+          </div>
         )}
       </Card>
 
