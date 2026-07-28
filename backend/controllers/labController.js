@@ -181,18 +181,37 @@ const deleteLab = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Lab deleted successfully' });
 });
 
-// @desc    Get matching labs based on course, year, semester
-// @route   GET /api/labs/matching
-// @access  Private (Student)
 const getMatchingLabs = asyncHandler(async (req, res) => {
   const { courseType, year, semester } = req.query;
-  const filter = {};
-  if (courseType) filter.courseType = courseType;
-  if (year) filter.year = year;
-  if (semester) filter.semester = semester;
+  const allLabs = await Lab.find({}).populate('admins', 'name email role');
 
-  const labs = await Lab.find(filter).populate('admins', 'name email role');
-  res.json({ success: true, count: labs.length, data: labs });
+  if (!courseType && !year && !semester) {
+    return res.json({ success: true, count: allLabs.length, data: allLabs });
+  }
+
+  let matchingLabs = allLabs.filter((lab) => {
+    if (courseType && lab.courseType && lab.courseType !== courseType && lab.courseType !== 'Other') {
+      return false;
+    }
+    if (year && lab.year && lab.year.trim() !== '') {
+      const yrStr = String(lab.year).toLowerCase();
+      const reqYr = String(year).toLowerCase();
+      if (!yrStr.includes(reqYr) && yrStr !== reqYr) return false;
+    }
+    if (semester && lab.semester && lab.semester.trim() !== '') {
+      const semStr = String(lab.semester).toLowerCase();
+      const reqSem = String(semester).toLowerCase();
+      if (!semStr.includes(reqSem) && semStr !== reqSem) return false;
+    }
+    return true;
+  });
+
+  // Fallback to all labs if no labs matched the specific filter so student can always view active labs
+  if (matchingLabs.length === 0 && allLabs.length > 0) {
+    matchingLabs = allLabs;
+  }
+
+  res.json({ success: true, count: matchingLabs.length, data: matchingLabs });
 });
 
 module.exports = { createLab, listLabs, assignAdmin, removeAdmin, approveAdmin, deleteLab, getMatchingLabs };

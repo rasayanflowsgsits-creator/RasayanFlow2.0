@@ -33,23 +33,32 @@ export default function LoginPage() {
   };
 
   const previewStudentDashboard = async () => {
-    const randomNum = Math.floor(Math.random() * 100000);
-    const mockEmail = `preview${randomNum}@student.edu`;
+    const mockEmail = 'student.preview@rasayanflow.local';
     const mockPassword = 'password123';
-    
+    const authStore = useAuthStore.getState();
+
     try {
-      const authStore = useAuthStore.getState();
-      await authStore.register({ 
-        name: 'Student Preview', 
-        email: mockEmail, 
-        password: mockPassword, 
-        role: 'student' 
-      });
-      const userFound = await authStore.login({ email: mockEmail, password: mockPassword });
+      // First try logging into the existing preview student account
+      await authStore.login({ email: mockEmail, password: mockPassword });
       navigate('/');
-    } catch (err) {
-      const authStore = useAuthStore.getState();
-      setError('Preview student failed: ' + (authStore.error || err.message));
+    } catch {
+      // If login fails (account doesn't exist yet), register it
+      try {
+        await authStore.register({ 
+          name: 'Student Preview', 
+          email: mockEmail, 
+          password: mockPassword, 
+          role: 'student',
+          rollNumber: '0832PH211001',
+          course: 'B.Pharm',
+          year: '1',
+          semester: '1'
+        });
+        await authStore.login({ email: mockEmail, password: mockPassword });
+        navigate('/');
+      } catch (err) {
+        setError('Preview student failed: ' + (authStore.error || err.message));
+      }
     }
   };
 
