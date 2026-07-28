@@ -62,6 +62,8 @@ export default function LabImportModal({ open, onClose, labId }) {
   const [warnings, setWarnings] = useState([]);
   const [dragging, setDragging] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [sheetLink, setSheetLink] = useState('');
+  const [fetchingLink, setFetchingLink] = useState(false);
 
   const previewRows = useMemo(
     () =>
@@ -87,6 +89,7 @@ export default function LabImportModal({ open, onClose, labId }) {
     setRows([]);
     setWarnings([]);
     setDragging(false);
+    setSheetLink('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -187,6 +190,55 @@ export default function LabImportModal({ open, onClose, labId }) {
     await parseExcelFile(file);
   };
 
+  const fetchGoogleSheet = async () => {
+    if (!sheetLink) return;
+    setFetchingLink(true);
+    setWarnings([]);
+    try {
+      const match = sheetLink.match(/\/d\/([a-zA-Z0-9-_]+)/);
+      if (!match) {
+        setWarnings(['Invalid Google Sheet link. Ensure it contains /d/DOCUMENT_ID']);
+        setFetchingLink(false);
+        return;
+      }
+      const docId = match[1];
+      
+      let gid = '0';
+      const gidMatch = sheetLink.match(/[#&]gid=([0-9]+)/);
+      if (gidMatch) gid = gidMatch[1];
+      
+      const exportUrl = `https://docs.google.com/spreadsheets/d/${docId}/export?format=csv&gid=${gid}`;
+      
+      const response = await fetch(exportUrl);
+      if (!response.ok) throw new Error('Failed to fetch sheet. Please ensure the link sharing is set to "Anyone with the link can view".');
+      
+      const csvText = await response.text();
+      
+      // Google sometimes returns HTML if it's not publicly accessible or requires sign-in
+      if (csvText.trim().startsWith('<!DOCTYPE html>')) {
+        throw new Error('Received HTML instead of CSV. Please ensure the sheet is completely public ("Anyone with the link can view").');
+      }
+      
+      setFileName(`Google Sheet (ID: ${docId.substring(0, 8)}...)`);
+      setRows([]);
+      
+      Papa.parse(csvText, {
+        header: true,
+        skipEmptyLines: false,
+        complete: (result) => {
+          handleRecords(result.meta.fields || [], result.data || []);
+        },
+        error: () => {
+          setWarnings(['Unable to parse CSV from Google Sheet.']);
+        },
+      });
+    } catch (err) {
+      setWarnings([err.message || 'Failed to import from Google Sheet. Ensure the sheet is public.']);
+    } finally {
+      setFetchingLink(false);
+    }
+  };
+
   const confirmImport = async (mode) => {
     if (!labId) {
       setToast({ type: 'error', message: 'No lab selected.' });
@@ -272,6 +324,33 @@ ${invalidRows.length + data.data.errorCount} skipped or failed`
             onChange={(event) => handleFile(event.target.files?.[0])}
           />
           {fileName ? <p className='mt-3 text-xs text-[#71805a] dark:text-[#c5d0b5]'>Selected: <span className='font-semibold'>{fileName}</span></p> : null}
+        </div>
+        
+        <div className='flex items-center justify-center gap-4 text-xs font-medium text-slate-400'>
+          <div className='h-px flex-1 bg-slate-200 dark:bg-slate-700'></div>
+          OR
+          <div className='h-px flex-1 bg-slate-200 dark:bg-slate-700'></div>
+        </div>
+
+        <div className='rounded-xl border border-[#d9e1ca] bg-white p-4 dark:border-[#414a33] dark:bg-[#20251a]'>
+          <p className='text-sm font-semibold text-[#3c4e23] dark:text-[#eef4e8] mb-1'>Import from Google Sheets</p>
+          <p className='text-xs text-[#71805a] dark:text-[#c5d0b5] mb-3'>Paste a Google Sheet link (must be set to "Anyone with the link can view").</p>
+          <div className='flex flex-col gap-2 sm:flex-row'>
+            <input 
+              type="url"
+              placeholder="https://docs.google.com/spreadsheets/d/..."
+              value={sheetLink}
+              onChange={(e) => setSheetLink(e.target.value)}
+              className='flex-1 rounded-lg border border-[#cfd8bd] bg-[#fffef8] px-3 py-2 text-sm text-[#3c4e23] focus:outline-none focus:ring-2 focus:ring-[#6f7d45] dark:border-[#4e5d35] dark:bg-[#1a1d16] dark:text-[#eef4e8]'
+            />
+            <Button 
+              onClick={fetchGoogleSheet} 
+              disabled={fetchingLink || !sheetLink}
+              className='sm:w-auto w-full'
+            >
+              {fetchingLink ? 'Fetching...' : 'Fetch Sheet'}
+            </Button>
+          </div>
         </div>
 
         {warnings.length ? (

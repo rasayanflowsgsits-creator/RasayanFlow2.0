@@ -181,4 +181,18 @@ const deleteLab = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Lab deleted successfully' });
 });
 
-module.exports = { createLab, listLabs, assignAdmin, removeAdmin, approveAdmin, deleteLab };
+// @desc    Get matching labs based on course, year, semester
+// @route   GET /api/labs/matching
+// @access  Private (Student)
+const getMatchingLabs = asyncHandler(async (req, res) => {
+  const { courseType, year, semester } = req.query;
+  const filter = {};
+  if (courseType) filter.courseType = courseType;
+  if (year) filter.year = year;
+  if (semester) filter.semester = semester;
+
+  const labs = await Lab.find(filter).populate('admins', 'name email role');
+  res.json({ success: true, count: labs.length, data: labs });
+});
+
+module.exports = { createLab, listLabs, assignAdmin, removeAdmin, approveAdmin, deleteLab, getMatchingLabs };

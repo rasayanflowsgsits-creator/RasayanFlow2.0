@@ -35,6 +35,12 @@ const normalizeUser = (user) => {
 const useAuthStore = create((set) => ({
   ...initial,
   setUser: (user) => set({ user: normalizeUser(user), error: null }),
+  updateUser: (updates) => set((state) => {
+    if (!state.user) return state;
+    const updatedUser = { ...state.user, ...updates };
+    saveUser(updatedUser);
+    return { user: updatedUser };
+  }),
   register: async (values) => {
     set({ loading: true, error: null });
     try {

@@ -2,6 +2,7 @@ const express = require('express');
 const {
   uploadStructure,
   getStructure,
+  getStudentStructure,
   addExperiment,
   updateExperiment,
   deleteExperiment
@@ -16,6 +17,7 @@ router.use(authMiddleware);
 // Routes
 router.post('/upload', uploadStructure); // Ideally Lab Admin only, but controller handles auth implicitly by req.user.labId
 router.get('/', getStructure); // Lab Admin & Students
+router.get('/student', getStudentStructure); // Students
 router.post('/experiment', addExperiment);
 router.put('/experiment/:id', updateExperiment);
 router.delete('/experiment/:id', deleteExperiment);
