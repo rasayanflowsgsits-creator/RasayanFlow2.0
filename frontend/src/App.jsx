@@ -241,21 +241,7 @@ function App() {
                     <Route path='about' element={<AboutPage />} />
                     <Route path='*' element={<NotFound />} />
                   </Routes>
-                  <div className='mt-8'>
-                    <button className='text-xs text-[#71805a] hover:text-[#556b2f] dark:text-[#c5d0b5]' onClick={logout}>Logout</button>
-                  </div>
-                </main>
-              </div>
-              {toast && <Toast {...toast} onClose={removeToast} />}
-            </div>
-          )}
-                    <Route path='my-borrowings' element={role === 'student' ? <StudentBorrowingsPage /> : <Navigate to='/' replace />} />
-                    <Route path='approval' element={role === 'super-admin' ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
-                    <Route path='activity' element={role === 'super-admin' ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
-                    <Route path='labs/:id' element={role === 'student' ? <StudentLabDetail /> : <Navigate to='/' replace />} />
-                    <Route path='about' element={<AboutPage />} />
-                    <Route path='*' element={<NotFound />} />
-                  </Routes>
+
                   <div className='mt-8'>
                     <button className='text-xs text-[#71805a] hover:text-[#556b2f] dark:text-[#c5d0b5]' onClick={logout}>Logout</button>
                   </div>
