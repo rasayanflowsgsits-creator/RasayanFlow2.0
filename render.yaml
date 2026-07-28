@@ -37,7 +37,6 @@ services:
       - key: VITE_API_TIMEOUT
         value: 30000
     routes:
-      - path: /
-        destination: /index.html
-      - path: /*
+      - type: rewrite
+        source: /*
         destination: /index.html
