@@ -47,15 +47,10 @@ export default function RegisterPage() {
         <p className='text-sm text-[#71805a] dark:text-[#c5d0b5]'>Students can sign up here.</p>
         
         <form className='mt-6 space-y-4' onSubmit={handleSubmit}>
-          <div className="grid grid-cols-2 gap-4">
-            <Input label='Full Name' value={form.name} onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))} required />
-            <Input label='Email' type='email' value={form.email} onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))} required />
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <Input label='Password' type='password' value={form.password} onChange={(e) => setForm((s) => ({ ...s, password: e.target.value }))} required minLength={6} />
-            <Input label='Roll Number' value={form.rollNumber} onChange={(e) => setForm((s) => ({ ...s, rollNumber: e.target.value }))} required />
-          </div>
+          <Input label='Full Name' value={form.name} onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))} required />
+          <Input label='Email' type='email' value={form.email} onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))} required />
+          <Input label='Password' type='password' value={form.password} onChange={(e) => setForm((s) => ({ ...s, password: e.target.value }))} required minLength={6} />
+          <Input label='Roll Number' value={form.rollNumber} onChange={(e) => setForm((s) => ({ ...s, rollNumber: e.target.value }))} required />
 
           {error && (
             <div className='flex items-center gap-2 rounded-lg bg-red-50 p-2 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300'>
