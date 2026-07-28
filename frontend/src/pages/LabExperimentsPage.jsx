@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Upload, Download, Plus, AlertCircle, FileText } from 'lucide-react';
-import { parseCsv } from '../utils/csv';
+import Papa from 'papaparse';
 import useAppStore from '../store/appStore';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -22,6 +22,8 @@ export default function LabExperimentsPage() {
   const [importData, setImportData] = useState([]);
   const [importIssues, setImportIssues] = useState([]);
   const [importing, setImporting] = useState(false);
+  const [sheetUrl, setSheetUrl] = useState('');
+  const [fetchingSheet, setFetchingSheet] = useState(false);
   
   const currentLab = labs.find(l => l.id === activeLabId) || labs[0];
 
@@ -37,53 +39,96 @@ export default function LabExperimentsPage() {
     }
   }, [activeLabId, labs, fetchLabStructure]);
 
+  const processParsedData = (data) => {
+    const issues = [];
+    const grouped = {};
+
+    data.forEach((row, i) => {
+      // Handle empty rows
+      if (!row.Subject && !row['Experiment Name'] && !row['Chemical Name']) return;
+
+      const subject = row.Subject?.trim();
+      const expNo = parseInt(row['Experiment Number'], 10);
+      const expName = row['Experiment Name']?.trim();
+      const chemName = row['Chemical Name']?.trim();
+      const qty = parseFloat(row.Quantity);
+      const unit = row.Unit?.trim();
+
+      if (!subject || isNaN(expNo) || !expName) {
+        issues.push(`Row ${i + 2}: Missing required subject/experiment details.`);
+        return;
+      }
+
+      const key = `${subject}-${expNo}`;
+      if (!grouped[key]) {
+        grouped[key] = {
+          subject,
+          experimentNo: expNo,
+          experimentName: expName,
+          chemicals: []
+        };
+      }
+
+      if (chemName && !isNaN(qty) && unit) {
+        grouped[key].chemicals.push({
+          chemicalName: chemName,
+          quantityPerStudent: qty,
+          unit
+        });
+      } else if (chemName || !isNaN(qty) || unit) {
+        issues.push(`Row ${i + 2}: Incomplete chemical details for ${chemName}.`);
+      }
+    });
+
+    setImportData(Object.values(grouped));
+    setImportIssues(issues);
+  };
+
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    parseCsv(file, (data) => {
-      const issues = [];
-      const parsedStructures = [];
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        processParsedData(results.data);
+      },
+      error: (error) => {
+        setImportIssues([`Failed to parse CSV file: ${error.message}`]);
+      }
+    });
+  };
 
-      // Group by subject and experimentNo
-      const grouped = {};
+  const handleUrlFetch = () => {
+    if (!sheetUrl) return;
+    setFetchingSheet(true);
+    setImportIssues([]);
+    setImportData([]);
 
-      data.forEach((row, i) => {
-        const subject = row.Subject?.trim();
-        const expNo = parseInt(row['Experiment Number'], 10);
-        const expName = row['Experiment Name']?.trim();
-        const chemName = row['Chemical Name']?.trim();
-        const qty = parseFloat(row.Quantity);
-        const unit = row.Unit?.trim();
+    // Extract ID from URL
+    const match = sheetUrl.match(/\/d\/(.*?)(\/|$)/);
+    if (!match || !match[1]) {
+      setImportIssues(["Invalid Google Sheets URL. Please provide a full link to the sheet."]);
+      setFetchingSheet(false);
+      return;
+    }
 
-        if (!subject || isNaN(expNo) || !expName) {
-          issues.push(`Row ${i + 2}: Missing required subject/experiment details.`);
-          return;
-        }
+    const docId = match[1];
+    const exportUrl = `https://docs.google.com/spreadsheets/d/${docId}/export?format=csv`;
 
-        const key = `${subject}-${expNo}`;
-        if (!grouped[key]) {
-          grouped[key] = {
-            subject,
-            experimentNo: expNo,
-            experimentName: expName,
-            chemicals: []
-          };
-        }
-
-        if (chemName && !isNaN(qty) && unit) {
-          grouped[key].chemicals.push({
-            chemicalName: chemName,
-            quantityPerStudent: qty,
-            unit
-          });
-        } else if (chemName || !isNaN(qty) || unit) {
-          issues.push(`Row ${i + 2}: Incomplete chemical details for ${chemName}.`);
-        }
-      });
-
-      setImportData(Object.values(grouped));
-      setImportIssues(issues);
+    Papa.parse(exportUrl, {
+      download: true,
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        processParsedData(results.data);
+        setFetchingSheet(false);
+      },
+      error: (error) => {
+        setImportIssues([`Failed to fetch sheet (ensure it is publicly accessible). Error: ${error.message || 'Unknown'}`]);
+        setFetchingSheet(false);
+      }
     });
   };
 
@@ -197,6 +242,29 @@ export default function LabExperimentsPage() {
                 <Upload size={16} className="mr-2" /> Browse File
                 <input type="file" accept=".csv" className="sr-only" onChange={handleFileUpload} />
               </label>
+            </div>
+            
+            <div className="relative my-6 text-center">
+              <span className="relative z-10 bg-[#fdfdf7] px-3 text-xs text-[#71805a] dark:bg-[#1a1d16] dark:text-[#c5d0b5]">OR UPLOAD VIA URL</span>
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-[#cfd8bd] dark:border-[#4e5d35]"></div>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
+              <Input 
+                placeholder="Paste public Google Sheets link..." 
+                value={sheetUrl}
+                onChange={(e) => setSheetUrl(e.target.value)}
+                className="flex-1"
+              />
+              <Button 
+                variant="outline" 
+                onClick={handleUrlFetch} 
+                disabled={fetchingSheet || !sheetUrl}
+              >
+                {fetchingSheet ? 'Fetching...' : 'Fetch Sheet'}
+              </Button>
             </div>
           </div>
 
