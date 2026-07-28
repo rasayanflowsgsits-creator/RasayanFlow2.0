@@ -810,6 +810,59 @@ const useAppStore = create((set) => ({
       throw err;
     }
   },
+  setupStudentProfile: async (payload) => {
+    set({ loading: true });
+    try {
+      const { data } = await api.put('/student/profile/setup', payload);
+      set({ loading: false });
+      return getPayload(data);
+    } catch (err) {
+      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Setup failed', type: 'error' } });
+      throw err;
+    }
+  },
+  fetchMatchingLabs: async (courseType, year, semester) => {
+    try {
+      const { data } = await api.get(`/labs/matching?courseType=${courseType}&year=${year}&semester=${semester}`);
+      return getPayload(data) || [];
+    } catch (err) {
+      console.error('Failed to fetch matching labs', err);
+      return [];
+    }
+  },
+  fetchStudentLabStructure: async () => {
+    set({ loading: true });
+    try {
+      const { data } = await api.get('/lab/structure/student');
+      set({ labStructure: getPayload(data) || [], loading: false });
+    } catch {
+      set({ labStructure: [], loading: false });
+    }
+  },
+  bulkApproveStudentRequests: async ({ group, experimentNo, forceApproveAvailable }) => {
+    set({ loading: true });
+    try {
+      const response = await api.put('/student/requests/approve-bulk', { group, experimentNo, forceApproveAvailable });
+      set({ loading: false, toast: { title: 'Success', message: 'Bulk approval successful', type: 'success' } });
+      useAppStore.getState().fetchStudentRequests();
+      useAppStore.getState().fetchInventory(); 
+      return response.data;
+    } catch (err) {
+      set({ loading: false });
+      throw err;
+    }
+  },
+  studentHistory: [],
+  fetchStudentHistory: async () => {
+    set({ loading: true });
+    try {
+      const { data } = await api.get('/student/requests/history');
+      set({ studentHistory: getPayload(data) || [], loading: false });
+    } catch {
+      set({ studentHistory: [], loading: false });
+    }
+  },
+
 
   // Research Request Methods (M.Pharm/PhD)
   fetchMyResearchRequests: async () => {

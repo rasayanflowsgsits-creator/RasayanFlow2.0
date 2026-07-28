@@ -3,11 +3,12 @@ const { body, param } = require('express-validator');
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
 const validateRequest = require('../middleware/validateMiddleware');
-const { createLab, listLabs, assignAdmin, removeAdmin, approveAdmin, deleteLab } = require('../controllers/labController');
+const { createLab, listLabs, assignAdmin, removeAdmin, approveAdmin, deleteLab, getMatchingLabs } = require('../controllers/labController');
 
 const router = express.Router();
 
 router.get('/', authMiddleware, listLabs);
+router.get('/matching', authMiddleware, getMatchingLabs);
 
 router.use(authMiddleware, roleMiddleware(['superAdmin']));
 

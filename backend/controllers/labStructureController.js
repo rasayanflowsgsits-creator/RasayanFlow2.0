@@ -2,6 +2,8 @@ const asyncHandler = require('express-async-handler');
 const LabStructure = require('../models/LabStructure');
 const Lab = require('../models/Lab');
 
+const Inventory = require('../models/Inventory');
+
 // @desc    Upload or update lab structure from CSV/Excel
 // @route   POST /api/lab/structure/upload
 // @access  Private (Lab Admin)
@@ -77,6 +79,65 @@ const getStructure = asyncHandler(async (req, res) => {
 
   const structure = await LabStructure.find({ labId: targetLabId }).sort({ subject: 1, experimentNo: 1 });
   res.status(200).json({ success: true, count: structure.length, data: structure });
+});
+
+// @desc    Get lab structure for student with inventory status
+// @route   GET /api/lab/structure/student
+// @access  Private (Student)
+const getStudentStructure = asyncHandler(async (req, res) => {
+  const targetLabId = req.user.labId;
+  
+  if (!targetLabId) {
+    res.status(400);
+    throw new Error('Student is not assigned to any lab');
+  }
+
+  const structure = await LabStructure.find({ labId: targetLabId }).lean().sort({ subject: 1, experimentNo: 1 });
+  
+  // Check inventory for each chemical in each experiment
+  const inventory = await Inventory.find({ labId: targetLabId }).lean();
+  
+  const enrichedStructure = structure.map(exp => {
+    let allAvailable = true;
+    let anyAvailable = false;
+    
+    exp.chemicals = exp.chemicals.map(chem => {
+      const invItem = inventory.find(i => i.chemicalName.toLowerCase() === chem.chemicalName.toLowerCase());
+      const stock = invItem ? invItem.quantity : 0;
+      
+      let stockStatus = 'Out'; // Red
+      if (stock >= chem.quantityPerStudent) {
+        stockStatus = 'Available'; // Green
+        anyAvailable = true;
+      } else if (stock > 0) {
+        stockStatus = 'Low'; // Yellow
+        allAvailable = false;
+        anyAvailable = true;
+      } else {
+        allAvailable = false;
+      }
+      
+      return {
+        ...chem,
+        stock,
+        stockStatus
+      };
+    });
+    
+    if (exp.chemicals.length === 0) {
+      exp.status = 'Available'; // No chemicals needed
+    } else if (allAvailable) {
+      exp.status = 'Available';
+    } else if (anyAvailable) {
+      exp.status = 'Low';
+    } else {
+      exp.status = 'Out';
+    }
+    
+    return exp;
+  });
+
+  res.status(200).json({ success: true, count: enrichedStructure.length, data: enrichedStructure });
 });
 
 // @desc    Add single experiment manually
@@ -165,6 +226,7 @@ const deleteExperiment = asyncHandler(async (req, res) => {
 module.exports = {
   uploadStructure,
   getStructure,
+  getStudentStructure,
   addExperiment,
   updateExperiment,
   deleteExperiment

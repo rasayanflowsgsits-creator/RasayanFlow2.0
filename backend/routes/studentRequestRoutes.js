@@ -3,6 +3,7 @@ const {
   createRequest,
   getMyRequests,
   getLabRequests,
+  approveBulk,
   approveRequest,
   rejectRequest,
   getStudentHistory,
@@ -22,6 +23,7 @@ router.get('/history', getStudentHistory);
 // Lab Admin routes
 router.get('/lab', getLabRequests);
 router.get('/lab-history', getLabHistory);
+router.put('/approve-bulk', approveBulk);
 router.put('/:id/approve', approveRequest);
 router.put('/:id/reject', rejectRequest);
 

@@ -1,0 +1,250 @@
+import React, { useState, useEffect } from 'react';
+import useAuthStore from '../../store/authStore';
+import useAppStore from '../../store/appStore';
+import { BookOpen, Calendar, Beaker, ChevronRight, CheckCircle2, User as UserIcon, Loader2 } from 'lucide-react';
+
+export default function StudentOnboardingModal() {
+  const { user, updateUser } = useAuthStore();
+  const { setupStudentProfile, fetchMatchingLabs } = useAppStore();
+
+  const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [labs, setLabs] = useState([]);
+  
+  const [formData, setFormData] = useState({
+    rollNumber: user?.rollNumber || '',
+    course: 'B.Pharm',
+    year: '1',
+    semester: '1',
+    group: 'No Group',
+    labId: ''
+  });
+
+  // Calculate semantic semesters based on year
+  const getSemesterOptions = () => {
+    const y = parseInt(formData.year);
+    if (formData.course === 'B.Pharm') {
+      return [y * 2 - 1, y * 2];
+    } else if (formData.course === 'M.Pharm') {
+      return [y * 2 - 1, y * 2];
+    }
+    return [1];
+  };
+
+  useEffect(() => {
+    // Reset semester when year changes to default valid sem
+    const validSems = getSemesterOptions();
+    if (!validSems.includes(parseInt(formData.semester))) {
+      setFormData(prev => ({ ...prev, semester: validSems[0].toString() }));
+    }
+  }, [formData.year, formData.course]);
+
+  const handleNextStep1 = () => {
+    if (!formData.rollNumber) return alert('Please enter your Roll Number');
+    setStep(2);
+  };
+
+  const handleNextStep2 = async () => {
+    setStep(3);
+    setLoading(true);
+    const matching = await fetchMatchingLabs(formData.course, formData.year, formData.semester);
+    setLabs(matching);
+    setLoading(false);
+  };
+
+  const handleSelectLab = async (labId) => {
+    setLoading(true);
+    try {
+      const payload = { ...formData, labId };
+      const updatedProfile = await setupStudentProfile(payload);
+      updateUser(updatedProfile);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (user?.onboardingComplete) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#23281d]/80 p-4 backdrop-blur-md">
+      <div className="w-full max-w-xl overflow-hidden rounded-3xl border border-[#d9e1ca] bg-[#fffef8] shadow-2xl dark:border-[#414a33] dark:bg-[#1a1d16]">
+        
+        {/* Header */}
+        <div className="bg-[#fdfdf7] p-8 text-center border-b border-[#e8ece1] dark:bg-[#20251a] dark:border-[#3c452f]">
+          <h2 className="text-2xl font-bold text-[#37412a] dark:text-[#e4e9d8]">Complete Your Profile</h2>
+          <p className="mt-2 text-sm text-[#71805a] dark:text-[#a5b48b]">
+            Help us find your lab and experiments
+          </p>
+        </div>
+
+        {/* Steps Progress */}
+        <div className="flex items-center justify-center gap-2 p-6 bg-white dark:bg-[#1a1d16]">
+          {[1, 2, 3].map(i => (
+            <React.Fragment key={i}>
+              <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition-colors
+                ${step === i ? 'bg-[#5c6e46] text-white ring-4 ring-[#e8ece1] dark:ring-[#3c452f]' 
+                : step > i ? 'bg-[#87996c] text-white' : 'bg-[#f4f6ee] text-[#a5b48b] dark:bg-[#20251a] dark:text-[#5e6b47]'}`}
+              >
+                {step > i ? <CheckCircle2 className="h-5 w-5" /> : i}
+              </div>
+              {i < 3 && <div className={`h-1 w-12 rounded-full transition-colors ${step > i ? 'bg-[#87996c]' : 'bg-[#e8ece1] dark:bg-[#3c452f]'}`} />}
+            </React.Fragment>
+          ))}
+        </div>
+
+        <div className="p-8 pt-0">
+          {/* STEP 1 */}
+          {step === 1 && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-[#4a5538] dark:text-[#c5d0b5]">Full Name</label>
+                <div className="relative">
+                  <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#87996c]" />
+                  <input type="text" value={user?.name || ''} disabled 
+                    className="w-full rounded-xl border border-[#d9e1ca] bg-[#f4f6ee] py-3 pl-10 pr-4 text-[#71805a] outline-none dark:border-[#414a33] dark:bg-[#2a3121] dark:text-[#a5b48b]"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-[#4a5538] dark:text-[#c5d0b5]">Roll Number *</label>
+                <input type="text" placeholder="e.g. 0832PH211001" 
+                  value={formData.rollNumber} onChange={e => setFormData({...formData, rollNumber: e.target.value})}
+                  className="w-full rounded-xl border border-[#d9e1ca] bg-white py-3 px-4 text-[#37412a] outline-none focus:border-[#5c6e46] focus:ring-1 focus:ring-[#5c6e46] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-[#4a5538] dark:text-[#c5d0b5]">Course *</label>
+                <div className="relative">
+                  <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#87996c]" />
+                  <select 
+                    value={formData.course} onChange={e => setFormData({...formData, course: e.target.value})}
+                    className="w-full appearance-none rounded-xl border border-[#d9e1ca] bg-white py-3 pl-10 pr-4 text-[#37412a] outline-none focus:border-[#5c6e46] focus:ring-1 focus:ring-[#5c6e46] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]"
+                  >
+                    <option value="B.Pharm">B.Pharm</option>
+                    <option value="M.Pharm">M.Pharm</option>
+                    <option value="PhD">PhD</option>
+                  </select>
+                </div>
+              </div>
+              <button onClick={handleNextStep1} className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#5c6e46] py-3 font-semibold text-white hover:bg-[#4a5538] transition-colors">
+                Continue <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+          )}
+
+          {/* STEP 2 */}
+          {step === 2 && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-[#4a5538] dark:text-[#c5d0b5]">Year</label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#87996c]" />
+                    <select 
+                      value={formData.year} onChange={e => setFormData({...formData, year: e.target.value})}
+                      className="w-full appearance-none rounded-xl border border-[#d9e1ca] bg-white py-3 pl-10 pr-4 text-[#37412a] outline-none focus:border-[#5c6e46] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]"
+                    >
+                      {formData.course === 'B.Pharm' && [1, 2, 3, 4].map(y => <option key={y} value={y}>Year {y}</option>)}
+                      {formData.course === 'M.Pharm' && [1, 2].map(y => <option key={y} value={y}>Year {y}</option>)}
+                      {formData.course === 'PhD' && [1, 2, '3+'].map(y => <option key={y} value={y}>Year {y}</option>)}
+                    </select>
+                  </div>
+                </div>
+                
+                {formData.course !== 'PhD' && (
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-[#4a5538] dark:text-[#c5d0b5]">Semester</label>
+                    <select 
+                      value={formData.semester} onChange={e => setFormData({...formData, semester: e.target.value})}
+                      className="w-full appearance-none rounded-xl border border-[#d9e1ca] bg-white py-3 px-4 text-[#37412a] outline-none focus:border-[#5c6e46] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]"
+                    >
+                      {getSemesterOptions().map(s => <option key={s} value={s}>Semester {s}</option>)}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {formData.course === 'B.Pharm' && (
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-[#4a5538] dark:text-[#c5d0b5]">Practical Group</label>
+                  <select 
+                    value={formData.group} onChange={e => setFormData({...formData, group: e.target.value})}
+                    className="w-full appearance-none rounded-xl border border-[#d9e1ca] bg-white py-3 px-4 text-[#37412a] outline-none focus:border-[#5c6e46] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]"
+                  >
+                    {['No Group', 'Group A', 'Group B', 'Group C', 'Group D', 'Group E'].map(g => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                </div>
+              )}
+
+              <div className="flex gap-4">
+                <button onClick={() => setStep(1)} className="w-1/3 rounded-xl border border-[#d9e1ca] bg-transparent py-3 font-semibold text-[#5c6e46] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:text-[#c5d0b5] dark:hover:bg-[#2a3121] transition-colors">
+                  Back
+                </button>
+                <button onClick={handleNextStep2} className="w-2/3 flex items-center justify-center gap-2 rounded-xl bg-[#5c6e46] py-3 font-semibold text-white hover:bg-[#4a5538] transition-colors">
+                  Find My Lab <ChevronRight className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 3 */}
+          {step === 3 && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader2 className="h-10 w-10 animate-spin text-[#87996c]" />
+                  <p className="mt-4 text-[#71805a] dark:text-[#a5b48b]">Searching for matching labs...</p>
+                </div>
+              ) : (
+                <>
+                  {labs.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-[#d9e1ca] bg-[#fdfdf7] p-8 text-center dark:border-[#414a33] dark:bg-[#20251a]">
+                      <Beaker className="mx-auto mb-4 h-12 w-12 text-[#a5b48b]" />
+                      <h3 className="text-lg font-bold text-[#37412a] dark:text-[#e4e9d8]">No Labs Found</h3>
+                      <p className="mt-2 text-sm text-[#71805a] dark:text-[#a5b48b]">
+                        We couldn't find any active labs for {formData.course} Year {formData.year} Sem {formData.semester}.<br/>
+                        Please contact your Lab Admin or check your details.
+                      </p>
+                      <button onClick={() => setStep(2)} className="mt-6 rounded-lg bg-[#5c6e46] px-6 py-2 text-sm font-semibold text-white hover:bg-[#4a5538]">
+                        Go Back
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <p className="text-sm font-medium text-[#4a5538] dark:text-[#c5d0b5]">Select your designated lab:</p>
+                      <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-2">
+                        {labs.map(lab => (
+                          <div key={lab._id} className="group flex cursor-pointer items-center justify-between rounded-2xl border border-[#d9e1ca] bg-white p-5 hover:border-[#87996c] hover:shadow-md dark:border-[#414a33] dark:bg-[#20251a] dark:hover:border-[#5c6e46] transition-all" onClick={() => handleSelectLab(lab._id)}>
+                            <div>
+                              <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#f4f6ee] text-[#5c6e46] dark:bg-[#2a3121] dark:text-[#c5d0b5]">
+                                  <Beaker className="h-5 w-5" />
+                                </div>
+                                <div>
+                                  <h4 className="font-bold text-[#37412a] dark:text-[#e4e9d8]">{lab.labName}</h4>
+                                  <p className="text-xs text-[#71805a] dark:text-[#a5b48b]">{lab.courseType} • Yr {lab.year} • Sem {lab.semester}</p>
+                                </div>
+                              </div>
+                            </div>
+                            <button className="rounded-full bg-[#f4f6ee] p-2 text-[#5c6e46] group-hover:bg-[#5c6e46] group-hover:text-white dark:bg-[#2a3121] dark:text-[#c5d0b5] transition-colors">
+                              <ChevronRight className="h-5 w-5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <button onClick={() => setStep(2)} className="w-full text-center text-sm font-medium text-[#71805a] hover:text-[#5c6e46] dark:text-[#a5b48b]">
+                        Go back and change details
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

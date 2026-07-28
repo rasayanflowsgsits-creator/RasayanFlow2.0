@@ -95,11 +95,15 @@ export default function LabAdminDashboard() {
     fetchTransactions({ labId });
     fetchExperiments({ labId });
     store.fetchLabRequests();
+    if (store.fetchStudentRequests) {
+      store.fetchStudentRequests(labId);
+    }
   }, [fetchExperiments, fetchInventory, fetchTransactions, labId, store.fetchLabRequests]);
 
   const currentLab = assignedLabs.find((lab) => String(lab.id || lab._id) === String(labId)) || store.labs.find((lab) => String(lab.id || lab._id) === String(labId));
   const pendingBorrowRequests = store.transactions.filter((tx) => tx.status === 'pending' && tx.type === 'borrow');
   const pendingLabRequests = store.labRequests.filter(r => r.labId === labId && r.status === 'Pending');
+
   
   const storeRequests = useStoreManagerMock(state => state.requests);
   const pendingStoreRequestsCount = storeRequests.filter(r => r.lab === currentLab?.name && r.status === 'Pending').length;
@@ -245,6 +249,59 @@ export default function LabAdminDashboard() {
       store.setToast({ type: 'success', message: `${student.name} ${student.isBlocked ? 'unblocked' : 'blocked'}.` });
     } catch (error) { store.setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to update student access.' }); } finally { setBlockingUserId(''); }
   };
+
+  const pendingStudentRequests = store.studentRequests?.filter(r => r.overallStatus === 'Pending' || r.overallStatus === 'Partial') || [];
+
+  const groupedStudentRequests = useMemo(() => {
+    const groups = {};
+    pendingStudentRequests.forEach(req => {
+      const key = `${req.groupName}-${req.experimentNo}-${req.subject}`;
+      if (!groups[key]) {
+        groups[key] = {
+          groupName: req.groupName,
+          experimentNo: req.experimentNo,
+          experimentName: req.experimentName,
+          subject: req.subject,
+          students: [],
+          totalChemicals: {},
+          ids: []
+        };
+      }
+      groups[key].students.push(req.studentName);
+      groups[key].ids.push(req._id);
+      
+      req.chemicalsRequested.forEach(c => {
+        if (!groups[key].totalChemicals[c.chemicalName]) {
+          groups[key].totalChemicals[c.chemicalName] = { quantity: 0, unit: c.unit, inStock: 0 };
+        }
+        groups[key].totalChemicals[c.chemicalName].quantity += c.quantityRequested;
+      });
+    });
+    
+    Object.values(groups).forEach(group => {
+      Object.entries(group.totalChemicals).forEach(([name, data]) => {
+        const invItem = store.inventory.find(i => i.chemicalName.toLowerCase() === name.toLowerCase());
+        data.inStock = invItem ? invItem.quantity : 0;
+        data.isAvailable = data.inStock >= data.quantity;
+      });
+    });
+    
+    return Object.values(groups);
+  }, [pendingStudentRequests, store.inventory]);
+
+  const handleBulkApprove = async (groupName, experimentNo, isPartial) => {
+    setSavingExperiment(true);
+    try {
+      await store.approveBulkStudentRequests({ labId, groupName, experimentNo, isPartial });
+      store.setToast({ type: 'success', message: `Requests for Group ${groupName} approved.` });
+      await Promise.all([store.fetchInventory(labId), store.fetchStudentRequests(labId)]);
+    } catch (error) {
+      store.setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to approve requests.' });
+    } finally {
+      setSavingExperiment(false);
+    }
+  };
+
 
   const inventoryHeaders = [
     { key: 'chemicalName', label: 'Chemical Name' },
@@ -500,16 +557,45 @@ export default function LabAdminDashboard() {
       <div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'><div><h2 className='text-xl font-semibold'>Experiments In This Lab</h2><p className='text-sm text-slate-500 dark:text-slate-400'>Experiment object, required inventory, and estimated expense are managed together here.</p></div><div className='flex flex-wrap gap-2'><Button variant='outline' onClick={downloadExperimentsImportTemplate}><FileDown size={16} /> Template CSV</Button><Button variant='outline' onClick={() => setExperimentImportOpen(true)}><Upload size={16} /> Import Experiments</Button><Button variant='outline' onClick={() => setCreateOpen(true)}><Plus size={16} /> Add Inventory First</Button><Button onClick={() => setExperimentOpen(true)}><Plus size={16} /> Add Experiment</Button></div></div>
       <Table headers={experimentHeaders} rows={store.experiments} />
       
-      <Card title='Pending Student Lab Requests' subtitle='Direct requests from students to this lab'>
-        <div className='space-y-3'>
-          {pendingLabRequests.length ? pendingLabRequests.map((req) => (
-            <div key={req._id} className='rounded-lg bg-slate-50 p-4 dark:bg-slate-800'>
-              <p className='text-sm font-semibold text-slate-900 dark:text-slate-100'>{req.chemicalName} requested by {req.studentName}</p>
-              <p className='mt-1 text-xs text-slate-500 dark:text-slate-400'>{req.quantityRequested} {req.unit} | Group: {req.groupName || 'None'}</p>
-              <p className='mt-2 text-sm text-slate-600 dark:text-slate-300'>Purpose: {req.purpose || 'N/A'}</p>
-              <div className='mt-3 flex gap-2'>
-                <Button className='px-3 py-1 text-xs' onClick={() => reviewLabRequest(req._id, 'approved')} disabled={reviewingId === req._id}>{reviewingId === req._id ? 'Working...' : 'Approve'}</Button>
-                <Button variant='outline' className='px-3 py-1 text-xs' onClick={() => reviewLabRequest(req._id, 'rejected')} disabled={reviewingId === req._id}>Reject</Button>
+      <Card title='Student Experiment Requests (Group View)' subtitle='Aggregated requests from students for their practicals'>
+        <div className='space-y-4'>
+          {groupedStudentRequests.length ? groupedStudentRequests.map((group, idx) => (
+            <div key={idx} className='rounded-xl border border-[#d9e1ca] bg-white p-5 dark:border-[#414a33] dark:bg-[#1a1d16]'>
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <div className="flex gap-2 items-center mb-1">
+                    <span className="px-2 py-1 bg-[#f4f6ee] text-[#5c6e46] rounded-md text-xs font-bold dark:bg-[#20251a] dark:text-[#c5d0b5]">{group.groupName}</span>
+                    <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-md text-xs font-bold dark:bg-slate-800 dark:text-slate-300">Exp {group.experimentNo}</span>
+                  </div>
+                  <h4 className="font-bold text-[#37412a] dark:text-[#e4e9d8]">{group.subject} - {group.experimentName}</h4>
+                  <p className="text-sm text-[#71805a] dark:text-[#a5b48b] mt-1">{group.students.length} students requested</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    className="bg-[#5c6e46] hover:bg-[#4a5538] text-white text-sm py-1"
+                    onClick={() => handleBulkApprove(group.groupName, group.experimentNo, false)}
+                    disabled={savingExperiment}
+                  >
+                    Approve All
+                  </Button>
+                </div>
+              </div>
+
+              <div className="bg-[#f9faef] dark:bg-[#20251a] rounded-lg p-3">
+                <p className="text-xs font-semibold text-[#4a5538] dark:text-[#c5d0b5] mb-2 uppercase tracking-wider">Required Inventory Aggregation</p>
+                <div className="space-y-2">
+                  {Object.entries(group.totalChemicals).map(([chemName, data]) => (
+                    <div key={chemName} className="flex justify-between items-center text-sm border-b border-[#e8ece1] dark:border-[#3c452f] pb-1 last:border-0 last:pb-0">
+                      <span className="font-medium text-[#37412a] dark:text-[#e4e9d8]">{chemName}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[#71805a] dark:text-[#a5b48b]">Total Req: {data.quantity} {data.unit}</span>
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${data.isAvailable ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                          Stock: {data.inStock} {data.unit}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )) : <p className='text-sm text-slate-500'>No pending student requests.</p>}
