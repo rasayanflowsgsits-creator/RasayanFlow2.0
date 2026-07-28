@@ -204,6 +204,9 @@ const useAppStore = create((set) => ({
   transactions: [],
   activityLogs: [],
   labRequests: [],
+  labStructure: [],
+  studentRequests: [],
+  researchRequests: [],
   loading: false,
   filters: { search: '', lab: 'All' },
   toast: null,
@@ -734,6 +737,101 @@ const useAppStore = create((set) => ({
   setFilters: (payload) => set((state) => ({ filters: { ...state.filters, ...payload } })),
   setToast: (toast) => set({ toast }),
   removeToast: () => set({ toast: null }),
+  // Lab Structure Methods
+  fetchLabStructure: async (labId) => {
+    set({ loading: true });
+    try {
+      const { data } = await api.get(labId ? `/lab/structure?labId=${labId}` : '/lab/structure');
+      set({ labStructure: getPayload(data) || [], loading: false });
+    } catch {
+      set({ labStructure: [], loading: false });
+    }
+  },
+  uploadLabStructure: async (structures) => {
+    set({ loading: true });
+    try {
+      await api.post('/lab/structure/upload', { structures });
+      set({ loading: false, toast: { title: 'Success', message: 'Lab structure uploaded successfully', type: 'success' } });
+    } catch (err) {
+      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Upload failed', type: 'error' } });
+      throw err;
+    }
+  },
+
+  // Student Request Methods
+  fetchStudentRequests: async (labId) => {
+    set({ loading: true });
+    try {
+      const { data } = await api.get(labId ? `/student/requests/lab?labId=${labId}` : '/student/requests/lab');
+      set({ studentRequests: getPayload(data) || [], loading: false });
+    } catch {
+      set({ studentRequests: [], loading: false });
+    }
+  },
+  fetchMyStudentRequests: async () => {
+    set({ loading: true });
+    try {
+      const { data } = await api.get('/student/requests/my');
+      set({ studentRequests: getPayload(data) || [], loading: false });
+    } catch {
+      set({ studentRequests: [], loading: false });
+    }
+  },
+  createStudentRequest: async (payload) => {
+    set({ loading: true });
+    try {
+      await api.post('/student/requests', payload);
+      set({ loading: false, toast: { title: 'Success', message: 'Request submitted successfully', type: 'success' } });
+    } catch (err) {
+      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Request failed', type: 'error' } });
+      throw err;
+    }
+  },
+  approveStudentRequest: async (id, approveType) => {
+    set({ loading: true });
+    try {
+      await api.put(`/student/requests/${id}/approve`, { approveType });
+      set({ loading: false, toast: { title: 'Success', message: 'Request approved', type: 'success' } });
+      useAppStore.getState().fetchStudentRequests();
+      useAppStore.getState().fetchInventory(); // Inventory reduced
+    } catch (err) {
+      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Approval failed', type: 'error' } });
+      throw err;
+    }
+  },
+  rejectStudentRequest: async (id, reason) => {
+    set({ loading: true });
+    try {
+      await api.put(`/student/requests/${id}/reject`, { reason });
+      set({ loading: false, toast: { title: 'Success', message: 'Request rejected', type: 'success' } });
+      useAppStore.getState().fetchStudentRequests();
+    } catch (err) {
+      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Rejection failed', type: 'error' } });
+      throw err;
+    }
+  },
+
+  // Research Request Methods (M.Pharm/PhD)
+  fetchMyResearchRequests: async () => {
+    set({ loading: true });
+    try {
+      const { data } = await api.get('/student/research-requests/my');
+      set({ researchRequests: getPayload(data) || [], loading: false });
+    } catch {
+      set({ researchRequests: [], loading: false });
+    }
+  },
+  createResearchRequest: async (payload) => {
+    set({ loading: true });
+    try {
+      await api.post('/student/research-requests', payload);
+      set({ loading: false, toast: { title: 'Success', message: 'Research request submitted successfully', type: 'success' } });
+    } catch (err) {
+      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Request failed', type: 'error' } });
+      throw err;
+    }
+  },
+
   resetAppState: () =>
     set({
       labs: [],

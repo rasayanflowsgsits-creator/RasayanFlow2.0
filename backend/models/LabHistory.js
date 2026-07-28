@@ -1,32 +1,28 @@
 const mongoose = require('mongoose');
 
+const chemicalsUsedSchema = new mongoose.Schema({
+  chemicalName: { type: String, required: true },
+  quantityUsed: { type: Number, required: true },
+  unit: { type: String, required: true },
+  costPerUnit: { type: Number },
+  totalCost: { type: Number }
+}, { _id: false });
+
 const labHistorySchema = new mongoose.Schema({
-  type: { type: String, default: 'Lab to Student Transfer' },
-  chemicalName: { type: String },
-  labId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Lab"
-  },
+  type: { type: String, required: true, default: 'Student Experiment' },
+  labId: { type: mongoose.Schema.Types.ObjectId, ref: 'Lab' },
   labName: { type: String },
-  studentId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User"
-  },
+  year: { type: String },
+  semester: { type: String },
+  subject: { type: String },
+  experimentNo: { type: Number },
+  experimentName: { type: String },
+  studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   studentName: { type: String },
-  groupName: { type: String },
-  qtyBefore: { type: Number },
-  qtyRequested: { type: Number },
-  qtyAfter: { type: Number },
-  unit: { type: String },
-  costPerBase: { type: Number },
-  valueBefore: { type: Number },
-  valueAfter: { type: Number },
-  valueUsed: { type: Number },
-  purpose: { type: String },
-  action: {
-    type: String,
-    enum: ["Approved", "Rejected"]
-  },
+  rollNumber: { type: String },
+  group: { type: String },
+  chemicalsUsed: { type: [chemicalsUsedSchema], default: [] },
+  totalCost: { type: Number, default: 0 },
   approvedBy: { type: String },
   timestamp: { type: Date, default: Date.now }
 });

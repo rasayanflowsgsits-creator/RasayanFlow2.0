@@ -159,6 +159,9 @@ app.use("/notifications", require("./routes/notificationRoutes"));
 // New Lab backend routes
 app.use("/lab/requests", require("./routes/labRequestRoutes"));
 app.use("/lab/history", require("./routes/labHistoryRoutes"));
+app.use("/lab/structure", require("./routes/labStructureRoutes"));
+app.use("/student/requests", require("./routes/studentRequestRoutes"));
+app.use("/student/research-requests", require("./routes/researchRequestRoutes"));
 
 // Serve frontend in production
 if (process.env.NODE_ENV === 'production') {
