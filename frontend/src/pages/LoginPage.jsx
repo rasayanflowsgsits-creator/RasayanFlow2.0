@@ -32,16 +32,25 @@ export default function LoginPage() {
     }
   };
 
-  const previewStudentDashboard = () => {
-    setUser({
-      id: 'local-student-preview',
-      name: 'Student Preview',
-      email: 'student.preview@local.test',
-      role: 'student',
-      isApproved: true,
-      labId: 'dummy-lab-id' // Optional: provide a dummy lab ID if the dashboard requires it
-    });
-    navigate('/');
+  const previewStudentDashboard = async () => {
+    const randomNum = Math.floor(Math.random() * 100000);
+    const mockEmail = `preview${randomNum}@student.edu`;
+    const mockPassword = 'password123';
+    
+    try {
+      const authStore = useAuthStore.getState();
+      await authStore.register({ 
+        name: 'Student Preview', 
+        email: mockEmail, 
+        password: mockPassword, 
+        role: 'student' 
+      });
+      const userFound = await authStore.login({ email: mockEmail, password: mockPassword });
+      navigate('/');
+    } catch (err) {
+      const authStore = useAuthStore.getState();
+      setError('Preview student failed: ' + (authStore.error || err.message));
+    }
   };
 
   return (
