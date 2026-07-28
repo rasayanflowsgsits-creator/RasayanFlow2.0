@@ -32,10 +32,22 @@ const socketHandler = (io) => {
     logger.info(`Socket connected: ${socket.id}`);
 
     if (socket.userId) {
+      // Join user's own room for direct notifications
+      socket.join(socket.userId.toString());
+      logger.info(`Socket ${socket.id} joined personal room: ${socket.userId}`);
+
       User.findById(socket.userId).then(user => {
-        if (user && user.labId) {
-          socket.join(user.labId.toString());
-          logger.info(`Socket ${socket.id} joined lab room: ${user.labId}`);
+        if (user) {
+          // Join role-based room (e.g. 'store-admin', 'super-admin')
+          if (user.role) {
+            socket.join(user.role);
+            logger.info(`Socket ${socket.id} joined role room: ${user.role}`);
+          }
+          // Join lab room for lab-specific broadcasts
+          if (user.labId) {
+            socket.join(user.labId.toString());
+            logger.info(`Socket ${socket.id} joined lab room: ${user.labId}`);
+          }
         }
       }).catch(err => {
         logger.error(`Error fetching user for socket lab join: ${err.message}`);

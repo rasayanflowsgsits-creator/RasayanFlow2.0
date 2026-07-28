@@ -29,6 +29,8 @@ const linksMap = {
   ],
   "lab-admin": [
     { to: "/inventory", label: "Inventory", icon: ClipboardList },
+    { to: "/lab/experiments", label: "Experiments", icon: FileText },
+    { to: "/lab/student-requests", label: "Student Requests", icon: Users },
     { to: "/analytics", label: "Analytics", icon: BarChart3 },
     { to: "/transactions", label: "Transactions", icon: CheckCircle2 },
     { to: "/lab/store-requests", label: "Store Requests", icon: Store },

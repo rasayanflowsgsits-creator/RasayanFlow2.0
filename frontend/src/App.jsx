@@ -26,6 +26,8 @@ import StudentStorePage from './pages/StudentStorePage';
 import LabStoreRequests from './pages/LabStoreRequests';
 import LabNotifications from './pages/LabNotifications';
 import LabHistory from './pages/LabHistory';
+import LabExperimentsPage from './pages/LabExperimentsPage';
+import LabStudentRequestsPage from './pages/LabStudentRequestsPage';
 import AboutPage from './pages/AboutPage';
 import NotFound from './pages/NotFound';
 import socket from './services/socket';
@@ -140,6 +142,31 @@ function App() {
       }
     });
 
+    socket.on('new-student-request', (payload) => {
+      if (user?.role === 'lab-admin') {
+        setToast({ type: 'info', message: `New experiment request from ${payload.studentName}` });
+        const appStore = useAppStore.getState();
+        if (payload.labId) {
+          appStore.fetchStudentRequests(payload.labId);
+        }
+      }
+    });
+
+    socket.on('new-store-request', (payload) => {
+      if (user?.role === 'store-admin' || user?.role === 'store_admin') {
+        setToast({ type: 'info', message: `New direct research request from ${payload?.studentName || 'a student'}` });
+      }
+    });
+
+    socket.on('notification', (payload) => {
+      setToast({ type: 'info', message: payload.message || payload.title });
+      if (user?.role === 'student') {
+        const appStore = useAppStore.getState();
+        appStore.fetchMyStudentRequests();
+        appStore.fetchMyResearchRequests();
+      }
+    });
+
     return () => {
       socket.off('inventory.updated');
       socket.off('store:new_request');
@@ -147,6 +174,9 @@ function App() {
       socket.off('store:request_rejected');
       socket.off('request-approved');
       socket.off('request-rejected');
+      socket.off('new-student-request');
+      socket.off('new-store-request');
+      socket.off('notification');
     };
   }, [user?._id, user?.role, setHighlight, setToast]);
 
@@ -190,6 +220,8 @@ function App() {
                     <Route path='inventory' element={role === 'lab-admin' ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='analytics' element={role === 'lab-admin' ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='transactions' element={role === 'lab-admin' ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
+                    <Route path='lab/experiments' element={role === 'lab-admin' ? <LabExperimentsPage /> : <Navigate to='/' replace />} />
+                    <Route path='lab/student-requests' element={role === 'lab-admin' ? <LabStudentRequestsPage /> : <Navigate to='/' replace />} />
                     <Route path='lab/store-requests' element={role === 'lab-admin' ? <LabStoreRequests /> : <Navigate to='/' replace />} />
                     <Route path='lab/history' element={role === 'lab-admin' ? <LabHistory /> : <Navigate to='/' replace />} />
                     <Route path='lab/notifications' element={role === 'lab-admin' ? <LabNotifications /> : <Navigate to='/' replace />} />

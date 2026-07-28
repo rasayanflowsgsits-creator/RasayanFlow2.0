@@ -20,6 +20,12 @@ const serializeUser = (user) => ({
   email: user.email,
   role: user.role,
   labId: user.labId,
+  labName: user.labName,
+  rollNumber: user.rollNumber,
+  course: user.course,
+  year: user.year,
+  semester: user.semester,
+  group: user.group,
   isApproved: user.isApproved,
   isBlocked: user.isBlocked,
 });
@@ -57,7 +63,7 @@ const ensureConfiguredSuperAdmin = async (user) => {
 };
 
 const register = asyncHandler(async (req, res) => {
-  const { name, email, password, role, labId } = req.body;
+  const { name, email, password, role, labId, labName, rollNumber, course, year, semester, group } = req.body;
 
   if (!name || !email || !password) {
     res.status(400);
@@ -78,6 +84,12 @@ const register = asyncHandler(async (req, res) => {
     password,
     role: isSuperAdmin ? 'superAdmin' : role || 'student',
     labId: labId || null,
+    labName,
+    rollNumber,
+    course,
+    year,
+    semester,
+    group,
     isApproved: isSuperAdmin || (role || 'student') === 'student',
   });
 
