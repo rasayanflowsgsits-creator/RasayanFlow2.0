@@ -227,12 +227,12 @@ export default function LabExperimentsPage() {
 
       <Modal open={importOpen} onClose={() => { setImportOpen(false); setImportData([]); setImportIssues([]); }} title="Upload Lab Structure">
         <div className="space-y-6">
-          <div className="rounded-xl border-2 border-dashed border-[#cfd8bd] bg-[#fdfdf7] p-10 text-center transition-colors hover:border-[#87996c] dark:border-[#4e5d35] dark:bg-[#1a1d16] dark:hover:border-[#87996c]">
+          <div className="rounded-xl border-2 border-dashed border-[#cfd8bd] bg-[#fdfdf7] p-8 text-center transition-colors hover:border-[#87996c] dark:border-[#4e5d35] dark:bg-[#1a1d16] dark:hover:border-[#87996c]">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#f4f5eb] dark:bg-[#28301f]">
               <Upload size={28} className="text-[#87996c]" />
             </div>
-            <h3 className="mb-1 text-lg font-semibold text-[#3c4e23] dark:text-[#eef4e8]">Select a CSV file to upload</h3>
-            <p className="mb-6 text-sm text-[#71805a] dark:text-[#c5d0b5]">File must match the provided template structure.</p>
+            <h3 className="mb-1 text-lg font-semibold text-[#3c4e23] dark:text-[#eef4e8]">Upload CSV File</h3>
+            <p className="mb-6 text-sm text-[#71805a] dark:text-[#c5d0b5]">Upload a local file matching the template structure.</p>
             
             <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
               <Button variant="outline" onClick={downloadTemplate}>
@@ -243,28 +243,33 @@ export default function LabExperimentsPage() {
                 <input type="file" accept=".csv" className="sr-only" onChange={handleFileUpload} />
               </label>
             </div>
-            
-            <div className="relative my-6 text-center">
-              <span className="relative z-10 bg-[#fdfdf7] px-3 text-xs text-[#71805a] dark:bg-[#1a1d16] dark:text-[#c5d0b5]">OR UPLOAD VIA URL</span>
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-[#cfd8bd] dark:border-[#4e5d35]"></div>
-              </div>
+          </div>
+          
+          <div className="relative text-center">
+            <span className="relative z-10 bg-[#fffef8] px-4 text-xs font-medium text-[#87996c] dark:bg-[#20251a] dark:text-[#c5d0b5]">OR FETCH FROM GOOGLE SHEETS</span>
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-[#e8ece1] dark:border-[#3c452f]"></div>
             </div>
+          </div>
 
-            <div className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
-              <Input 
-                placeholder="Paste public Google Sheets link..." 
-                value={sheetUrl}
-                onChange={(e) => setSheetUrl(e.target.value)}
-                className="flex-1"
-              />
-              <Button 
-                variant="outline" 
-                onClick={handleUrlFetch} 
-                disabled={fetchingSheet || !sheetUrl}
-              >
-                {fetchingSheet ? 'Fetching...' : 'Fetch Sheet'}
-              </Button>
+          <div className="rounded-xl border border-[#cfd8bd] bg-[#fdfdf7] p-6 dark:border-[#4e5d35] dark:bg-[#1a1d16]">
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-[#3c4e23] dark:text-[#eef4e8]">Public Google Sheets Link</label>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Input 
+                  placeholder="https://docs.google.com/spreadsheets/d/..." 
+                  value={sheetUrl}
+                  onChange={(e) => setSheetUrl(e.target.value)}
+                  className="flex-1 bg-white dark:bg-[#20251a]"
+                />
+                <Button 
+                  onClick={handleUrlFetch} 
+                  disabled={fetchingSheet || !sheetUrl}
+                  className="whitespace-nowrap"
+                >
+                  {fetchingSheet ? 'Fetching...' : 'Fetch Sheet Data'}
+                </Button>
+              </div>
             </div>
           </div>
 
