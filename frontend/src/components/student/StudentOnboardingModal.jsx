@@ -166,17 +166,7 @@ export default function StudentOnboardingModal() {
                 )}
               </div>
 
-              {formData.course === 'B.Pharm' && (
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-[#4a5538] dark:text-[#c5d0b5]">Practical Group</label>
-                  <select 
-                    value={formData.group} onChange={e => setFormData({...formData, group: e.target.value})}
-                    className="w-full appearance-none rounded-xl border border-[#d9e1ca] bg-white py-3 px-4 text-[#37412a] outline-none focus:border-[#5c6e46] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]"
-                  >
-                    {['No Group', 'Group A', 'Group B', 'Group C', 'Group D', 'Group E'].map(g => <option key={g} value={g}>{g}</option>)}
-                  </select>
-                </div>
-              )}
+
 
               <div className="flex gap-4">
                 <button onClick={() => setStep(1)} className="w-1/3 rounded-xl border border-[#d9e1ca] bg-transparent py-3 font-semibold text-[#5c6e46] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:text-[#c5d0b5] dark:hover:bg-[#2a3121] transition-colors">
