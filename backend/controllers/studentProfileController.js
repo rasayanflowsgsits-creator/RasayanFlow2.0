@@ -6,7 +6,7 @@ const Lab = require('../models/Lab');
 // @route   PUT /api/student/profile/setup
 // @access  Private (Student)
 const setupProfile = asyncHandler(async (req, res) => {
-  const { rollNumber, course, year, semester, group, labId } = req.body;
+  const { rollNumber, course, year, semester } = req.body;
 
   const user = await User.findById(req.user.id);
   if (!user) {
@@ -14,20 +14,10 @@ const setupProfile = asyncHandler(async (req, res) => {
     throw new Error('User not found');
   }
 
-  // Find the selected lab to store labName as well
-  const lab = await Lab.findById(labId);
-  if (!lab) {
-    res.status(404);
-    throw new Error('Selected lab not found');
-  }
-
   user.rollNumber = rollNumber;
   user.course = course;
   user.year = year;
   user.semester = semester;
-  user.group = group || 'No Group';
-  user.labId = labId;
-  user.labName = lab.name;
   user.onboardingComplete = true;
 
   await user.save();
@@ -42,10 +32,7 @@ const setupProfile = asyncHandler(async (req, res) => {
       course: user.course,
       year: user.year,
       semester: user.semester,
-      group: user.group,
       rollNumber: user.rollNumber,
-      labId: user.labId,
-      labName: user.labName,
       onboardingComplete: user.onboardingComplete
     }
   });

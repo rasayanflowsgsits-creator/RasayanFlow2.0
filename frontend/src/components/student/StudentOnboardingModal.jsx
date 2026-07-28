@@ -45,18 +45,12 @@ export default function StudentOnboardingModal() {
   };
 
   const handleNextStep2 = async () => {
-    setStep(3);
-    setLoading(true);
-    const matching = await fetchMatchingLabs(formData.course, formData.year, formData.semester);
-    setLabs(matching);
-    setLoading(false);
-  };
-
-  const handleSelectLab = async (labId) => {
+    if (!formData.year || (formData.course !== 'PhD' && !formData.semester)) {
+      return alert('Please complete all fields');
+    }
     setLoading(true);
     try {
-      const payload = { ...formData, labId };
-      const updatedProfile = await setupStudentProfile(payload);
+      const updatedProfile = await setupStudentProfile(formData);
       updateUser(updatedProfile);
     } catch (error) {
       console.error(error);
@@ -75,13 +69,13 @@ export default function StudentOnboardingModal() {
         <div className="bg-[#fdfdf7] p-8 text-center border-b border-[#e8ece1] dark:bg-[#20251a] dark:border-[#3c452f]">
           <h2 className="text-2xl font-bold text-[#37412a] dark:text-[#e4e9d8]">Complete Your Profile</h2>
           <p className="mt-2 text-sm text-[#71805a] dark:text-[#a5b48b]">
-            Help us find your lab and experiments
+            Tell us about your current academic status
           </p>
         </div>
 
         {/* Steps Progress */}
         <div className="flex items-center justify-center gap-2 p-6 bg-white dark:bg-[#1a1d16]">
-          {[1, 2, 3].map(i => (
+          {[1, 2].map(i => (
             <React.Fragment key={i}>
               <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition-colors
                 ${step === i ? 'bg-[#5c6e46] text-white ring-4 ring-[#e8ece1] dark:ring-[#3c452f]' 
@@ -89,7 +83,7 @@ export default function StudentOnboardingModal() {
               >
                 {step > i ? <CheckCircle2 className="h-5 w-5" /> : i}
               </div>
-              {i < 3 && <div className={`h-1 w-12 rounded-full transition-colors ${step > i ? 'bg-[#87996c]' : 'bg-[#e8ece1] dark:bg-[#3c452f]'}`} />}
+              {i < 2 && <div className={`h-1 w-12 rounded-full transition-colors ${step > i ? 'bg-[#87996c]' : 'bg-[#e8ece1] dark:bg-[#3c452f]'}`} />}
             </React.Fragment>
           ))}
         </div>
@@ -166,71 +160,14 @@ export default function StudentOnboardingModal() {
                 )}
               </div>
 
-
-
               <div className="flex gap-4">
-                <button onClick={() => setStep(1)} className="w-1/3 rounded-xl border border-[#d9e1ca] bg-transparent py-3 font-semibold text-[#5c6e46] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:text-[#c5d0b5] dark:hover:bg-[#2a3121] transition-colors">
+                <button onClick={() => setStep(1)} disabled={loading} className="w-1/3 rounded-xl border border-[#d9e1ca] bg-transparent py-3 font-semibold text-[#5c6e46] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:text-[#c5d0b5] dark:hover:bg-[#2a3121] transition-colors disabled:opacity-50">
                   Back
                 </button>
-                <button onClick={handleNextStep2} className="w-2/3 flex items-center justify-center gap-2 rounded-xl bg-[#5c6e46] py-3 font-semibold text-white hover:bg-[#4a5538] transition-colors">
-                  Find My Lab <ChevronRight className="h-5 w-5" />
+                <button onClick={handleNextStep2} disabled={loading} className="w-2/3 flex items-center justify-center gap-2 rounded-xl bg-[#5c6e46] py-3 font-semibold text-white hover:bg-[#4a5538] transition-colors disabled:opacity-50">
+                  {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <>Complete Profile <CheckCircle2 className="h-5 w-5" /></>}
                 </button>
               </div>
-            </div>
-          )}
-
-          {/* STEP 3 */}
-          {step === 3 && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
-              {loading ? (
-                <div className="flex flex-col items-center justify-center py-12">
-                  <Loader2 className="h-10 w-10 animate-spin text-[#87996c]" />
-                  <p className="mt-4 text-[#71805a] dark:text-[#a5b48b]">Searching for matching labs...</p>
-                </div>
-              ) : (
-                <>
-                  {labs.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-[#d9e1ca] bg-[#fdfdf7] p-8 text-center dark:border-[#414a33] dark:bg-[#20251a]">
-                      <Beaker className="mx-auto mb-4 h-12 w-12 text-[#a5b48b]" />
-                      <h3 className="text-lg font-bold text-[#37412a] dark:text-[#e4e9d8]">No Labs Found</h3>
-                      <p className="mt-2 text-sm text-[#71805a] dark:text-[#a5b48b]">
-                        We couldn't find any active labs for {formData.course} Year {formData.year} Sem {formData.semester}.<br/>
-                        Please contact your Lab Admin or check your details.
-                      </p>
-                      <button onClick={() => setStep(2)} className="mt-6 rounded-lg bg-[#5c6e46] px-6 py-2 text-sm font-semibold text-white hover:bg-[#4a5538]">
-                        Go Back
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <p className="text-sm font-medium text-[#4a5538] dark:text-[#c5d0b5]">Select your designated lab:</p>
-                      <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-2">
-                        {labs.map(lab => (
-                          <div key={lab._id} className="group flex cursor-pointer items-center justify-between rounded-2xl border border-[#d9e1ca] bg-white p-5 hover:border-[#87996c] hover:shadow-md dark:border-[#414a33] dark:bg-[#20251a] dark:hover:border-[#5c6e46] transition-all" onClick={() => handleSelectLab(lab._id)}>
-                            <div>
-                              <div className="flex items-center gap-3">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#f4f6ee] text-[#5c6e46] dark:bg-[#2a3121] dark:text-[#c5d0b5]">
-                                  <Beaker className="h-5 w-5" />
-                                </div>
-                                <div>
-                                  <h4 className="font-bold text-[#37412a] dark:text-[#e4e9d8]">{lab.labName}</h4>
-                                  <p className="text-xs text-[#71805a] dark:text-[#a5b48b]">{lab.courseType} • Yr {lab.year} • Sem {lab.semester}</p>
-                                </div>
-                              </div>
-                            </div>
-                            <button className="rounded-full bg-[#f4f6ee] p-2 text-[#5c6e46] group-hover:bg-[#5c6e46] group-hover:text-white dark:bg-[#2a3121] dark:text-[#c5d0b5] transition-colors">
-                              <ChevronRight className="h-5 w-5" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                      <button onClick={() => setStep(2)} className="w-full text-center text-sm font-medium text-[#71805a] hover:text-[#5c6e46] dark:text-[#a5b48b]">
-                        Go back and change details
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
             </div>
           )}
         </div>

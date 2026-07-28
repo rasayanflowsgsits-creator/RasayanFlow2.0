@@ -830,6 +830,17 @@ const useAppStore = create((set) => ({
       return [];
     }
   },
+  myLabs: [],
+  fetchMyLabs: async (courseType, year, semester) => {
+    set({ loading: true });
+    try {
+      const { data } = await api.get(`/labs/matching?courseType=${courseType}&year=${year}&semester=${semester}`);
+      set({ myLabs: getPayload(data) || [], loading: false });
+    } catch (err) {
+      console.error('Failed to fetch my labs', err);
+      set({ myLabs: [], loading: false });
+    }
+  },
   fetchStudentLabStructure: async () => {
     set({ loading: true });
     try {
