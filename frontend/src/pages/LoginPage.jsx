@@ -32,15 +32,16 @@ export default function LoginPage() {
     }
   };
 
-  const previewStoreDashboard = () => {
+  const previewStudentDashboard = () => {
     setUser({
-      id: 'local-store-preview',
-      name: 'Store Manager Preview',
-      email: 'store.preview@local.test',
-      role: 'store_admin',
+      id: 'local-student-preview',
+      name: 'Student Preview',
+      email: 'student.preview@local.test',
+      role: 'student',
       isApproved: true,
+      labId: 'dummy-lab-id' // Optional: provide a dummy lab ID if the dashboard requires it
     });
-    navigate('/store/dashboard');
+    navigate('/');
   };
 
   return (
@@ -67,8 +68,8 @@ export default function LoginPage() {
             </div>
           )}
           <Button type='submit' className='w-full'>Sign in</Button>
-          <Button type='button' variant='outline' className='w-full' onClick={previewStoreDashboard}>
-            Preview Store Manager
+          <Button type='button' variant='outline' className='w-full' onClick={previewStudentDashboard}>
+            Preview Student
           </Button>
         </form>
         <p className='mt-4 text-center text-sm text-[#71805a] dark:text-[#c5d0b5]'>
