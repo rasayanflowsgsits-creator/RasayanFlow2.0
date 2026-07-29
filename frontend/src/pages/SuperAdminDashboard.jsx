@@ -85,7 +85,10 @@ export default function SuperAdminDashboard() {
   // Selected Data & Forms
   const [selectedLab, setSelectedLab] = useState(null);
   const [selectedAdminId, setSelectedAdminId] = useState('');
-  const [newLab, setNewLab] = useState({ name: '', code: '', courseType: 'B.Pharm', department: '', year: '', semester: '' });
+  const [newLab, setNewLab] = useState({ name: '', code: '', courseType: 'B.Pharm', department: '', year: '1', semester: '1' });
+  const [adminMode, setAdminMode] = useState('create_new'); // 'create_new', 'existing', 'unassigned'
+  const [newLabAdmin, setNewLabAdmin] = useState({ name: '', email: '', password: '' });
+  const [selectedExistingAdminId, setSelectedExistingAdminId] = useState('');
   const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '' });
   const [newStoreAdmin, setNewStoreAdmin] = useState({ name: '', email: '', password: '' });
   const [newSuperAdmin, setNewSuperAdmin] = useState({ name: '', email: '', password: '' });
@@ -101,7 +104,6 @@ export default function SuperAdminDashboard() {
   const [labSearch, setLabSearch] = useState('');
   const [labCourseFilter, setLabCourseFilter] = useState('all');
   const [labViewMode, setLabViewMode] = useState('grid');
-  const [createLabAdminId, setCreateLabAdminId] = useState('');
   const [userSearch, setUserSearch] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState('all');
   const [matrixSearch, setMatrixSearch] = useState('');
@@ -187,9 +189,35 @@ export default function SuperAdminDashboard() {
   };
 
   const handleCreateLab = async () => {
-    if (!newLab.name.trim() || !newLab.code.trim()) return;
+    if (!newLab.name.trim() || !newLab.code.trim()) {
+      setToast({ type: 'error', message: 'Please enter Lab Name and Lab Code.' });
+      return;
+    }
+
+    if (adminMode === 'create_new') {
+      if (!newLabAdmin.name.trim() || !newLabAdmin.email.trim() || !newLabAdmin.password.trim()) {
+        setToast({ type: 'error', message: 'Please fill in Admin Name, Email, and Password.' });
+        return;
+      }
+    }
+
     setCreating(true);
     try {
+      let createdAdminId = null;
+
+      // 1. Create new Lab Admin account if requested
+      if (adminMode === 'create_new') {
+        const createdAdmin = await createLabAdmin({
+          name: newLabAdmin.name.trim(),
+          email: newLabAdmin.email.trim(),
+          password: newLabAdmin.password,
+        });
+        createdAdminId = createdAdmin?.id || createdAdmin?._id;
+      } else if (adminMode === 'existing') {
+        createdAdminId = selectedExistingAdminId;
+      }
+
+      // 2. Create the Lab entity
       const createdLab = await createLab({
         name: newLab.name.trim(),
         code: newLab.code.trim().toUpperCase(),
@@ -198,15 +226,28 @@ export default function SuperAdminDashboard() {
         year: newLab.year,
         semester: newLab.semester
       });
-      if (createLabAdminId) {
-        await assignAdminToLab({ labId: createdLab.id || createdLab._id, adminId: createLabAdminId });
+      const labId = createdLab?.id || createdLab?._id;
+
+      // 3. Assign Admin to Lab if available
+      if (createdAdminId && labId) {
+        await assignAdminToLab({ labId, adminId: createdAdminId });
       }
+
       await Promise.all([fetchLabs(), fetchUsers(), fetchActivityLogs({ limit: 100 })]);
-      setToast({ type: 'success', message: `Created ${createdLab.name} successfully!` });
+      
+      setToast({
+        type: 'success',
+        message: adminMode === 'create_new'
+          ? `Created "${createdLab.name}" and provisioned Lab Admin account (${newLabAdmin.email})!`
+          : `Created "${createdLab.name}" successfully!`
+      });
+
       setCreateOpen(false);
-      setHighlight(createdLab.id || createdLab._id);
-      setNewLab({ name: '', code: '', courseType: 'B.Pharm', department: '', year: '', semester: '' });
-      setCreateLabAdminId('');
+      setHighlight(labId);
+      setNewLab({ name: '', code: '', courseType: 'B.Pharm', department: '', year: '1', semester: '1' });
+      setNewLabAdmin({ name: '', email: '', password: '' });
+      setSelectedExistingAdminId('');
+      setAdminMode('create_new');
     } catch (error) {
       setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to create lab.' });
     } finally {
@@ -1159,121 +1200,216 @@ export default function SuperAdminDashboard() {
       {/* ALL INTERACTIVE MODALS */}
 
       {/* Create Lab Modal */}
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title='Create New Department Lab'>
-        <div className='space-y-5'>
-          {/* Quick Presets */}
-          <div>
-            <p className='text-xs font-bold text-[#5c6e46] dark:text-[#a5b48b] mb-2 uppercase tracking-wide'>
-              ⚡ Quick Template Presets (1-Click Auto-Fill)
-            </p>
-            <div className='flex flex-wrap gap-1.5'>
-              {[
-                { name: 'Pharmaceutics Lab - I', code: 'PH101L', courseType: 'B.Pharm', department: 'Pharmaceutics', year: '1', semester: '1' },
-                { name: 'Pharmaceutical Chemistry Lab', code: 'PH102L', courseType: 'B.Pharm', department: 'Pharmaceutical Chemistry', year: '1', semester: '1' },
-                { name: 'Human Anatomy & Physiology Lab', code: 'PH103L', courseType: 'B.Pharm', department: 'Physiology', year: '1', semester: '1' },
-                { name: 'Pharmacology Lab', code: 'PH201L', courseType: 'B.Pharm', department: 'Pharmacology', year: '2', semester: '3' },
-                { name: 'Pharmacognosy Lab', code: 'PH202L', courseType: 'B.Pharm', department: 'Pharmacognosy', year: '2', semester: '3' },
-                { name: 'Pharmaceutical Analysis Lab', code: 'PH104L', courseType: 'B.Pharm', department: 'Analysis', year: '1', semester: '1' },
-              ].map((tmpl) => (
-                <button
-                  key={tmpl.code}
-                  type='button'
-                  onClick={() => setNewLab(tmpl)}
-                  className='rounded-xl border border-[#d9e1ca] bg-[#f4f6ee] px-2.5 py-1 text-xs font-medium text-[#37412a] hover:bg-[#5c6e46] hover:text-white dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8] transition-all'
-                >
-                  + {tmpl.name}
-                </button>
-              ))}
-            </div>
-          </div>
+      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title='Create New Department Lab & Provision Admin' panelClassName='max-w-4xl'>
+        <div className='space-y-6'>
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+            
+            {/* COLUMN 1: Lab Details */}
+            <div className='space-y-4 rounded-2xl border border-[#d9e1ca] bg-[#fffef8] p-4 dark:border-[#414a33] dark:bg-[#1a1d16]'>
+              <h4 className='text-xs font-bold text-[#5c6e46] dark:text-[#a5b48b] uppercase tracking-wider flex items-center gap-1.5 border-b border-[#d9e1ca] pb-2 dark:border-[#414a33]'>
+                <Warehouse size={16} /> 1. Lab Specifications
+              </h4>
 
-          <div className='space-y-3.5 border-t border-[#d9e1ca] pt-4 dark:border-[#414a33]'>
-            <Input label='Lab Name *' value={newLab.name} onChange={(e) => setNewLab({ ...newLab, name: e.target.value })} placeholder='e.g. Pharmaceutics Lab - I' required />
-            <Input label='Lab Code *' value={newLab.code} onChange={(e) => setNewLab({ ...newLab, code: e.target.value })} placeholder='e.g. PH101L' required />
+              <Input
+                label='Lab Name *'
+                value={newLab.name}
+                onChange={(e) => setNewLab({ ...newLab, name: e.target.value })}
+                placeholder='e.g. Pharmaceutics Lab - I'
+                required
+              />
 
-            <div className='grid grid-cols-2 gap-3'>
-              <label className='block text-sm text-[#4e5d35] dark:text-[#d5ddbf]'>
-                <span className='mb-1 block text-xs font-bold tracking-wide'>Course Program</span>
-                <select
-                  value={newLab.courseType}
-                  onChange={(e) => setNewLab({ ...newLab, courseType: e.target.value, year: '', semester: '' })}
-                  className='w-full rounded-xl border border-[#cfd8bd] bg-white p-3 text-xs font-bold text-[#3c4e23] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]'
-                >
-                  <option value='B.Pharm'>B.Pharm (4 Years)</option>
-                  <option value='M.Pharm'>M.Pharm (2 Years)</option>
-                  <option value='PhD'>PhD Research</option>
-                  <option value='Other'>Other Program</option>
-                </select>
-              </label>
-              <Input label='Department (Optional)' placeholder='e.g. Pharmaceutics' value={newLab.department} onChange={(e) => setNewLab({ ...newLab, department: e.target.value })} />
-            </div>
+              <Input
+                label='Lab Code *'
+                value={newLab.code}
+                onChange={(e) => setNewLab({ ...newLab, code: e.target.value })}
+                placeholder='e.g. PH101L'
+                required
+              />
 
-            {/* Visual Year Chips */}
-            <div>
-              <p className='text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf] mb-1.5'>Academic Year</p>
-              <div className='flex gap-2'>
-                {(newLab.courseType === 'B.Pharm' ? ['1', '2', '3', '4'] : newLab.courseType === 'M.Pharm' ? ['1', '2'] : ['1', '2', '3', '4', '5']).map((y) => (
-                  <button
-                    key={y}
-                    type='button'
-                    onClick={() => setNewLab({ ...newLab, year: y, semester: (parseInt(y) * 2 - 1).toString() })}
-                    className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all border ${
-                      newLab.year === y
-                        ? 'bg-[#5c6e46] text-white border-[#5c6e46] shadow-sm'
-                        : 'border-[#d9e1ca] bg-white text-[#37412a] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
-                    }`}
+              <div className='grid grid-cols-2 gap-3'>
+                <label className='block text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf]'>
+                  <span className='mb-1 block'>Course Program</span>
+                  <select
+                    value={newLab.courseType}
+                    onChange={(e) => setNewLab({ ...newLab, courseType: e.target.value, year: '1', semester: '1' })}
+                    className='w-full rounded-xl border border-[#cfd8bd] bg-white p-2.5 text-xs font-bold text-[#3c4e23] outline-none focus:border-[#5c6e46] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]'
                   >
-                    Year {y}
-                  </button>
-                ))}
-              </div>
-            </div>
+                    <option value='B.Pharm'>B.Pharm (4 Years)</option>
+                    <option value='M.Pharm'>M.Pharm (2 Years)</option>
+                    <option value='PhD'>PhD Research</option>
+                    <option value='Other'>Other Program</option>
+                  </select>
+                </label>
 
-            {/* Visual Semester Chips */}
-            {newLab.year && (
+                <Input
+                  label='Department (Optional)'
+                  placeholder='e.g. Pharmaceutics'
+                  value={newLab.department}
+                  onChange={(e) => setNewLab({ ...newLab, department: e.target.value })}
+                />
+              </div>
+
+              {/* Visual Academic Year */}
               <div>
-                <p className='text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf] mb-1.5'>Semester</p>
+                <p className='text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf] mb-1.5'>Academic Year</p>
                 <div className='flex gap-2'>
-                  {[(parseInt(newLab.year) * 2 - 1).toString(), (parseInt(newLab.year) * 2).toString()].map((s) => (
+                  {(newLab.courseType === 'B.Pharm' ? ['1', '2', '3', '4'] : newLab.courseType === 'M.Pharm' ? ['1', '2'] : ['1', '2', '3', '4', '5']).map((y) => (
                     <button
-                      key={s}
+                      key={y}
                       type='button'
-                      onClick={() => setNewLab({ ...newLab, semester: s })}
+                      onClick={() => setNewLab({ ...newLab, year: y, semester: (parseInt(y) * 2 - 1).toString() })}
                       className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all border ${
-                        newLab.semester === s
-                          ? 'bg-[#37412a] text-white border-[#37412a] shadow-sm dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                        newLab.year === y
+                          ? 'bg-[#5c6e46] text-white border-[#5c6e46] shadow-sm'
                           : 'border-[#d9e1ca] bg-white text-[#37412a] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
                       }`}
                     >
-                      Semester {s}
+                      Year {y}
                     </button>
                   ))}
                 </div>
               </div>
-            )}
 
-            {/* Instant Admin Assignment */}
-            <div className='border-t border-[#d9e1ca] pt-3 dark:border-[#414a33]'>
-              <label className='block text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf] mb-1'>
-                Assign Admin Immediately (Optional)
-              </label>
-              <select
-                value={createLabAdminId}
-                onChange={(e) => setCreateLabAdminId(e.target.value)}
-                className='w-full rounded-xl border border-[#cfd8bd] bg-white p-3 text-xs text-[#3c4e23] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]'
-              >
-                <option value=''>Assign later (Unassigned)</option>
-                {users.filter(u => u.role !== 'super-admin' && u.role !== 'student').map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.name} ({user.email})
-                  </option>
-                ))}
-              </select>
+              {/* Visual Semester */}
+              {newLab.year && (
+                <div>
+                  <p className='text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf] mb-1.5'>Semester</p>
+                  <div className='flex gap-2'>
+                    {[(parseInt(newLab.year) * 2 - 1).toString(), (parseInt(newLab.year) * 2).toString()].map((s) => (
+                      <button
+                        key={s}
+                        type='button'
+                        onClick={() => setNewLab({ ...newLab, semester: s })}
+                        className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all border ${
+                          newLab.semester === s
+                            ? 'bg-[#37412a] text-white border-[#37412a] shadow-sm dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                            : 'border-[#d9e1ca] bg-white text-[#37412a] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
+                        }`}
+                      >
+                        Semester {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
+
+            {/* COLUMN 2: Assign / Create Lab Admin */}
+            <div className='space-y-4 rounded-2xl border border-[#d9e1ca] bg-[#fffef8] p-4 dark:border-[#414a33] dark:bg-[#1a1d16] flex flex-col justify-between'>
+              <div>
+                <h4 className='text-xs font-bold text-[#5c6e46] dark:text-[#a5b48b] uppercase tracking-wider flex items-center gap-1.5 border-b border-[#d9e1ca] pb-2 dark:border-[#414a33]'>
+                  <UserPlus size={16} /> 2. Lab Administrator Provisioning
+                </h4>
+
+                {/* Mode Selector Tabs */}
+                <div className='mt-3 grid grid-cols-3 gap-1 rounded-xl bg-[#f4f6ee] p-1 dark:bg-[#20251a] border border-[#d9e1ca] dark:border-[#414a33]'>
+                  <button
+                    type='button'
+                    onClick={() => setAdminMode('create_new')}
+                    className={`rounded-lg py-1.5 text-[11px] font-bold transition-all ${
+                      adminMode === 'create_new' ? 'bg-[#5c6e46] text-white shadow-sm' : 'text-[#71805a] hover:text-[#37412a] dark:text-[#a5b48b]'
+                    }`}
+                  >
+                    + New Admin
+                  </button>
+                  <button
+                    type='button'
+                    onClick={() => setAdminMode('existing')}
+                    className={`rounded-lg py-1.5 text-[11px] font-bold transition-all ${
+                      adminMode === 'existing' ? 'bg-[#5c6e46] text-white shadow-sm' : 'text-[#71805a] hover:text-[#37412a] dark:text-[#a5b48b]'
+                    }`}
+                  >
+                    Existing Staff
+                  </button>
+                  <button
+                    type='button'
+                    onClick={() => setAdminMode('unassigned')}
+                    className={`rounded-lg py-1.5 text-[11px] font-bold transition-all ${
+                      adminMode === 'unassigned' ? 'bg-[#5c6e46] text-white shadow-sm' : 'text-[#71805a] hover:text-[#37412a] dark:text-[#a5b48b]'
+                    }`}
+                  >
+                    Skip / Later
+                  </button>
+                </div>
+
+                {/* Option A: Create New Lab Admin Account */}
+                {adminMode === 'create_new' && (
+                  <div className='mt-4 space-y-3.5 animate-in fade-in'>
+                    <div className='rounded-xl bg-emerald-50/70 p-3 border border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/40'>
+                      <p className='text-xs text-emerald-800 dark:text-emerald-300 font-medium leading-relaxed'>
+                        🔑 Provision credentials for the Lab Admin. When this admin logs in with this email and password, they will immediately land inside this lab dashboard!
+                      </p>
+                    </div>
+
+                    <Input
+                      label='Admin Full Name *'
+                      value={newLabAdmin.name}
+                      onChange={(e) => setNewLabAdmin({ ...newLabAdmin, name: e.target.value })}
+                      placeholder='e.g. Dr. Omprakash Tanwar'
+                      required
+                    />
+
+                    <Input
+                      label='Admin Login Email *'
+                      type='email'
+                      value={newLabAdmin.email}
+                      onChange={(e) => setNewLabAdmin({ ...newLabAdmin, email: e.target.value })}
+                      placeholder='admin.pharmaceutics@rasayanflow.edu'
+                      required
+                    />
+
+                    <Input
+                      label='Login Password *'
+                      type='password'
+                      value={newLabAdmin.password}
+                      onChange={(e) => setNewLabAdmin({ ...newLabAdmin, password: e.target.value })}
+                      placeholder='••••••••'
+                      minLength={6}
+                      required
+                    />
+                  </div>
+                )}
+
+                {/* Option B: Assign Existing Staff */}
+                {adminMode === 'existing' && (
+                  <div className='mt-4 space-y-3 animate-in fade-in'>
+                    <label className='block text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf]'>
+                      Select Registered User to Assign as Lab Admin
+                    </label>
+                    <select
+                      value={selectedExistingAdminId}
+                      onChange={(e) => setSelectedExistingAdminId(e.target.value)}
+                      className='w-full rounded-xl border border-[#cfd8bd] bg-white p-3 text-xs text-[#3c4e23] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]'
+                    >
+                      <option value=''>Select user account...</option>
+                      {users.filter(u => u.role !== 'super-admin').map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.name} ({user.email}) — {user.role}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Option C: Skip */}
+                {adminMode === 'unassigned' && (
+                  <div className='mt-6 rounded-xl bg-amber-50 p-4 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-900/40 text-center animate-in fade-in'>
+                    <p className='text-xs text-amber-800 dark:text-amber-300 font-medium'>
+                      ⚠️ Lab will be created as <strong>Unassigned</strong>. You can assign or create a Lab Admin account later at any time from the Labs Hub dashboard.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
           </div>
 
-          <Button onClick={handleCreateLab} className='w-full mt-3 py-3 text-sm font-bold shadow-md' disabled={creating}>
-            {creating ? 'Creating Lab...' : 'Create & Save Lab'}
+          <Button
+            onClick={handleCreateLab}
+            className='w-full py-3.5 text-sm font-bold shadow-md bg-[#37412a] hover:bg-[#2a3220] text-white dark:bg-[#e4e9d8] dark:text-[#20251a]'
+            disabled={creating}
+          >
+            {creating ? 'Creating & Provisioning Lab...' : 'Create & Provision Department Lab'}
           </Button>
         </div>
       </Modal>
