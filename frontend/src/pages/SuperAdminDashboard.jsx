@@ -143,25 +143,38 @@ export default function SuperAdminDashboard() {
     return result.map((l) => ({ ...l, id: l._id || l.id, admin: l.admin || 'Unassigned' }));
   }, [labs, labCourseFilter, debouncedLabSearch]);
 
-  // Filtered Users Directory
+  // Filtered Users Directory with resolved assigned lab
   const filteredUsers = useMemo(() => {
     let result = users;
-    if (userRoleFilter !== 'all') {
+
+    if (userRoleFilter === 'pending') {
+      result = result.filter((u) => u.role !== 'super-admin' && !u.isApproved);
+    } else if (userRoleFilter !== 'all') {
       result = result.filter((u) => {
         if (userRoleFilter === 'store-admin') return u.role === 'store-admin' || u.role === 'store_admin';
         return u.role === userRoleFilter;
       });
     }
+
     const query = debouncedUserSearch.trim().toLowerCase();
     if (query) {
       result = result.filter((u) => [u.name, u.email, u.rollNumber, u.course].filter(Boolean).some((val) => val.toLowerCase().includes(query)));
     }
-    return result.map((u) => ({
-      ...u,
-      id: u._id || u.id,
-      roleDisplay: u.role === 'super-admin' ? 'Super Admin' : u.role === 'lab-admin' ? 'Lab Admin' : (u.role === 'store-admin' || u.role === 'store_admin') ? 'Store Manager' : 'Student',
-    }));
-  }, [users, userRoleFilter, debouncedUserSearch]);
+
+    return result.map((u) => {
+      // Resolve assigned lab
+      const matchedLab = labs.find(l => String(l.id || l._id) === String(u.labId || u.labId?._id));
+      const adminLab = matchedLab || labs.find(l => Array.isArray(l.admins) && l.admins.some(a => String(a._id || a.id || a) === String(u._id || u.id)));
+
+      return {
+        ...u,
+        id: u._id || u.id,
+        roleDisplay: u.role === 'super-admin' ? 'Super Admin' : u.role === 'lab-admin' ? 'Lab Admin' : (u.role === 'store-admin' || u.role === 'store_admin') ? 'Store Manager' : 'Student',
+        assignedLabName: adminLab ? (adminLab.name || adminLab.labName) : 'Unassigned',
+        assignedLabCode: adminLab ? (adminLab.labCode || adminLab.code) : '',
+      };
+    });
+  }, [users, labs, userRoleFilter, debouncedUserSearch]);
 
   // Stock Matrix Data
   const filteredMasterChemicals = useMemo(() => {
@@ -465,28 +478,58 @@ export default function SuperAdminDashboard() {
   ];
 
   const userDirectoryHeaders = [
-    { key: 'name', label: 'User Name' },
-    { key: 'email', label: 'Email Address' },
+    {
+      key: 'name',
+      label: 'User Name & Profile',
+      render: (row) => (
+        <div>
+          <p className='text-sm font-bold text-[#37412a] dark:text-[#e4e9d8]'>{row.name}</p>
+          {row.rollNumber && <p className='text-[11px] font-mono text-[#71805a] dark:text-[#a5b48b]'>ID: {row.rollNumber}</p>}
+        </div>
+      )
+    },
+    {
+      key: 'email',
+      label: 'Email Address',
+      render: (row) => <span className='text-sm font-medium text-[#4e5d35] dark:text-[#d5ddbf]'>{row.email}</span>
+    },
     {
       key: 'roleDisplay',
-      label: 'Role',
+      label: 'System Role',
       render: (row) => (
-        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
           row.role === 'super-admin' ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300' :
           row.role === 'lab-admin' ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300' :
           (row.role === 'store-admin' || row.role === 'store_admin') ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300' :
-          'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300'
+          'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
         }`}>
           {row.roleDisplay}
         </span>
       )
     },
     {
+      key: 'assignedLab',
+      label: 'Assigned Lab & Code',
+      render: (row) => {
+        if (row.role === 'super-admin' || row.role === 'store-admin' || row.role === 'store_admin') {
+          return <span className='text-xs text-[#87996c] dark:text-[#a5b48b] italic'>Global Access</span>;
+        }
+        const hasLab = row.assignedLabName && row.assignedLabName !== 'Unassigned';
+        return (
+          <span className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold ${
+            hasLab ? 'bg-[#f4f6ee] text-[#3c4e23] border border-[#d9e1ca] dark:bg-[#20251a] dark:text-[#eef4e8] dark:border-[#414a33]' : 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
+          }`}>
+            <Warehouse size={13} /> {hasLab ? `${row.assignedLabName} ${row.assignedLabCode ? `(${row.assignedLabCode})` : ''}` : 'Unassigned Lab'}
+          </span>
+        );
+      }
+    },
+    {
       key: 'isApproved',
-      label: 'Status',
+      label: 'Account Status',
       render: (row) => (
         <div className='flex items-center gap-1.5'>
-          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
             row.isApproved ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
           }`}>
             {row.isApproved ? <><CheckCircle2 size={12} /> Approved</> : <><Clock size={12} /> Pending</>}
@@ -508,10 +551,10 @@ export default function SuperAdminDashboard() {
             <Button
               variant='outline'
               onClick={() => handleApproveUser(row.id)}
-              className='text-xs px-2.5 py-1 border-emerald-500 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400'
+              className='text-xs px-2.5 py-1 border-emerald-500 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 font-bold'
               disabled={approvingUserId === row.id}
             >
-              {approvingUserId === row.id ? '...' : 'Approve'}
+              {approvingUserId === row.id ? 'Approving...' : 'Approve'}
             </Button>
           )}
           {row.role !== 'super-admin' && (
@@ -521,7 +564,7 @@ export default function SuperAdminDashboard() {
                 toggleUserStatus(row.id);
                 setToast({ type: 'info', message: `${row.name} account status updated.` });
               }}
-              className={`text-xs px-2 py-1 ${row.isSuspended ? 'border-emerald-500 text-emerald-700' : 'border-rose-300 text-rose-700'}`}
+              className={`text-xs px-2.5 py-1 font-semibold ${row.isSuspended ? 'border-emerald-500 text-emerald-700 hover:bg-emerald-50' : 'border-rose-300 text-rose-700 hover:bg-rose-50'}`}
             >
               {row.isSuspended ? 'Reactivate' : 'Suspend'}
             </Button>
@@ -846,63 +889,102 @@ export default function SuperAdminDashboard() {
       {/* SECTION 3: USERS & APPROVALS */}
       {activeTab === 'users' && (
         <div className='space-y-6 animate-in fade-in'>
-          {pendingApprovals.length > 0 && (
-            <Card title={`Pending User Approvals (${pendingApprovals.length})`} subtitle='Review registration requests' className='border-2 border-amber-300 dark:border-amber-900/60'>
-              <div className='space-y-3 pt-2'>
-                {pendingApprovals.map((user) => (
-                  <div key={user.id} className='flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50/50 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-amber-900/40 dark:bg-amber-950/20'>
-                    <div>
-                      <h4 className='font-bold text-[#37412a] dark:text-[#e4e9d8]'>{user.name}</h4>
-                      <p className='text-xs text-[#71805a] dark:text-[#a5b48b]'>{user.email} • Role: <span className='font-semibold capitalize'>{user.role}</span></p>
-                    </div>
-                    <Button
-                      onClick={() => handleApproveUser(user.id)}
-                      disabled={approvingUserId === user.id}
-                      className='bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-4 py-2'
-                    >
-                      {approvingUserId === user.id ? 'Approving...' : 'Approve User'}
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
-
-          <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+          <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-[#d9e1ca] pb-3 dark:border-[#414a33]'>
             <div>
-              <h3 className='text-lg font-bold text-[#37412a] dark:text-[#e4e9d8]'>All Registered Users Directory</h3>
-              <p className='text-xs text-[#71805a] dark:text-[#a5b48b]'>Manage students, lab admins, store managers, and account suspensions</p>
+              <h3 className='text-xl font-bold text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2'>
+                <Users className='text-[#5c6e46]' /> Institutional User & Account Control
+              </h3>
+              <p className='text-xs text-[#71805a] dark:text-[#a5b48b] mt-0.5'>
+                Total {users.length} registered accounts across all institutional departments and roles
+              </p>
             </div>
-            <div className='flex flex-wrap items-center gap-3'>
-              <Button variant='outline' onClick={() => setCsvImportModalOpen(true)} className='text-xs px-3 py-2'>
-                <FileSpreadsheet size={14} className='mr-1.5' /> Bulk CSV Import
-              </Button>
-              <select
-                value={userRoleFilter}
-                onChange={(e) => setUserRoleFilter(e.target.value)}
-                className='rounded-xl border border-[#d9e1ca] bg-white py-2 px-3 text-xs outline-none focus:border-[#5c6e46] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
-              >
-                <option value='all'>All Roles</option>
-                <option value='student'>Students</option>
-                <option value='lab-admin'>Lab Admins</option>
-                <option value='store-admin'>Store Managers</option>
-                <option value='super-admin'>Super Admins</option>
-              </select>
 
-              <div className='relative w-full sm:w-64'>
+            <div className='flex items-center gap-3'>
+              <Button variant='outline' onClick={() => setCsvImportModalOpen(true)} className='text-xs px-3.5 py-2 font-bold'>
+                <FileSpreadsheet size={15} className='mr-1.5' /> Bulk CSV Student Upload
+              </Button>
+            </div>
+          </div>
+
+          {/* Role Metric Tab Cards Bar */}
+          <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-6'>
+            {[
+              { id: 'all', label: 'All Accounts', count: users.length, icon: Users, color: 'border-l-slate-500' },
+              { id: 'student', label: 'Students', count: students.length, icon: Users, color: 'border-l-emerald-600' },
+              { id: 'lab-admin', label: 'Lab Admins', count: labAdmins.length, icon: UserCheck, color: 'border-l-blue-600' },
+              { id: 'store-admin', label: 'Store Managers', count: storeAdmins.length, icon: ShoppingBag, color: 'border-l-indigo-600' },
+              { id: 'super-admin', label: 'Super Admins', count: superAdmins.length, icon: ShieldCheck, color: 'border-l-purple-600' },
+              { id: 'pending', label: 'Pending Approvals', count: pendingApprovals.length, icon: Clock, color: pendingApprovals.length > 0 ? 'border-l-amber-500 bg-amber-50/50 dark:bg-amber-950/20' : 'border-l-slate-400' },
+            ].map((tab) => {
+              const IconComp = tab.icon;
+              const isActive = userRoleFilter === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setUserRoleFilter(tab.id)}
+                  className={`flex flex-col justify-between rounded-2xl border-l-4 ${tab.color} border border-[#d9e1ca] p-3.5 text-left transition-all hover:shadow-sm dark:border-[#414a33] ${
+                    isActive ? 'bg-[#37412a] text-white shadow-md dark:bg-[#e4e9d8] dark:text-[#20251a]' : 'bg-white dark:bg-[#20251a]'
+                  }`}
+                >
+                  <div className='flex items-center justify-between'>
+                    <span className={`text-[11px] font-extrabold uppercase tracking-wide ${isActive ? 'text-white/90 dark:text-[#20251a]/90' : 'text-[#71805a] dark:text-[#a5b48b]'}`}>
+                      {tab.label}
+                    </span>
+                    <IconComp size={16} className={isActive ? 'text-white dark:text-[#20251a]' : 'text-[#5c6e46] dark:text-[#a5b48b]'} />
+                  </div>
+                  <p className={`text-2xl font-black mt-2 ${isActive ? 'text-white dark:text-[#20251a]' : 'text-[#37412a] dark:text-[#e4e9d8]'}`}>
+                    {tab.count}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active Tab View Header & Search */}
+          <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-[#d9e1ca] bg-[#fffef8] p-4 dark:border-[#414a33] dark:bg-[#20251a]'>
+            <div>
+              <h4 className='text-base font-bold text-[#37412a] dark:text-[#e4e9d8] capitalize'>
+                {userRoleFilter === 'all' && 'Directory of All Institutional Accounts'}
+                {userRoleFilter === 'student' && `Student Directory (${students.length} Total Enrolled Students)`}
+                {userRoleFilter === 'lab-admin' && `Assigned Lab Administrators (${labAdmins.length} Active Admins)`}
+                {userRoleFilter === 'store-admin' && `Central Store Managers (${storeAdmins.length} Managers)`}
+                {userRoleFilter === 'super-admin' && `Super Administrators (${superAdmins.length} Governance Accounts)`}
+                {userRoleFilter === 'pending' && `Pending Registration Approvals (${pendingApprovals.length} Accounts Awaiting Approval)`}
+              </h4>
+              <p className='text-xs text-[#71805a] dark:text-[#a5b48b] mt-0.5'>
+                {userRoleFilter === 'lab-admin' ? 'Displays assigned lab names and lab codes for every administrator' : 'Search and manage user access permissions'}
+              </p>
+            </div>
+
+            <div className='flex items-center gap-3'>
+              <div className='relative w-full sm:w-72'>
                 <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#87996c]' />
                 <input
                   type='text'
                   value={userSearch}
                   onChange={(e) => setUserSearch(e.target.value)}
-                  placeholder='Search by name or email...'
-                  className='w-full rounded-xl border border-[#d9e1ca] bg-white py-2 pl-9 pr-4 text-xs outline-none focus:border-[#5c6e46] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
+                  placeholder='Search by name, email, ID, or lab...'
+                  className='w-full rounded-xl border border-[#d9e1ca] bg-white py-2 pl-9 pr-4 text-xs font-semibold outline-none focus:border-[#5c6e46] dark:border-[#414a33] dark:bg-[#1a1d16] dark:text-[#e4e9d8]'
                 />
               </div>
+
+              {userRoleFilter === 'store-admin' && (
+                <Button onClick={() => setStoreAdminModalOpen(true)} className='text-xs px-3 py-2 whitespace-nowrap'>
+                  + Add Store Manager
+                </Button>
+              )}
+              {userRoleFilter === 'super-admin' && (
+                <Button onClick={() => setSuperAdminModalOpen(true)} className='text-xs px-3 py-2 whitespace-nowrap'>
+                  + Create Super Admin
+                </Button>
+              )}
             </div>
           </div>
 
-          <Table headers={userDirectoryHeaders} rows={filteredUsers} />
+          {/* User Directory Data Table */}
+          <div className='rounded-2xl border border-[#d9e1ca] bg-white overflow-hidden shadow-sm dark:border-[#414a33] dark:bg-[#20251a]'>
+            <Table headers={userDirectoryHeaders} rows={filteredUsers} />
+          </div>
         </div>
       )}
 
