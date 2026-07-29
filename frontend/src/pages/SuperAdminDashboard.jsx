@@ -99,6 +99,9 @@ export default function SuperAdminDashboard() {
 
   // Search & Filters
   const [labSearch, setLabSearch] = useState('');
+  const [labCourseFilter, setLabCourseFilter] = useState('all');
+  const [labViewMode, setLabViewMode] = useState('grid');
+  const [createLabAdminId, setCreateLabAdminId] = useState('');
   const [userSearch, setUserSearch] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState('all');
   const [matrixSearch, setMatrixSearch] = useState('');
@@ -123,12 +126,20 @@ export default function SuperAdminDashboard() {
 
   // Filtered Labs
   const filteredLabs = useMemo(() => {
+    let result = labs;
+    if (labCourseFilter === 'unassigned') {
+      result = result.filter((l) => !l.admin || l.admin === 'Unassigned');
+    } else if (labCourseFilter !== 'all') {
+      result = result.filter((l) => (l.courseType || 'B.Pharm') === labCourseFilter);
+    }
+
     const query = debouncedLabSearch.trim().toLowerCase();
-    if (!query) return labs.map((l) => ({ ...l, id: l._id || l.id, admin: l.admin || 'Unassigned' }));
-    return labs
-      .filter((l) => [l.name, l.labName, l.location, l.labCode, l.department, l.courseType].filter(Boolean).some((val) => val.toLowerCase().includes(query)))
-      .map((l) => ({ ...l, id: l._id || l.id, admin: l.admin || 'Unassigned' }));
-  }, [labs, debouncedLabSearch]);
+    if (query) {
+      result = result.filter((l) => [l.name, l.labName, l.location, l.labCode, l.department, l.courseType].filter(Boolean).some((val) => val.toLowerCase().includes(query)));
+    }
+
+    return result.map((l) => ({ ...l, id: l._id || l.id, admin: l.admin || 'Unassigned' }));
+  }, [labs, labCourseFilter, debouncedLabSearch]);
 
   // Filtered Users Directory
   const filteredUsers = useMemo(() => {
@@ -187,11 +198,15 @@ export default function SuperAdminDashboard() {
         year: newLab.year,
         semester: newLab.semester
       });
-      await fetchActivityLogs({ limit: 100 });
-      setToast({ type: 'success', message: `Created ${createdLab.name}.` });
+      if (createLabAdminId) {
+        await assignAdminToLab({ labId: createdLab.id || createdLab._id, adminId: createLabAdminId });
+      }
+      await Promise.all([fetchLabs(), fetchUsers(), fetchActivityLogs({ limit: 100 })]);
+      setToast({ type: 'success', message: `Created ${createdLab.name} successfully!` });
       setCreateOpen(false);
-      setHighlight(createdLab.id);
+      setHighlight(createdLab.id || createdLab._id);
       setNewLab({ name: '', code: '', courseType: 'B.Pharm', department: '', year: '', semester: '' });
+      setCreateLabAdminId('');
     } catch (error) {
       setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to create lab.' });
     } finally {
@@ -639,29 +654,151 @@ export default function SuperAdminDashboard() {
       {/* SECTION 2: LABS HUB */}
       {activeTab === 'labs' && (
         <div className='space-y-6 animate-in fade-in'>
-          <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+          <div className='flex flex-col gap-4 md:flex-row md:items-center md:justify-between'>
             <div>
-              <h3 className='text-lg font-bold text-[#37412a] dark:text-[#e4e9d8]'>Department Labs Hub</h3>
-              <p className='text-xs text-[#71805a] dark:text-[#a5b48b]'>Manage active practical labs and assigned lab administrators</p>
+              <h3 className='text-xl font-bold text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2'>
+                <Warehouse className='text-[#5c6e46]' /> Department Labs Hub
+              </h3>
+              <p className='text-xs text-[#71805a] dark:text-[#a5b48b] mt-0.5'>
+                Total {filteredLabs.length} active department labs configured for pharmacy practicals
+              </p>
             </div>
-            <div className='flex items-center gap-3'>
-              <div className='relative w-full sm:w-64'>
+
+            <div className='flex flex-wrap items-center gap-3'>
+              {/* Search input */}
+              <div className='relative w-full sm:w-60'>
                 <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#87996c]' />
                 <input
                   type='text'
                   value={labSearch}
                   onChange={(e) => setLabSearch(e.target.value)}
-                  placeholder='Search labs by name or code...'
+                  placeholder='Search lab name, code, dept...'
                   className='w-full rounded-xl border border-[#d9e1ca] bg-white py-2 pl-9 pr-4 text-xs outline-none focus:border-[#5c6e46] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
                 />
               </div>
-              <Button onClick={() => setCreateOpen(true)} className='text-xs px-3 py-2 whitespace-nowrap'>
-                <Plus size={14} className='mr-1' /> Create Lab
+
+              {/* View Switcher */}
+              <div className='flex items-center gap-1 rounded-xl bg-[#f4f6ee] p-1 dark:bg-[#20251a] border border-[#d9e1ca] dark:border-[#414a33]'>
+                <button
+                  onClick={() => setLabViewMode('grid')}
+                  className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all ${
+                    labViewMode === 'grid' ? 'bg-[#5c6e46] text-white shadow-sm' : 'text-[#71805a] hover:text-[#37412a] dark:text-[#a5b48b]'
+                  }`}
+                >
+                  Cards Grid
+                </button>
+                <button
+                  onClick={() => setLabViewMode('table')}
+                  className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all ${
+                    labViewMode === 'table' ? 'bg-[#5c6e46] text-white shadow-sm' : 'text-[#71805a] hover:text-[#37412a] dark:text-[#a5b48b]'
+                  }`}
+                >
+                  Table List
+                </button>
+              </div>
+
+              <Button onClick={() => setCreateOpen(true)} className='text-xs px-3.5 py-2 whitespace-nowrap shadow-sm'>
+                <Plus size={15} className='mr-1.5' /> Create New Lab
               </Button>
             </div>
           </div>
 
-          <Table headers={labHeaders} rows={filteredLabs} />
+          {/* Filter Pills */}
+          <div className='flex overflow-x-auto gap-2 pb-1'>
+            {[
+              { id: 'all', label: `All Labs (${labs.length})` },
+              { id: 'B.Pharm', label: 'B.Pharm Labs' },
+              { id: 'M.Pharm', label: 'M.Pharm Labs' },
+              { id: 'PhD', label: 'PhD Research Labs' },
+              { id: 'unassigned', label: `⚠️ Unassigned Admin (${labs.filter(l => !l.admin || l.admin === 'Unassigned').length})` },
+            ].map((filter) => (
+              <button
+                key={filter.id}
+                onClick={() => setLabCourseFilter(filter.id)}
+                className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all whitespace-nowrap ${
+                  labCourseFilter === filter.id
+                    ? 'bg-[#37412a] text-white dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                    : 'bg-[#f4f6ee] text-[#5c6e46] hover:bg-[#e8efd9] dark:bg-[#20251a] dark:text-[#c5d0b5]'
+                }`}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+
+          {/* GRID VIEW */}
+          {labViewMode === 'grid' ? (
+            <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+              {filteredLabs.length === 0 ? (
+                <div className='col-span-full py-16 text-center border-2 border-dashed border-[#d9e1ca] rounded-2xl dark:border-[#414a33]'>
+                  <Warehouse className='mx-auto h-12 w-12 text-[#87996c] mb-2' />
+                  <h4 className='font-bold text-[#37412a] dark:text-[#e4e9d8]'>No Labs Found</h4>
+                  <p className='text-xs text-[#71805a] dark:text-[#a5b48b] mt-1'>Try adjusting your search query or filter criteria.</p>
+                </div>
+              ) : (
+                filteredLabs.map((lab) => {
+                  const hasAdmin = lab.admin && lab.admin !== 'Unassigned';
+                  return (
+                    <div
+                      key={lab.id}
+                      className='group flex flex-col justify-between rounded-2xl border border-[#d9e1ca] bg-white p-5 hover:border-[#87996c] hover:shadow-md transition-all dark:border-[#414a33] dark:bg-[#20251a]'
+                    >
+                      <div>
+                        {/* Top Badge Header */}
+                        <div className='flex items-start justify-between gap-2 mb-3'>
+                          <span className='inline-flex items-center gap-1.5 rounded-lg bg-[#f4f6ee] px-2.5 py-1 text-xs font-mono font-bold text-[#5c6e46] dark:bg-[#2a3121] dark:text-[#c5d0b5]'>
+                            <Warehouse size={14} /> {lab.labCode || lab.code || 'LAB'}
+                          </span>
+                          <span className='rounded-full bg-[#e8efd9] px-2.5 py-0.5 text-[11px] font-bold text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'>
+                            {lab.courseType || 'B.Pharm'}
+                          </span>
+                        </div>
+
+                        {/* Title */}
+                        <h4 className='text-base font-bold text-[#37412a] dark:text-[#e4e9d8] group-hover:text-[#5c6e46] transition-colors'>
+                          {lab.name || lab.labName}
+                        </h4>
+                        
+                        <p className='text-xs text-[#71805a] dark:text-[#a5b48b] mt-1'>
+                          {lab.department ? `${lab.department} Department` : 'Pharmacy Department'}
+                        </p>
+
+                        {/* Batch / Semester Info */}
+                        <div className='mt-3 flex flex-wrap items-center gap-2'>
+                          <span className='rounded-md bg-[#f4f5eb] px-2 py-0.5 text-[11px] font-medium text-[#5c6e46] dark:bg-[#28301f] dark:text-[#c5d0b5]'>
+                            {lab.year && lab.semester ? `Year ${lab.year} • Semester ${lab.semester}` : 'All Semester Batches'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Admin Footer Bar */}
+                      <div className='mt-5 border-t border-[#f0f4e8] pt-3 dark:border-[#2a3121] flex items-center justify-between'>
+                        <div className='flex items-center gap-2 min-w-0'>
+                          <div className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-xs font-bold ${
+                            hasAdmin ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300'
+                          }`}>
+                            {hasAdmin ? lab.admin.charAt(0).toUpperCase() : '?'}
+                          </div>
+                          <div className='min-w-0'>
+                            <p className={`text-xs font-semibold truncate ${hasAdmin ? 'text-[#37412a] dark:text-[#e4e9d8]' : 'text-amber-700 dark:text-amber-400 font-bold'}`}>
+                              {hasAdmin ? lab.admin : 'Unassigned Admin'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <Button variant='outline' onClick={() => openManageModal(lab)} className='text-xs px-3 py-1 shrink-0'>
+                          Manage
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          ) : (
+            /* TABLE VIEW */
+            <Table headers={labHeaders} rows={filteredLabs} />
+          )}
         </div>
       )}
 
@@ -1023,57 +1160,120 @@ export default function SuperAdminDashboard() {
 
       {/* Create Lab Modal */}
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title='Create New Department Lab'>
-        <div className='space-y-4'>
-          <Input label='Lab Name *' value={newLab.name} onChange={(e) => setNewLab({ ...newLab, name: e.target.value })} placeholder='e.g. Pharmaceutics Lab - I' />
-          <Input label='Lab Code *' value={newLab.code} onChange={(e) => setNewLab({ ...newLab, code: e.target.value })} placeholder='e.g. PH101L' />
-          <div className='space-y-3'>
-            <label className='block text-sm text-[#4e5d35] dark:text-[#d5ddbf]'>
-              <span className='mb-1 block text-xs font-medium tracking-wide'>Course Type</span>
-              <select
-                value={newLab.courseType}
-                onChange={(e) => setNewLab({ ...newLab, courseType: e.target.value, year: '', semester: '' })}
-                className='w-full rounded-xl border border-[#cfd8bd] bg-white p-3 text-sm text-[#3c4e23] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]'
-              >
-                <option value='B.Pharm'>B.Pharm</option>
-                <option value='M.Pharm'>M.Pharm</option>
-                <option value='PhD'>PhD</option>
-                <option value='Other'>Other</option>
-              </select>
-            </label>
-            <Input label='Department (Optional)' placeholder='e.g. Pharmaceutics' value={newLab.department} onChange={(e) => setNewLab({ ...newLab, department: e.target.value })} />
-            <div className='grid grid-cols-2 gap-3'>
-              <label className='block text-sm text-[#4e5d35] dark:text-[#d5ddbf]'>
-                <span className='mb-1 block text-xs font-medium tracking-wide'>Year</span>
-                <select
-                  value={newLab.year}
-                  onChange={(e) => setNewLab({ ...newLab, year: e.target.value, semester: '' })}
-                  className='w-full rounded-xl border border-[#cfd8bd] bg-white p-3 text-sm text-[#3c4e23] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]'
+        <div className='space-y-5'>
+          {/* Quick Presets */}
+          <div>
+            <p className='text-xs font-bold text-[#5c6e46] dark:text-[#a5b48b] mb-2 uppercase tracking-wide'>
+              ⚡ Quick Template Presets (1-Click Auto-Fill)
+            </p>
+            <div className='flex flex-wrap gap-1.5'>
+              {[
+                { name: 'Pharmaceutics Lab - I', code: 'PH101L', courseType: 'B.Pharm', department: 'Pharmaceutics', year: '1', semester: '1' },
+                { name: 'Pharmaceutical Chemistry Lab', code: 'PH102L', courseType: 'B.Pharm', department: 'Pharmaceutical Chemistry', year: '1', semester: '1' },
+                { name: 'Human Anatomy & Physiology Lab', code: 'PH103L', courseType: 'B.Pharm', department: 'Physiology', year: '1', semester: '1' },
+                { name: 'Pharmacology Lab', code: 'PH201L', courseType: 'B.Pharm', department: 'Pharmacology', year: '2', semester: '3' },
+                { name: 'Pharmacognosy Lab', code: 'PH202L', courseType: 'B.Pharm', department: 'Pharmacognosy', year: '2', semester: '3' },
+                { name: 'Pharmaceutical Analysis Lab', code: 'PH104L', courseType: 'B.Pharm', department: 'Analysis', year: '1', semester: '1' },
+              ].map((tmpl) => (
+                <button
+                  key={tmpl.code}
+                  type='button'
+                  onClick={() => setNewLab(tmpl)}
+                  className='rounded-xl border border-[#d9e1ca] bg-[#f4f6ee] px-2.5 py-1 text-xs font-medium text-[#37412a] hover:bg-[#5c6e46] hover:text-white dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8] transition-all'
                 >
-                  <option value=''>Select Year</option>
-                  {(newLab.courseType === 'B.Pharm' ? ['1', '2', '3', '4'] : newLab.courseType === 'M.Pharm' ? ['1', '2'] : ['1', '2', '3', '4', '5']).map((y) => (
-                    <option key={y} value={y}>Year {y}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label className='block text-sm text-[#4e5d35] dark:text-[#d5ddbf]'>
-                <span className='mb-1 block text-xs font-medium tracking-wide'>Semester</span>
-                <select
-                  value={newLab.semester}
-                  onChange={(e) => setNewLab({ ...newLab, semester: e.target.value })}
-                  className='w-full rounded-xl border border-[#cfd8bd] bg-white p-3 text-sm text-[#3c4e23] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]'
-                  disabled={!newLab.year}
-                >
-                  <option value=''>Select Sem</option>
-                  {newLab.year ? [(parseInt(newLab.year) * 2 - 1).toString(), (parseInt(newLab.year) * 2).toString()].map((s) => (
-                    <option key={s} value={s}>Semester {s}</option>
-                  )) : null}
-                </select>
-              </label>
+                  + {tmpl.name}
+                </button>
+              ))}
             </div>
           </div>
-          <Button onClick={handleCreateLab} className='w-full mt-2' disabled={creating}>
-            {creating ? 'Creating Lab...' : 'Create Lab'}
+
+          <div className='space-y-3.5 border-t border-[#d9e1ca] pt-4 dark:border-[#414a33]'>
+            <Input label='Lab Name *' value={newLab.name} onChange={(e) => setNewLab({ ...newLab, name: e.target.value })} placeholder='e.g. Pharmaceutics Lab - I' required />
+            <Input label='Lab Code *' value={newLab.code} onChange={(e) => setNewLab({ ...newLab, code: e.target.value })} placeholder='e.g. PH101L' required />
+
+            <div className='grid grid-cols-2 gap-3'>
+              <label className='block text-sm text-[#4e5d35] dark:text-[#d5ddbf]'>
+                <span className='mb-1 block text-xs font-bold tracking-wide'>Course Program</span>
+                <select
+                  value={newLab.courseType}
+                  onChange={(e) => setNewLab({ ...newLab, courseType: e.target.value, year: '', semester: '' })}
+                  className='w-full rounded-xl border border-[#cfd8bd] bg-white p-3 text-xs font-bold text-[#3c4e23] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]'
+                >
+                  <option value='B.Pharm'>B.Pharm (4 Years)</option>
+                  <option value='M.Pharm'>M.Pharm (2 Years)</option>
+                  <option value='PhD'>PhD Research</option>
+                  <option value='Other'>Other Program</option>
+                </select>
+              </label>
+              <Input label='Department (Optional)' placeholder='e.g. Pharmaceutics' value={newLab.department} onChange={(e) => setNewLab({ ...newLab, department: e.target.value })} />
+            </div>
+
+            {/* Visual Year Chips */}
+            <div>
+              <p className='text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf] mb-1.5'>Academic Year</p>
+              <div className='flex gap-2'>
+                {(newLab.courseType === 'B.Pharm' ? ['1', '2', '3', '4'] : newLab.courseType === 'M.Pharm' ? ['1', '2'] : ['1', '2', '3', '4', '5']).map((y) => (
+                  <button
+                    key={y}
+                    type='button'
+                    onClick={() => setNewLab({ ...newLab, year: y, semester: (parseInt(y) * 2 - 1).toString() })}
+                    className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all border ${
+                      newLab.year === y
+                        ? 'bg-[#5c6e46] text-white border-[#5c6e46] shadow-sm'
+                        : 'border-[#d9e1ca] bg-white text-[#37412a] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
+                    }`}
+                  >
+                    Year {y}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Visual Semester Chips */}
+            {newLab.year && (
+              <div>
+                <p className='text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf] mb-1.5'>Semester</p>
+                <div className='flex gap-2'>
+                  {[(parseInt(newLab.year) * 2 - 1).toString(), (parseInt(newLab.year) * 2).toString()].map((s) => (
+                    <button
+                      key={s}
+                      type='button'
+                      onClick={() => setNewLab({ ...newLab, semester: s })}
+                      className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all border ${
+                        newLab.semester === s
+                          ? 'bg-[#37412a] text-white border-[#37412a] shadow-sm dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                          : 'border-[#d9e1ca] bg-white text-[#37412a] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
+                      }`}
+                    >
+                      Semester {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Instant Admin Assignment */}
+            <div className='border-t border-[#d9e1ca] pt-3 dark:border-[#414a33]'>
+              <label className='block text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf] mb-1'>
+                Assign Admin Immediately (Optional)
+              </label>
+              <select
+                value={createLabAdminId}
+                onChange={(e) => setCreateLabAdminId(e.target.value)}
+                className='w-full rounded-xl border border-[#cfd8bd] bg-white p-3 text-xs text-[#3c4e23] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]'
+              >
+                <option value=''>Assign later (Unassigned)</option>
+                {users.filter(u => u.role !== 'super-admin' && u.role !== 'student').map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({user.email})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <Button onClick={handleCreateLab} className='w-full mt-3 py-3 text-sm font-bold shadow-md' disabled={creating}>
+            {creating ? 'Creating Lab...' : 'Create & Save Lab'}
           </Button>
         </div>
       </Modal>
