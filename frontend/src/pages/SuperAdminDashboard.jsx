@@ -4,7 +4,7 @@ import {
   FlaskConical, ShoppingBag, History, KeyRound, UserPlus, 
   Building2, LayoutDashboard, Clock, UserCheck, AlertCircle, RefreshCw
 } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import useDebounce from '../hooks/useDebounce';
 import useAppStore from '../store/appStore';
 import useAuthStore from '../store/authStore';
@@ -16,6 +16,7 @@ import Input from '../components/ui/Input';
 
 export default function SuperAdminDashboard() {
   const location = useLocation();
+  const navigate = useNavigate();
   const {
     labs,
     users,
@@ -36,19 +37,15 @@ export default function SuperAdminDashboard() {
   } = useAppStore();
   const { changePassword } = useAuthStore();
 
-  // Tab state derived from URL or local selection
-  const routeTab = useMemo(() => {
+  // Tab state derived from URL route
+  const activeTab = useMemo(() => {
     if (location.pathname === '/labs') return 'labs';
     if (location.pathname === '/approval') return 'users';
+    if (location.pathname === '/store-oversight') return 'store';
     if (location.pathname === '/activity') return 'activity';
+    if (location.pathname === '/settings') return 'settings';
     return 'overview';
   }, [location.pathname]);
-
-  const [activeTab, setActiveTab] = useState(routeTab);
-
-  useEffect(() => {
-    setActiveTab(routeTab);
-  }, [routeTab]);
 
   // Modal & form states
   const [createOpen, setCreateOpen] = useState(false);
@@ -427,42 +424,6 @@ export default function SuperAdminDashboard() {
         </div>
       </div>
 
-      {/* Sub Navigation Bar */}
-      <div className='flex overflow-x-auto gap-2 rounded-2xl bg-[#f4f6ee] p-1.5 dark:bg-[#20251a]'>
-        {[
-          { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-          { id: 'labs', label: 'Labs Hub', icon: Warehouse, badge: labs.length },
-          { id: 'users', label: 'Users & Approvals', icon: Users, badge: pendingApprovals.length ? pendingApprovals.length : null },
-          { id: 'store', label: 'Store Oversight', icon: ShoppingBag },
-          { id: 'activity', label: 'Audit Logs', icon: History },
-          { id: 'settings', label: 'Security & Settings', icon: KeyRound },
-        ].map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all whitespace-nowrap ${
-                isActive
-                  ? 'bg-[#5c6e46] text-white shadow-sm'
-                  : 'text-[#5c6e46] hover:bg-white/60 dark:text-[#c5d0b5] dark:hover:bg-[#2a3121]'
-              }`}
-            >
-              <Icon size={16} />
-              <span>{tab.label}</span>
-              {tab.badge !== null && tab.badge !== undefined && (
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
-                  isActive ? 'bg-white text-[#5c6e46]' : 'bg-amber-500 text-white'
-                }`}>
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
       {/* TAB 1: OVERVIEW */}
       {activeTab === 'overview' && (
         <div className='space-y-6 animate-in fade-in'>
@@ -524,7 +485,7 @@ export default function SuperAdminDashboard() {
                 <Button className='w-full justify-start gap-3 py-3' onClick={() => setCreateOpen(true)}>
                   <Plus size={18} /> Create New Department Lab
                 </Button>
-                <Button variant='outline' className='w-full justify-start gap-3 py-3' onClick={() => setActiveTab('users')}>
+                <Button variant='outline' className='w-full justify-start gap-3 py-3' onClick={() => navigate('/approval')}>
                   <UserCheck size={18} /> Review Pending User Approvals ({pendingApprovals.length})
                 </Button>
                 <Button variant='outline' className='w-full justify-start gap-3 py-3' onClick={() => setStoreAdminModalOpen(true)}>

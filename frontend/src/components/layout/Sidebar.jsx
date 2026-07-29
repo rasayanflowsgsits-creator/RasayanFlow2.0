@@ -12,6 +12,7 @@ import {
   Info,
   Activity,
   AlertTriangle,
+  KeyRound,
   FileText,
   Bell
 } from "lucide-react";
@@ -22,9 +23,11 @@ import useStoreManagerMock, { parsePackSize } from "../../store/storeManagerMock
 const linksMap = {
   "super-admin": [
     { to: "/", label: "Overview", icon: LayoutDashboard },
-    { to: "/labs", label: "Labs", icon: MapPin },
-    { to: "/approval", label: "Admin Requests", icon: Users },
-    { to: "/activity", label: "Activity", icon: History },
+    { to: "/labs", label: "Labs Hub", icon: MapPin },
+    { to: "/approval", label: "Users & Approvals", icon: Users },
+    { to: "/store-oversight", label: "Store Oversight", icon: Store },
+    { to: "/activity", label: "Audit Logs", icon: History },
+    { to: "/settings", label: "Security & Settings", icon: KeyRound },
     { to: "/about", label: "About Us", icon: Info },
   ],
   "lab-admin": [
