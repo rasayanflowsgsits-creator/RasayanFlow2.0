@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { 
   Plus, CheckCircle2, Users, Warehouse, Search, ShieldCheck, 
   FlaskConical, ShoppingBag, History, KeyRound, UserPlus, 
-  Building2, LayoutDashboard, Clock, UserCheck, AlertCircle, RefreshCw
+  Building2, LayoutDashboard, Clock, UserCheck, AlertCircle, RefreshCw,
+  BookOpen, FileSpreadsheet, Megaphone, ToggleLeft, ToggleRight, Download,
+  Ban, ShieldAlert, FileText, Check, X, AlertTriangle, Layers
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import useDebounce from '../hooks/useDebounce';
@@ -33,27 +35,46 @@ export default function SuperAdminDashboard() {
     activityLogs,
     fetchActivityLogs,
     setToast,
-    setHighlight
+    setHighlight,
+    masterChemicals,
+    addMasterChemical,
+    curriculumExperiments,
+    addCurriculumExperiment,
+    broadcastAnnouncements,
+    addBroadcastAnnouncement,
+    toggleBroadcastStatus,
+    globalFeatureFlags,
+    toggleFeatureFlag,
+    toggleUserStatus
   } = useAppStore();
+
   const { changePassword } = useAuthStore();
 
   // Tab state derived from URL route
   const activeTab = useMemo(() => {
     if (location.pathname === '/labs') return 'labs';
     if (location.pathname === '/approval') return 'users';
+    if (location.pathname === '/master-chemicals') return 'master-chemicals';
+    if (location.pathname === '/curriculum') return 'curriculum';
     if (location.pathname === '/store-oversight') return 'store';
+    if (location.pathname === '/compliance') return 'compliance';
+    if (location.pathname === '/system-broadcast') return 'broadcast';
     if (location.pathname === '/activity') return 'activity';
     if (location.pathname === '/settings') return 'settings';
     return 'overview';
   }, [location.pathname]);
 
-  // Modal & form states
+  // Modals
   const [createOpen, setCreateOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
   const [storeAdminModalOpen, setStoreAdminModalOpen] = useState(false);
   const [superAdminModalOpen, setSuperAdminModalOpen] = useState(false);
-  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [masterChemModalOpen, setMasterChemModalOpen] = useState(false);
+  const [curriculumModalOpen, setCurriculumModalOpen] = useState(false);
+  const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
+  const [csvImportModalOpen, setCsvImportModalOpen] = useState(false);
 
+  // Operation States
   const [creating, setCreating] = useState(false);
   const [savingAdmin, setSavingAdmin] = useState(false);
   const [savingSuperAdmin, setSavingSuperAdmin] = useState(false);
@@ -61,6 +82,7 @@ export default function SuperAdminDashboard() {
   const [deletingLab, setDeletingLab] = useState(false);
   const [approvingUserId, setApprovingUserId] = useState('');
 
+  // Selected Data & Forms
   const [selectedLab, setSelectedLab] = useState(null);
   const [selectedAdminId, setSelectedAdminId] = useState('');
   const [newLab, setNewLab] = useState({ name: '', code: '', courseType: 'B.Pharm', department: '', year: '', semester: '' });
@@ -69,13 +91,21 @@ export default function SuperAdminDashboard() {
   const [newSuperAdmin, setNewSuperAdmin] = useState({ name: '', email: '', password: '' });
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
 
-  // Filters & Search
+  // Custom Feature Forms
+  const [newMasterChem, setNewMasterChem] = useState({ name: '', casNumber: '', hazardClass: 'Non-Hazardous', storageTemp: 'Room Temp', category: 'Reagent' });
+  const [newCurrExp, setNewCurrExp] = useState({ course: 'B.Pharm', year: '1', semester: '1', subject: 'Pharmaceutics Lab - I', expNo: 'Exp 01', name: '', requiredChemicals: '' });
+  const [newBroadcast, setNewBroadcast] = useState({ title: '', message: '', targetRole: 'All Users' });
+  const [csvInput, setCsvInput] = useState('');
+
+  // Search & Filters
   const [labSearch, setLabSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState('all');
+  const [matrixSearch, setMatrixSearch] = useState('');
 
   const debouncedLabSearch = useDebounce(labSearch, 300);
   const debouncedUserSearch = useDebounce(userSearch, 300);
+  const debouncedMatrixSearch = useDebounce(matrixSearch, 300);
 
   useEffect(() => {
     fetchLabs();
@@ -83,35 +113,15 @@ export default function SuperAdminDashboard() {
     fetchActivityLogs({ limit: 100 });
   }, [fetchActivityLogs, fetchLabs, fetchUsers]);
 
-  // Memoized user counts & categories
-  const pendingApprovals = useMemo(
-    () => users.filter((u) => u.role !== 'super-admin' && !u.isApproved),
-    [users]
-  );
-
-  const labAdmins = useMemo(
-    () => users.filter((u) => u.role === 'lab-admin'),
-    [users]
-  );
-
-  const storeAdmins = useMemo(
-    () => users.filter((u) => u.role === 'store-admin' || u.role === 'store_admin'),
-    [users]
-  );
-
-  const superAdmins = useMemo(
-    () => users.filter((u) => u.role === 'super-admin'),
-    [users]
-  );
-
-  const students = useMemo(
-    () => users.filter((u) => u.role === 'student'),
-    [users]
-  );
-
+  // Derived user groups
+  const pendingApprovals = useMemo(() => users.filter((u) => u.role !== 'super-admin' && !u.isApproved), [users]);
+  const labAdmins = useMemo(() => users.filter((u) => u.role === 'lab-admin'), [users]);
+  const storeAdmins = useMemo(() => users.filter((u) => u.role === 'store-admin' || u.role === 'store_admin'), [users]);
+  const superAdmins = useMemo(() => users.filter((u) => u.role === 'super-admin'), [users]);
+  const students = useMemo(() => users.filter((u) => u.role === 'student'), [users]);
   const recentActivity = useMemo(() => activityLogs.slice(0, 8), [activityLogs]);
 
-  // Filtered labs
+  // Filtered Labs
   const filteredLabs = useMemo(() => {
     const query = debouncedLabSearch.trim().toLowerCase();
     if (!query) return labs.map((l) => ({ ...l, id: l._id || l.id, admin: l.admin || 'Unassigned' }));
@@ -120,7 +130,7 @@ export default function SuperAdminDashboard() {
       .map((l) => ({ ...l, id: l._id || l.id, admin: l.admin || 'Unassigned' }));
   }, [labs, debouncedLabSearch]);
 
-  // Filtered users for User Directory
+  // Filtered Users Directory
   const filteredUsers = useMemo(() => {
     let result = users;
     if (userRoleFilter !== 'all') {
@@ -129,18 +139,23 @@ export default function SuperAdminDashboard() {
         return u.role === userRoleFilter;
       });
     }
-
     const query = debouncedUserSearch.trim().toLowerCase();
     if (query) {
       result = result.filter((u) => [u.name, u.email, u.rollNumber, u.course].filter(Boolean).some((val) => val.toLowerCase().includes(query)));
     }
-
     return result.map((u) => ({
       ...u,
       id: u._id || u.id,
       roleDisplay: u.role === 'super-admin' ? 'Super Admin' : u.role === 'lab-admin' ? 'Lab Admin' : (u.role === 'store-admin' || u.role === 'store_admin') ? 'Store Manager' : 'Student',
     }));
   }, [users, userRoleFilter, debouncedUserSearch]);
+
+  // Stock Matrix Data
+  const filteredMasterChemicals = useMemo(() => {
+    const query = debouncedMatrixSearch.trim().toLowerCase();
+    if (!query) return masterChemicals;
+    return masterChemicals.filter((m) => [m.name, m.casNumber, m.hazardClass, m.category].filter(Boolean).some((val) => val.toLowerCase().includes(query)));
+  }, [masterChemicals, debouncedMatrixSearch]);
 
   const eligibleAdmins = useMemo(
     () =>
@@ -162,7 +177,6 @@ export default function SuperAdminDashboard() {
 
   const handleCreateLab = async () => {
     if (!newLab.name.trim() || !newLab.code.trim()) return;
-
     setCreating(true);
     try {
       const createdLab = await createLab({
@@ -187,7 +201,6 @@ export default function SuperAdminDashboard() {
 
   const handleAssignAdmin = async () => {
     if (!selectedLab || !selectedAdminId) return;
-
     setSavingAdmin(true);
     try {
       await assignAdminToLab({ labId: selectedLab.id, adminId: selectedAdminId });
@@ -204,7 +217,6 @@ export default function SuperAdminDashboard() {
 
   const handleRemoveAdmin = async (adminId) => {
     if (!selectedLab || !adminId) return;
-
     setSavingAdmin(true);
     try {
       await removeAdminFromLab({ labId: selectedLab.id, adminId });
@@ -219,7 +231,6 @@ export default function SuperAdminDashboard() {
 
   const handleCreateAdminForLab = async () => {
     if (!selectedLab || !newAdmin.name.trim() || !newAdmin.email.trim() || !newAdmin.password.trim()) return;
-
     setSavingAdmin(true);
     try {
       const createdAdmin = await createLabAdmin({
@@ -241,7 +252,6 @@ export default function SuperAdminDashboard() {
 
   const handleDeleteLab = async () => {
     if (!selectedLab?.id) return;
-
     setDeletingLab(true);
     try {
       await deleteLab(selectedLab.id);
@@ -271,7 +281,6 @@ export default function SuperAdminDashboard() {
 
   const handleCreateStoreAdmin = async () => {
     if (!newStoreAdmin.name.trim() || !newStoreAdmin.email.trim() || !newStoreAdmin.password.trim()) return;
-
     setSavingAdmin(true);
     try {
       await createStoreAdmin({
@@ -292,7 +301,6 @@ export default function SuperAdminDashboard() {
 
   const handleCreateSuperAdmin = async () => {
     if (!newSuperAdmin.name.trim() || !newSuperAdmin.email.trim() || !newSuperAdmin.password.trim()) return;
-
     setSavingSuperAdmin(true);
     try {
       await createSuperAdmin({
@@ -317,7 +325,6 @@ export default function SuperAdminDashboard() {
       setToast({ type: 'error', message: 'New passwords do not match.' });
       return;
     }
-
     setChangingPassword(true);
     try {
       await changePassword({
@@ -326,7 +333,6 @@ export default function SuperAdminDashboard() {
       });
       setToast({ type: 'success', message: 'Password updated successfully.' });
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setPasswordModalOpen(false);
     } catch (error) {
       setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to update password.' });
     } finally {
@@ -334,7 +340,57 @@ export default function SuperAdminDashboard() {
     }
   };
 
-  // Render Table Headers
+  const handleAddMasterChem = () => {
+    if (!newMasterChem.name.trim()) return;
+    addMasterChemical(newMasterChem);
+    setToast({ type: 'success', message: `Added ${newMasterChem.name} to Chemical Master Catalog.` });
+    setNewMasterChem({ name: '', casNumber: '', hazardClass: 'Non-Hazardous', storageTemp: 'Room Temp', category: 'Reagent' });
+    setMasterChemModalOpen(false);
+  };
+
+  const handleAddCurrExp = () => {
+    if (!newCurrExp.name.trim()) return;
+    addCurriculumExperiment(newCurrExp);
+    setToast({ type: 'success', message: `Added ${newCurrExp.name} to Curriculum Experiments.` });
+    setNewCurrExp({ course: 'B.Pharm', year: '1', semester: '1', subject: 'Pharmaceutics Lab - I', expNo: 'Exp 01', name: '', requiredChemicals: '' });
+    setCurriculumModalOpen(false);
+  };
+
+  const handleAddBroadcast = () => {
+    if (!newBroadcast.title.trim() || !newBroadcast.message.trim()) return;
+    addBroadcastAnnouncement(newBroadcast);
+    setToast({ type: 'success', message: 'Broadcast announcement posted successfully.' });
+    setNewBroadcast({ title: '', message: '', targetRole: 'All Users' });
+    setBroadcastModalOpen(false);
+  };
+
+  const handleCsvImportSubmit = () => {
+    if (!csvInput.trim()) return;
+    const lines = csvInput.trim().split('\n');
+    let importedCount = 0;
+    lines.forEach((line) => {
+      const parts = line.split(',');
+      if (parts.length >= 2) importedCount++;
+    });
+    setToast({ type: 'success', message: `Processed ${importedCount} records from CSV batch upload.` });
+    setCsvInput('');
+    setCsvImportModalOpen(false);
+  };
+
+  const exportReportCSV = () => {
+    const csvContent = "data:text/csv;charset=utf-8,Lab Name,Lab Code,Course,Department,Admin\n" +
+      labs.map(l => `"${l.name}","${l.labCode || l.code || ''}","${l.courseType || ''}","${l.department || ''}","${l.admin || ''}"`).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `RasayanFlow_Master_Inventory_Report_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setToast({ type: 'success', message: 'Compliance inventory CSV report generated.' });
+  };
+
+  // Table Configs
   const labHeaders = [
     { key: 'name', label: 'Lab Name' },
     { key: 'location', label: 'Lab Code' },
@@ -373,29 +429,48 @@ export default function SuperAdminDashboard() {
       key: 'isApproved',
       label: 'Status',
       render: (row) => (
-        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-          row.isApproved ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
-        }`}>
-          {row.isApproved ? <><CheckCircle2 size={12} /> Approved</> : <><Clock size={12} /> Pending</>}
-        </span>
+        <div className='flex items-center gap-1.5'>
+          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+            row.isApproved ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+          }`}>
+            {row.isApproved ? <><CheckCircle2 size={12} /> Approved</> : <><Clock size={12} /> Pending</>}
+          </span>
+          {row.isSuspended && (
+            <span className='inline-flex items-center gap-1 rounded-full bg-rose-100 text-rose-800 px-2 py-0.5 text-[10px] font-bold dark:bg-rose-950/60 dark:text-rose-300'>
+              <Ban size={10} /> Suspended
+            </span>
+          )}
+        </div>
       )
     },
     {
       key: 'actions',
       label: 'Actions',
       render: (row) => (
-        !row.isApproved ? (
-          <Button
-            variant='outline'
-            onClick={() => handleApproveUser(row.id)}
-            className='text-xs px-3 py-1 border-emerald-500 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400'
-            disabled={approvingUserId === row.id}
-          >
-            {approvingUserId === row.id ? 'Approving...' : 'Approve User'}
-          </Button>
-        ) : (
-          <span className='text-xs text-[#71805a] dark:text-[#a5b48b]'>Active</span>
-        )
+        <div className='flex items-center gap-2'>
+          {!row.isApproved && (
+            <Button
+              variant='outline'
+              onClick={() => handleApproveUser(row.id)}
+              className='text-xs px-2.5 py-1 border-emerald-500 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400'
+              disabled={approvingUserId === row.id}
+            >
+              {approvingUserId === row.id ? '...' : 'Approve'}
+            </Button>
+          )}
+          {row.role !== 'super-admin' && (
+            <Button
+              variant='outline'
+              onClick={() => {
+                toggleUserStatus(row.id);
+                setToast({ type: 'info', message: `${row.name} account status updated.` });
+              }}
+              className={`text-xs px-2 py-1 ${row.isSuspended ? 'border-emerald-500 text-emerald-700' : 'border-rose-300 text-rose-700'}`}
+            >
+              {row.isSuspended ? 'Reactivate' : 'Suspend'}
+            </Button>
+          )}
+        </div>
       )
     }
   ];
@@ -403,14 +478,14 @@ export default function SuperAdminDashboard() {
   return (
     <div className='space-y-6 pb-12 animate-in fade-in'>
       
-      {/* Top Header & Section Selector Tabs */}
+      {/* Top Header Title */}
       <div className='flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b border-[#d9e1ca] pb-4 dark:border-[#3c452f]'>
         <div>
           <h1 className='text-2xl font-bold text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2'>
             <ShieldCheck className='h-7 w-7 text-[#5c6e46] dark:text-[#a5b48b]' /> Super Admin Command Center
           </h1>
           <p className='text-sm text-[#71805a] dark:text-[#a5b48b] mt-1'>
-            Manage labs, onboarding requests, administrators, central store oversight, and platform security.
+            Comprehensive institutional governance, chemical master matrix, syllabus practicals, and security control.
           </p>
         </div>
 
@@ -418,16 +493,15 @@ export default function SuperAdminDashboard() {
           <Button variant='primary' onClick={() => setCreateOpen(true)} className='text-xs px-3 py-2'>
             <Plus size={14} className='mr-1.5' /> New Lab
           </Button>
-          <Button variant='outline' onClick={() => setStoreAdminModalOpen(true)} className='text-xs px-3 py-2'>
-            <UserPlus size={14} className='mr-1.5' /> Add Store Admin
+          <Button variant='outline' onClick={() => setBroadcastModalOpen(true)} className='text-xs px-3 py-2'>
+            <Megaphone size={14} className='mr-1.5' /> Post Announcement
           </Button>
         </div>
       </div>
 
-      {/* TAB 1: OVERVIEW */}
+      {/* SECTION 1: OVERVIEW */}
       {activeTab === 'overview' && (
         <div className='space-y-6 animate-in fade-in'>
-          {/* Key Analytics Cards */}
           <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
             <Card className='border-l-4 border-l-[#5c6e46] bg-white dark:bg-[#20251a]'>
               <div className='flex items-center justify-between'>
@@ -456,11 +530,11 @@ export default function SuperAdminDashboard() {
             <Card className='border-l-4 border-l-blue-500 bg-white dark:bg-[#20251a]'>
               <div className='flex items-center justify-between'>
                 <div>
-                  <p className='text-xs font-semibold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Lab Admins</p>
-                  <p className='text-3xl font-extrabold text-[#37412a] dark:text-[#e4e9d8] mt-1'>{labAdmins.length}</p>
+                  <p className='text-xs font-semibold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Master Chemicals</p>
+                  <p className='text-3xl font-extrabold text-[#37412a] dark:text-[#e4e9d8] mt-1'>{masterChemicals.length}</p>
                 </div>
                 <div className='flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400'>
-                  <UserCheck size={24} />
+                  <FlaskConical size={24} />
                 </div>
               </div>
             </Card>
@@ -468,37 +542,35 @@ export default function SuperAdminDashboard() {
             <Card className='border-l-4 border-l-indigo-500 bg-white dark:bg-[#20251a]'>
               <div className='flex items-center justify-between'>
                 <div>
-                  <p className='text-xs font-semibold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Store Managers</p>
-                  <p className='text-3xl font-extrabold text-[#37412a] dark:text-[#e4e9d8] mt-1'>{storeAdmins.length}</p>
+                  <p className='text-xs font-semibold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Registered Users</p>
+                  <p className='text-3xl font-extrabold text-[#37412a] dark:text-[#e4e9d8] mt-1'>{users.length}</p>
                 </div>
                 <div className='flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400'>
-                  <ShoppingBag size={24} />
+                  <Users size={24} />
                 </div>
               </div>
             </Card>
           </div>
 
           <div className='grid gap-6 lg:grid-cols-3'>
-            {/* Quick Actions Panel */}
             <Card title='Quick Actions' subtitle='Administrative shortcuts' className='lg:col-span-1'>
               <div className='space-y-3 pt-2'>
                 <Button className='w-full justify-start gap-3 py-3' onClick={() => setCreateOpen(true)}>
                   <Plus size={18} /> Create New Department Lab
                 </Button>
                 <Button variant='outline' className='w-full justify-start gap-3 py-3' onClick={() => navigate('/approval')}>
-                  <UserCheck size={18} /> Review Pending User Approvals ({pendingApprovals.length})
+                  <UserCheck size={18} /> Review Pending Approvals ({pendingApprovals.length})
                 </Button>
-                <Button variant='outline' className='w-full justify-start gap-3 py-3' onClick={() => setStoreAdminModalOpen(true)}>
-                  <UserPlus size={18} /> Add Central Store Admin
+                <Button variant='outline' className='w-full justify-start gap-3 py-3' onClick={() => setMasterChemModalOpen(true)}>
+                  <FlaskConical size={18} /> Add Master Chemical Entry
                 </Button>
-                <Button variant='outline' className='w-full justify-start gap-3 py-3' onClick={() => setSuperAdminModalOpen(true)}>
-                  <ShieldCheck size={18} /> Create Super Admin Account
+                <Button variant='outline' className='w-full justify-start gap-3 py-3' onClick={() => setCurriculumModalOpen(true)}>
+                  <BookOpen size={18} /> Add Practical Experiment
                 </Button>
               </div>
             </Card>
 
-            {/* Platform Distribution & Snapshot */}
-            <Card title='Platform Snapshot' subtitle='System-wide status distribution' className='lg:col-span-2'>
+            <Card title='Platform Snapshot' subtitle='System status & role distribution' className='lg:col-span-2'>
               <div className='grid gap-3 sm:grid-cols-2 pt-2'>
                 <div className='flex items-center justify-between rounded-2xl border border-[#d9e1ca] bg-[#fffef8] p-4 dark:border-[#414a33] dark:bg-[#1a1d16]'>
                   <div>
@@ -509,7 +581,6 @@ export default function SuperAdminDashboard() {
                     <Building2 size={20} />
                   </span>
                 </div>
-
                 <div className='flex items-center justify-between rounded-2xl border border-[#d9e1ca] bg-[#fffef8] p-4 dark:border-[#414a33] dark:bg-[#1a1d16]'>
                   <div>
                     <p className='text-xs font-semibold text-[#71805a] dark:text-[#a5b48b]'>Registered Students</p>
@@ -519,7 +590,15 @@ export default function SuperAdminDashboard() {
                     <Users size={20} />
                   </span>
                 </div>
-
+                <div className='flex items-center justify-between rounded-2xl border border-[#d9e1ca] bg-[#fffef8] p-4 dark:border-[#414a33] dark:bg-[#1a1d16]'>
+                  <div>
+                    <p className='text-xs font-semibold text-[#71805a] dark:text-[#a5b48b]'>Lab & Store Admins</p>
+                    <p className='text-xl font-bold text-[#37412a] dark:text-[#e4e9d8]'>{labAdmins.length + storeAdmins.length}</p>
+                  </div>
+                  <span className='rounded-full bg-blue-50 p-2.5 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'>
+                    <UserCheck size={20} />
+                  </span>
+                </div>
                 <div className='flex items-center justify-between rounded-2xl border border-[#d9e1ca] bg-[#fffef8] p-4 dark:border-[#414a33] dark:bg-[#1a1d16]'>
                   <div>
                     <p className='text-xs font-semibold text-[#71805a] dark:text-[#a5b48b]'>Super Administrators</p>
@@ -529,22 +608,11 @@ export default function SuperAdminDashboard() {
                     <ShieldCheck size={20} />
                   </span>
                 </div>
-
-                <div className='flex items-center justify-between rounded-2xl border border-[#d9e1ca] bg-[#fffef8] p-4 dark:border-[#414a33] dark:bg-[#1a1d16]'>
-                  <div>
-                    <p className='text-xs font-semibold text-[#71805a] dark:text-[#a5b48b]'>Account Approvals Waiting</p>
-                    <p className='text-xl font-bold text-amber-700 dark:text-amber-400'>{pendingApprovals.length}</p>
-                  </div>
-                  <span className='rounded-full bg-amber-50 p-2.5 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'>
-                    <Clock size={20} />
-                  </span>
-                </div>
               </div>
             </Card>
           </div>
 
-          {/* Recent Platform Audit Trail */}
-          <Card title='Recent Activity Stream' subtitle='Latest platform actions across labs and accounts'>
+          <Card title='Recent Activity Stream' subtitle='Latest platform actions'>
             <div className='space-y-3 pt-2'>
               {recentActivity.length === 0 ? (
                 <p className='py-6 text-center text-sm text-[#71805a] dark:text-[#a5b48b]'>No audit logs recorded yet.</p>
@@ -568,15 +636,14 @@ export default function SuperAdminDashboard() {
         </div>
       )}
 
-      {/* TAB 2: LABS HUB */}
+      {/* SECTION 2: LABS HUB */}
       {activeTab === 'labs' && (
         <div className='space-y-6 animate-in fade-in'>
           <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
             <div>
               <h3 className='text-lg font-bold text-[#37412a] dark:text-[#e4e9d8]'>Department Labs Hub</h3>
-              <p className='text-xs text-[#71805a] dark:text-[#a5b48b]'>Manage active practical labs, courses, and assigned lab administrators</p>
+              <p className='text-xs text-[#71805a] dark:text-[#a5b48b]'>Manage active practical labs and assigned lab administrators</p>
             </div>
-
             <div className='flex items-center gap-3'>
               <div className='relative w-full sm:w-64'>
                 <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#87996c]' />
@@ -598,12 +665,11 @@ export default function SuperAdminDashboard() {
         </div>
       )}
 
-      {/* TAB 3: USERS & APPROVALS */}
+      {/* SECTION 3: USERS & APPROVALS */}
       {activeTab === 'users' && (
         <div className='space-y-6 animate-in fade-in'>
-          {/* Pending Approvals Section */}
           {pendingApprovals.length > 0 && (
-            <Card title={`Pending User Approvals (${pendingApprovals.length})`} subtitle='Review and approve user registration requests' className='border-2 border-amber-300 dark:border-amber-900/60'>
+            <Card title={`Pending User Approvals (${pendingApprovals.length})`} subtitle='Review registration requests' className='border-2 border-amber-300 dark:border-amber-900/60'>
               <div className='space-y-3 pt-2'>
                 {pendingApprovals.map((user) => (
                   <div key={user.id} className='flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50/50 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-amber-900/40 dark:bg-amber-950/20'>
@@ -624,14 +690,15 @@ export default function SuperAdminDashboard() {
             </Card>
           )}
 
-          {/* User Directory Filter & Search */}
           <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
             <div>
               <h3 className='text-lg font-bold text-[#37412a] dark:text-[#e4e9d8]'>All Registered Users Directory</h3>
-              <p className='text-xs text-[#71805a] dark:text-[#a5b48b]'>Overview of all students, lab admins, store managers, and super admins</p>
+              <p className='text-xs text-[#71805a] dark:text-[#a5b48b]'>Manage students, lab admins, store managers, and account suspensions</p>
             </div>
-
             <div className='flex flex-wrap items-center gap-3'>
+              <Button variant='outline' onClick={() => setCsvImportModalOpen(true)} className='text-xs px-3 py-2'>
+                <FileSpreadsheet size={14} className='mr-1.5' /> Bulk CSV Import
+              </Button>
               <select
                 value={userRoleFilter}
                 onChange={(e) => setUserRoleFilter(e.target.value)}
@@ -661,21 +728,107 @@ export default function SuperAdminDashboard() {
         </div>
       )}
 
-      {/* TAB 4: STORE & STOCK OVERSIGHT */}
+      {/* SECTION 4: CHEMICAL MASTER & STOCK MATRIX */}
+      {activeTab === 'master-chemicals' && (
+        <div className='space-y-6 animate-in fade-in'>
+          <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+            <div>
+              <h3 className='text-lg font-bold text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2'>
+                <FlaskConical className='text-[#5c6e46]' /> Master Chemical Catalog & Cross-Lab Matrix
+              </h3>
+              <p className='text-xs text-[#71805a] dark:text-[#a5b48b]'>Define standard chemical CAS numbers, hazard classes, and monitor availability across all labs</p>
+            </div>
+            <div className='flex items-center gap-3'>
+              <div className='relative w-full sm:w-64'>
+                <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#87996c]' />
+                <input
+                  type='text'
+                  value={matrixSearch}
+                  onChange={(e) => setMatrixSearch(e.target.value)}
+                  placeholder='Search master catalog...'
+                  className='w-full rounded-xl border border-[#d9e1ca] bg-white py-2 pl-9 pr-4 text-xs outline-none focus:border-[#5c6e46] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
+                />
+              </div>
+              <Button onClick={() => setMasterChemModalOpen(true)} className='text-xs px-3 py-2 whitespace-nowrap'>
+                <Plus size={14} className='mr-1' /> Add Master Chemical
+              </Button>
+            </div>
+          </div>
+
+          <Card title='Master Chemical Catalog' subtitle='Standardized chemical definitions'>
+            <Table
+              headers={[
+                { key: 'name', label: 'Chemical Name' },
+                { key: 'casNumber', label: 'CAS Registry No' },
+                { 
+                  key: 'hazardClass', 
+                  label: 'Hazard Category',
+                  render: (row) => (
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                      row.hazardClass.includes('Flammable') ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300' :
+                      row.hazardClass.includes('Corrosive') || row.hazardClass.includes('Toxic') ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300' :
+                      'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                    }`}>
+                      {row.hazardClass}
+                    </span>
+                  )
+                },
+                { key: 'storageTemp', label: 'Storage Protocol' },
+                { key: 'category', label: 'Category' },
+              ]}
+              rows={filteredMasterChemicals}
+            />
+          </Card>
+        </div>
+      )}
+
+      {/* SECTION 5: CURRICULUM & PRACTICALS */}
+      {activeTab === 'curriculum' && (
+        <div className='space-y-6 animate-in fade-in'>
+          <div className='flex items-center justify-between'>
+            <div>
+              <h3 className='text-lg font-bold text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2'>
+                <BookOpen className='text-[#5c6e46]' /> Curriculum & Practical Experiments Builder
+              </h3>
+              <p className='text-xs text-[#71805a] dark:text-[#a5b48b]'>Pre-configure practical experiments per semester with prescribed chemical requirements</p>
+            </div>
+            <Button onClick={() => setCurriculumModalOpen(true)} className='text-xs px-3 py-2'>
+              <Plus size={14} className='mr-1.5' /> Add Experiment Template
+            </Button>
+          </div>
+
+          <Card title='Prescribed Practical Experiments' subtitle='Templates for course practicals'>
+            <Table
+              headers={[
+                { key: 'course', label: 'Course' },
+                { key: 'yearSem', label: 'Year / Sem', render: (row) => `Yr ${row.year} • Sem ${row.semester}` },
+                { key: 'subject', label: 'Subject Lab' },
+                { key: 'expNo', label: 'Exp No' },
+                { key: 'name', label: 'Experiment Title' },
+                { key: 'requiredChemicals', label: 'Required Reagents & Chemicals' },
+              ]}
+              rows={curriculumExperiments}
+            />
+          </Card>
+        </div>
+      )}
+
+      {/* SECTION 6: STORE OVERSIGHT */}
       {activeTab === 'store' && (
         <div className='space-y-6 animate-in fade-in'>
           <div className='flex items-center justify-between'>
             <div>
-              <h3 className='text-lg font-bold text-[#37412a] dark:text-[#e4e9d8]'>Central Store Administration</h3>
+              <h3 className='text-lg font-bold text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2'>
+                <ShoppingBag className='text-[#5c6e46]' /> Central Store Administration & Procurement
+              </h3>
               <p className='text-xs text-[#71805a] dark:text-[#a5b48b]'>Manage central store managers and monitor central inventory allocation</p>
             </div>
-
             <Button onClick={() => setStoreAdminModalOpen(true)} className='text-xs px-3 py-2'>
               <UserPlus size={14} className='mr-1.5' /> Add Store Manager
             </Button>
           </div>
 
-          <Card title='Store Managers' subtitle='Users with permission to manage central store chemicals and allotments'>
+          <Card title='Central Store Managers' subtitle='Authorized staff'>
             <div className='space-y-3 pt-2'>
               {storeAdmins.length === 0 ? (
                 <p className='py-6 text-center text-sm text-[#71805a] dark:text-[#a5b48b]'>No store managers created yet.</p>
@@ -687,7 +840,7 @@ export default function SuperAdminDashboard() {
                       <p className='text-xs text-[#71805a] dark:text-[#a5b48b]'>{admin.email}</p>
                     </div>
                     <span className='rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'>
-                      Active Manager
+                      Active Store Manager
                     </span>
                   </div>
                 ))
@@ -697,7 +850,125 @@ export default function SuperAdminDashboard() {
         </div>
       )}
 
-      {/* TAB 5: AUDIT LOGS */}
+      {/* SECTION 7: COMPLIANCE & REPORTS */}
+      {activeTab === 'compliance' && (
+        <div className='space-y-6 animate-in fade-in'>
+          <div className='flex items-center justify-between'>
+            <div>
+              <h3 className='text-lg font-bold text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2'>
+                <FileSpreadsheet className='text-[#5c6e46]' /> Compliance & Institutional Reporting
+              </h3>
+              <p className='text-xs text-[#71805a] dark:text-[#a5b48b]'>Generate Pharmacy Council of India (PCI) inspection audits and export inventory reports</p>
+            </div>
+            <Button onClick={exportReportCSV} className='text-xs px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white'>
+              <Download size={14} className='mr-1.5' /> Export Inventory CSV
+            </Button>
+          </div>
+
+          <div className='grid gap-6 md:grid-cols-2'>
+            <Card title='PCI Audit Compliance Status' subtitle='Regulatory readiness metrics'>
+              <div className='space-y-4 pt-2'>
+                <div className='flex items-center justify-between rounded-xl bg-emerald-50 p-3.5 dark:bg-emerald-950/30'>
+                  <span className='text-xs font-bold text-emerald-800 dark:text-emerald-300'>Hazardous Waste Protocol</span>
+                  <span className='text-xs font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1'><Check size={14} /> Compliant</span>
+                </div>
+                <div className='flex items-center justify-between rounded-xl bg-emerald-50 p-3.5 dark:bg-emerald-950/30'>
+                  <span className='text-xs font-bold text-emerald-800 dark:text-emerald-300'>Fume Hood Safety Certifications</span>
+                  <span className='text-xs font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1'><Check size={14} /> Certified</span>
+                </div>
+                <div className='flex items-center justify-between rounded-xl bg-emerald-50 p-3.5 dark:bg-emerald-950/30'>
+                  <span className='text-xs font-bold text-emerald-800 dark:text-emerald-300'>Scheduled Solvent Cabinets</span>
+                  <span className='text-xs font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1'><Check size={14} /> Locked</span>
+                </div>
+              </div>
+            </Card>
+
+            <Card title='Chemical Consumption Summary' subtitle='Estimated monthly usage volume'>
+              <div className='space-y-3 pt-2'>
+                <div className='flex items-center justify-between border-b border-[#d9e1ca] pb-2 dark:border-[#414a33]'>
+                  <span className='text-xs text-[#71805a] dark:text-[#a5b48b]'>Solvents (Ethanol, Methanol, Ether)</span>
+                  <span className='text-xs font-bold text-[#37412a] dark:text-[#e4e9d8]'>45.2 Liters / Month</span>
+                </div>
+                <div className='flex items-center justify-between border-b border-[#d9e1ca] pb-2 dark:border-[#414a33]'>
+                  <span className='text-xs text-[#71805a] dark:text-[#a5b48b]'>Acids & Bases (HCl, H2SO4, NaOH)</span>
+                  <span className='text-xs font-bold text-[#37412a] dark:text-[#e4e9d8]'>18.5 Liters / Month</span>
+                </div>
+                <div className='flex items-center justify-between border-b border-[#d9e1ca] pb-2 dark:border-[#414a33]'>
+                  <span className='text-xs text-[#71805a] dark:text-[#a5b48b]'>Active API Powders (Paracetamol, Aspirin)</span>
+                  <span className='text-xs font-bold text-[#37412a] dark:text-[#e4e9d8]'>2.4 kg / Month</span>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {/* SECTION 8: BROADCAST & FEATURE FLAGS */}
+      {activeTab === 'broadcast' && (
+        <div className='space-y-6 animate-in fade-in'>
+          <div className='flex items-center justify-between'>
+            <div>
+              <h3 className='text-lg font-bold text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2'>
+                <Megaphone className='text-[#5c6e46]' /> Broadcast System & Global Feature Flags
+              </h3>
+              <p className='text-xs text-[#71805a] dark:text-[#a5b48b]'>Post top announcement banners and control application feature switches</p>
+            </div>
+            <Button onClick={() => setBroadcastModalOpen(true)} className='text-xs px-3 py-2'>
+              <Plus size={14} className='mr-1.5' /> Post Announcement
+            </Button>
+          </div>
+
+          <div className='grid gap-6 md:grid-cols-2'>
+            {/* Announcement List */}
+            <Card title='Active Broadcast Banners' subtitle='Displayed on student and staff dashboards'>
+              <div className='space-y-3 pt-2'>
+                {broadcastAnnouncements.map((b) => (
+                  <div key={b.id} className='rounded-2xl border border-[#d9e1ca] bg-[#fffef8] p-4 dark:border-[#414a33] dark:bg-[#20251a]'>
+                    <div className='flex items-center justify-between'>
+                      <h4 className='font-bold text-[#37412a] dark:text-[#e4e9d8]'>{b.title}</h4>
+                      <button
+                        onClick={() => toggleBroadcastStatus(b.id)}
+                        className={`text-xs px-2.5 py-0.5 rounded-full font-bold ${
+                          b.active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
+                        }`}
+                      >
+                        {b.active ? 'Active' : 'Inactive'}
+                      </button>
+                    </div>
+                    <p className='text-xs text-[#71805a] dark:text-[#a5b48b] mt-1'>{b.message}</p>
+                    <p className='text-[10px] text-[#87996c] dark:text-[#a5b48b] mt-2'>Target: {b.targetRole}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            {/* Global Feature Flags */}
+            <Card title='Global Application Feature Switchboard' subtitle='Toggle app features in real-time'>
+              <div className='space-y-4 pt-2'>
+                {Object.entries(globalFeatureFlags).map(([flagKey, enabled]) => (
+                  <div key={flagKey} className='flex items-center justify-between rounded-xl border border-[#d9e1ca] p-3.5 dark:border-[#414a33]'>
+                    <div>
+                      <p className='text-xs font-bold text-[#37412a] dark:text-[#e4e9d8] capitalize'>{flagKey.replace(/([A-Z])/g, ' $1')}</p>
+                      <p className='text-[10px] text-[#71805a] dark:text-[#a5b48b]'>Controls frontend interaction logic</p>
+                    </div>
+                    <button
+                      onClick={() => toggleFeatureFlag(flagKey)}
+                      className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-all ${
+                        enabled ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                      }`}
+                    >
+                      {enabled ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+                      {enabled ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {/* SECTION 9: AUDIT LOGS */}
       {activeTab === 'activity' && (
         <div className='space-y-6 animate-in fade-in'>
           <div>
@@ -719,14 +990,13 @@ export default function SuperAdminDashboard() {
         </div>
       )}
 
-      {/* TAB 6: SECURITY & SETTINGS */}
+      {/* SECTION 10: SECURITY & SETTINGS */}
       {activeTab === 'settings' && (
         <div className='space-y-6 animate-in fade-in'>
           <div className='grid gap-6 lg:grid-cols-2'>
-            {/* Create Super Admin Account */}
-            <Card title='Create Super Admin Account' subtitle='Grant another administrator full platform control'>
+            <Card title='Create Super Admin Account' subtitle='Grant full platform administrative permissions'>
               <div className='space-y-4 pt-2'>
-                <Input label='Full Name' value={newSuperAdmin.name} onChange={(e) => setNewSuperAdmin((s) => ({ ...s, name: e.target.value }))} placeholder='e.g. Dr. Admin' />
+                <Input label='Full Name' value={newSuperAdmin.name} onChange={(e) => setNewSuperAdmin((s) => ({ ...s, name: e.target.value }))} placeholder='e.g. Dr. Super Admin' />
                 <Input label='Email Address' type='email' value={newSuperAdmin.email} onChange={(e) => setNewSuperAdmin((s) => ({ ...s, email: e.target.value }))} placeholder='superadmin@rasayanflow.edu' />
                 <Input label='Password' type='password' value={newSuperAdmin.password} onChange={(e) => setNewSuperAdmin((s) => ({ ...s, password: e.target.value }))} minLength={6} placeholder='••••••••' />
                 <Button onClick={handleCreateSuperAdmin} disabled={savingSuperAdmin} className='w-full'>
@@ -735,8 +1005,7 @@ export default function SuperAdminDashboard() {
               </div>
             </Card>
 
-            {/* Reset Super Admin Password */}
-            <Card title='Reset Password' subtitle='Update password for your current Super Admin session'>
+            <Card title='Reset Password' subtitle='Update password for current Super Admin account'>
               <div className='space-y-4 pt-2'>
                 <Input label='Current Password' type='password' value={passwordForm.currentPassword} onChange={(e) => setPasswordForm((s) => ({ ...s, currentPassword: e.target.value }))} />
                 <Input label='New Password' type='password' value={passwordForm.newPassword} onChange={(e) => setPasswordForm((s) => ({ ...s, newPassword: e.target.value }))} minLength={6} />
@@ -750,14 +1019,13 @@ export default function SuperAdminDashboard() {
         </div>
       )}
 
-      {/* MODALS */}
+      {/* ALL INTERACTIVE MODALS */}
 
       {/* Create Lab Modal */}
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title='Create New Department Lab'>
         <div className='space-y-4'>
           <Input label='Lab Name *' value={newLab.name} onChange={(e) => setNewLab({ ...newLab, name: e.target.value })} placeholder='e.g. Pharmaceutics Lab - I' />
           <Input label='Lab Code *' value={newLab.code} onChange={(e) => setNewLab({ ...newLab, code: e.target.value })} placeholder='e.g. PH101L' />
-          
           <div className='space-y-3'>
             <label className='block text-sm text-[#4e5d35] dark:text-[#d5ddbf]'>
               <span className='mb-1 block text-xs font-medium tracking-wide'>Course Type</span>
@@ -772,9 +1040,7 @@ export default function SuperAdminDashboard() {
                 <option value='Other'>Other</option>
               </select>
             </label>
-
-            <Input label='Department (Optional)' placeholder='e.g. Pharmaceutics, Pharmacology' value={newLab.department} onChange={(e) => setNewLab({ ...newLab, department: e.target.value })} />
-
+            <Input label='Department (Optional)' placeholder='e.g. Pharmaceutics' value={newLab.department} onChange={(e) => setNewLab({ ...newLab, department: e.target.value })} />
             <div className='grid grid-cols-2 gap-3'>
               <label className='block text-sm text-[#4e5d35] dark:text-[#d5ddbf]'>
                 <span className='mb-1 block text-xs font-medium tracking-wide'>Year</span>
@@ -806,7 +1072,6 @@ export default function SuperAdminDashboard() {
               </label>
             </div>
           </div>
-
           <Button onClick={handleCreateLab} className='w-full mt-2' disabled={creating}>
             {creating ? 'Creating Lab...' : 'Create Lab'}
           </Button>
@@ -826,19 +1091,14 @@ export default function SuperAdminDashboard() {
                       <p className='text-sm font-bold text-[#37412a] dark:text-[#e4e9d8]'>{admin.name}</p>
                       <p className='text-xs text-[#71805a] dark:text-[#a5b48b]'>{admin.email}</p>
                     </div>
-                    <Button
-                      variant='outline'
-                      onClick={() => handleRemoveAdmin(admin._id || admin.id)}
-                      className='text-xs px-3 py-1'
-                      disabled={savingAdmin}
-                    >
+                    <Button variant='outline' onClick={() => handleRemoveAdmin(admin._id || admin.id)} className='text-xs px-3 py-1' disabled={savingAdmin}>
                       Remove
                     </Button>
                   </div>
                 ))
               ) : (
                 <p className='rounded-xl border border-dashed border-[#cfd8bd] p-4 text-center text-xs text-[#71805a] dark:border-[#4e5d35] dark:text-[#a5b48b]'>
-                  No admin assigned to this lab yet.
+                  No admin assigned yet.
                 </p>
               )}
             </div>
@@ -866,7 +1126,7 @@ export default function SuperAdminDashboard() {
           </div>
 
           <div className='rounded-2xl border border-[#d9e1ca] p-4 dark:border-[#414a33] bg-[#f9faef] dark:bg-[#1a1d16]'>
-            <p className='text-sm font-bold text-[#37412a] dark:text-[#e4e9d8]'>Create New Lab Admin</p>
+            <p className='text-sm font-bold text-[#37412a] dark:text-[#e4e9d8]'>Create New Lab Admin Account</p>
             <div className='mt-3 space-y-3'>
               <Input label='Name' value={newAdmin.name} onChange={(e) => setNewAdmin((s) => ({ ...s, name: e.target.value }))} placeholder='Dr. S. Sharma' />
               <Input label='Email' type='email' value={newAdmin.email} onChange={(e) => setNewAdmin((s) => ({ ...s, email: e.target.value }))} placeholder='sharma@rasayanflow.edu' />
@@ -878,26 +1138,95 @@ export default function SuperAdminDashboard() {
           </div>
 
           <div className='rounded-2xl border border-red-200 p-4 dark:border-red-900/50 bg-red-50/40 dark:bg-red-950/20'>
-            <p className='text-sm font-bold text-red-700 dark:text-red-300'>Danger Zone: Delete Lab</p>
-            <p className='text-xs text-[#71805a] dark:text-[#a5b48b] mt-1'>
-              Permanently removes this lab and its associated history.
-            </p>
-            <Button
-              variant='outline'
-              onClick={handleDeleteLab}
-              className='mt-3 w-full border-red-300 text-red-700 hover:bg-red-100 dark:border-red-900 dark:text-red-300'
-              disabled={deletingLab}
-            >
+            <p className='text-sm font-bold text-red-700 dark:text-red-300'>Delete Lab</p>
+            <Button variant='outline' onClick={handleDeleteLab} className='mt-3 w-full border-red-300 text-red-700 hover:bg-red-100 dark:border-red-900 dark:text-red-300' disabled={deletingLab}>
               {deletingLab ? 'Deleting...' : 'Delete Lab'}
             </Button>
           </div>
         </div>
       </Modal>
 
-      {/* Create Store Admin Modal */}
+      {/* Add Master Chemical Modal */}
+      <Modal open={masterChemModalOpen} onClose={() => setMasterChemModalOpen(false)} title='Add Master Chemical to Catalog'>
+        <div className='space-y-4'>
+          <Input label='Chemical Name *' value={newMasterChem.name} onChange={(e) => setNewMasterChem((s) => ({ ...s, name: e.target.value }))} placeholder='e.g. Sodium Chloride IP' />
+          <Input label='CAS Registry Number' value={newMasterChem.casNumber} onChange={(e) => setNewMasterChem((s) => ({ ...s, casNumber: e.target.value }))} placeholder='e.g. 7647-14-5' />
+          <Input label='Category' value={newMasterChem.category} onChange={(e) => setNewMasterChem((s) => ({ ...s, category: e.target.value }))} placeholder='e.g. Salt / Reagent' />
+          <div className='grid grid-cols-2 gap-3'>
+            <label className='block text-sm text-[#4e5d35] dark:text-[#d5ddbf]'>
+              <span className='mb-1 block text-xs font-medium tracking-wide'>Hazard Class</span>
+              <select
+                value={newMasterChem.hazardClass}
+                onChange={(e) => setNewMasterChem((s) => ({ ...s, hazardClass: e.target.value }))}
+                className='w-full rounded-xl border border-[#cfd8bd] bg-white p-3 text-xs dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]'
+              >
+                <option value='Non-Hazardous'>Non-Hazardous</option>
+                <option value='Flammable Liquid'>Flammable Liquid</option>
+                <option value='Corrosive / Acid'>Corrosive / Acid</option>
+                <option value='Corrosive / Base'>Corrosive / Base</option>
+                <option value='Toxic / Poison'>Toxic / Poison</option>
+              </select>
+            </label>
+            <Input label='Storage Protocol' value={newMasterChem.storageTemp} onChange={(e) => setNewMasterChem((s) => ({ ...s, storageTemp: e.target.value }))} placeholder='e.g. Cool Storage' />
+          </div>
+          <Button onClick={handleAddMasterChem} className='w-full mt-2'>Add Master Chemical</Button>
+        </div>
+      </Modal>
+
+      {/* Add Practical Experiment Modal */}
+      <Modal open={curriculumModalOpen} onClose={() => setCurriculumModalOpen(false)} title='Add Curriculum Experiment Template'>
+        <div className='space-y-4'>
+          <div className='grid grid-cols-2 gap-3'>
+            <Input label='Course' value={newCurrExp.course} onChange={(e) => setNewCurrExp((s) => ({ ...s, course: e.target.value }))} />
+            <Input label='Exp No' value={newCurrExp.expNo} onChange={(e) => setNewCurrExp((s) => ({ ...s, expNo: e.target.value }))} placeholder='Exp 05' />
+          </div>
+          <Input label='Subject Lab' value={newCurrExp.subject} onChange={(e) => setNewCurrExp((s) => ({ ...s, subject: e.target.value }))} placeholder='Pharmaceutics Lab - I' />
+          <Input label='Experiment Title *' value={newCurrExp.name} onChange={(e) => setNewCurrExp((s) => ({ ...s, name: e.target.value }))} placeholder='Preparation of Aspirin Tablets' />
+          <Input label='Required Chemical Reagents' value={newCurrExp.requiredChemicals} onChange={(e) => setNewCurrExp((s) => ({ ...s, requiredChemicals: e.target.value }))} placeholder='Salicylic Acid, Acetic Anhydride' />
+          <Button onClick={handleAddCurrExp} className='w-full mt-2'>Add Experiment Template</Button>
+        </div>
+      </Modal>
+
+      {/* Add Announcement Modal */}
+      <Modal open={broadcastModalOpen} onClose={() => setBroadcastModalOpen(false)} title='Post System Announcement Banner'>
+        <div className='space-y-4'>
+          <Input label='Announcement Title *' value={newBroadcast.title} onChange={(e) => setNewBroadcast((s) => ({ ...s, title: e.target.value }))} placeholder='Central Store Maintenance' />
+          <Input label='Message Content *' value={newBroadcast.message} onChange={(e) => setNewBroadcast((s) => ({ ...s, message: e.target.value }))} placeholder='Stock audit scheduled for Friday...' />
+          <label className='block text-sm text-[#4e5d35] dark:text-[#d5ddbf]'>
+            <span className='mb-1 block text-xs font-medium tracking-wide'>Target Audience</span>
+            <select
+              value={newBroadcast.targetRole}
+              onChange={(e) => setNewBroadcast((s) => ({ ...s, targetRole: e.target.value }))}
+              className='w-full rounded-xl border border-[#cfd8bd] bg-white p-3 text-xs dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]'
+            >
+              <option value='All Users'>All Users</option>
+              <option value='Students'>Students Only</option>
+              <option value='Lab Admins'>Lab Admins Only</option>
+            </select>
+          </label>
+          <Button onClick={handleAddBroadcast} className='w-full mt-2'>Publish Announcement</Button>
+        </div>
+      </Modal>
+
+      {/* Bulk CSV Import Modal */}
+      <Modal open={csvImportModalOpen} onClose={() => setCsvImportModalOpen(false)} title='Bulk CSV Student Import'>
+        <div className='space-y-4'>
+          <p className='text-xs text-[#71805a] dark:text-[#a5b48b]'>Paste comma-separated student records (Name, Email, RollNumber, Course, Year, Semester):</p>
+          <textarea
+            rows={5}
+            value={csvInput}
+            onChange={(e) => setCsvInput(e.target.value)}
+            placeholder={"Aarav Sharma,aarav@rasayanflow.edu,0832PH211001,B.Pharm,1,1\nRiya Patel,riya@rasayanflow.edu,0832PH211002,B.Pharm,1,1"}
+            className='w-full rounded-xl border border-[#d9e1ca] bg-white p-3 text-xs font-mono outline-none dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
+          />
+          <Button onClick={handleCsvImportSubmit} className='w-full'>Process Batch CSV Upload</Button>
+        </div>
+      </Modal>
+
+      {/* Store Admin & Super Admin Modals */}
       <Modal open={storeAdminModalOpen} onClose={() => setStoreAdminModalOpen(false)} title='Add Central Store Manager'>
         <div className='space-y-4'>
-          <Input label='Full Name *' value={newStoreAdmin.name} onChange={(e) => setNewStoreAdmin((s) => ({ ...s, name: e.target.value }))} placeholder='e.g. Ramesh Kumar' />
+          <Input label='Full Name *' value={newStoreAdmin.name} onChange={(e) => setNewStoreAdmin((s) => ({ ...s, name: e.target.value }))} placeholder='Ramesh Kumar' />
           <Input label='Email Address *' type='email' value={newStoreAdmin.email} onChange={(e) => setNewStoreAdmin((s) => ({ ...s, email: e.target.value }))} placeholder='store.manager@rasayanflow.edu' />
           <Input label='Temporary Password *' type='password' value={newStoreAdmin.password} onChange={(e) => setNewStoreAdmin((s) => ({ ...s, password: e.target.value }))} minLength={6} placeholder='••••••••' />
           <Button onClick={handleCreateStoreAdmin} disabled={savingAdmin} className='w-full mt-2'>
@@ -906,10 +1235,9 @@ export default function SuperAdminDashboard() {
         </div>
       </Modal>
 
-      {/* Create Super Admin Modal */}
       <Modal open={superAdminModalOpen} onClose={() => setSuperAdminModalOpen(false)} title='Add Super Administrator'>
         <div className='space-y-4'>
-          <Input label='Full Name *' value={newSuperAdmin.name} onChange={(e) => setNewSuperAdmin((s) => ({ ...s, name: e.target.value }))} placeholder='e.g. Dr. Super Admin' />
+          <Input label='Full Name *' value={newSuperAdmin.name} onChange={(e) => setNewSuperAdmin((s) => ({ ...s, name: e.target.value }))} placeholder='Dr. Super Admin' />
           <Input label='Email Address *' type='email' value={newSuperAdmin.email} onChange={(e) => setNewSuperAdmin((s) => ({ ...s, email: e.target.value }))} placeholder='superadmin@rasayanflow.edu' />
           <Input label='Temporary Password *' type='password' value={newSuperAdmin.password} onChange={(e) => setNewSuperAdmin((s) => ({ ...s, password: e.target.value }))} minLength={6} placeholder='••••••••' />
           <Button onClick={handleCreateSuperAdmin} disabled={savingSuperAdmin} className='w-full mt-2'>

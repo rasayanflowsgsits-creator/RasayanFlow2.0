@@ -1120,6 +1120,79 @@ const useAppStore = create((set) => ({
       throw err;
     }
   },
+  // Master Chemical Catalog
+  masterChemicals: [
+    { id: 'mc-1', name: 'Paracetamol IP/BP', casNumber: '103-90-2', hazardClass: 'Non-Hazardous', storageTemp: '15-25°C', sdsAvailable: true, category: 'Active Pharmaceutical Ingredient' },
+    { id: 'mc-2', name: 'Hydrochloric Acid 0.1M', casNumber: '7647-01-0', hazardClass: 'Corrosive / Acid', storageTemp: 'Room Temp', sdsAvailable: true, category: 'Reagent' },
+    { id: 'mc-3', name: 'Ethanol 99.9% Absolute', casNumber: '64-17-5', hazardClass: 'Flammable Liquid', storageTemp: 'Cool Storage', sdsAvailable: true, category: 'Solvent' },
+    { id: 'mc-4', name: 'Sodium Hydroxide Pellets', casNumber: '1310-73-2', hazardClass: 'Corrosive / Base', storageTemp: 'Dry Storage', sdsAvailable: true, category: 'Base' },
+    { id: 'mc-5', name: 'Sulphuric Acid 98% AR', casNumber: '7664-93-9', hazardClass: 'Toxic / Corrosive', storageTemp: 'Acid Cabinet', sdsAvailable: true, category: 'Acid' },
+    { id: 'mc-6', name: 'Methanol HPLC Grade', casNumber: '67-56-1', hazardClass: 'Flammable / Toxic', storageTemp: 'Solvent Cabinet', sdsAvailable: true, category: 'Solvent' },
+  ],
+  addMasterChemical: (payload) => {
+    const newItem = { id: `mc-${Date.now()}`, sdsAvailable: true, ...payload };
+    set((state) => ({ masterChemicals: [newItem, ...state.masterChemicals] }));
+    return newItem;
+  },
+
+  // Curriculum Practical Experiments
+  curriculumExperiments: [
+    { id: 'curr-1', course: 'B.Pharm', year: '1', semester: '1', subject: 'Pharmaceutics Lab - I', expNo: 'Exp 01', name: 'Formulation & Evaluation of Simple Syrup IP', requiredChemicals: 'Sucrose (66.7% w/w), Purified Water' },
+    { id: 'curr-2', course: 'B.Pharm', year: '1', semester: '1', subject: 'Pharmaceutics Lab - I', expNo: 'Exp 02', name: 'Preparation of Calamine Lotion IP', requiredChemicals: 'Calamine, Zinc Oxide, Bentonite, Glycerin' },
+    { id: 'curr-3', course: 'B.Pharm', year: '1', semester: '1', subject: 'Pharmaceutical Analysis Lab', expNo: 'Exp 01', name: 'Assay of Paracetamol Tablets by UV-Vis', requiredChemicals: 'Paracetamol IP, 0.1M NaOH, Methanol' },
+    { id: 'curr-4', course: 'B.Pharm', year: '1', semester: '2', subject: 'Pharmaceutical Organic Chemistry - I', expNo: 'Exp 01', name: 'Systematic Qualitative Analysis of Organic Compounds', requiredChemicals: 'HCl, NaOH, NaHCO3, Ether' },
+  ],
+  addCurriculumExperiment: (payload) => {
+    const newItem = { id: `curr-${Date.now()}`, ...payload };
+    set((state) => ({ curriculumExperiments: [newItem, ...state.curriculumExperiments] }));
+    return newItem;
+  },
+
+  // Broadcast System & Announcements
+  broadcastAnnouncements: [
+    { id: 'bcast-1', title: 'Central Store Annual Stock Audit', message: 'Central Store will remain closed for inventory verification on Friday.', targetRole: 'All Users', active: true, createdAt: new Date().toISOString() },
+    { id: 'bcast-2', title: 'Safety Inspection Reminder', message: 'All lab admins must verify fume hood performance before end of week.', targetRole: 'Lab Admins', active: true, createdAt: new Date().toISOString() },
+  ],
+  addBroadcastAnnouncement: (payload) => {
+    const newItem = { id: `bcast-${Date.now()}`, active: true, createdAt: new Date().toISOString(), ...payload };
+    set((state) => ({ broadcastAnnouncements: [newItem, ...state.broadcastAnnouncements] }));
+    return newItem;
+  },
+  toggleBroadcastStatus: (id) => {
+    set((state) => ({
+      broadcastAnnouncements: state.broadcastAnnouncements.map((b) => (b.id === id ? { ...b, active: !b.active } : b))
+    }));
+  },
+
+  // Global Feature Flags
+  globalFeatureFlags: {
+    teamRequestsEnabled: true,
+    directStoreAccess: true,
+    studentPreviewMode: true,
+    autoApproveStudents: false,
+    pciComplianceMode: true,
+  },
+  toggleFeatureFlag: (flagKey) => {
+    set((state) => ({
+      globalFeatureFlags: {
+        ...state.globalFeatureFlags,
+        [flagKey]: !state.globalFeatureFlags[flagKey]
+      }
+    }));
+  },
+
+  // User Account Suspension / Activation Toggle
+  toggleUserStatus: async (userId) => {
+    set((state) => ({
+      users: state.users.map((u) => {
+        if (u.id === userId || u._id === userId) {
+          const isSuspended = u.isSuspended;
+          return { ...u, isSuspended: !isSuspended };
+        }
+        return u;
+      })
+    }));
+  },
 
   resetAppState: () =>
     set({

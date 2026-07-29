@@ -236,7 +236,11 @@ function App() {
                     <Route path='store' element={role === 'student' ? <StudentStorePage /> : <Navigate to='/' replace />} />
                     <Route path='my-borrowings' element={role === 'student' ? <StudentBorrowingsPage /> : <Navigate to='/' replace />} />
                     <Route path='approval' element={role === 'super-admin' ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
+                    <Route path='master-chemicals' element={role === 'super-admin' ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
+                    <Route path='curriculum' element={role === 'super-admin' ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='store-oversight' element={role === 'super-admin' ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
+                    <Route path='compliance' element={role === 'super-admin' ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
+                    <Route path='system-broadcast' element={role === 'super-admin' ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='activity' element={role === 'super-admin' ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='settings' element={role === 'super-admin' ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='labs/:id' element={role === 'student' ? <StudentLabDetail /> : <Navigate to='/' replace />} />
