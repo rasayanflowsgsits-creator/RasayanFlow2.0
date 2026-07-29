@@ -907,34 +907,49 @@ export default function SuperAdminDashboard() {
           </div>
 
           {/* Role Metric Tab Cards Bar */}
-          <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-6'>
+          <div className='grid gap-3 sm:grid-cols-3 lg:grid-cols-6'>
             {[
-              { id: 'all', label: 'All Accounts', count: users.length, icon: Users, color: 'border-l-slate-500' },
-              { id: 'student', label: 'Students', count: students.length, icon: Users, color: 'border-l-emerald-600' },
-              { id: 'lab-admin', label: 'Lab Admins', count: labAdmins.length, icon: UserCheck, color: 'border-l-blue-600' },
-              { id: 'store-admin', label: 'Store Managers', count: storeAdmins.length, icon: ShoppingBag, color: 'border-l-indigo-600' },
-              { id: 'super-admin', label: 'Super Admins', count: superAdmins.length, icon: ShieldCheck, color: 'border-l-purple-600' },
-              { id: 'pending', label: 'Pending Approvals', count: pendingApprovals.length, icon: Clock, color: pendingApprovals.length > 0 ? 'border-l-amber-500 bg-amber-50/50 dark:bg-amber-950/20' : 'border-l-slate-400' },
+              { id: 'all', label: 'All Accounts', count: users.length, icon: Users },
+              { id: 'student', label: 'Students', count: students.length, icon: Users },
+              { id: 'lab-admin', label: 'Lab Admins', count: labAdmins.length, icon: UserCheck },
+              { id: 'store-admin', label: 'Store Managers', count: storeAdmins.length, icon: ShoppingBag },
+              { id: 'super-admin', label: 'Super Admins', count: superAdmins.length, icon: ShieldCheck },
+              { id: 'pending', label: 'Pending Queue', count: pendingApprovals.length, icon: Clock, hasPending: pendingApprovals.length > 0 },
             ].map((tab) => {
               const IconComp = tab.icon;
               const isActive = userRoleFilter === tab.id;
               return (
                 <button
                   key={tab.id}
+                  type='button'
                   onClick={() => setUserRoleFilter(tab.id)}
-                  className={`flex flex-col justify-between rounded-2xl border-l-4 ${tab.color} border border-[#d9e1ca] p-3.5 text-left transition-all hover:shadow-sm dark:border-[#414a33] ${
-                    isActive ? 'bg-[#37412a] text-white shadow-md dark:bg-[#e4e9d8] dark:text-[#20251a]' : 'bg-white dark:bg-[#20251a]'
+                  className={`flex flex-col justify-between rounded-xl border p-3 text-left transition-all duration-200 shadow-2xs ${
+                    isActive
+                      ? 'bg-[#37412a] text-white border-[#37412a] shadow-sm dark:bg-[#e4e9d8] dark:text-[#20251a] dark:border-[#e4e9d8]'
+                      : 'bg-[#f8faee] text-[#37412a] border-[#d9e1ca] hover:bg-[#edf2e1] hover:border-[#b8c79f] dark:bg-[#1f241a] dark:text-[#e4e9d8] dark:border-[#3c452f]'
                   }`}
                 >
-                  <div className='flex items-center justify-between'>
-                    <span className={`text-[11px] font-extrabold uppercase tracking-wide ${isActive ? 'text-white/90 dark:text-[#20251a]/90' : 'text-[#71805a] dark:text-[#a5b48b]'}`}>
+                  <div className='flex items-center justify-between w-full gap-1'>
+                    <span className={`text-[12px] font-bold tracking-tight truncate ${
+                      isActive ? 'text-white dark:text-[#20251a]' : 'text-[#4e5d35] dark:text-[#c5d0b5]'
+                    }`}>
                       {tab.label}
                     </span>
-                    <IconComp size={16} className={isActive ? 'text-white dark:text-[#20251a]' : 'text-[#5c6e46] dark:text-[#a5b48b]'} />
+                    <IconComp size={14} className={isActive ? 'text-white dark:text-[#20251a] shrink-0' : 'text-[#5c6e46] dark:text-[#a5b48b] shrink-0'} />
                   </div>
-                  <p className={`text-2xl font-black mt-2 ${isActive ? 'text-white dark:text-[#20251a]' : 'text-[#37412a] dark:text-[#e4e9d8]'}`}>
-                    {tab.count}
-                  </p>
+
+                  <div className='mt-2 flex items-baseline justify-between'>
+                    <span className={`text-xl font-extrabold tracking-tight ${
+                      isActive ? 'text-white dark:text-[#20251a]' : 'text-[#37412a] dark:text-[#e4e9d8]'
+                    }`}>
+                      {tab.count}
+                    </span>
+                    {tab.hasPending && (
+                      <span className='rounded-full bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.5 leading-none animate-pulse'>
+                        NEW
+                      </span>
+                    )}
+                  </div>
                 </button>
               );
             })}
