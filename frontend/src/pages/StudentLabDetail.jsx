@@ -117,6 +117,7 @@ export default function StudentLabDetail() {
   }, [fetchEligibleTeamMembers, fetchExperiments, fetchLabs, fetchTeamAllotments, fetchTeams, fetchTransactions, fetchInventory, id]);
 
   useEffect(() => {
+    if (user?.isPreview) return;
     const intervalId = setInterval(() => {
       fetchTransactions();
       if (id) {
@@ -128,7 +129,7 @@ export default function StudentLabDetail() {
     }, 5000);
 
     return () => clearInterval(intervalId);
-  }, [fetchExperiments, fetchTeamAllotments, fetchTeams, fetchTransactions, fetchInventory, id]);
+  }, [fetchExperiments, fetchTeamAllotments, fetchTeams, fetchTransactions, fetchInventory, id, user?.isPreview]);
 
   const lab = useMemo(() => labs.find((entry) => String(entry.id || entry._id) === String(id)), [id, labs]);
 

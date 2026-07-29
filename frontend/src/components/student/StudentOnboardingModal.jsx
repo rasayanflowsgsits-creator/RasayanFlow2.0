@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import useAuthStore from '../../store/authStore';
 import useAppStore from '../../store/appStore';
-import { BookOpen, Calendar, Beaker, ChevronRight, CheckCircle2, User as UserIcon, Loader2 } from 'lucide-react';
+import { BookOpen, Calendar, Beaker, ChevronRight, CheckCircle2, User as UserIcon, Loader2, LogOut } from 'lucide-react';
 
 export default function StudentOnboardingModal() {
-  const { user, updateUser } = useAuthStore();
+  const { user, updateUser, logout } = useAuthStore();
   const { setupStudentProfile, fetchMatchingLabs } = useAppStore();
 
   const [step, setStep] = useState(1);
@@ -66,7 +66,14 @@ export default function StudentOnboardingModal() {
       <div className="w-full max-w-xl overflow-hidden rounded-3xl border border-[#d9e1ca] bg-[#fffef8] shadow-2xl dark:border-[#414a33] dark:bg-[#1a1d16]">
         
         {/* Header */}
-        <div className="bg-[#fdfdf7] p-8 text-center border-b border-[#e8ece1] dark:bg-[#20251a] dark:border-[#3c452f]">
+        <div className="relative bg-[#fdfdf7] p-8 text-center border-b border-[#e8ece1] dark:bg-[#20251a] dark:border-[#3c452f]">
+          <button 
+            onClick={logout}
+            className="absolute right-4 top-4 flex items-center gap-1.5 rounded-lg border border-[#d9e1ca] bg-white px-3 py-1.5 text-xs font-semibold text-[#71805a] hover:bg-rose-50 hover:text-rose-600 dark:border-[#414a33] dark:bg-[#28301f] dark:text-[#a5b48b] dark:hover:bg-rose-950/40 dark:hover:text-rose-400 transition-colors"
+            title="Exit to Login"
+          >
+            <LogOut size={14} /> Exit to Login
+          </button>
           <h2 className="text-2xl font-bold text-[#37412a] dark:text-[#e4e9d8]">Complete Your Profile</h2>
           <p className="mt-2 text-sm text-[#71805a] dark:text-[#a5b48b]">
             Tell us about your current academic status

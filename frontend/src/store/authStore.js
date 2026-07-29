@@ -87,12 +87,39 @@ const useAuthStore = create((set) => ({
       throw new Error(message);
     }
   },
+  loginAsPreviewStudent: () => {
+    const previewUser = {
+      id: 'preview-student-id',
+      _id: 'preview-student-id',
+      name: 'Student Preview',
+      email: 'student.preview@rasayanflow.local',
+      role: 'student',
+      isApproved: true,
+      onboardingComplete: true,
+      course: 'B.Pharm',
+      year: '1',
+      semester: '1',
+      group: 'Group A',
+      rollNumber: '0832PH211001',
+      isPreview: true,
+    };
+    const dummyToken = 'preview-token';
+    saveToken(dummyToken);
+    saveUser(previewUser);
+    set({ user: previewUser, token: dummyToken, loading: false, error: null, initialized: true });
+    return previewUser;
+  },
   logout: () => {
     clearAuthSession();
   },
   ensureAuth: async () => {
     const cachedUser = normalizeUser(getUser());
     const token = getToken();
+
+    if (cachedUser?.isPreview) {
+      set({ user: cachedUser, token: token || 'preview-token', initialized: true });
+      return;
+    }
 
     if (!token) {
       set({ user: null, token: null, initialized: true });

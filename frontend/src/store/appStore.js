@@ -1,7 +1,158 @@
 import {create} from 'zustand';
 import api from '../services/api';
+import useAuthStore from './authStore';
 
 const getPayload = (responseData) => responseData?.data ?? responseData;
+
+const PREVIEW_LABS = [
+  {
+    _id: 'preview-lab-1',
+    id: 'preview-lab-1',
+    name: 'Pharmaceutics Lab - I',
+    labName: 'Pharmaceutics Lab - I',
+    labCode: 'PH101L',
+    location: 'Block A, Room 102',
+    admin: 'Dr. R. K. Sharma',
+    courseType: 'B.Pharm',
+    department: 'Pharmaceutics',
+    year: '1',
+    semester: '1'
+  },
+  {
+    _id: 'preview-lab-2',
+    id: 'preview-lab-2',
+    name: 'Pharmaceutical Chemistry Lab',
+    labName: 'Pharmaceutical Chemistry Lab',
+    labCode: 'PH102L',
+    location: 'Block B, Room 204',
+    admin: 'Prof. A. Verma',
+    courseType: 'B.Pharm',
+    department: 'Pharmaceutical Chemistry',
+    year: '1',
+    semester: '1'
+  },
+  {
+    _id: 'preview-lab-3',
+    id: 'preview-lab-3',
+    name: 'Human Anatomy & Physiology Lab',
+    labCode: 'PH103L',
+    location: 'Block A, Room 108',
+    admin: 'Dr. S. Patel',
+    courseType: 'B.Pharm',
+    department: 'Pharmacology',
+    year: '1',
+    semester: '1'
+  },
+  {
+    _id: 'preview-lab-4',
+    id: 'preview-lab-4',
+    name: 'Pharmaceutical Analysis Lab',
+    labCode: 'PH104L',
+    location: 'Block C, Room 301',
+    admin: 'Dr. M. Gupta',
+    courseType: 'B.Pharm',
+    department: 'Pharmaceutical Chemistry',
+    year: '1',
+    semester: '1'
+  }
+];
+
+const PREVIEW_INVENTORY = [
+  {
+    _id: 'preview-item-1',
+    id: 'preview-item-1',
+    name: 'Paracetamol Raw Grade',
+    chemicalName: 'Paracetamol',
+    itemCode: 'PCM-100',
+    category: 'Analgesic / Antipyretic',
+    quantity: 500,
+    quantityUnit: 'g',
+    storageLocation: 'Shelf A-1 (Cool Room)',
+    manufacturingCompany: 'Cipla Lab Reagents',
+    expiryDate: '2027-12-31',
+    pubmedId: '25488102',
+    displayAbstract: 'Paracetamol (Acetaminophen) is a widely used non-opioid analgesic and antipyretic agent. In pharmaceutical manufacturing lab courses, it is used to teach wet granulation, tablet compression, UV-Vis spectrophotometer assay, and dissolution rate testing.',
+  },
+  {
+    _id: 'preview-item-2',
+    id: 'preview-item-2',
+    name: 'Hydrochloric Acid 0.1M',
+    chemicalName: 'Hydrochloric Acid',
+    itemCode: 'HCL-01',
+    category: 'Acid Reagent',
+    quantity: 2500,
+    quantityUnit: 'mL',
+    storageLocation: 'Acid Cabinet B',
+    manufacturingCompany: 'Merck India',
+    expiryDate: '2028-06-30',
+    pubmedId: '12345678',
+    displayAbstract: 'Hydrochloric Acid (0.1M Volumetric Solution) is essential for acid-base titrations, solubility testing, and pH adjustment in aqueous pharmaceutical formulations.',
+  },
+  {
+    _id: 'preview-item-3',
+    id: 'preview-item-3',
+    name: 'Ethanol 99.9% Absolute',
+    chemicalName: 'Ethanol',
+    itemCode: 'ETH-99',
+    category: 'Solvent / Reagent',
+    quantity: 5000,
+    quantityUnit: 'mL',
+    storageLocation: 'Flammables Storage C',
+    manufacturingCompany: 'Thermo Fisher',
+    expiryDate: '2029-01-01',
+    displayAbstract: 'Absolute ethanol is an organic solvent used for extraction of phytoconstituents, preparing elixirs, tincture formulations, and HPLC sample preparation.',
+  },
+  {
+    _id: 'preview-item-4',
+    id: 'preview-item-4',
+    name: 'Sodium Hydroxide Pellets',
+    chemicalName: 'Sodium Hydroxide',
+    itemCode: 'NAOH-PEL',
+    category: 'Base Reagent',
+    quantity: 1000,
+    quantityUnit: 'g',
+    storageLocation: 'Desiccator Cabinet D',
+    manufacturingCompany: 'Loba Chemie',
+    expiryDate: '2028-11-15',
+    displayAbstract: 'Sodium hydroxide pellets are used to prepare standardized volumetric alkaline solutions for saponification value determination and neutralization titrations.',
+  }
+];
+
+const PREVIEW_EXPERIMENTS = [
+  {
+    _id: 'preview-exp-1',
+    id: 'preview-exp-1',
+    labId: 'preview-lab-1',
+    experimentNumber: 'Exp 01: Formulation & Evaluation of Simple Syrup IP',
+    experimentObject: 'To prepare and evaluate 100ml of Simple Syrup IP containing 66.7% w/w Sucrose.',
+    requiredInventory: [
+      { chemicalName: 'Sucrose IP Grade', quantity: 66.7, quantityUnit: 'g' },
+      { chemicalName: 'Purified Water', quantity: 100, quantityUnit: 'mL' }
+    ]
+  },
+  {
+    _id: 'preview-exp-2',
+    id: 'preview-exp-2',
+    labId: 'preview-lab-1',
+    experimentNumber: 'Exp 02: Assay of Paracetamol Tablets by UV-Vis Spectrophotometry',
+    experimentObject: 'To determine the percentage purity of Paracetamol tablets at lambda max 243nm.',
+    requiredInventory: [
+      { chemicalName: 'Paracetamol Raw Grade', quantity: 0.1, quantityUnit: 'g' },
+      { chemicalName: 'Sodium Hydroxide 0.1M', quantity: 50, quantityUnit: 'mL' }
+    ]
+  },
+  {
+    _id: 'preview-exp-3',
+    id: 'preview-exp-3',
+    labId: 'preview-lab-1',
+    experimentNumber: 'Exp 03: Viscosity Determination using Ostwald Viscometer',
+    experimentObject: 'To measure the relative and absolute viscosity of liquid formulations at 25°C.',
+    requiredInventory: [
+      { chemicalName: 'Ethanol 99.9% Absolute', quantity: 20, quantityUnit: 'mL' },
+      { chemicalName: 'Purified Water', quantity: 50, quantityUnit: 'mL' }
+    ]
+  }
+];
 
 const normalizeLab = (lab) => ({
   ...lab,
@@ -212,13 +363,14 @@ const useAppStore = create((set) => ({
   toast: null,
   highlight: null,
   fetchLabs: async () => {
+    const isPreview = useAuthStore.getState().user?.isPreview;
     set({ loading: true });
     try {
       const { data } = await api.get('/labs');
       const labs = (getPayload(data) || []).map(normalizeLab);
-      set({ labs, loading: false });
+      set({ labs: labs.length ? labs : PREVIEW_LABS, loading: false });
     } catch {
-      set({ labs: [], loading: false });
+      set({ labs: isPreview ? PREVIEW_LABS : [], loading: false });
     }
   },
   createLab: async ({ name, code, courseType, department, year, semester }) => {
@@ -331,6 +483,24 @@ const useAppStore = create((set) => ({
     return getPayload(response.data);
   },
   createBorrowRequest: async ({ itemId, quantity, purpose, neededUntil, notes = '' }) => {
+    const isPreview = useAuthStore.getState().user?.isPreview;
+    if (isPreview) {
+      const mockTx = normalizeTransaction({
+        _id: 'preview-tx-' + Date.now(),
+        id: 'preview-tx-' + Date.now(),
+        labId: 'preview-lab-1',
+        itemName: 'Paracetamol Raw Grade',
+        quantity: Number(quantity),
+        purpose,
+        neededUntil,
+        notes,
+        status: 'pending',
+        requestCategory: 'inventory',
+        createdAt: new Date().toISOString()
+      });
+      set((state) => ({ transactions: [mockTx, ...state.transactions] }));
+      return mockTx;
+    }
     const response = await api.post('/transactions/borrow', {
       itemId,
       quantity: Number(quantity),
@@ -391,13 +561,14 @@ const useAppStore = create((set) => ({
     }
   },
   fetchInventory: async (labId) => {
+    const isPreview = useAuthStore.getState().user?.isPreview;
     set({ loading: true });
     try {
       const { data } = await api.get(`/inventory?labId=${labId}`);
       const inventory = (getPayload(data) || []).map(normalizeInventoryItem);
-      set({ inventory, loading: false });
+      set({ inventory: inventory.length ? inventory : PREVIEW_INVENTORY, loading: false });
     } catch {
-      set({ inventory: [], loading: false });
+      set({ inventory: isPreview ? PREVIEW_INVENTORY : [], loading: false });
     }
   },
   fetchInventorySearch: async (itemName) => {
@@ -414,6 +585,7 @@ const useAppStore = create((set) => ({
     }
   },
   fetchExperiments: async (filters = {}) => {
+    const isPreview = useAuthStore.getState().user?.isPreview;
     set({ loading: true });
     try {
       const queryParams = new URLSearchParams();
@@ -423,11 +595,11 @@ const useAppStore = create((set) => ({
       const query = queryParams.toString() ? `/experiments?${queryParams.toString()}` : '/experiments';
       const { data } = await api.get(query);
       const experiments = (getPayload(data) || []).map(normalizeExperiment);
-      set({ experiments, loading: false });
-      return experiments;
+      set({ experiments: experiments.length ? experiments : PREVIEW_EXPERIMENTS, loading: false });
+      return experiments.length ? experiments : PREVIEW_EXPERIMENTS;
     } catch {
-      set({ experiments: [], loading: false });
-      return [];
+      set({ experiments: isPreview ? PREVIEW_EXPERIMENTS : [], loading: false });
+      return isPreview ? PREVIEW_EXPERIMENTS : [];
     }
   },
   createExperiment: async (payload) => {
@@ -482,6 +654,23 @@ const useAppStore = create((set) => ({
     return teamAllotments;
   },
   createExperimentRequest: async ({ experimentId, teamId = null, purpose, preferredDate, notes = '' }) => {
+    const isPreview = useAuthStore.getState().user?.isPreview;
+    if (isPreview) {
+      const mockTx = normalizeTransaction({
+        _id: 'preview-exp-req-' + Date.now(),
+        id: 'preview-exp-req-' + Date.now(),
+        labId: 'preview-lab-1',
+        requestCategory: 'experiment',
+        experimentTitle: 'Exp 01: Formulation & Evaluation of Simple Syrup IP',
+        purpose,
+        neededUntil: preferredDate || null,
+        notes,
+        status: 'pending',
+        createdAt: new Date().toISOString()
+      });
+      set((state) => ({ transactions: [mockTx, ...state.transactions] }));
+      return mockTx;
+    }
     const response = await api.post('/transactions/experiment-request', {
       experimentId,
       teamId,
@@ -769,6 +958,11 @@ const useAppStore = create((set) => ({
     }
   },
   fetchMyStudentRequests: async () => {
+    const isPreview = useAuthStore.getState().user?.isPreview;
+    if (isPreview) {
+      set({ loading: false });
+      return;
+    }
     set({ loading: true });
     try {
       const { data } = await api.get('/student/requests/my');
@@ -832,13 +1026,19 @@ const useAppStore = create((set) => ({
   },
   myLabs: [],
   fetchMyLabs: async (courseType, year, semester) => {
+    const isPreview = useAuthStore.getState().user?.isPreview;
+    if (isPreview) {
+      set({ myLabs: PREVIEW_LABS, labs: PREVIEW_LABS, loading: false });
+      return;
+    }
     set({ loading: true });
     try {
       const { data } = await api.get(`/labs/matching?courseType=${courseType}&year=${year}&semester=${semester}`);
-      set({ myLabs: getPayload(data) || [], loading: false });
+      const fetched = getPayload(data) || [];
+      set({ myLabs: fetched.length ? fetched : PREVIEW_LABS, loading: false });
     } catch (err) {
       console.error('Failed to fetch my labs', err);
-      set({ myLabs: [], loading: false });
+      set({ myLabs: PREVIEW_LABS, loading: false });
     }
   },
   fetchStudentLabStructure: async () => {
