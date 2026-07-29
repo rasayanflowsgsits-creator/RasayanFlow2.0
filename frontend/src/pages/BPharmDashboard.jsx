@@ -67,28 +67,31 @@ export default function BPharmDashboard() {
       >
         {myLabs.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {myLabs.map((lab) => (
-              <div 
-                key={lab._id} 
-                onClick={() => navigate(`/labs/${lab._id}`)}
-                className="group flex cursor-pointer items-center justify-between rounded-2xl border border-[#d9e1ca] bg-white p-5 hover:border-[#87996c] hover:shadow-md dark:border-[#414a33] dark:bg-[#20251a] dark:hover:border-[#5c6e46] transition-all"
-              >
-                <div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#f4f6ee] text-[#5c6e46] dark:bg-[#2a3121] dark:text-[#c5d0b5]">
-                      <Beaker className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-[#37412a] dark:text-[#e4e9d8]">{lab.labName}</h4>
-                      <p className="text-xs text-[#71805a] dark:text-[#a5b48b]">{lab.labCode} • {lab.department || lab.courseType}</p>
+            {myLabs.map((lab) => {
+              const labId = lab._id || lab.id;
+              return (
+                <div 
+                  key={labId} 
+                  onClick={() => navigate(`/labs/${labId}`)}
+                  className="group flex cursor-pointer items-center justify-between rounded-2xl border border-[#d9e1ca] bg-white p-5 hover:border-[#87996c] hover:shadow-md dark:border-[#414a33] dark:bg-[#20251a] dark:hover:border-[#5c6e46] transition-all"
+                >
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#f4f6ee] text-[#5c6e46] dark:bg-[#2a3121] dark:text-[#c5d0b5]">
+                        <Beaker className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-[#37412a] dark:text-[#e4e9d8]">{lab.labName}</h4>
+                        <p className="text-xs text-[#71805a] dark:text-[#a5b48b]">{lab.labCode} • {lab.department || lab.courseType}</p>
+                      </div>
                     </div>
                   </div>
+                  <button className="rounded-full bg-[#f4f6ee] p-2 text-[#5c6e46] group-hover:bg-[#5c6e46] group-hover:text-white dark:bg-[#2a3121] dark:text-[#c5d0b5] transition-colors">
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
                 </div>
-                <button className="rounded-full bg-[#f4f6ee] p-2 text-[#5c6e46] group-hover:bg-[#5c6e46] group-hover:text-white dark:bg-[#2a3121] dark:text-[#c5d0b5] transition-colors">
-                  <ChevronRight className="h-5 w-5" />
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#d9e1ca] bg-[#fdfdf7] py-16 text-center dark:border-[#414a33] dark:bg-[#1a1d16]">

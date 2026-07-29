@@ -617,17 +617,37 @@ const useAppStore = create((set) => ({
     set((state) => ({ experiments: state.experiments.filter((entry) => entry.id !== experimentId) }));
   },
   fetchTeams: async (labId) => {
-    const query = labId ? `/teams?labId=${labId}` : '/teams';
-    const response = await api.get(query);
-    const teams = (getPayload(response.data) || []).map(normalizeTeam);
-    set({ teams });
-    return teams;
+    const isPreview = useAuthStore.getState().user?.isPreview;
+    if (isPreview) {
+      set({ teams: [] });
+      return [];
+    }
+    try {
+      const query = labId ? `/teams?labId=${labId}` : '/teams';
+      const response = await api.get(query);
+      const teams = (getPayload(response.data) || []).map(normalizeTeam);
+      set({ teams });
+      return teams;
+    } catch {
+      set({ teams: [] });
+      return [];
+    }
   },
   fetchEligibleTeamMembers: async () => {
-    const response = await api.get('/teams/eligible-members');
-    const eligibleTeamMembers = (getPayload(response.data) || []).map(normalizeUser);
-    set({ eligibleTeamMembers });
-    return eligibleTeamMembers;
+    const isPreview = useAuthStore.getState().user?.isPreview;
+    if (isPreview) {
+      set({ eligibleTeamMembers: [] });
+      return [];
+    }
+    try {
+      const response = await api.get('/teams/eligible-members');
+      const eligibleTeamMembers = (getPayload(response.data) || []).map(normalizeUser);
+      set({ eligibleTeamMembers });
+      return eligibleTeamMembers;
+    } catch {
+      set({ eligibleTeamMembers: [] });
+      return [];
+    }
   },
   createTeam: async ({ name, labId, memberIds = [] }) => {
     const response = await api.post('/teams', { name, labId, memberIds });
@@ -795,6 +815,11 @@ const useAppStore = create((set) => ({
     return updated;
   },
   fetchTransactions: async (paramsOrLabId) => {
+    const isPreview = useAuthStore.getState().user?.isPreview;
+    if (isPreview) {
+      set({ loading: false });
+      return;
+    }
     set({ loading: true });
     try {
       const filters =

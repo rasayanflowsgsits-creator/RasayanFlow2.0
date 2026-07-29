@@ -50,6 +50,10 @@ api.interceptors.response.use(
 
     // Attempt a single refresh when access token expired
     if (status === 401 && originalRequest && !originalRequest._retry && !isAuthRoute) {
+      const user = getUser();
+      if (user?.isPreview) {
+        return Promise.reject(error);
+      }
       originalRequest._retry = true;
       const refreshToken = getRefreshToken();
       if (!refreshToken) {
