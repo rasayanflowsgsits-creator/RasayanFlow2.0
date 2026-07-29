@@ -1070,6 +1070,201 @@ const useAppStore = create((set) => ({
     set({ loading: true });
     try {
       const { data } = await api.get('/lab/structure/student');
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
+  },
+  markAllNotificationsAsRead: async () => {
+    try {
+      await api.put('/notifications/read-all');
+      set((state) => {
+        const notifs = state.notifications.map(n => ({ ...n, isRead: true }));
+        return { notifications: notifs, unreadNotificationCount: 0 };
+      });
+    } catch (error) {
+      console.error('Failed to mark all notifications as read:', error);
+    }
+  },
+  createLabRequest: async ({ labId, labName, chemicalName, quantityRequested, unit, purpose, groupName = '' }) => {
+    const response = await api.post('/lab/requests', {
+      labId,
+      labName,
+      chemicalName,
+      quantityRequested: Number(quantityRequested),
+      unit,
+      purpose,
+      groupName
+    });
+    const request = getPayload(response.data);
+    set((state) => ({ labRequests: [request, ...state.labRequests] }));
+    return request;
+  },
+  fetchMyLabRequests: async () => {
+    try {
+      const { data } = await api.get('/lab/requests/my');
+      set({ labRequests: getPayload(data) || [] });
+    } catch {
+      set({ labRequests: [] });
+    }
+  },
+  approveLabRequest: async (requestId) => {
+    const response = await api.put(`/lab/requests/${requestId}/approve`);
+    const updated = getPayload(response.data);
+    set((state) => ({
+      labRequests: state.labRequests.map((entry) => (entry._id === updated._id ? updated : entry))
+    }));
+    return updated;
+  },
+  rejectLabRequest: async (requestId, rejectionReason = '') => {
+    const response = await api.put(`/lab/requests/${requestId}/reject`, { rejectionReason });
+    const updated = getPayload(response.data);
+    set((state) => ({
+      labRequests: state.labRequests.map((entry) => (entry._id === updated._id ? updated : entry))
+    }));
+    return updated;
+  },
+  fetchActivityLogs: async (filters = {}) => {
+    set({ loading: true });
+    try {
+      const queryParams = new URLSearchParams();
+
+      if (filters.page) queryParams.set('page', String(filters.page));
+      if (filters.limit) queryParams.set('limit', String(filters.limit));
+      if (filters.userId) queryParams.set('userId', filters.userId);
+      if (filters.action) queryParams.set('action', filters.action);
+
+      const query = queryParams.toString() ? `/logs?${queryParams.toString()}` : '/logs';
+      const { data } = await api.get(query);
+      const activityLogs = (getPayload(data) || []).map(normalizeActivityLog);
+      set({ activityLogs, loading: false });
+      return activityLogs;
+    } catch {
+      set({ activityLogs: [], loading: false });
+      return [];
+    }
+  },
+  setFilters: (payload) => set((state) => ({ filters: { ...state.filters, ...payload } })),
+  setToast: (toast) => set({ toast }),
+  removeToast: () => set({ toast: null }),
+  // Lab Structure Methods
+  fetchLabStructure: async (labId) => {
+    set({ loading: true });
+    try {
+      const { data } = await api.get(labId ? `/lab/structure?labId=${labId}` : '/lab/structure');
+      set({ labStructure: getPayload(data) || [], loading: false });
+    } catch {
+      set({ labStructure: [], loading: false });
+    }
+  },
+  uploadLabStructure: async (structures) => {
+    set({ loading: true });
+    try {
+      await api.post('/lab/structure/upload', { structures });
+      set({ loading: false, toast: { title: 'Success', message: 'Lab structure uploaded successfully', type: 'success' } });
+    } catch (err) {
+      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Upload failed', type: 'error' } });
+      throw err;
+    }
+  },
+
+  // Student Request Methods
+  fetchStudentRequests: async (labId) => {
+    set({ loading: true });
+    try {
+      const { data } = await api.get(labId ? `/student/requests/lab?labId=${labId}` : '/student/requests/lab');
+      set({ studentRequests: getPayload(data) || [], loading: false });
+    } catch {
+      set({ studentRequests: [], loading: false });
+    }
+  },
+  fetchMyStudentRequests: async () => {
+    const isPreview = useAuthStore.getState().user?.isPreview;
+    if (isPreview) {
+      set({ loading: false });
+      return;
+    }
+    set({ loading: true });
+    try {
+      const { data } = await api.get('/student/requests/my');
+      set({ studentRequests: getPayload(data) || [], loading: false });
+    } catch {
+      set({ studentRequests: [], loading: false });
+    }
+  },
+  createStudentRequest: async (payload) => {
+    set({ loading: true });
+    try {
+      await api.post('/student/requests', payload);
+      set({ loading: false, toast: { title: 'Success', message: 'Request submitted successfully', type: 'success' } });
+    } catch (err) {
+      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Request failed', type: 'error' } });
+      throw err;
+    }
+  },
+  approveStudentRequest: async (id, approveType) => {
+    set({ loading: true });
+    try {
+      await api.put(`/student/requests/${id}/approve`, { approveType });
+      set({ loading: false, toast: { title: 'Success', message: 'Request approved', type: 'success' } });
+      useAppStore.getState().fetchStudentRequests();
+      useAppStore.getState().fetchInventory(); // Inventory reduced
+    } catch (err) {
+      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Approval failed', type: 'error' } });
+      throw err;
+    }
+  },
+  rejectStudentRequest: async (id, reason) => {
+    set({ loading: true });
+    try {
+      await api.put(`/student/requests/${id}/reject`, { reason });
+      set({ loading: false, toast: { title: 'Success', message: 'Request rejected', type: 'success' } });
+      useAppStore.getState().fetchStudentRequests();
+    } catch (err) {
+      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Rejection failed', type: 'error' } });
+      throw err;
+    }
+  },
+  setupStudentProfile: async (payload) => {
+    set({ loading: true });
+    try {
+      const { data } = await api.put('/student/profile/setup', payload);
+      set({ loading: false });
+      return getPayload(data);
+    } catch (err) {
+      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Setup failed', type: 'error' } });
+      throw err;
+    }
+  },
+  fetchMatchingLabs: async (courseType, year, semester) => {
+    try {
+      const { data } = await api.get(`/labs/matching?courseType=${courseType}&year=${year}&semester=${semester}`);
+      return getPayload(data) || [];
+    } catch (err) {
+      console.error('Failed to fetch matching labs', err);
+      return [];
+    }
+  },
+  myLabs: [],
+  fetchMyLabs: async (courseType, year, semester) => {
+    const isPreview = useAuthStore.getState().user?.isPreview;
+    if (isPreview) {
+      set({ myLabs: PREVIEW_LABS, labs: PREVIEW_LABS, loading: false });
+      return;
+    }
+    set({ loading: true });
+    try {
+      const { data } = await api.get(`/labs/matching?courseType=${courseType}&year=${year}&semester=${semester}`);
+      const fetched = getPayload(data) || [];
+      set({ myLabs: fetched.length ? fetched : PREVIEW_LABS, loading: false });
+    } catch (err) {
+      console.error('Failed to fetch my labs', err);
+      set({ myLabs: PREVIEW_LABS, loading: false });
+    }
+  },
+  fetchStudentLabStructure: async () => {
+    set({ loading: true });
+    try {
+      const { data } = await api.get('/lab/structure/student');
       set({ labStructure: getPayload(data) || [], loading: false });
     } catch {
       set({ labStructure: [], loading: false });
@@ -1099,7 +1294,6 @@ const useAppStore = create((set) => ({
     }
   },
 
-
   // Research Request Methods (M.Pharm/PhD)
   fetchMyResearchRequests: async () => {
     set({ loading: true });
@@ -1120,6 +1314,7 @@ const useAppStore = create((set) => ({
       throw err;
     }
   },
+
   // Master Chemical Catalog
   masterChemicals: [
     { id: 'mc-1', name: 'Paracetamol IP/BP', casNumber: '103-90-2', hazardClass: 'Non-Hazardous', storageTemp: '15-25°C', sdsAvailable: true, category: 'Active Pharmaceutical Ingredient' },
@@ -1137,15 +1332,59 @@ const useAppStore = create((set) => ({
 
   // Curriculum Practical Experiments
   curriculumExperiments: [
-    { id: 'curr-1', course: 'B.Pharm', year: '1', semester: '1', subject: 'Pharmaceutics Lab - I', expNo: 'Exp 01', name: 'Formulation & Evaluation of Simple Syrup IP', requiredChemicals: 'Sucrose (66.7% w/w), Purified Water' },
+    // B.Pharm Semester 1
+    { id: 'curr-1', course: 'B.Pharm', year: '1', semester: '1', subject: 'Pharmaceutics Lab - I', expNo: 'Exp 01', name: 'Formulation & Evaluation of Simple Syrup IP', requiredChemicals: 'Sucrose (66.7% w/w), Purified Water, Methylparaben' },
     { id: 'curr-2', course: 'B.Pharm', year: '1', semester: '1', subject: 'Pharmaceutics Lab - I', expNo: 'Exp 02', name: 'Preparation of Calamine Lotion IP', requiredChemicals: 'Calamine, Zinc Oxide, Bentonite, Glycerin' },
-    { id: 'curr-3', course: 'B.Pharm', year: '1', semester: '1', subject: 'Pharmaceutical Analysis Lab', expNo: 'Exp 01', name: 'Assay of Paracetamol Tablets by UV-Vis', requiredChemicals: 'Paracetamol IP, 0.1M NaOH, Methanol' },
-    { id: 'curr-4', course: 'B.Pharm', year: '1', semester: '2', subject: 'Pharmaceutical Organic Chemistry - I', expNo: 'Exp 01', name: 'Systematic Qualitative Analysis of Organic Compounds', requiredChemicals: 'HCl, NaOH, NaHCO3, Ether' },
+    { id: 'curr-3', course: 'B.Pharm', year: '1', semester: '1', subject: 'Pharmaceutical Analysis Lab', expNo: 'Exp 01', name: 'Assay of Paracetamol Tablets by UV-Vis Spectrophotometry', requiredChemicals: 'Paracetamol IP, 0.1M NaOH, Methanol' },
+    { id: 'curr-4', course: 'B.Pharm', year: '1', semester: '1', subject: 'Inorganic Chemistry Lab', expNo: 'Exp 01', name: 'Limit Test for Chloride and Sulphate', requiredChemicals: 'Dilute Nitric Acid, Silver Nitrate, Barium Chloride' },
+
+    // B.Pharm Semester 2
+    { id: 'curr-5', course: 'B.Pharm', year: '1', semester: '2', subject: 'Pharmaceutical Organic Chemistry - I', expNo: 'Exp 01', name: 'Systematic Qualitative Analysis of Organic Compounds', requiredChemicals: 'HCl, NaOH, NaHCO3, Ether, Litmus Paper' },
+    { id: 'curr-6', course: 'B.Pharm', year: '1', semester: '2', subject: 'Biochemistry Lab', expNo: 'Exp 01', name: 'Qualitative Analysis of Carbohydrates (Benedict & Barfoed Test)', requiredChemicals: 'Benedict Reagent, Barfoed Reagent, Glucose, Fructose' },
+
+    // B.Pharm Semester 3
+    { id: 'curr-7', course: 'B.Pharm', year: '2', semester: '3', subject: 'Physical Pharmaceutics - I', expNo: 'Exp 01', name: 'Viscosity Determination using Ostwald Viscometer', requiredChemicals: 'Glycerin Solutions, Ethanol, Distilled Water' },
+    { id: 'curr-8', course: 'B.Pharm', year: '2', semester: '3', subject: 'Pharmaceutical Microbiology', expNo: 'Exp 01', name: 'Gram Staining Technique for Microorganisms', requiredChemicals: 'Crystal Violet, Gram Iodine, Decolorizer, Safranin' },
+
+    // B.Pharm Semester 4
+    { id: 'curr-9', course: 'B.Pharm', year: '2', semester: '4', subject: 'Medicinal Chemistry - I', expNo: 'Exp 01', name: 'Synthesis of Aspirin from Salicylic Acid', requiredChemicals: 'Salicylic Acid, Acetic Anhydride, Concentrated H2SO4' },
+    { id: 'curr-10', course: 'B.Pharm', year: '2', semester: '4', subject: 'Pharmacognosy - I', expNo: 'Exp 01', name: 'Morphological & Microscopical Study of Senna Leaf', requiredChemicals: 'Chloral Hydrate, Phloroglucinol, Concentrated HCl' },
+
+    // B.Pharm Semester 5
+    { id: 'curr-11', course: 'B.Pharm', year: '3', semester: '5', subject: 'Industrial Pharmacy - I', expNo: 'Exp 01', name: 'Evaluation of Compressed Tablets (Friability & Hardness)', requiredChemicals: 'Paracetamol Granules, Magnesium Stearate, Talc' },
+
+    // B.Pharm Semester 6
+    { id: 'curr-12', course: 'B.Pharm', year: '3', semester: '6', subject: 'Biopharmaceutics & Pharmacokinetics', expNo: 'Exp 01', name: 'In-Vitro Dissolution Rate Testing of Oral Dosage Forms', requiredChemicals: '0.1N HCl dissolution medium, UV Cuvettes' },
+
+    // B.Pharm Semester 7
+    { id: 'curr-13', course: 'B.Pharm', year: '4', semester: '7', subject: 'Instrumental Methods of Analysis', expNo: 'Exp 01', name: 'HPLC Assay of Active Pharmaceutical Ingredients', requiredChemicals: 'Acetonitrile HPLC Grade, Water HPLC Grade, Methanol' },
+
+    // B.Pharm Semester 8
+    { id: 'curr-14', course: 'B.Pharm', year: '4', semester: '8', subject: 'Advanced Project Lab', expNo: 'Exp 01', name: 'Formulation of Polymeric Nanoparticles for Drug Delivery', requiredChemicals: 'PLGA, Dichloromethane, PVA (Polyvinyl Alcohol)' },
+
+    // M.Pharm
+    { id: 'curr-15', course: 'M.Pharm', year: '1', semester: '1', subject: 'Advanced Pharmaceutics', expNo: 'Exp 01', name: 'Formulation & Characterization of Liposomal Drug Delivery', requiredChemicals: 'Soya Lecithin, Cholesterol, Chloroform, Phosphate Buffer' },
+    { id: 'curr-16', course: 'M.Pharm', year: '1', semester: '2', subject: 'Advanced Spectral Analysis', expNo: 'Exp 01', name: 'FTIR Spectral Interpretation & Structural Elucidation', requiredChemicals: 'KBr Pellets, Nujol, Sample Analytes' },
+
+    // PhD / Research
+    { id: 'curr-17', course: 'PhD', year: '1', semester: '1', subject: 'Molecular Research Lab', expNo: 'Exp 01', name: 'High-Throughput Cell Line Toxicity & Binding Assay', requiredChemicals: 'MTT Reagent, DMSO, PBS Buffer, Fetal Bovine Serum' },
   ],
   addCurriculumExperiment: (payload) => {
     const newItem = { id: `curr-${Date.now()}`, ...payload };
     set((state) => ({ curriculumExperiments: [newItem, ...state.curriculumExperiments] }));
     return newItem;
+  },
+  updateCurriculumExperiment: (id, updates) => {
+    set((state) => ({
+      curriculumExperiments: state.curriculumExperiments.map((item) =>
+        item.id === id ? { ...item, ...updates } : item
+      )
+    }));
+  },
+  deleteCurriculumExperiment: (id) => {
+    set((state) => ({
+      curriculumExperiments: state.curriculumExperiments.filter((item) => item.id !== id)
+    }));
   },
 
   // Broadcast System & Announcements
