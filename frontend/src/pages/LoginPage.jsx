@@ -32,15 +32,34 @@ export default function LoginPage() {
     }
   };
 
-  const previewStoreDashboard = () => {
-    setUser({
-      id: 'local-store-preview',
-      name: 'Store Manager Preview',
-      email: 'store.preview@local.test',
-      role: 'store_admin',
-      isApproved: true,
-    });
-    navigate('/store/dashboard');
+  const previewStudentDashboard = async () => {
+    const mockEmail = 'student.preview@rasayanflow.local';
+    const mockPassword = 'password123';
+    const authStore = useAuthStore.getState();
+
+    try {
+      // First try logging into the existing preview student account
+      await authStore.login({ email: mockEmail, password: mockPassword });
+      navigate('/');
+    } catch {
+      // If login fails (account doesn't exist yet), register it
+      try {
+        await authStore.register({ 
+          name: 'Student Preview', 
+          email: mockEmail, 
+          password: mockPassword, 
+          role: 'student',
+          rollNumber: '0832PH211001',
+          course: 'B.Pharm',
+          year: '1',
+          semester: '1'
+        });
+        await authStore.login({ email: mockEmail, password: mockPassword });
+        navigate('/');
+      } catch (err) {
+        setError('Preview student failed: ' + (authStore.error || err.message));
+      }
+    }
   };
 
   return (
@@ -67,8 +86,8 @@ export default function LoginPage() {
             </div>
           )}
           <Button type='submit' className='w-full'>Sign in</Button>
-          <Button type='button' variant='outline' className='w-full' onClick={previewStoreDashboard}>
-            Preview Store Manager
+          <Button type='button' variant='outline' className='w-full' onClick={previewStudentDashboard}>
+            Preview Student
           </Button>
         </form>
         <p className='mt-4 text-center text-sm text-[#71805a] dark:text-[#c5d0b5]'>
