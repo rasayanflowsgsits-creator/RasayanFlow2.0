@@ -923,10 +923,10 @@ export default function SuperAdminDashboard() {
                   key={tab.id}
                   type='button'
                   onClick={() => setUserRoleFilter(tab.id)}
-                  className={`flex flex-col justify-between rounded-xl border p-3 text-left transition-all duration-200 shadow-2xs ${
+                  className={`flex flex-col justify-between rounded-2xl border p-3.5 text-left transition-all duration-200 shadow-2xs ${
                     isActive
-                      ? 'bg-[#37412a] text-white border-[#37412a] shadow-sm dark:bg-[#e4e9d8] dark:text-[#20251a] dark:border-[#e4e9d8]'
-                      : 'bg-[#f8faee] text-[#37412a] border-[#d9e1ca] hover:bg-[#edf2e1] hover:border-[#b8c79f] dark:bg-[#1f241a] dark:text-[#e4e9d8] dark:border-[#3c452f]'
+                      ? 'bg-[#5c6e46] text-white border-2 border-[#4e5d35] shadow-md dark:bg-[#e4e9d8] dark:text-[#20251a] dark:border-[#e4e9d8]'
+                      : 'bg-[#fffef8] text-[#37412a] border-[#d9e1ca] hover:bg-[#f4f6ee] hover:border-[#87996c] dark:bg-[#1a1d16] dark:text-[#e4e9d8] dark:border-[#414a33]'
                   }`}
                 >
                   <div className='flex items-center justify-between w-full gap-1'>
@@ -935,11 +935,11 @@ export default function SuperAdminDashboard() {
                     }`}>
                       {tab.label}
                     </span>
-                    <IconComp size={14} className={isActive ? 'text-white dark:text-[#20251a] shrink-0' : 'text-[#5c6e46] dark:text-[#a5b48b] shrink-0'} />
+                    <IconComp size={15} className={isActive ? 'text-white dark:text-[#20251a] shrink-0' : 'text-[#5c6e46] dark:text-[#a5b48b] shrink-0'} />
                   </div>
 
-                  <div className='mt-2 flex items-baseline justify-between'>
-                    <span className={`text-xl font-extrabold tracking-tight ${
+                  <div className='mt-2.5 flex items-baseline justify-between'>
+                    <span className={`text-2xl font-black tracking-tight ${
                       isActive ? 'text-white dark:text-[#20251a]' : 'text-[#37412a] dark:text-[#e4e9d8]'
                     }`}>
                       {tab.count}
