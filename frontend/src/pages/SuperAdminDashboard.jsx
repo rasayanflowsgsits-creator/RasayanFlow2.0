@@ -907,7 +907,7 @@ export default function SuperAdminDashboard() {
           </div>
 
           {/* Role Metric Tab Cards Bar */}
-          <div className='grid gap-3 sm:grid-cols-3 lg:grid-cols-6'>
+          <div className='grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6'>
             {[
               { id: 'all', label: 'All Accounts', count: users.length, icon: Users },
               { id: 'student', label: 'Students', count: students.length, icon: Users },
@@ -923,32 +923,39 @@ export default function SuperAdminDashboard() {
                   key={tab.id}
                   type='button'
                   onClick={() => setUserRoleFilter(tab.id)}
-                  className={`flex flex-col justify-between rounded-2xl border p-3.5 text-left transition-all duration-200 shadow-2xs ${
+                  className={`flex flex-col justify-between rounded-2xl border p-4 sm:p-5 text-left transition-all duration-200 shadow-sm hover:shadow-md ${
                     isActive
                       ? 'bg-[#5c6e46] text-white border-2 border-[#4e5d35] shadow-md dark:bg-[#e4e9d8] dark:text-[#20251a] dark:border-[#e4e9d8]'
                       : 'bg-[#fffef8] text-[#37412a] border-[#d9e1ca] hover:bg-[#f4f6ee] hover:border-[#87996c] dark:bg-[#1a1d16] dark:text-[#e4e9d8] dark:border-[#414a33]'
                   }`}
                 >
-                  <div className='flex items-center justify-between w-full gap-1'>
-                    <span className={`text-[12px] font-bold tracking-tight truncate ${
-                      isActive ? 'text-white dark:text-[#20251a]' : 'text-[#4e5d35] dark:text-[#c5d0b5]'
+                  <div className='flex items-center justify-between w-full gap-2 mb-3'>
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors ${
+                      isActive
+                        ? 'bg-white/20 text-white dark:bg-[#20251a]/20 dark:text-[#20251a]'
+                        : 'bg-[#f4f6ee] text-[#5c6e46] dark:bg-[#2a3121] dark:text-[#a5b48b]'
                     }`}>
-                      {tab.label}
-                    </span>
-                    <IconComp size={15} className={isActive ? 'text-white dark:text-[#20251a] shrink-0' : 'text-[#5c6e46] dark:text-[#a5b48b] shrink-0'} />
-                  </div>
+                      <IconComp size={22} />
+                    </div>
 
-                  <div className='mt-2.5 flex items-baseline justify-between'>
-                    <span className={`text-2xl font-black tracking-tight ${
-                      isActive ? 'text-white dark:text-[#20251a]' : 'text-[#37412a] dark:text-[#e4e9d8]'
-                    }`}>
-                      {tab.count}
-                    </span>
                     {tab.hasPending && (
-                      <span className='rounded-full bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.5 leading-none animate-pulse'>
+                      <span className='rounded-full bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 leading-none animate-pulse shadow-xs'>
                         NEW
                       </span>
                     )}
+                  </div>
+
+                  <div>
+                    <p className={`text-3xl font-black tracking-tight ${
+                      isActive ? 'text-white dark:text-[#20251a]' : 'text-[#37412a] dark:text-[#e4e9d8]'
+                    }`}>
+                      {tab.count}
+                    </p>
+                    <p className={`text-xs font-bold uppercase tracking-wider mt-1 truncate ${
+                      isActive ? 'text-white/90 dark:text-[#20251a]/90' : 'text-[#71805a] dark:text-[#a5b48b]'
+                    }`}>
+                      {tab.label}
+                    </p>
                   </div>
                 </button>
               );
