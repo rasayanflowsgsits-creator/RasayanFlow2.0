@@ -14,7 +14,11 @@ import {
   AlertTriangle,
   KeyRound,
   FileText,
-  Bell
+  Bell,
+  FlaskConical,
+  BookOpen,
+  FileSpreadsheet,
+  Megaphone
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import useAuthStore from "../../store/authStore";
@@ -25,7 +29,11 @@ const linksMap = {
     { to: "/", label: "Overview", icon: LayoutDashboard },
     { to: "/labs", label: "Labs Hub", icon: MapPin },
     { to: "/approval", label: "Users & Approvals", icon: Users },
+    { to: "/master-chemicals", label: "Chemical Master", icon: FlaskConical },
+    { to: "/curriculum", label: "Curriculum & Practicals", icon: BookOpen },
     { to: "/store-oversight", label: "Store Oversight", icon: Store },
+    { to: "/compliance", label: "Compliance & Reports", icon: FileSpreadsheet },
+    { to: "/system-broadcast", label: "Broadcast & Flags", icon: Megaphone },
     { to: "/activity", label: "Audit Logs", icon: History },
     { to: "/settings", label: "Security & Settings", icon: KeyRound },
     { to: "/about", label: "About Us", icon: Info },
