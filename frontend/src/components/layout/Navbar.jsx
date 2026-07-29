@@ -94,6 +94,20 @@ export default function Navbar({ onToggleSidebar, isDark, toggleTheme }) {
 
   return (
     <header className='sticky top-0 z-30 border-b border-[#d9e1ca] bg-[#fffef8]/92 backdrop-blur-md dark:border-[#3c452f] dark:bg-[#1c2117]/92'>
+      {user?.isPreview && (
+        <div className="bg-[#5c6e46] px-4 py-2 text-center text-xs font-semibold text-white flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-emerald-400/20 px-2 py-0.5 text-[10px] uppercase tracking-wider text-emerald-200">Interactive Preview</span>
+            <span>You are viewing Student Preview Mode (B.Pharm • Year 1 • Sem 1)</span>
+          </div>
+          <button 
+            onClick={logout}
+            className="flex items-center gap-1 rounded-lg bg-white/20 px-3 py-1 text-xs font-bold hover:bg-white/30 transition-colors"
+          >
+            <LogOut size={13} /> Exit Preview / Back to Login
+          </button>
+        </div>
+      )}
       <div className='mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8'>
         <div className='flex items-center gap-3'>
           <button className='rounded-lg p-2 text-[#71805a] hover:bg-[#f4f6ee] dark:text-[#c5d0b5] dark:hover:bg-[#28301f]' onClick={onToggleSidebar}>
