@@ -677,30 +677,29 @@ export default function SuperAdminDashboard() {
   return (
     <div className='space-y-6 pb-12 animate-in fade-in'>
       
-      {/* Top Header Title */}
-      <div className='flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b border-[#d9e1ca] pb-4 dark:border-[#3c452f]'>
-        <div>
-          <h1 className='text-2xl font-bold text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2'>
-            <ShieldCheck className='h-7 w-7 text-[#5c6e46] dark:text-[#a5b48b]' /> Super Admin Command Center
-          </h1>
-          <p className='text-sm text-[#71805a] dark:text-[#a5b48b] mt-1'>
-            Comprehensive institutional governance, chemical master matrix, syllabus practicals, and security control.
-          </p>
-        </div>
-
-        <div className='flex flex-wrap items-center gap-2'>
-          <Button variant='primary' onClick={() => setCreateOpen(true)} className='text-xs px-3 py-2'>
-            <Plus size={14} className='mr-1.5' /> New Lab
-          </Button>
-          <Button variant='outline' onClick={() => setBroadcastModalOpen(true)} className='text-xs px-3 py-2'>
-            <Megaphone size={14} className='mr-1.5' /> Post Announcement
-          </Button>
-        </div>
-      </div>
-
       {/* SECTION 1: OVERVIEW */}
       {activeTab === 'overview' && (
         <div className='space-y-6 animate-in fade-in'>
+          {/* Top Header Title - Shown only in Overview */}
+          <div className='flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b border-[#d9e1ca] pb-4 dark:border-[#3c452f]'>
+            <div>
+              <h1 className='text-2xl font-bold text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2'>
+                <ShieldCheck className='h-7 w-7 text-[#5c6e46] dark:text-[#a5b48b]' /> Super Admin Command Center
+              </h1>
+              <p className='text-sm text-[#71805a] dark:text-[#a5b48b] mt-1'>
+                Comprehensive institutional governance, chemical master matrix, syllabus practicals, and security control.
+              </p>
+            </div>
+
+            <div className='flex flex-wrap items-center gap-2'>
+              <Button variant='primary' onClick={() => setCreateOpen(true)} className='text-xs px-3 py-2 font-bold'>
+                <Plus size={14} className='mr-1.5' /> New Lab
+              </Button>
+              <Button variant='outline' onClick={() => setBroadcastModalOpen(true)} className='text-xs px-3 py-2 font-bold'>
+                <Megaphone size={14} className='mr-1.5' /> Post Announcement
+              </Button>
+            </div>
+          </div>
           <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
             <Card className='border-l-4 border-l-[#5c6e46] bg-white dark:bg-[#20251a]'>
               <div className='flex items-center justify-between'>
