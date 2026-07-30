@@ -884,27 +884,57 @@ export default function SuperAdminDashboard() {
             </div>
           </div>
 
-          {/* Filter Pills */}
-          <div className='flex overflow-x-auto gap-2 pb-1'>
+          {/* Aesthetic KPI Filter Cards Bar for Labs Hub */}
+          <div className='grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-5'>
             {[
-              { id: 'all', label: `All Labs (${labs.length})` },
-              { id: 'B.Pharm', label: 'B.Pharm Labs' },
-              { id: 'M.Pharm', label: 'M.Pharm Labs' },
-              { id: 'PhD', label: 'PhD Research Labs' },
-              { id: 'unassigned', label: `⚠️ Unassigned Admin (${labs.filter(l => !l.admin || l.admin === 'Unassigned').length})` },
-            ].map((filter) => (
-              <button
-                key={filter.id}
-                onClick={() => setLabCourseFilter(filter.id)}
-                className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all whitespace-nowrap ${
-                  labCourseFilter === filter.id
-                    ? 'bg-[#37412a] text-white dark:bg-[#e4e9d8] dark:text-[#20251a]'
-                    : 'bg-[#f4f6ee] text-[#5c6e46] hover:bg-[#e8efd9] dark:bg-[#20251a] dark:text-[#c5d0b5]'
-                }`}
-              >
-                {filter.label}
-              </button>
-            ))}
+              { id: 'all', label: 'All Labs', count: labs.length, icon: Warehouse },
+              { id: 'B.Pharm', label: 'B.Pharm Labs', count: labs.filter(l => (l.courseType || 'B.Pharm') === 'B.Pharm').length, icon: BookOpen },
+              { id: 'M.Pharm', label: 'M.Pharm Labs', count: labs.filter(l => l.courseType === 'M.Pharm').length, icon: FlaskConical },
+              { id: 'PhD', label: 'PhD Research', count: labs.filter(l => l.courseType === 'PhD').length, icon: Layers },
+              { id: 'unassigned', label: 'Unassigned Admin', count: labs.filter(l => !l.admin || l.admin === 'Unassigned').length, icon: AlertTriangle, hasAlert: true },
+            ].map((card) => {
+              const IconComp = card.icon;
+              const isActive = labCourseFilter === card.id;
+              const isAlert = card.hasAlert && card.count > 0;
+              return (
+                <button
+                  key={card.id}
+                  type='button'
+                  onClick={() => setLabCourseFilter(card.id)}
+                  className={`flex items-center justify-between rounded-2xl border p-3.5 text-left transition-all duration-200 shadow-2xs hover:shadow-sm ${
+                    isActive
+                      ? 'bg-[#5c6e46] text-white border-2 border-[#4e5d35] shadow-sm dark:bg-[#e4e9d8] dark:text-[#20251a] dark:border-[#e4e9d8]'
+                      : 'bg-[#fffef8] text-[#37412a] border-[#d9e1ca] hover:bg-[#f4f6ee] hover:border-[#87996c] dark:bg-[#1a1d16] dark:text-[#e4e9d8] dark:border-[#414a33]'
+                  }`}
+                >
+                  <div className='flex items-center gap-3 min-w-0'>
+                    {/* Icon Logo Container */}
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors ${
+                      isActive
+                        ? 'bg-white/20 text-white dark:bg-[#20251a]/20 dark:text-[#20251a]'
+                        : isAlert
+                        ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400'
+                        : 'bg-[#f4f6ee] text-[#5c6e46] dark:bg-[#2a3121] dark:text-[#a5b48b]'
+                    }`}>
+                      <IconComp size={20} />
+                    </div>
+
+                    <div className='min-w-0'>
+                      <p className={`text-lg font-black tracking-tight leading-tight ${
+                        isActive ? 'text-white dark:text-[#20251a]' : 'text-[#37412a] dark:text-[#e4e9d8]'
+                      }`}>
+                        {card.count}
+                      </p>
+                      <p className={`text-[11px] font-bold uppercase tracking-wider truncate mt-0.5 ${
+                        isActive ? 'text-white/90 dark:text-[#20251a]/90' : 'text-[#71805a] dark:text-[#a5b48b]'
+                      }`}>
+                        {card.label}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
 
           {/* GRID VIEW */}
