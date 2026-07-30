@@ -113,6 +113,7 @@ export default function SuperAdminDashboard() {
   // Curriculum State & Navigation
   const [currCourseFilter, setCurrCourseFilter] = useState('B.Pharm');
   const [currSemFilter, setCurrSemFilter] = useState('1');
+  const [currSubjectFilter, setCurrSubjectFilter] = useState('all');
   const [currSearch, setCurrSearch] = useState('');
   const [editCurrModalOpen, setEditCurrModalOpen] = useState(false);
   const [editingExp, setEditingExp] = useState(null);
@@ -121,6 +122,43 @@ export default function SuperAdminDashboard() {
   const debouncedUserSearch = useDebounce(userSearch, 300);
   const debouncedMatrixSearch = useDebounce(matrixSearch, 300);
   const debouncedCurrSearch = useDebounce(currSearch, 300);
+
+  // Available subjects for the active course and semester
+  const availableSubjects = useMemo(() => {
+    const list = curriculumExperiments
+      .filter((e) => (e.course || 'B.Pharm') === currCourseFilter && (currSemFilter === 'all' || String(e.semester) === String(currSemFilter)))
+      .map((e) => e.subject || 'General Practical Lab');
+    return Array.from(new Set(list));
+  }, [curriculumExperiments, currCourseFilter, currSemFilter]);
+
+  // Filtered Curriculum Experiments for Active Course, Semester, Subject & Search
+  const filteredCurriculumExperiments = useMemo(() => {
+    let result = curriculumExperiments.filter((e) => (e.course || 'B.Pharm') === currCourseFilter);
+    if (currSemFilter !== 'all') {
+      result = result.filter((e) => String(e.semester) === String(currSemFilter));
+    }
+    if (currSubjectFilter !== 'all') {
+      result = result.filter((e) => (e.subject || 'General Practical Lab') === currSubjectFilter);
+    }
+    const query = debouncedCurrSearch.trim().toLowerCase();
+    if (query) {
+      result = result.filter((e) =>
+        [e.name, e.subject, e.expNo, e.requiredChemicals].filter(Boolean).some((v) => v.toLowerCase().includes(query))
+      );
+    }
+    return result;
+  }, [curriculumExperiments, currCourseFilter, currSemFilter, currSubjectFilter, debouncedCurrSearch]);
+
+  // Grouped Curriculum Experiments by Subject Lab
+  const groupedCurriculumBySubject = useMemo(() => {
+    const map = {};
+    filteredCurriculumExperiments.forEach((exp) => {
+      const subj = exp.subject || 'General Practical Lab';
+      if (!map[subj]) map[subj] = [];
+      map[subj].push(exp);
+    });
+    return map;
+  }, [filteredCurriculumExperiments]);
 
   useEffect(() => {
     fetchLabs();
@@ -192,32 +230,6 @@ export default function SuperAdminDashboard() {
     if (!query) return masterChemicals;
     return masterChemicals.filter((m) => [m.name, m.casNumber, m.hazardClass, m.category].filter(Boolean).some((val) => val.toLowerCase().includes(query)));
   }, [masterChemicals, debouncedMatrixSearch]);
-
-  // Filtered Curriculum Experiments for Active Course, Semester & Search
-  const filteredCurriculumExperiments = useMemo(() => {
-    let result = curriculumExperiments.filter((e) => (e.course || 'B.Pharm') === currCourseFilter);
-    if (currSemFilter !== 'all') {
-      result = result.filter((e) => String(e.semester) === String(currSemFilter));
-    }
-    const query = debouncedCurrSearch.trim().toLowerCase();
-    if (query) {
-      result = result.filter((e) =>
-        [e.name, e.subject, e.expNo, e.requiredChemicals].filter(Boolean).some((v) => v.toLowerCase().includes(query))
-      );
-    }
-    return result;
-  }, [curriculumExperiments, currCourseFilter, currSemFilter, debouncedCurrSearch]);
-
-  // Grouped Curriculum Experiments by Subject Lab
-  const groupedCurriculumBySubject = useMemo(() => {
-    const map = {};
-    filteredCurriculumExperiments.forEach((exp) => {
-      const subj = exp.subject || 'General Practical Lab';
-      if (!map[subj]) map[subj] = [];
-      map[subj].push(exp);
-    });
-    return map;
-  }, [filteredCurriculumExperiments]);
 
   const handleOpenEditExp = (exp) => {
     setEditingExp({ ...exp });
@@ -1202,7 +1214,10 @@ export default function SuperAdminDashboard() {
                 <button
                   key={sem}
                   type='button'
-                  onClick={() => setCurrSemFilter(sem)}
+                  onClick={() => {
+                    setCurrSemFilter(sem);
+                    setCurrSubjectFilter('all');
+                  }}
                   className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
                     isActive
                       ? 'bg-[#37412a] text-white shadow-xs dark:bg-[#e4e9d8] dark:text-[#20251a]'
@@ -1221,15 +1236,67 @@ export default function SuperAdminDashboard() {
             })}
           </div>
 
+          {/* Level 3: Subject Sub-Tabs Filter Bar (Solves Clutter for 15+ Experiments!) */}
+          {availableSubjects.length > 0 && (
+            <div className='flex flex-wrap items-center gap-2 rounded-2xl border border-[#d9e1ca] bg-[#fffef8] p-3 dark:border-[#414a33] dark:bg-[#20251a]'>
+              <span className='text-xs font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b] mr-1 flex items-center gap-1'>
+                <FlaskConical size={14} className='text-[#5c6e46]' /> Subject Labs:
+              </span>
+
+              <button
+                type='button'
+                onClick={() => setCurrSubjectFilter('all')}
+                className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
+                  currSubjectFilter === 'all'
+                    ? 'bg-[#5c6e46] text-white shadow-sm dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                    : 'bg-white text-[#37412a] border border-[#d9e1ca] hover:bg-[#f4f6ee] dark:bg-[#1a1d16] dark:text-[#e4e9d8] dark:border-[#414a33]'
+                }`}
+              >
+                <span>All Subjects</span>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                  currSubjectFilter === 'all' ? 'bg-white/20 text-white dark:bg-[#20251a]/20 dark:text-[#20251a]' : 'bg-[#e8efd9] text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'
+                }`}>
+                  {curriculumExperiments.filter(e => (e.course || 'B.Pharm') === currCourseFilter && (currSemFilter === 'all' || String(e.semester) === String(currSemFilter))).length}
+                </span>
+              </button>
+
+              {availableSubjects.map((subj) => {
+                const isActive = currSubjectFilter === subj;
+                const subjCount = curriculumExperiments.filter(
+                  e => (e.course || 'B.Pharm') === currCourseFilter && (currSemFilter === 'all' || String(e.semester) === String(currSemFilter)) && (e.subject || 'General Practical Lab') === subj
+                ).length;
+                return (
+                  <button
+                    key={subj}
+                    type='button'
+                    onClick={() => setCurrSubjectFilter(subj)}
+                    className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
+                      isActive
+                        ? 'bg-[#5c6e46] text-white shadow-sm dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                        : 'bg-white text-[#37412a] border border-[#d9e1ca] hover:bg-[#f4f6ee] dark:bg-[#1a1d16] dark:text-[#e4e9d8] dark:border-[#414a33]'
+                    }`}
+                  >
+                    <span>{subj}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                      isActive ? 'bg-white/20 text-white dark:bg-[#20251a]/20 dark:text-[#20251a]' : 'bg-[#e8efd9] text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'
+                    }`}>
+                      {subjCount}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {/* Subject-Grouped Experiment Cards / Tables */}
           {filteredCurriculumExperiments.length === 0 ? (
             <div className='rounded-2xl border border-dashed border-[#d9e1ca] bg-[#fffef8] p-8 text-center dark:border-[#414a33] dark:bg-[#20251a]'>
               <BookOpen size={36} className='mx-auto text-[#87996c] mb-2' />
-              <h4 className='text-base font-bold text-[#37412a] dark:text-[#e4e9d8]'>No Practical Experiments Found</h4>
+              <h4 className='text-lg font-bold text-[#37412a] dark:text-[#e4e9d8]'>No Practical Experiments Found</h4>
               <p className='text-xs text-[#71805a] dark:text-[#a5b48b] max-w-md mx-auto mt-1'>
-                No experiment templates configured for {currCourseFilter} {currSemFilter !== 'all' ? `Semester ${currSemFilter}` : ''}. Click below to add a new experiment template.
+                No experiment templates configured for {currCourseFilter} {currSemFilter !== 'all' ? `Semester ${currSemFilter}` : ''} {currSubjectFilter !== 'all' ? `(${currSubjectFilter})` : ''}. Click below to add a new experiment template.
               </p>
-              <Button onClick={() => setCurriculumModalOpen(true)} className='text-xs px-4 py-2 mt-4'>
+              <Button onClick={() => setCurriculumModalOpen(true)} className='text-xs px-4 py-2 mt-4 font-bold'>
                 <Plus size={14} className='mr-1.5' /> Add Experiment Template
               </Button>
             </div>
@@ -1237,12 +1304,12 @@ export default function SuperAdminDashboard() {
             <div className='space-y-6'>
               {Object.entries(groupedCurriculumBySubject).map(([subjectName, exps]) => (
                 <div key={subjectName} className='rounded-2xl border border-[#d9e1ca] bg-white overflow-hidden shadow-sm dark:border-[#414a33] dark:bg-[#20251a]'>
-                  <div className='flex items-center justify-between border-b border-[#d9e1ca] bg-[#f8faee] px-4 py-3 dark:border-[#414a33] dark:bg-[#1a1d16]'>
-                    <div className='flex items-center gap-2'>
-                      <FlaskConical size={16} className='text-[#5c6e46]' />
-                      <h4 className='text-sm font-bold text-[#37412a] dark:text-[#e4e9d8]'>{subjectName}</h4>
+                  <div className='flex items-center justify-between border-b border-[#d9e1ca] bg-[#f8faee] px-4 py-3.5 dark:border-[#414a33] dark:bg-[#1a1d16]'>
+                    <div className='flex items-center gap-2.5'>
+                      <FlaskConical size={18} className='text-[#5c6e46]' />
+                      <h4 className='text-base font-bold text-[#37412a] dark:text-[#e4e9d8]'>{subjectName}</h4>
                     </div>
-                    <span className='rounded-full bg-[#e8efd9] px-2.5 py-0.5 text-xs font-extrabold text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'>
+                    <span className='rounded-full bg-[#e8efd9] px-3 py-1 text-xs font-extrabold text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'>
                       {exps.length} {exps.length === 1 ? 'Practical' : 'Practicals'}
                     </span>
                   </div>
@@ -1253,7 +1320,7 @@ export default function SuperAdminDashboard() {
                         key: 'expNo',
                         label: 'Exp No',
                         render: (row) => (
-                          <span className='inline-flex items-center rounded-md bg-[#f4f6ee] px-2.5 py-1 text-xs font-mono font-bold text-[#5c6e46] dark:bg-[#2a3121] dark:text-[#c5d0b5]'>
+                          <span className='inline-flex items-center rounded-lg bg-[#f4f6ee] px-3 py-1 text-xs font-mono font-black text-[#5c6e46] border border-[#d9e1ca] dark:bg-[#2a3121] dark:text-[#c5d0b5] dark:border-[#414a33]'>
                             {row.expNo || 'Exp 01'}
                           </span>
                         )
@@ -1263,8 +1330,8 @@ export default function SuperAdminDashboard() {
                         label: 'Practical Experiment Title',
                         render: (row) => (
                           <div>
-                            <p className='text-sm font-bold text-[#37412a] dark:text-[#e4e9d8]'>{row.name}</p>
-                            <p className='text-[11px] text-[#71805a] dark:text-[#a5b48b] mt-0.5'>
+                            <p className='text-base font-bold text-[#37412a] dark:text-[#e4e9d8] leading-snug'>{row.name}</p>
+                            <p className='text-xs font-semibold text-[#71805a] dark:text-[#a5b48b] mt-0.5'>
                               {row.course} • Yr {row.year} • Sem {row.semester}
                             </p>
                           </div>
@@ -1277,7 +1344,7 @@ export default function SuperAdminDashboard() {
                           <div className='flex flex-wrap items-center gap-1.5 max-w-xl'>
                             {row.requiredChemicals ? (
                               row.requiredChemicals.split(',').map((chem, idx) => (
-                                <span key={idx} className='inline-flex items-center rounded-md bg-[#e4eed3] px-2 py-0.5 text-xs font-medium text-[#2d3d17] dark:bg-[#2e3722] dark:text-[#eef4e8]'>
+                                <span key={idx} className='inline-flex items-center rounded-md bg-[#e4eed3] px-2.5 py-1 text-xs font-semibold text-[#2d3d17] border border-[#c5d6aa] dark:bg-[#2e3722] dark:text-[#eef4e8] dark:border-[#414a33]'>
                                   {chem.trim()}
                                 </span>
                               ))
@@ -1295,16 +1362,16 @@ export default function SuperAdminDashboard() {
                             <Button
                               variant='outline'
                               onClick={() => handleOpenEditExp(row)}
-                              className='text-xs px-2.5 py-1 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] dark:border-[#a8be8a] dark:text-[#a8be8a]'
+                              className='text-xs px-3 py-1.5 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] font-bold dark:border-[#a8be8a] dark:text-[#a8be8a]'
                             >
-                              <Edit3 size={13} className='mr-1' /> Edit
+                              <Edit3 size={14} className='mr-1' /> Edit
                             </Button>
                             <Button
                               variant='outline'
                               onClick={() => handleDeleteExp(row.id, row.name)}
-                              className='text-xs px-2.5 py-1 border-rose-300 text-rose-700 hover:bg-rose-50 dark:border-rose-800 dark:text-rose-400'
+                              className='text-xs px-3 py-1.5 border-rose-300 text-rose-700 hover:bg-rose-50 font-bold dark:border-rose-800 dark:text-rose-400'
                             >
-                              <Trash2 size={13} className='mr-1' /> Delete
+                              <Trash2 size={14} className='mr-1' /> Delete
                             </Button>
                           </div>
                         )
