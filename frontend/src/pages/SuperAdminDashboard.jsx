@@ -200,6 +200,28 @@ export default function SuperAdminDashboard() {
     return result.map((l) => ({ ...l, id: l._id || l.id, admin: l.admin || 'Unassigned' }));
   }, [labs, labCourseFilter, debouncedLabSearch]);
 
+  // Group labs by Year & Semester for structured academic layout
+  const groupedLabs = useMemo(() => {
+    const groups = {};
+
+    filteredLabs.forEach((lab) => {
+      let key = 'General & Unassigned Batch Labs';
+      if (lab.year && lab.semester) {
+        const yearSuffix = Number(lab.year) === 1 ? '1st' : Number(lab.year) === 2 ? '2nd' : Number(lab.year) === 3 ? '3rd' : `${lab.year}th`;
+        key = `${yearSuffix} Year • Semester ${lab.semester}`;
+      } else if (lab.semester) {
+        key = `Semester ${lab.semester}`;
+      }
+
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+      groups[key].push(lab);
+    });
+
+    return groups;
+  }, [filteredLabs]);
+
   // Filtered Users Directory with resolved assigned lab
   const filteredUsers = useMemo(() => {
     let result = users;
@@ -937,75 +959,93 @@ export default function SuperAdminDashboard() {
             })}
           </div>
 
-          {/* GRID VIEW */}
+          {/* GRID VIEW WITH ACADEMIC YEAR & SEMESTER GROUPINGS */}
           {labViewMode === 'grid' ? (
-            <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-              {filteredLabs.length === 0 ? (
-                <div className='col-span-full py-16 text-center border-2 border-dashed border-[#d9e1ca] rounded-2xl dark:border-[#414a33]'>
-                  <Warehouse className='mx-auto h-12 w-12 text-[#87996c] mb-2' />
-                  <h4 className='font-bold text-[#37412a] dark:text-[#e4e9d8]'>No Labs Found</h4>
-                  <p className='text-xs text-[#71805a] dark:text-[#a5b48b] mt-1'>Try adjusting your search query or filter criteria.</p>
-                </div>
-              ) : (
-                filteredLabs.map((lab) => {
-                  const hasAdmin = lab.admin && lab.admin !== 'Unassigned';
-                  return (
-                    <div
-                      key={lab.id}
-                      className='group flex flex-col justify-between rounded-2xl border border-[#d9e1ca] bg-white p-5 hover:border-[#87996c] hover:shadow-md transition-all dark:border-[#414a33] dark:bg-[#20251a]'
-                    >
-                      <div>
-                        {/* Top Badge Header */}
-                        <div className='flex items-start justify-between gap-2 mb-3'>
-                          <span className='inline-flex items-center gap-1.5 rounded-lg bg-[#f4f6ee] px-2.5 py-1 text-xs font-mono font-bold text-[#5c6e46] dark:bg-[#2a3121] dark:text-[#c5d0b5]'>
-                            <Warehouse size={14} /> {lab.labCode || lab.code || 'LAB'}
-                          </span>
-                          <span className='rounded-full bg-[#e8efd9] px-2.5 py-0.5 text-[11px] font-bold text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'>
-                            {lab.courseType || 'B.Pharm'}
-                          </span>
-                        </div>
-
-                        {/* Title */}
-                        <h4 className='text-base font-bold text-[#37412a] dark:text-[#e4e9d8] group-hover:text-[#5c6e46] transition-colors'>
-                          {lab.name || lab.labName}
+            filteredLabs.length === 0 ? (
+              <div className='py-16 text-center border-2 border-dashed border-[#d9e1ca] rounded-2xl dark:border-[#414a33] bg-[#fffef8] dark:bg-[#20251a]'>
+                <Warehouse className='mx-auto h-12 w-12 text-[#87996c] mb-2' />
+                <h4 className='font-bold text-[#37412a] dark:text-[#e4e9d8]'>No Labs Found</h4>
+                <p className='text-xs text-[#71805a] dark:text-[#a5b48b] mt-1'>Try adjusting your search query or filter criteria.</p>
+              </div>
+            ) : (
+              <div className='space-y-6'>
+                {Object.entries(groupedLabs).map(([groupTitle, labsInGroup]) => (
+                  <div key={groupTitle} className='space-y-3'>
+                    {/* Academic Semester Section Header Divider */}
+                    <div className='flex items-center justify-between border-b border-[#d9e1ca] pb-2 dark:border-[#414a33]'>
+                      <div className='flex items-center gap-2'>
+                        <FolderOpen size={16} className='text-[#5c6e46] dark:text-[#a8be8a]' />
+                        <h4 className='text-sm font-extrabold tracking-tight text-[#37412a] dark:text-[#e4e9d8]'>
+                          {groupTitle}
                         </h4>
-                        
-                        <p className='text-xs text-[#71805a] dark:text-[#a5b48b] mt-1'>
-                          {lab.department ? `${lab.department} Department` : 'Pharmacy Department'}
-                        </p>
-
-                        {/* Batch / Semester Info */}
-                        <div className='mt-3 flex flex-wrap items-center gap-2'>
-                          <span className='rounded-md bg-[#f4f5eb] px-2 py-0.5 text-[11px] font-medium text-[#5c6e46] dark:bg-[#28301f] dark:text-[#c5d0b5]'>
-                            {lab.year && lab.semester ? `Year ${lab.year} • Semester ${lab.semester}` : 'All Semester Batches'}
-                          </span>
-                        </div>
                       </div>
-
-                      {/* Admin Footer Bar */}
-                      <div className='mt-5 border-t border-[#f0f4e8] pt-3 dark:border-[#2a3121] flex items-center justify-between'>
-                        <div className='flex items-center gap-2 min-w-0'>
-                          <div className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-xs font-bold ${
-                            hasAdmin ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300'
-                          }`}>
-                            {hasAdmin ? lab.admin.charAt(0).toUpperCase() : '?'}
-                          </div>
-                          <div className='min-w-0'>
-                            <p className={`text-xs font-semibold truncate ${hasAdmin ? 'text-[#37412a] dark:text-[#e4e9d8]' : 'text-amber-700 dark:text-amber-400 font-bold'}`}>
-                              {hasAdmin ? lab.admin : 'Unassigned Admin'}
-                            </p>
-                          </div>
-                        </div>
-
-                        <Button variant='outline' onClick={() => openManageModal(lab)} className='text-xs px-3 py-1 shrink-0'>
-                          Manage
-                        </Button>
-                      </div>
+                      <span className='rounded-full bg-[#e8efd9] px-2.5 py-0.5 text-[11px] font-black text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'>
+                        {labsInGroup.length} {labsInGroup.length === 1 ? 'Lab' : 'Labs'}
+                      </span>
                     </div>
-                  );
-                })
-              )}
-            </div>
+
+                    {/* Compact, High-Density 4-Column Responsive Grid */}
+                    <div className='grid gap-3.5 grid-cols-1 md:grid-cols-3 lg:grid-cols-4'>
+                      {labsInGroup.map((lab) => {
+                        const hasAdmin = lab.admin && lab.admin !== 'Unassigned';
+                        return (
+                          <div
+                            key={lab.id}
+                            className='group flex flex-col justify-between rounded-xl border border-[#d9e1ca] bg-white p-3.5 hover:border-[#5c6e46] hover:shadow-md transition-all duration-200 dark:border-[#414a33] dark:bg-[#20251a]'
+                          >
+                            <div>
+                              {/* Top Compact Header Badges */}
+                              <div className='flex items-center justify-between gap-1.5 mb-2'>
+                                <span className='inline-flex items-center gap-1 rounded-md bg-[#f4f6ee] px-2 py-0.5 text-[11px] font-mono font-bold text-[#5c6e46] border border-[#d9e1ca] dark:bg-[#2a3121] dark:text-[#c5d0b5] dark:border-[#414a33]'>
+                                  <Warehouse size={12} /> {lab.labCode || lab.code || 'LAB'}
+                                </span>
+                                <span className='rounded-md bg-[#e8efd9] px-2 py-0.5 text-[10px] font-bold text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'>
+                                  {lab.courseType || 'B.Pharm'}
+                                </span>
+                              </div>
+
+                              {/* Lab Title */}
+                              <h5 className='text-sm font-extrabold text-[#37412a] dark:text-[#e4e9d8] group-hover:text-[#5c6e46] transition-colors leading-snug truncate' title={lab.name || lab.labName}>
+                                {lab.name || lab.labName}
+                              </h5>
+                              
+                              <p className='text-[11px] text-[#71805a] dark:text-[#a5b48b] truncate mt-0.5'>
+                                {lab.department ? `${lab.department} Dept` : 'Pharmacy Dept'}
+                              </p>
+
+                              {/* Batch / Semester Info */}
+                              <div className='mt-2 flex items-center gap-1.5'>
+                                <span className='rounded bg-[#f4f5eb] px-1.5 py-0.5 text-[10px] font-semibold text-[#5c6e46] dark:bg-[#28301f] dark:text-[#c5d0b5] truncate'>
+                                  {lab.year && lab.semester ? `Yr ${lab.year} • Sem ${lab.semester}` : 'All Semesters'}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Admin Footer Bar */}
+                            <div className='mt-3 pt-2.5 border-t border-[#f0f4e8] dark:border-[#2a3121] flex items-center justify-between gap-1'>
+                              <div className='flex items-center gap-1.5 min-w-0 pr-1'>
+                                <div className={`h-5 w-5 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                                  hasAdmin ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300'
+                                }`}>
+                                  {hasAdmin ? lab.admin.charAt(0).toUpperCase() : '?'}
+                                </div>
+                                <p className={`text-[11px] font-semibold truncate ${hasAdmin ? 'text-[#37412a] dark:text-[#e4e9d8]' : 'text-amber-700 dark:text-amber-400 font-bold'}`} title={hasAdmin ? lab.admin : 'Unassigned Admin'}>
+                                  {hasAdmin ? lab.admin : 'Unassigned'}
+                                </p>
+                              </div>
+
+                              <Button variant='outline' onClick={() => openManageModal(lab)} className='text-[11px] px-2 py-0.5 h-7 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] font-bold dark:border-[#a8be8a] dark:text-[#a8be8a] shrink-0'>
+                                Manage
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
           ) : (
             /* TABLE VIEW */
             <Table headers={labHeaders} rows={filteredLabs} />
