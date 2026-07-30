@@ -60,8 +60,6 @@ export default function SuperAdminDashboard() {
     if (location.pathname === '/master-chemicals') return 'master-chemicals';
     if (location.pathname === '/curriculum') return 'curriculum';
     if (location.pathname === '/store-oversight') return 'store';
-    if (location.pathname === '/compliance') return 'compliance';
-    if (location.pathname === '/system-broadcast') return 'broadcast';
     if (location.pathname === '/activity') return 'activity';
     if (location.pathname === '/settings') return 'settings';
     return 'overview';
@@ -1622,125 +1620,7 @@ export default function SuperAdminDashboard() {
         </div>
       )}
 
-      {/* SECTION 7: COMPLIANCE & REPORTS */}
-      {activeTab === 'compliance' && (
-        <div className='space-y-6 animate-in fade-in'>
-          <div className='flex items-center justify-between'>
-            <div>
-              <h3 className='text-lg font-bold text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2'>
-                <FileSpreadsheet className='text-[#5c6e46]' /> Compliance & Institutional Reporting
-              </h3>
-              <p className='text-xs text-[#71805a] dark:text-[#a5b48b]'>Generate Pharmacy Council of India (PCI) inspection audits and export inventory reports</p>
-            </div>
-            <Button onClick={exportReportCSV} className='text-xs px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white'>
-              <Download size={14} className='mr-1.5' /> Export Inventory CSV
-            </Button>
-          </div>
-
-          <div className='grid gap-6 md:grid-cols-2'>
-            <Card title='PCI Audit Compliance Status' subtitle='Regulatory readiness metrics'>
-              <div className='space-y-4 pt-2'>
-                <div className='flex items-center justify-between rounded-xl bg-emerald-50 p-3.5 dark:bg-emerald-950/30'>
-                  <span className='text-xs font-bold text-emerald-800 dark:text-emerald-300'>Hazardous Waste Protocol</span>
-                  <span className='text-xs font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1'><Check size={14} /> Compliant</span>
-                </div>
-                <div className='flex items-center justify-between rounded-xl bg-emerald-50 p-3.5 dark:bg-emerald-950/30'>
-                  <span className='text-xs font-bold text-emerald-800 dark:text-emerald-300'>Fume Hood Safety Certifications</span>
-                  <span className='text-xs font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1'><Check size={14} /> Certified</span>
-                </div>
-                <div className='flex items-center justify-between rounded-xl bg-emerald-50 p-3.5 dark:bg-emerald-950/30'>
-                  <span className='text-xs font-bold text-emerald-800 dark:text-emerald-300'>Scheduled Solvent Cabinets</span>
-                  <span className='text-xs font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1'><Check size={14} /> Locked</span>
-                </div>
-              </div>
-            </Card>
-
-            <Card title='Chemical Consumption Summary' subtitle='Estimated monthly usage volume'>
-              <div className='space-y-3 pt-2'>
-                <div className='flex items-center justify-between border-b border-[#d9e1ca] pb-2 dark:border-[#414a33]'>
-                  <span className='text-xs text-[#71805a] dark:text-[#a5b48b]'>Solvents (Ethanol, Methanol, Ether)</span>
-                  <span className='text-xs font-bold text-[#37412a] dark:text-[#e4e9d8]'>45.2 Liters / Month</span>
-                </div>
-                <div className='flex items-center justify-between border-b border-[#d9e1ca] pb-2 dark:border-[#414a33]'>
-                  <span className='text-xs text-[#71805a] dark:text-[#a5b48b]'>Acids & Bases (HCl, H2SO4, NaOH)</span>
-                  <span className='text-xs font-bold text-[#37412a] dark:text-[#e4e9d8]'>18.5 Liters / Month</span>
-                </div>
-                <div className='flex items-center justify-between border-b border-[#d9e1ca] pb-2 dark:border-[#414a33]'>
-                  <span className='text-xs text-[#71805a] dark:text-[#a5b48b]'>Active API Powders (Paracetamol, Aspirin)</span>
-                  <span className='text-xs font-bold text-[#37412a] dark:text-[#e4e9d8]'>2.4 kg / Month</span>
-                </div>
-              </div>
-            </Card>
-          </div>
-        </div>
-      )}
-
-      {/* SECTION 8: BROADCAST & FEATURE FLAGS */}
-      {activeTab === 'broadcast' && (
-        <div className='space-y-6 animate-in fade-in'>
-          <div className='flex items-center justify-between'>
-            <div>
-              <h3 className='text-lg font-bold text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2'>
-                <Megaphone className='text-[#5c6e46]' /> Broadcast System & Global Feature Flags
-              </h3>
-              <p className='text-xs text-[#71805a] dark:text-[#a5b48b]'>Post top announcement banners and control application feature switches</p>
-            </div>
-            <Button onClick={() => setBroadcastModalOpen(true)} className='text-xs px-3 py-2'>
-              <Plus size={14} className='mr-1.5' /> Post Announcement
-            </Button>
-          </div>
-
-          <div className='grid gap-6 md:grid-cols-2'>
-            {/* Announcement List */}
-            <Card title='Active Broadcast Banners' subtitle='Displayed on student and staff dashboards'>
-              <div className='space-y-3 pt-2'>
-                {broadcastAnnouncements.map((b) => (
-                  <div key={b.id} className='rounded-2xl border border-[#d9e1ca] bg-[#fffef8] p-4 dark:border-[#414a33] dark:bg-[#20251a]'>
-                    <div className='flex items-center justify-between'>
-                      <h4 className='font-bold text-[#37412a] dark:text-[#e4e9d8]'>{b.title}</h4>
-                      <button
-                        onClick={() => toggleBroadcastStatus(b.id)}
-                        className={`text-xs px-2.5 py-0.5 rounded-full font-bold ${
-                          b.active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
-                        }`}
-                      >
-                        {b.active ? 'Active' : 'Inactive'}
-                      </button>
-                    </div>
-                    <p className='text-xs text-[#71805a] dark:text-[#a5b48b] mt-1'>{b.message}</p>
-                    <p className='text-[10px] text-[#87996c] dark:text-[#a5b48b] mt-2'>Target: {b.targetRole}</p>
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-            {/* Global Feature Flags */}
-            <Card title='Global Application Feature Switchboard' subtitle='Toggle app features in real-time'>
-              <div className='space-y-4 pt-2'>
-                {Object.entries(globalFeatureFlags).map(([flagKey, enabled]) => (
-                  <div key={flagKey} className='flex items-center justify-between rounded-xl border border-[#d9e1ca] p-3.5 dark:border-[#414a33]'>
-                    <div>
-                      <p className='text-xs font-bold text-[#37412a] dark:text-[#e4e9d8] capitalize'>{flagKey.replace(/([A-Z])/g, ' $1')}</p>
-                      <p className='text-[10px] text-[#71805a] dark:text-[#a5b48b]'>Controls frontend interaction logic</p>
-                    </div>
-                    <button
-                      onClick={() => toggleFeatureFlag(flagKey)}
-                      className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-all ${
-                        enabled ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                      }`}
-                    >
-                      {enabled ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
-                      {enabled ? 'ON' : 'OFF'}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </div>
-        </div>
-      )}
-
-      {/* SECTION 9: AUDIT LOGS */}
+      {/* SECTION 7: AUDIT LOGS */}
       {activeTab === 'activity' && (
         <div className='space-y-6 animate-in fade-in'>
           <div>
