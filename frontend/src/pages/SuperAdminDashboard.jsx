@@ -1004,58 +1004,55 @@ export default function SuperAdminDashboard() {
                       </span>
                     </div>
 
-                    {/* 3-Column Spacious Grid Layout to Cover Full Box */}
-                    <div className='grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3'>
+                    {/* Structured, Compact & Organized Responsive Grid */}
+                    <div className='grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
                       {labsInGroup.map((lab) => {
                         const hasAdmin = lab.admin && lab.admin !== 'Unassigned';
                         return (
                           <div
                             key={lab.id}
-                            className='group flex flex-col justify-between rounded-2xl border border-[#d9e1ca] bg-white p-4.5 hover:border-[#5c6e46] hover:shadow-md transition-all duration-200 dark:border-[#414a33] dark:bg-[#20251a]'
+                            className='group flex flex-col justify-between rounded-xl border border-[#d9e1ca] bg-white p-3.5 shadow-2xs hover:border-[#5c6e46] hover:shadow-md transition-all duration-200 dark:border-[#414a33] dark:bg-[#20251a]'
                           >
-                            <div className='space-y-2.5'>
-                              {/* Top Badges */}
-                              <div className='flex items-center justify-between gap-2'>
-                                <span className='inline-flex items-center gap-1.5 rounded-lg bg-[#f4f6ee] px-2.5 py-1 text-xs font-mono font-bold text-[#5c6e46] border border-[#d9e1ca] dark:bg-[#2a3121] dark:text-[#c5d0b5] dark:border-[#414a33]'>
-                                  <Warehouse size={13} /> {lab.labCode || lab.code || 'LAB'}
-                                </span>
-                                <span className='rounded-full bg-[#e8efd9] px-3 py-0.5 text-xs font-bold text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'>
+                            {/* Card Main Info Container */}
+                            <div className='space-y-2'>
+                              {/* Top Bar: Code, Name & Course Badge */}
+                              <div className='flex items-start justify-between gap-2'>
+                                <div className='flex items-center gap-1.5 min-w-0 pr-1'>
+                                  <span className='inline-flex items-center gap-1 rounded-md bg-[#f4f6ee] px-1.5 py-0.5 text-[10px] font-mono font-bold text-[#5c6e46] border border-[#d9e1ca] dark:bg-[#2a3121] dark:text-[#c5d0b5] dark:border-[#414a33] shrink-0'>
+                                    <Warehouse size={11} /> {lab.labCode || lab.code || 'LAB'}
+                                  </span>
+                                  <h5 className='text-sm font-extrabold text-[#37412a] dark:text-[#e4e9d8] group-hover:text-[#5c6e46] transition-colors leading-snug truncate' title={lab.name || lab.labName}>
+                                    {lab.name || lab.labName}
+                                  </h5>
+                                </div>
+                                <span className='rounded-md bg-[#e8efd9] px-2 py-0.5 text-[10px] font-extrabold text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a] shrink-0'>
                                   {lab.courseType || 'B.Pharm'}
                                 </span>
                               </div>
 
-                              {/* Lab Title & Department */}
-                              <div>
-                                <h5 className='text-base font-extrabold text-[#37412a] dark:text-[#e4e9d8] group-hover:text-[#5c6e46] transition-colors leading-snug'>
-                                  {lab.name || lab.labName}
-                                </h5>
-                                <p className='text-xs font-medium text-[#71805a] dark:text-[#a5b48b] mt-0.5'>
-                                  {lab.department ? `${lab.department} Department` : 'Pharmacy Department'}
-                                </p>
-                              </div>
-
-                              {/* Semester Batch Pill */}
-                              <div>
-                                <span className='inline-flex items-center rounded-md bg-[#f4f5eb] px-2.5 py-1 text-xs font-semibold text-[#5c6e46] dark:bg-[#28301f] dark:text-[#c5d0b5]'>
-                                  {lab.year && lab.semester ? `Year ${lab.year} • Semester ${lab.semester}` : 'All Semester Batches'}
+                              {/* Department & Semester Info Row */}
+                              <div className='flex items-center justify-between gap-1 text-[11px] text-[#71805a] dark:text-[#a5b48b]'>
+                                <span className='truncate'>{lab.department ? `${lab.department} Dept` : 'Pharmacy Dept'}</span>
+                                <span className='rounded bg-[#f4f5eb] px-1.5 py-0.5 text-[10px] font-semibold text-[#5c6e46] dark:bg-[#28301f] dark:text-[#c5d0b5] shrink-0'>
+                                  {lab.year && lab.semester ? `Yr ${lab.year} • Sem ${lab.semester}` : 'All Semesters'}
                                 </span>
                               </div>
                             </div>
 
-                            {/* Assigned Admin Footer with Email Address */}
-                            <div className='mt-4 pt-3 border-t border-[#f0f4e8] dark:border-[#2a3121] flex items-center justify-between gap-2'>
-                              <div className='flex items-center gap-2.5 min-w-0 pr-1'>
-                                <div className={`h-8 w-8 shrink-0 rounded-full flex items-center justify-center text-xs font-black ${
+                            {/* Assigned Admin Footer with Email Address & Action */}
+                            <div className='mt-3 pt-2.5 border-t border-[#f0f4e8] dark:border-[#2a3121] flex items-center justify-between gap-2'>
+                              <div className='flex items-center gap-2 min-w-0 pr-1'>
+                                <div className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-xs font-black ${
                                   hasAdmin ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300'
                                 }`}>
                                   {hasAdmin ? lab.admin.charAt(0).toUpperCase() : '?'}
                                 </div>
-                                <div className='min-w-0'>
-                                  <p className={`text-xs font-bold leading-tight truncate ${hasAdmin ? 'text-[#37412a] dark:text-[#e4e9d8]' : 'text-amber-700 dark:text-amber-400'}`}>
-                                    {hasAdmin ? lab.admin : 'Unassigned Admin'}
+                                <div className='min-w-0 leading-tight'>
+                                  <p className={`text-xs font-bold truncate ${hasAdmin ? 'text-[#37412a] dark:text-[#e4e9d8]' : 'text-amber-700 dark:text-amber-400'}`} title={hasAdmin ? lab.admin : 'Unassigned Admin'}>
+                                    {hasAdmin ? lab.admin : 'Unassigned'}
                                   </p>
                                   {hasAdmin && lab.adminEmail ? (
-                                    <p className='text-[11px] font-medium text-[#5c6e46] dark:text-[#a8be8a] truncate mt-0.5' title={lab.adminEmail}>
+                                    <p className='text-[10px] font-semibold text-[#5c6e46] dark:text-[#a8be8a] truncate mt-0.5' title={lab.adminEmail}>
                                       {lab.adminEmail}
                                     </p>
                                   ) : (
@@ -1066,7 +1063,7 @@ export default function SuperAdminDashboard() {
                                 </div>
                               </div>
 
-                              <Button variant='outline' onClick={() => openManageModal(lab)} className='text-xs px-3 py-1.5 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] font-bold dark:border-[#a8be8a] dark:text-[#a8be8a] shrink-0'>
+                              <Button variant='outline' onClick={() => openManageModal(lab)} className='text-xs px-2.5 py-1 h-7 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] font-bold dark:border-[#a8be8a] dark:text-[#a8be8a] shrink-0'>
                                 Manage
                               </Button>
                             </div>
