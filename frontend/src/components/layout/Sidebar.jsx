@@ -32,8 +32,6 @@ const linksMap = {
     { to: "/master-chemicals", label: "Chemical Master", icon: FlaskConical },
     { to: "/curriculum", label: "Curriculum & Practicals", icon: BookOpen },
     { to: "/store-oversight", label: "Store Oversight", icon: Store },
-    { to: "/compliance", label: "Compliance & Reports", icon: FileSpreadsheet },
-    { to: "/system-broadcast", label: "Broadcast & Flags", icon: Megaphone },
     { to: "/activity", label: "Audit Logs", icon: History },
     { to: "/settings", label: "Security & Settings", icon: KeyRound },
     { to: "/about", label: "About Us", icon: Info },
