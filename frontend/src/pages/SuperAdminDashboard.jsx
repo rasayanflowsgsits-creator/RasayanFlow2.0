@@ -1014,24 +1014,24 @@ export default function SuperAdminDashboard() {
                             className='group flex flex-col justify-between rounded-xl border border-[#d9e1ca] bg-white p-3.5 shadow-2xs hover:border-[#5c6e46] hover:shadow-md transition-all duration-200 dark:border-[#414a33] dark:bg-[#20251a]'
                           >
                             {/* Card Main Info Container */}
-                            <div className='space-y-2'>
-                              {/* Top Bar: Code, Name & Course Badge */}
-                              <div className='flex items-start justify-between gap-2'>
-                                <div className='flex items-center gap-1.5 min-w-0 pr-1'>
-                                  <span className='inline-flex items-center gap-1 rounded-md bg-[#f4f6ee] px-1.5 py-0.5 text-[10px] font-mono font-bold text-[#5c6e46] border border-[#d9e1ca] dark:bg-[#2a3121] dark:text-[#c5d0b5] dark:border-[#414a33] shrink-0'>
-                                    <Warehouse size={11} /> {lab.labCode || lab.code || 'LAB'}
-                                  </span>
-                                  <h5 className='text-sm font-extrabold text-[#37412a] dark:text-[#e4e9d8] group-hover:text-[#5c6e46] transition-colors leading-snug truncate' title={lab.name || lab.labName}>
-                                    {lab.name || lab.labName}
-                                  </h5>
-                                </div>
-                                <span className='rounded-md bg-[#e8efd9] px-2 py-0.5 text-[10px] font-extrabold text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a] shrink-0'>
+                            <div className='space-y-1.5'>
+                              {/* Top Row: Code & Course Badges */}
+                              <div className='flex items-center justify-between gap-2'>
+                                <span className='inline-flex items-center gap-1 rounded-md bg-[#f4f6ee] px-1.5 py-0.5 text-[10px] font-mono font-bold text-[#5c6e46] border border-[#d9e1ca] dark:bg-[#2a3121] dark:text-[#c5d0b5] dark:border-[#414a33]'>
+                                  <Warehouse size={11} /> {lab.labCode || lab.code || 'LAB'}
+                                </span>
+                                <span className='rounded-md bg-[#e8efd9] px-2 py-0.5 text-[10px] font-extrabold text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'>
                                   {lab.courseType || 'B.Pharm'}
                                 </span>
                               </div>
 
+                              {/* Dedicated Full-Width Lab Title (Fully Visible!) */}
+                              <h5 className='text-sm font-extrabold text-[#37412a] dark:text-[#e4e9d8] group-hover:text-[#5c6e46] transition-colors leading-snug break-words'>
+                                {lab.name || lab.labName}
+                              </h5>
+
                               {/* Department & Semester Info Row */}
-                              <div className='flex items-center justify-between gap-1 text-[11px] text-[#71805a] dark:text-[#a5b48b]'>
+                              <div className='flex items-center justify-between gap-1 text-[11px] text-[#71805a] dark:text-[#a5b48b] pt-0.5'>
                                 <span className='truncate'>{lab.department ? `${lab.department} Dept` : 'Pharmacy Dept'}</span>
                                 <span className='rounded bg-[#f4f5eb] px-1.5 py-0.5 text-[10px] font-semibold text-[#5c6e46] dark:bg-[#28301f] dark:text-[#c5d0b5] shrink-0'>
                                   {lab.year && lab.semester ? `Yr ${lab.year} • Sem ${lab.semester}` : 'All Semesters'}
