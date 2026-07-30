@@ -4,7 +4,8 @@ import {
   FlaskConical, ShoppingBag, History, KeyRound, UserPlus, 
   Building2, LayoutDashboard, Clock, UserCheck, AlertCircle, RefreshCw,
   BookOpen, FileSpreadsheet, Megaphone, ToggleLeft, ToggleRight, Download,
-  Ban, ShieldAlert, FileText, Check, X, AlertTriangle, Layers, Edit3, Trash2, Folder, FolderOpen, Grid, List
+  Ban, ShieldAlert, FileText, Check, X, AlertTriangle, Layers, Edit3, Trash2, Folder, FolderOpen, Grid, List,
+  ChevronRight, ChevronDown
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import useDebounce from '../hooks/useDebounce';
@@ -120,6 +121,13 @@ export default function SuperAdminDashboard() {
   const [editingExp, setEditingExp] = useState(null);
   const [detailExpModalOpen, setDetailExpModalOpen] = useState(false);
   const [selectedExpDetail, setSelectedExpDetail] = useState(null);
+  const [expandedSems, setExpandedSems] = useState(['1']);
+
+  const toggleSemExpand = (semStr) => {
+    setExpandedSems((prev) =>
+      prev.includes(semStr) ? prev.filter((s) => s !== semStr) : [...prev, semStr]
+    );
+  };
 
   const debouncedLabSearch = useDebounce(labSearch, 300);
   const debouncedUserSearch = useDebounce(userSearch, 300);
@@ -1157,57 +1165,22 @@ export default function SuperAdminDashboard() {
         </div>
       )}
 
-      {/* SECTION 5: CURRICULUM & PRACTICALS */}
+      {/* SECTION 5: CURRICULUM & PRACTICALS - MASTER-DETAIL DIRECTORY TREE */}
       {activeTab === 'curriculum' && (
         <div className='space-y-6 animate-in fade-in'>
-          {/* Header & Controls Bar */}
+          {/* Header Bar */}
           <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-[#d9e1ca] pb-4 dark:border-[#414a33]'>
             <div>
               <h3 className='text-2xl font-black text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2.5'>
-                <BookOpen className='text-[#5c6e46] h-7 w-7' /> Curriculum & Practical Syllabus Hub
+                <BookOpen className='text-[#5c6e46] h-7 w-7' /> Curriculum & Practical Syllabus Directory
               </h3>
               <p className='text-xs font-medium text-[#71805a] dark:text-[#a5b48b] mt-0.5'>
-                Central repository for pre-configuring practical experiments, prescribed reagents, and course syllabus requirements across all semesters
+                Structured academic tree for practical experiments, prescribed reagents, and course syllabus governance
               </p>
             </div>
-            <div className='flex flex-wrap items-center gap-2.5'>
-              <div className='relative w-full sm:w-56'>
-                <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#87996c]' />
-                <input
-                  type='text'
-                  value={currSearch}
-                  onChange={(e) => setCurrSearch(e.target.value)}
-                  placeholder='Search experiments or chemicals...'
-                  className='w-full rounded-xl border border-[#d9e1ca] bg-white py-2 pl-9 pr-3 text-xs font-semibold outline-none focus:border-[#5c6e46] dark:border-[#414a33] dark:bg-[#1a1d16] dark:text-[#e4e9d8]'
-                />
-              </div>
-
-              {/* View Mode Toggle */}
-              <div className='flex items-center rounded-xl border border-[#d9e1ca] bg-white p-1 dark:border-[#414a33] dark:bg-[#20251a]'>
-                <button
-                  type='button'
-                  onClick={() => setCurrViewMode('table')}
-                  className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold transition-all ${
-                    currViewMode === 'table' ? 'bg-[#5c6e46] text-white shadow-xs' : 'text-[#71805a] hover:text-[#37412a] dark:text-[#a5b48b]'
-                  }`}
-                  title='Table View'
-                >
-                  <List size={14} /> Table
-                </button>
-                <button
-                  type='button'
-                  onClick={() => setCurrViewMode('cards')}
-                  className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold transition-all ${
-                    currViewMode === 'cards' ? 'bg-[#5c6e46] text-white shadow-xs' : 'text-[#71805a] hover:text-[#37412a] dark:text-[#a5b48b]'
-                  }`}
-                  title='Visual Grid Cards'
-                >
-                  <Grid size={14} /> Cards
-                </button>
-              </div>
-
+            <div className='flex items-center gap-2.5'>
               <Button variant='outline' onClick={handleExportCurriculumCSV} className='text-xs px-3 py-2 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] font-bold dark:border-[#a8be8a] dark:text-[#a8be8a]'>
-                <Download size={14} className='mr-1.5' /> Export CSV
+                <Download size={14} className='mr-1.5' /> Export Syllabus CSV
               </Button>
               <Button onClick={() => setCurriculumModalOpen(true)} className='text-xs px-3.5 py-2 whitespace-nowrap font-bold'>
                 <Plus size={15} className='mr-1.5' /> Add Experiment
@@ -1215,336 +1188,401 @@ export default function SuperAdminDashboard() {
             </div>
           </div>
 
-          {/* Curriculum KPI Overview Banner */}
-          <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
-            <div className='rounded-2xl border border-[#d9e1ca] bg-[#fffef8] p-4 shadow-xs dark:border-[#414a33] dark:bg-[#20251a]'>
-              <p className='text-[11px] font-extrabold text-[#71805a] dark:text-[#a5b48b] uppercase tracking-wider'>Total Syllabus Practicals</p>
-              <p className='text-2xl font-black text-[#37412a] dark:text-[#e4e9d8] mt-1'>{curriculumExperiments.length}</p>
-              <p className='text-[10px] text-[#87996c] dark:text-[#9bb07f] mt-0.5'>Across all courses & semesters</p>
-            </div>
-            <div className='rounded-2xl border border-[#d9e1ca] bg-[#fffef8] p-4 shadow-xs dark:border-[#414a33] dark:bg-[#20251a]'>
-              <p className='text-[11px] font-extrabold text-[#71805a] dark:text-[#a5b48b] uppercase tracking-wider'>Active View Experiments</p>
-              <p className='text-2xl font-black text-[#5c6e46] dark:text-[#a8be8a] mt-1'>{filteredCurriculumExperiments.length}</p>
-              <p className='text-[10px] text-[#87996c] dark:text-[#9bb07f] mt-0.5'>Filtered in current semester/subject</p>
-            </div>
-            <div className='rounded-2xl border border-[#d9e1ca] bg-[#fffef8] p-4 shadow-xs dark:border-[#414a33] dark:bg-[#20251a]'>
-              <p className='text-[11px] font-extrabold text-[#71805a] dark:text-[#a5b48b] uppercase tracking-wider'>Subject Practical Labs</p>
-              <p className='text-2xl font-black text-[#37412a] dark:text-[#e4e9d8] mt-1'>{availableSubjects.length}</p>
-              <p className='text-[10px] text-[#87996c] dark:text-[#9bb07f] mt-0.5'>Distinct lab courses in view</p>
-            </div>
-            <div className='rounded-2xl border border-[#d9e1ca] bg-[#fffef8] p-4 shadow-xs dark:border-[#414a33] dark:bg-[#20251a]'>
-              <p className='text-[11px] font-extrabold text-[#71805a] dark:text-[#a5b48b] uppercase tracking-wider'>Academic Stream</p>
-              <p className='text-2xl font-black text-[#5c6e46] dark:text-[#a8be8a] mt-1'>{currCourseFilter}</p>
-              <p className='text-[10px] text-[#87996c] dark:text-[#9bb07f] mt-0.5'>
-                {currSemFilter === 'all' ? 'All Semesters' : `Semester ${currSemFilter}`}
-              </p>
-            </div>
-          </div>
+          {/* 2-Column Grid: Left Academic Sidebar Tree (1/4) | Right Main Workspace (3/4) */}
+          <div className='grid grid-cols-1 lg:grid-cols-4 gap-6 items-start'>
+            
+            {/* LEFT COLUMN: ACADEMIC DIRECTORY TREE SIDEBAR */}
+            <div className='lg:col-span-1 space-y-4 rounded-2xl border border-[#d9e1ca] bg-[#fffef8] p-4 shadow-sm dark:border-[#414a33] dark:bg-[#20251a]'>
+              
+              {/* Course Category Switcher */}
+              <div>
+                <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b] mb-2'>
+                  1. Select Academic Program
+                </p>
+                <div className='grid grid-cols-3 gap-1 rounded-xl bg-[#f4f6ee] p-1 dark:bg-[#1a1d16] border border-[#d9e1ca] dark:border-[#414a33]'>
+                  {['B.Pharm', 'M.Pharm', 'PhD'].map((course) => {
+                    const isActive = currCourseFilter === course;
+                    return (
+                      <button
+                        key={course}
+                        type='button'
+                        onClick={() => {
+                          setCurrCourseFilter(course);
+                          setCurrSemFilter('1');
+                          setCurrSubjectFilter('all');
+                          setExpandedSems(['1']);
+                        }}
+                        className={`rounded-lg py-1.5 text-xs font-extrabold transition-all ${
+                          isActive
+                            ? 'bg-[#5c6e46] text-white shadow-xs dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                            : 'text-[#5c6e46] hover:bg-[#e4eed3] dark:text-[#a5b48b]'
+                        }`}
+                      >
+                        {course}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-          {/* Level 1: Course Category Tabs (B.Pharm, M.Pharm, PhD) */}
-          <div className='flex flex-wrap items-center gap-2 rounded-2xl border border-[#d9e1ca] bg-[#fffef8] p-2 dark:border-[#414a33] dark:bg-[#20251a]'>
-            {[
-              { id: 'B.Pharm', label: 'B.Pharm (Bachelor of Pharmacy)', desc: '8 Academic Semesters' },
-              { id: 'M.Pharm', label: 'M.Pharm (Master of Pharmacy)', desc: '4 Specialization Semesters' },
-              { id: 'PhD', label: 'PhD & Advanced Research', desc: 'Doctoral Modules' },
-            ].map((course) => {
-              const isActive = currCourseFilter === course.id;
-              const count = curriculumExperiments.filter((e) => (e.course || 'B.Pharm') === course.id).length;
-              return (
-                <button
-                  key={course.id}
-                  type='button'
-                  onClick={() => {
-                    setCurrCourseFilter(course.id);
-                    setCurrSemFilter('1');
-                    setCurrSubjectFilter('all');
-                  }}
-                  className={`flex items-center gap-2.5 rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
-                    isActive
-                      ? 'bg-[#5c6e46] text-white shadow-md dark:bg-[#e4e9d8] dark:text-[#20251a]'
-                      : 'bg-white text-[#37412a] hover:bg-[#f4f6ee] dark:bg-[#1a1d16] dark:text-[#e4e9d8]'
-                  }`}
-                >
-                  <span>{course.label}</span>
-                  <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-black ${
-                    isActive ? 'bg-white/20 text-white dark:bg-[#20251a]/20 dark:text-[#20251a]' : 'bg-[#e8efd9] text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'
-                  }`}>
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Level 2: Semester Folder Navigation Pills Bar */}
-          <div className='flex flex-wrap items-center gap-2 border-b border-[#d9e1ca] pb-3 dark:border-[#414a33]'>
-            <span className='text-xs font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b] mr-1 flex items-center gap-1'>
-              <Folder size={14} /> Semesters:
-            </span>
-            {(currCourseFilter === 'B.Pharm'
-              ? ['1', '2', '3', '4', '5', '6', '7', '8', 'all']
-              : currCourseFilter === 'M.Pharm'
-              ? ['1', '2', '3', '4', 'all']
-              : ['1', 'all']
-            ).map((sem) => {
-              const isActive = currSemFilter === sem;
-              const semCount = curriculumExperiments.filter(
-                (e) => (e.course || 'B.Pharm') === currCourseFilter && (sem === 'all' || String(e.semester) === String(sem))
-              ).length;
-              return (
-                <button
-                  key={sem}
-                  type='button'
-                  onClick={() => {
-                    setCurrSemFilter(sem);
-                    setCurrSubjectFilter('all');
-                  }}
-                  className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-bold transition-all ${
-                    isActive
-                      ? 'bg-[#37412a] text-white shadow-xs dark:bg-[#e4e9d8] dark:text-[#20251a]'
-                      : 'bg-[#f4f6ee] text-[#5c6e46] hover:bg-[#e4eed3] dark:bg-[#20251a] dark:text-[#c5d0b5]'
-                  }`}
-                >
-                  {isActive ? <FolderOpen size={14} /> : <Folder size={14} />}
-                  <span>{sem === 'all' ? 'All Semesters' : `Sem ${sem}`}</span>
-                  <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-full ${
-                    isActive ? 'bg-white/20 text-white dark:bg-[#20251a]/20 dark:text-[#20251a]' : 'bg-[#e2edd0] text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'
-                  }`}>
-                    {semCount}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Level 3: Subject Sub-Tabs Filter Bar (Solves Clutter for 15+ Experiments!) */}
-          {availableSubjects.length > 0 && (
-            <div className='flex flex-wrap items-center gap-2 rounded-2xl border border-[#d9e1ca] bg-[#fffef8] p-3 dark:border-[#414a33] dark:bg-[#20251a]'>
-              <span className='text-xs font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b] mr-1 flex items-center gap-1'>
-                <FlaskConical size={14} className='text-[#5c6e46]' /> Subject Labs:
-              </span>
-
-              <button
-                type='button'
-                onClick={() => setCurrSubjectFilter('all')}
-                className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
-                  currSubjectFilter === 'all'
-                    ? 'bg-[#5c6e46] text-white shadow-sm dark:bg-[#e4e9d8] dark:text-[#20251a]'
-                    : 'bg-white text-[#37412a] border border-[#d9e1ca] hover:bg-[#f4f6ee] dark:bg-[#1a1d16] dark:text-[#e4e9d8] dark:border-[#414a33]'
-                }`}
-              >
-                <span>All Subjects</span>
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
-                  currSubjectFilter === 'all' ? 'bg-white/20 text-white dark:bg-[#20251a]/20 dark:text-[#20251a]' : 'bg-[#e8efd9] text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'
-                }`}>
-                  {curriculumExperiments.filter(e => (e.course || 'B.Pharm') === currCourseFilter && (currSemFilter === 'all' || String(e.semester) === String(currSemFilter))).length}
-                </span>
-              </button>
-
-              {availableSubjects.map((subj) => {
-                const isActive = currSubjectFilter === subj;
-                const subjCount = curriculumExperiments.filter(
-                  e => (e.course || 'B.Pharm') === currCourseFilter && (currSemFilter === 'all' || String(e.semester) === String(currSemFilter)) && (e.subject || 'General Practical Lab') === subj
-                ).length;
-                return (
+              {/* Semester & Subject Tree */}
+              <div>
+                <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b] mb-2'>
+                  2. Academic Directory Tree
+                </p>
+                <div className='space-y-1.5 max-h-[520px] overflow-y-auto pr-1 scrollbar-thin'>
+                  
+                  {/* Option to View All Semesters */}
                   <button
-                    key={subj}
                     type='button'
-                    onClick={() => setCurrSubjectFilter(subj)}
-                    className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
-                      isActive
-                        ? 'bg-[#5c6e46] text-white shadow-sm dark:bg-[#e4e9d8] dark:text-[#20251a]'
-                        : 'bg-white text-[#37412a] border border-[#d9e1ca] hover:bg-[#f4f6ee] dark:bg-[#1a1d16] dark:text-[#e4e9d8] dark:border-[#414a33]'
+                    onClick={() => {
+                      setCurrSemFilter('all');
+                      setCurrSubjectFilter('all');
+                    }}
+                    className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all border ${
+                      currSemFilter === 'all'
+                        ? 'bg-[#37412a] text-white border-[#37412a] shadow-xs dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                        : 'border-transparent text-[#37412a] hover:bg-[#f4f6ee] dark:text-[#e4e9d8]'
                     }`}
                   >
-                    <span>{subj}</span>
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
-                      isActive ? 'bg-white/20 text-white dark:bg-[#20251a]/20 dark:text-[#20251a]' : 'bg-[#e8efd9] text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'
+                    <span className='flex items-center gap-2'>
+                      <Folder size={14} /> All Semesters Overview
+                    </span>
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                      currSemFilter === 'all' ? 'bg-white/20 text-white dark:bg-[#20251a]/20 dark:text-[#20251a]' : 'bg-[#e2edd0] text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'
                     }`}>
-                      {subjCount}
+                      {curriculumExperiments.filter(e => (e.course || 'B.Pharm') === currCourseFilter).length}
                     </span>
                   </button>
-                );
-              })}
-            </div>
-          )}
 
-          {/* Subject-Grouped Experiment Cards / Tables */}
-          {filteredCurriculumExperiments.length === 0 ? (
-            <div className='rounded-2xl border border-dashed border-[#d9e1ca] bg-[#fffef8] p-8 text-center dark:border-[#414a33] dark:bg-[#20251a]'>
-              <BookOpen size={36} className='mx-auto text-[#87996c] mb-2' />
-              <h4 className='text-lg font-bold text-[#37412a] dark:text-[#e4e9d8]'>No Practical Experiments Found</h4>
-              <p className='text-xs text-[#71805a] dark:text-[#a5b48b] max-w-md mx-auto mt-1'>
-                No experiment templates configured for {currCourseFilter} {currSemFilter !== 'all' ? `Semester ${currSemFilter}` : ''} {currSubjectFilter !== 'all' ? `(${currSubjectFilter})` : ''}. Click below to add a new experiment template.
-              </p>
-              <Button onClick={() => setCurriculumModalOpen(true)} className='text-xs px-4 py-2 mt-4 font-bold'>
-                <Plus size={14} className='mr-1.5' /> Add Experiment Template
-              </Button>
+                  {/* Semesters list */}
+                  {(currCourseFilter === 'B.Pharm'
+                    ? ['1', '2', '3', '4', '5', '6', '7', '8']
+                    : currCourseFilter === 'M.Pharm'
+                    ? ['1', '2', '3', '4']
+                    : ['1']
+                  ).map((sem) => {
+                    const isExpanded = expandedSems.includes(sem);
+                    const isSemActive = currSemFilter === sem;
+
+                    // Get subjects in this semester
+                    const semExps = curriculumExperiments.filter(
+                      e => (e.course || 'B.Pharm') === currCourseFilter && String(e.semester) === String(sem)
+                    );
+                    const semSubjs = Array.from(new Set(semExps.map(e => e.subject || 'General Practical Lab')));
+
+                    return (
+                      <div key={sem} className='rounded-xl border border-[#e4eed3] bg-white overflow-hidden dark:border-[#2a3320] dark:bg-[#1a1d16]'>
+                        {/* Semester Header Toggle */}
+                        <div
+                          className={`flex items-center justify-between px-3 py-2 text-xs font-bold cursor-pointer transition-all ${
+                            isSemActive && currSubjectFilter === 'all'
+                              ? 'bg-[#5c6e46] text-white'
+                              : 'text-[#37412a] hover:bg-[#f8faee] dark:text-[#e4e9d8]'
+                          }`}
+                          onClick={() => {
+                            setCurrSemFilter(sem);
+                            setCurrSubjectFilter('all');
+                            toggleSemExpand(sem);
+                          }}
+                        >
+                          <span className='flex items-center gap-2'>
+                            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            {isExpanded ? <FolderOpen size={14} /> : <Folder size={14} />}
+                            <span>Semester {sem}</span>
+                          </span>
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                            isSemActive && currSubjectFilter === 'all' ? 'bg-white/20 text-white' : 'bg-[#e8efd9] text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'
+                          }`}>
+                            {semExps.length}
+                          </span>
+                        </div>
+
+                        {/* Expanded Nested Subjects Sub-List */}
+                        {isExpanded && semSubjs.length > 0 && (
+                          <div className='bg-[#fcfdfe] p-1.5 space-y-1 border-t border-[#e4eed3] dark:bg-[#151712] dark:border-[#2a3320]'>
+                            {semSubjs.map((subj) => {
+                              const isSubjActive = isSemActive && currSubjectFilter === subj;
+                              const subjCount = semExps.filter(e => (e.subject || 'General Practical Lab') === subj).length;
+                              return (
+                                <button
+                                  key={subj}
+                                  type='button'
+                                  onClick={() => {
+                                    setCurrSemFilter(sem);
+                                    setCurrSubjectFilter(subj);
+                                  }}
+                                  className={`w-full flex items-center justify-between rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-semibold text-left transition-all ${
+                                    isSubjActive
+                                      ? 'bg-[#37412a] text-white shadow-xs dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                                      : 'text-[#5c6e46] hover:bg-[#f4f6ee] dark:text-[#c5d0b5]'
+                                  }`}
+                                >
+                                  <span className='flex items-center gap-1.5 truncate pr-1'>
+                                    <FlaskConical size={12} className={isSubjActive ? 'text-white dark:text-[#20251a]' : 'text-[#87996c]'} />
+                                    <span className='truncate'>{subj}</span>
+                                  </span>
+                                  <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-full ${
+                                    isSubjActive ? 'bg-white/20 text-white dark:bg-[#20251a]/20 dark:text-[#20251a]' : 'bg-[#e8efd9] text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'
+                                  }`}>
+                                    {subjCount}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
             </div>
-          ) : (
-            <div className='space-y-6'>
-              {Object.entries(groupedCurriculumBySubject).map(([subjectName, exps]) => (
-                <div key={subjectName} className='rounded-2xl border border-[#d9e1ca] bg-white overflow-hidden shadow-sm dark:border-[#414a33] dark:bg-[#20251a]'>
-                  {/* Subject Lab Section Header */}
-                  <div className='flex items-center justify-between border-b border-[#d9e1ca] bg-[#f8faee] px-4 py-3.5 dark:border-[#414a33] dark:bg-[#1a1d16]'>
-                    <div className='flex items-center gap-2.5'>
-                      <FlaskConical size={18} className='text-[#5c6e46]' />
-                      <h4 className='text-base font-extrabold text-[#37412a] dark:text-[#e4e9d8]'>{subjectName}</h4>
-                    </div>
-                    <span className='rounded-full bg-[#e8efd9] px-3 py-1 text-xs font-extrabold text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'>
-                      {exps.length} {exps.length === 1 ? 'Practical' : 'Practicals'}
+
+            {/* RIGHT COLUMN: MAIN WORKSPACE AREA (3/4) */}
+            <div className='lg:col-span-3 space-y-5'>
+
+              {/* Active Workspace Banner & Filters Bar */}
+              <div className='rounded-2xl border border-[#d9e1ca] bg-[#fffef8] p-4 shadow-sm dark:border-[#414a33] dark:bg-[#20251a] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
+                <div>
+                  <div className='flex items-center gap-2'>
+                    <span className='inline-flex items-center rounded-lg bg-[#5c6e46] px-3 py-1 text-xs font-mono font-black text-white'>
+                      {currCourseFilter}
+                    </span>
+                    <span className='inline-flex items-center rounded-lg bg-[#e8efd9] px-3 py-1 text-xs font-extrabold text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'>
+                      {currSemFilter === 'all' ? 'All Semesters Overview' : `Semester ${currSemFilter}`}
                     </span>
                   </div>
+                  <h4 className='text-lg font-black text-[#37412a] dark:text-[#e4e9d8] mt-2 flex items-center gap-2'>
+                    <FlaskConical className='text-[#5c6e46]' size={20} />
+                    {currSubjectFilter === 'all' ? 'All Prescribed Subject Practicals' : currSubjectFilter}
+                  </h4>
+                  <p className='text-xs font-medium text-[#71805a] dark:text-[#a5b48b] mt-0.5'>
+                    Showing {filteredCurriculumExperiments.length} prescribed practical experiment templates
+                  </p>
+                </div>
 
-                  {/* Render Table or Cards Grid */}
-                  {currViewMode === 'table' ? (
-                    <Table
-                      headers={[
-                        {
-                          key: 'expNo',
-                          label: 'Exp No',
-                          render: (row) => (
-                            <span className='inline-flex items-center rounded-lg bg-[#f4f6ee] px-3 py-1 text-xs font-mono font-black text-[#5c6e46] border border-[#d9e1ca] dark:bg-[#2a3121] dark:text-[#c5d0b5] dark:border-[#414a33]'>
-                              {row.expNo || 'Exp 01'}
-                            </span>
-                          )
-                        },
-                        {
-                          key: 'name',
-                          label: 'Practical Experiment Title',
-                          render: (row) => (
-                            <div>
-                              <p className='text-base font-bold text-[#37412a] dark:text-[#e4e9d8] leading-snug'>{row.name}</p>
-                              <p className='text-xs font-semibold text-[#71805a] dark:text-[#a5b48b] mt-0.5'>
-                                {row.course} • Yr {row.year} • Sem {row.semester}
-                              </p>
-                            </div>
-                          )
-                        },
-                        {
-                          key: 'requiredChemicals',
-                          label: 'Prescribed Reagents & Chemicals',
-                          render: (row) => (
-                            <div className='flex flex-wrap items-center gap-1.5 max-w-xl'>
-                              {row.requiredChemicals ? (
-                                row.requiredChemicals.split(',').map((chem, idx) => (
-                                  <span key={idx} className='inline-flex items-center rounded-md bg-[#e4eed3] px-2.5 py-1 text-xs font-semibold text-[#2d3d17] border border-[#c5d6aa] dark:bg-[#2e3722] dark:text-[#eef4e8] dark:border-[#414a33]'>
-                                    {chem.trim()}
-                                  </span>
-                                ))
-                              ) : (
-                                <span className='text-xs text-[#87996c] italic'>No specific chemicals specified</span>
-                              )}
-                            </div>
-                          )
-                        },
-                        {
-                          key: 'actions',
-                          label: 'Actions',
-                          render: (row) => (
-                            <div className='flex items-center gap-2'>
-                              <Button
-                                variant='outline'
-                                onClick={() => {
-                                  setSelectedExpDetail(row);
-                                  setDetailExpModalOpen(true);
-                                }}
-                                className='text-xs px-2.5 py-1.5 border-slate-300 text-slate-700 hover:bg-slate-50 font-bold dark:border-slate-700 dark:text-slate-300'
-                              >
-                                View
-                              </Button>
-                              <Button
-                                variant='outline'
-                                onClick={() => handleOpenEditExp(row)}
-                                className='text-xs px-3 py-1.5 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] font-bold dark:border-[#a8be8a] dark:text-[#a8be8a]'
-                              >
-                                <Edit3 size={14} className='mr-1' /> Edit
-                              </Button>
-                              <Button
-                                variant='outline'
-                                onClick={() => handleDeleteExp(row.id, row.name)}
-                                className='text-xs px-3 py-1.5 border-rose-300 text-rose-700 hover:bg-rose-50 font-bold dark:border-rose-800 dark:text-rose-400'
-                              >
-                                <Trash2 size={14} className='mr-1' /> Delete
-                              </Button>
-                            </div>
-                          )
-                        }
-                      ]}
-                      rows={exps}
+                <div className='flex items-center gap-3'>
+                  {/* Search Bar */}
+                  <div className='relative w-full sm:w-64'>
+                    <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#87996c]' />
+                    <input
+                      type='text'
+                      value={currSearch}
+                      onChange={(e) => setCurrSearch(e.target.value)}
+                      placeholder='Search in active view...'
+                      className='w-full rounded-xl border border-[#d9e1ca] bg-white py-2 pl-9 pr-3 text-xs font-semibold outline-none focus:border-[#5c6e46] dark:border-[#414a33] dark:bg-[#1a1d16] dark:text-[#e4e9d8]'
                     />
-                  ) : (
-                    /* Visual Grid Cards View */
-                    <div className='p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-                      {exps.map((exp) => (
-                        <div
-                          key={exp.id}
-                          className='rounded-xl border border-[#d9e1ca] bg-[#fffef8] p-4 flex flex-col justify-between transition-all hover:shadow-md hover:-translate-y-0.5 dark:border-[#414a33] dark:bg-[#1a1d16]'
-                        >
-                          <div>
-                            <div className='flex items-center justify-between gap-2 mb-2'>
-                              <span className='inline-flex items-center rounded-lg bg-[#f4f6ee] px-2.5 py-1 text-xs font-mono font-black text-[#5c6e46] border border-[#d9e1ca] dark:bg-[#2a3121] dark:text-[#c5d0b5] dark:border-[#414a33]'>
-                                {exp.expNo || 'Exp 01'}
-                              </span>
-                              <span className='text-[11px] font-bold text-[#71805a] dark:text-[#a5b48b]'>
-                                Yr {exp.year} • Sem {exp.semester}
-                              </span>
-                            </div>
+                  </div>
 
-                            <h5 className='text-base font-bold text-[#37412a] dark:text-[#e4e9d8] leading-snug mb-2'>
-                              {exp.name}
-                            </h5>
+                  {/* Table vs Cards View Switcher */}
+                  <div className='flex items-center rounded-xl border border-[#d9e1ca] bg-white p-1 dark:border-[#414a33] dark:bg-[#1a1d16]'>
+                    <button
+                      type='button'
+                      onClick={() => setCurrViewMode('table')}
+                      className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold transition-all ${
+                        currViewMode === 'table' ? 'bg-[#5c6e46] text-white shadow-xs' : 'text-[#71805a] hover:text-[#37412a] dark:text-[#a5b48b]'
+                      }`}
+                      title='Table View'
+                    >
+                      <List size={14} /> Table
+                    </button>
+                    <button
+                      type='button'
+                      onClick={() => setCurrViewMode('cards')}
+                      className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold transition-all ${
+                        currViewMode === 'cards' ? 'bg-[#5c6e46] text-white shadow-xs' : 'text-[#71805a] hover:text-[#37412a] dark:text-[#a5b48b]'
+                      }`}
+                      title='Visual Grid Cards'
+                    >
+                      <Grid size={14} /> Cards
+                    </button>
+                  </div>
+                </div>
+              </div>
 
-                            <div className='mb-4'>
-                              <p className='text-[10px] font-black uppercase text-[#87996c] tracking-wider mb-1'>Required Reagents</p>
-                              <div className='flex flex-wrap gap-1'>
-                                {exp.requiredChemicals ? (
-                                  exp.requiredChemicals.split(',').map((c, i) => (
-                                    <span key={i} className='rounded bg-[#e4eed3] px-2 py-0.5 text-[11px] font-medium text-[#2d3d17] dark:bg-[#2e3722] dark:text-[#eef4e8]'>
-                                      {c.trim()}
-                                    </span>
-                                  ))
-                                ) : (
-                                  <span className='text-xs text-gray-400 italic'>None</span>
-                                )}
+              {/* Experiments Content View (Empty State vs Subject Tables/Cards) */}
+              {filteredCurriculumExperiments.length === 0 ? (
+                <div className='rounded-2xl border border-dashed border-[#d9e1ca] bg-[#fffef8] p-10 text-center dark:border-[#414a33] dark:bg-[#20251a]'>
+                  <BookOpen size={40} className='mx-auto text-[#87996c] mb-2' />
+                  <h4 className='text-lg font-bold text-[#37412a] dark:text-[#e4e9d8]'>No Practical Experiments Found</h4>
+                  <p className='text-xs text-[#71805a] dark:text-[#a5b48b] max-w-md mx-auto mt-1'>
+                    No experiment templates configured for {currCourseFilter} {currSemFilter !== 'all' ? `Semester ${currSemFilter}` : ''} {currSubjectFilter !== 'all' ? `(${currSubjectFilter})` : ''}.
+                  </p>
+                  <Button onClick={() => setCurriculumModalOpen(true)} className='text-xs px-4 py-2 mt-4 font-bold'>
+                    <Plus size={14} className='mr-1.5' /> Add Experiment Template
+                  </Button>
+                </div>
+              ) : (
+                <div className='space-y-6'>
+                  {Object.entries(groupedCurriculumBySubject).map(([subjectName, exps]) => (
+                    <div key={subjectName} className='rounded-2xl border border-[#d9e1ca] bg-white overflow-hidden shadow-sm dark:border-[#414a33] dark:bg-[#20251a]'>
+                      
+                      {/* Section Title */}
+                      <div className='flex items-center justify-between border-b border-[#d9e1ca] bg-[#f8faee] px-4 py-3.5 dark:border-[#414a33] dark:bg-[#1a1d16]'>
+                        <div className='flex items-center gap-2.5'>
+                          <FlaskConical size={18} className='text-[#5c6e46]' />
+                          <h5 className='text-base font-extrabold text-[#37412a] dark:text-[#e4e9d8]'>{subjectName}</h5>
+                        </div>
+                        <span className='rounded-full bg-[#e8efd9] px-3 py-1 text-xs font-extrabold text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'>
+                          {exps.length} {exps.length === 1 ? 'Practical' : 'Practicals'}
+                        </span>
+                      </div>
+
+                      {/* Render Table or Visual Cards */}
+                      {currViewMode === 'table' ? (
+                        <Table
+                          headers={[
+                            {
+                              key: 'expNo',
+                              label: 'Exp No',
+                              render: (row) => (
+                                <span className='inline-flex items-center rounded-lg bg-[#f4f6ee] px-3 py-1 text-xs font-mono font-black text-[#5c6e46] border border-[#d9e1ca] dark:bg-[#2a3121] dark:text-[#c5d0b5] dark:border-[#414a33]'>
+                                  {row.expNo || 'Exp 01'}
+                                </span>
+                              )
+                            },
+                            {
+                              key: 'name',
+                              label: 'Practical Experiment Title',
+                              render: (row) => (
+                                <div>
+                                  <p className='text-base font-bold text-[#37412a] dark:text-[#e4e9d8] leading-snug'>{row.name}</p>
+                                  <p className='text-xs font-semibold text-[#71805a] dark:text-[#a5b48b] mt-0.5'>
+                                    {row.course} • Yr {row.year} • Sem {row.semester}
+                                  </p>
+                                </div>
+                              )
+                            },
+                            {
+                              key: 'requiredChemicals',
+                              label: 'Prescribed Reagents & Chemicals',
+                              render: (row) => (
+                                <div className='flex flex-wrap items-center gap-1.5 max-w-xl'>
+                                  {row.requiredChemicals ? (
+                                    row.requiredChemicals.split(',').map((chem, idx) => (
+                                      <span key={idx} className='inline-flex items-center rounded-md bg-[#e4eed3] px-2.5 py-1 text-xs font-semibold text-[#2d3d17] border border-[#c5d6aa] dark:bg-[#2e3722] dark:text-[#eef4e8] dark:border-[#414a33]'>
+                                        {chem.trim()}
+                                      </span>
+                                    ))
+                                  ) : (
+                                    <span className='text-xs text-[#87996c] italic'>No specific chemicals specified</span>
+                                  )}
+                                </div>
+                              )
+                            },
+                            {
+                              key: 'actions',
+                              label: 'Actions',
+                              render: (row) => (
+                                <div className='flex items-center gap-2'>
+                                  <Button
+                                    variant='outline'
+                                    onClick={() => {
+                                      setSelectedExpDetail(row);
+                                      setDetailExpModalOpen(true);
+                                    }}
+                                    className='text-xs px-2.5 py-1.5 border-slate-300 text-slate-700 hover:bg-slate-50 font-bold dark:border-slate-700 dark:text-slate-300'
+                                  >
+                                    View
+                                  </Button>
+                                  <Button
+                                    variant='outline'
+                                    onClick={() => handleOpenEditExp(row)}
+                                    className='text-xs px-3 py-1.5 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] font-bold dark:border-[#a8be8a] dark:text-[#a8be8a]'
+                                  >
+                                    <Edit3 size={14} className='mr-1' /> Edit
+                                  </Button>
+                                  <Button
+                                    variant='outline'
+                                    onClick={() => handleDeleteExp(row.id, row.name)}
+                                    className='text-xs px-3 py-1.5 border-rose-300 text-rose-700 hover:bg-rose-50 font-bold dark:border-rose-800 dark:text-rose-400'
+                                  >
+                                    <Trash2 size={14} className='mr-1' /> Delete
+                                  </Button>
+                                </div>
+                              )
+                            }
+                          ]}
+                          rows={exps}
+                        />
+                      ) : (
+                        /* Visual Grid Cards View */
+                        <div className='p-4 grid grid-cols-1 md:grid-cols-2 gap-4'>
+                          {exps.map((exp) => (
+                            <div
+                              key={exp.id}
+                              className='rounded-xl border border-[#d9e1ca] bg-[#fffef8] p-4 flex flex-col justify-between transition-all hover:shadow-md hover:-translate-y-0.5 dark:border-[#414a33] dark:bg-[#1a1d16]'
+                            >
+                              <div>
+                                <div className='flex items-center justify-between gap-2 mb-2'>
+                                  <span className='inline-flex items-center rounded-lg bg-[#f4f6ee] px-2.5 py-1 text-xs font-mono font-black text-[#5c6e46] border border-[#d9e1ca] dark:bg-[#2a3121] dark:text-[#c5d0b5] dark:border-[#414a33]'>
+                                    {exp.expNo || 'Exp 01'}
+                                  </span>
+                                  <span className='text-[11px] font-bold text-[#71805a] dark:text-[#a5b48b]'>
+                                    Yr {exp.year} • Sem {exp.semester}
+                                  </span>
+                                </div>
+
+                                <h5 className='text-base font-bold text-[#37412a] dark:text-[#e4e9d8] leading-snug mb-2'>
+                                  {exp.name}
+                                </h5>
+
+                                <div className='mb-4'>
+                                  <p className='text-[10px] font-black uppercase text-[#87996c] tracking-wider mb-1'>Required Reagents</p>
+                                  <div className='flex flex-wrap gap-1'>
+                                    {exp.requiredChemicals ? (
+                                      exp.requiredChemicals.split(',').map((c, i) => (
+                                        <span key={i} className='rounded bg-[#e4eed3] px-2 py-0.5 text-[11px] font-medium text-[#2d3d17] dark:bg-[#2e3722] dark:text-[#eef4e8]'>
+                                          {c.trim()}
+                                        </span>
+                                      ))
+                                    ) : (
+                                      <span className='text-xs text-gray-400 italic'>None</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className='pt-3 border-t border-[#d9e1ca] dark:border-[#414a33] flex items-center justify-end gap-2'>
+                                <Button
+                                  variant='outline'
+                                  onClick={() => {
+                                    setSelectedExpDetail(exp);
+                                    setDetailExpModalOpen(true);
+                                  }}
+                                  className='text-xs px-2.5 py-1 border-slate-300 text-slate-700 hover:bg-slate-50 font-bold dark:border-slate-700 dark:text-slate-300'
+                                >
+                                  Details
+                                </Button>
+                                <Button
+                                  variant='outline'
+                                  onClick={() => handleOpenEditExp(exp)}
+                                  className='text-xs px-2.5 py-1 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] font-bold dark:border-[#a8be8a] dark:text-[#a8be8a]'
+                                >
+                                  <Edit3 size={13} className='mr-1' /> Edit
+                                </Button>
+                                <Button
+                                  variant='outline'
+                                  onClick={() => handleDeleteExp(exp.id, exp.name)}
+                                  className='text-xs px-2.5 py-1 border-rose-300 text-rose-700 hover:bg-rose-50 font-bold dark:border-rose-800 dark:text-rose-400'
+                                >
+                                  <Trash2 size={13} className='mr-1' /> Delete
+                                </Button>
                               </div>
                             </div>
-                          </div>
-
-                          <div className='pt-3 border-t border-[#d9e1ca] dark:border-[#414a33] flex items-center justify-end gap-2'>
-                            <Button
-                              variant='outline'
-                              onClick={() => {
-                                setSelectedExpDetail(exp);
-                                setDetailExpModalOpen(true);
-                              }}
-                              className='text-xs px-2.5 py-1 border-slate-300 text-slate-700 hover:bg-slate-50 font-bold dark:border-slate-700 dark:text-slate-300'
-                            >
-                              Details
-                            </Button>
-                            <Button
-                              variant='outline'
-                              onClick={() => handleOpenEditExp(exp)}
-                              className='text-xs px-2.5 py-1 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] font-bold dark:border-[#a8be8a] dark:text-[#a8be8a]'
-                            >
-                              <Edit3 size={13} className='mr-1' /> Edit
-                            </Button>
-                            <Button
-                              variant='outline'
-                              onClick={() => handleDeleteExp(exp.id, exp.name)}
-                              className='text-xs px-2.5 py-1 border-rose-300 text-rose-700 hover:bg-rose-50 font-bold dark:border-rose-800 dark:text-rose-400'
-                            >
-                              <Trash2 size={13} className='mr-1' /> Delete
-                            </Button>
-                          </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
-                  )}
+                  ))}
                 </div>
-              ))}
+              )}
+
             </div>
-          )}
+
+          </div>
         </div>
       )}
 
