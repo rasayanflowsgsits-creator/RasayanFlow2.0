@@ -50,32 +50,28 @@ const assignAdmin = asyncHandler(async (req, res) => {
     throw new Error('Lab not found');
   }
 
-  if (lab.admins.length >= 2) {
-    res.status(400);
-    throw new Error('Lab already has 2 admins');
-  }
-
   const admin = await User.findById(adminId);
   if (!admin) {
     res.status(404);
     throw new Error('Admin user not found');
   }
 
-  if (lab.admins.some((id) => id.toString() === admin._id.toString())) {
-    res.status(400);
-    throw new Error('Admin already assigned');
-  }
-
   admin.role = 'labAdmin';
   admin.labId = lab._id;
+  admin.labName = lab.labName;
+  admin.isApproved = true;
   await admin.save();
 
-  lab.admins.push(admin._id);
-  await lab.save();
+  if (!lab.admins.some((id) => id.toString() === admin._id.toString())) {
+    lab.admins.push(admin._id);
+    await lab.save();
+  }
+
+  const updatedLab = await Lab.findById(lab._id).populate('admins', 'name email role isApproved');
 
   await ActivityLog.create({ userId: req.user._id, action: 'assign_admin', details: `Assigned ${admin.email} to lab ${lab.labCode}` });
 
-  res.json({ success: true, data: lab });
+  res.json({ success: true, data: updatedLab });
 });
 
 const removeAdmin = asyncHandler(async (req, res) => {

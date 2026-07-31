@@ -131,14 +131,25 @@ const createLabAdmin = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error('Name, email, and password are required');
   }
-  const userExists = await User.findOne({ email: email.toLowerCase() });
-  if (userExists) {
-    res.status(400);
-    throw new Error('User already exists');
+  const normalizedEmail = email.toLowerCase();
+  let user = await User.findOne({ email: normalizedEmail });
+  if (user) {
+    user.role = 'labAdmin';
+    user.isApproved = true;
+    if (name) user.name = name;
+    if (password) user.password = password;
+    await user.save();
+    await ActivityLog.create({
+      userId: req.user._id,
+      action: 'update_lab_admin',
+      details: `Updated lab admin role & credentials for ${user.email}`,
+    });
+    return res.status(200).json({ success: true, data: serializeUser(user) });
   }
-  const user = await User.create({
+
+  user = await User.create({
     name,
-    email: email.toLowerCase(),
+    email: normalizedEmail,
     password,
     role: 'labAdmin',
     isApproved: true,

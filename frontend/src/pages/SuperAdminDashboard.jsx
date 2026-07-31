@@ -996,21 +996,7 @@ export default function SuperAdminDashboard() {
 
     setCreating(true);
     try {
-      let createdAdminId = null;
-
-      // 1. Create new Lab Admin account if requested
-      if (adminMode === 'create_new') {
-        const createdAdmin = await createLabAdmin({
-          name: newLabAdmin.name.trim(),
-          email: newLabAdmin.email.trim(),
-          password: newLabAdmin.password,
-        });
-        createdAdminId = createdAdmin?.id || createdAdmin?._id;
-      } else if (adminMode === 'existing') {
-        createdAdminId = selectedExistingAdminId;
-      }
-
-      // 2. Create the Lab entity
+      // 1. Create the Lab entity FIRST
       const createdLab = await createLab({
         name: newLab.name.trim(),
         code: newLab.code.trim().toUpperCase(),
@@ -1021,7 +1007,29 @@ export default function SuperAdminDashboard() {
       });
       const labId = createdLab?.id || createdLab?._id;
 
-      // 3. Assign Admin to Lab if available
+      let createdAdminId = null;
+
+      // 2. Create or Provision Lab Admin account if requested
+      if (adminMode === 'create_new') {
+        const cleanEmail = newLabAdmin.email.trim().toLowerCase();
+        const existingLocalUser = users.find(u => u.email && u.email.toLowerCase() === cleanEmail);
+        if (existingLocalUser) {
+          createdAdminId = existingLocalUser.id || existingLocalUser._id;
+        }
+
+        const createdAdmin = await createLabAdmin({
+          name: newLabAdmin.name.trim(),
+          email: cleanEmail,
+          password: newLabAdmin.password,
+        });
+        if (createdAdmin) {
+          createdAdminId = createdAdmin?.id || createdAdmin?._id || createdAdminId;
+        }
+      } else if (adminMode === 'existing') {
+        createdAdminId = selectedExistingAdminId;
+      }
+
+      // 3. Assign Admin to Lab
       if (createdAdminId && labId) {
         await assignAdminToLab({ labId, adminId: createdAdminId });
       }
@@ -1042,7 +1050,7 @@ export default function SuperAdminDashboard() {
       setSelectedExistingAdminId('');
       setAdminMode('create_new');
     } catch (error) {
-      setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to create lab.' });
+      setToast({ type: 'error', message: error?.response?.data?.message || error?.message || 'Failed to create lab.' });
     } finally {
       setCreating(false);
     }
