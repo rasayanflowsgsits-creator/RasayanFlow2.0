@@ -1276,12 +1276,12 @@ export default function SuperAdminDashboard() {
         </div>
       )}
 
-      {/* SECTION 5: CURRICULUM & PRACTICALS - TOP-DOWN VERTICAL FLOW */}
+      {/* SECTION 5: CURRICULUM & PRACTICALS - TOP-DOWN VERTICAL FLOW WITH OUTER CARD OUTLINE */}
       {activeTab === 'curriculum' && (
-        <div className='max-w-[1200px] mx-auto space-y-6 animate-in fade-in'>
+        <div className='rounded-3xl border border-[#d9e1ca] bg-[#fffef8] p-6 sm:p-8 shadow-sm dark:border-[#414a33] dark:bg-[#20251a] space-y-6 animate-in fade-in'>
 
           {/* PAGE HEADER */}
-          <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-[#d9e1ca] pb-4 dark:border-[#414a33]'>
+          <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-[#d9e1ca] pb-5 dark:border-[#414a33]'>
             <div>
               <div className='mb-2 flex items-center gap-1.5 text-[11px] font-semibold text-[#87996c] dark:text-[#7a8f62]'>
                 <span>Super Admin</span>
@@ -1310,7 +1310,7 @@ export default function SuperAdminDashboard() {
           </div>
 
           {/* LEVEL 1 — PROGRAM TABS (TOP) */}
-          <div className='bg-[#fffef8] dark:bg-[#20251a] rounded-2xl p-2 flex flex-wrap items-center gap-2 shadow-sm border border-[#d9e1ca] dark:border-[#414a33]'>
+          <div className='bg-white dark:bg-[#1a1d16] rounded-2xl p-2 flex flex-wrap items-center gap-2 shadow-xs border border-[#d9e1ca] dark:border-[#414a33]'>
             {[
               { id: 'B.Pharm', label: 'B.Pharm', icon: '🎓' },
               { id: 'M.Pharm', label: 'M.Pharm', icon: '🔬' },
@@ -1330,7 +1330,7 @@ export default function SuperAdminDashboard() {
                   className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-extrabold transition-all duration-200 ${
                     isActive
                       ? 'bg-[#5c6e46] text-white shadow-sm dark:bg-[#e4e9d8] dark:text-[#20251a]'
-                      : 'bg-transparent text-[#5c6e46] border border-[#d9e1ca] hover:bg-[#f4f6ee] dark:text-[#a5b48b] dark:border-[#414a33] dark:hover:bg-[#1a1d16]'
+                      : 'bg-transparent text-[#5c6e46] border border-[#d9e1ca] hover:bg-[#f4f6ee] dark:text-[#a5b48b] dark:border-[#414a33] dark:hover:bg-[#242c1c]'
                   }`}
                 >
                   <span className='text-base'>{program.icon}</span>
@@ -1346,7 +1346,7 @@ export default function SuperAdminDashboard() {
           </div>
 
           {/* LEVEL 2 — SEMESTER SELECTOR */}
-          <div className='bg-[#fffef8] dark:bg-[#20251a] rounded-2xl p-4 sm:p-5 shadow-sm border border-[#d9e1ca] dark:border-[#414a33]'>
+          <div className='bg-white dark:bg-[#1a1d16] rounded-2xl p-4 sm:p-5 shadow-xs border border-[#d9e1ca] dark:border-[#414a33]'>
             <p className='text-[10px] font-extrabold uppercase tracking-widest text-[#71805a] dark:text-[#a5b48b] mb-2.5'>
               SELECT SEMESTER
             </p>
@@ -1365,7 +1365,7 @@ export default function SuperAdminDashboard() {
                     className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-extrabold shrink-0 transition-all duration-200 border ${
                       isAllActive
                         ? 'bg-[#c8a030] text-white border-[#c8a030] shadow-sm'
-                        : 'bg-white text-[#5c6e46] border-[#d9e1ca] hover:bg-[#f4f6ee] dark:bg-[#1a1d16] dark:text-[#a5b48b] dark:border-[#414a33]'
+                        : 'bg-white text-[#5c6e46] border-[#d9e1ca] hover:bg-[#f4f6ee] dark:bg-[#20251a] dark:text-[#a5b48b] dark:border-[#414a33]'
                     }`}
                   >
                     <span>All Semesters</span>
@@ -1401,7 +1401,7 @@ export default function SuperAdminDashboard() {
                     className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-extrabold shrink-0 transition-all duration-200 border ${
                       isSemActive
                         ? 'bg-[#5c6e46] text-white border-[#5c6e46] shadow-sm dark:bg-[#e4e9d8] dark:text-[#20251a] dark:border-[#e4e9d8]'
-                        : 'bg-white text-[#5c6e46] border-[#d9e1ca] hover:bg-[#f4f6ee] dark:bg-[#1a1d16] dark:text-[#a5b48b] dark:border-[#414a33]'
+                        : 'bg-white text-[#5c6e46] border-[#d9e1ca] hover:bg-[#f4f6ee] dark:bg-[#20251a] dark:text-[#a5b48b] dark:border-[#414a33]'
                     }`}
                   >
                     <span>Sem {sem}</span>
@@ -1425,7 +1425,7 @@ export default function SuperAdminDashboard() {
                 value={currSearch}
                 onChange={(e) => setCurrSearch(e.target.value)}
                 placeholder='Search experiments, chemicals or labs...'
-                className='w-full rounded-2xl border border-[#d9e1ca] bg-[#fffef8] py-2.5 pl-10 pr-4 text-xs font-semibold text-[#37412a] outline-none focus:border-[#5c6e46] focus:ring-2 focus:ring-[#5c6e46]/20 transition-all dark:border-[#414a33] dark:bg-[#1a1d16] dark:text-[#e4e9d8]'
+                className='w-full rounded-2xl border border-[#d9e1ca] bg-white py-2.5 pl-10 pr-4 text-xs font-semibold text-[#37412a] outline-none focus:border-[#5c6e46] focus:ring-2 focus:ring-[#5c6e46]/20 transition-all dark:border-[#414a33] dark:bg-[#1a1d16] dark:text-[#e4e9d8]'
               />
             </div>
             <p className='text-xs font-medium text-[#71805a] dark:text-[#a5b48b] mt-1.5 pl-1'>
@@ -1436,7 +1436,7 @@ export default function SuperAdminDashboard() {
           {/* LEVEL 3 — LAB SECTIONS (VERTICAL STACK) */}
           {filteredCurriculumExperiments.length === 0 ? (
             /* EMPTY STATE */
-            <div className='bg-[#fffef8] dark:bg-[#20251a] rounded-2xl border border-dashed border-[#d9e1ca] dark:border-[#414a33] p-12 text-center shadow-xs'>
+            <div className='bg-white dark:bg-[#1a1d16] rounded-2xl border border-dashed border-[#d9e1ca] dark:border-[#414a33] p-12 text-center shadow-xs'>
               <div className='w-16 h-16 rounded-2xl bg-[#e8efd9] dark:bg-[#2a3320] flex items-center justify-center mx-auto mb-4 text-[#5c6e46] dark:text-[#a8be8a]'>
                 <FlaskConical size={32} />
               </div>
@@ -1454,11 +1454,11 @@ export default function SuperAdminDashboard() {
               {Object.entries(groupedCurriculumBySubject).map(([subjectName, exps]) => {
                 const isCollapsed = collapsedLabs.includes(subjectName);
                 return (
-                  <div key={subjectName} className='bg-[#fffef8] dark:bg-[#20251a] rounded-2xl shadow-sm hover:shadow-md border border-[#d9e1ca] dark:border-[#414a33] overflow-hidden transition-all duration-200'>
+                  <div key={subjectName} className='bg-white dark:bg-[#1a1d16] rounded-2xl shadow-sm hover:shadow-md border border-[#d9e1ca] dark:border-[#414a33] overflow-hidden transition-all duration-200'>
                     
                     {/* LAB SECTION HEADER */}
                     <div
-                      className='bg-[#f8faee] dark:bg-[#1a1d16] px-5 py-3.5 flex items-center justify-between border-b border-[#d9e1ca] dark:border-[#414a33] cursor-pointer select-none transition-colors hover:bg-[#edf1e4] dark:hover:bg-[#242c1c]'
+                      className='bg-[#f8faee] dark:bg-[#20251a] px-5 py-3.5 flex items-center justify-between border-b border-[#d9e1ca] dark:border-[#414a33] cursor-pointer select-none transition-colors hover:bg-[#edf1e4] dark:hover:bg-[#242c1c]'
                       onClick={() => toggleLabCollapse(subjectName)}
                     >
                       <div className='flex items-center gap-3'>
@@ -1499,7 +1499,7 @@ export default function SuperAdminDashboard() {
                               return (
                                 <tr
                                   key={row.id}
-                                  className='border-b border-[#e4eed3] dark:border-[#2a3320] hover:bg-[#f8faee] dark:hover:bg-[#1a1d16] transition-colors duration-150'
+                                  className='border-b border-[#e4eed3] dark:border-[#2a3320] hover:bg-[#f8faee] dark:hover:bg-[#20251a] transition-colors duration-150'
                                 >
                                   {/* EXP NO */}
                                   <td className='px-5 py-4 align-middle'>
@@ -1565,7 +1565,7 @@ export default function SuperAdminDashboard() {
                                         type='button'
                                         title='View details'
                                         onClick={() => { setSelectedExpDetail(row); setDetailExpModalOpen(true); }}
-                                        className='w-9 h-9 rounded-xl border border-[#d9e1ca] bg-white text-[#5c6e46] hover:bg-[#f4f6ee] flex items-center justify-center transition-colors duration-150 dark:border-[#414a33] dark:bg-[#1a1d16] dark:text-[#a8be8a]'
+                                        className='w-9 h-9 rounded-xl border border-[#d9e1ca] bg-white text-[#5c6e46] hover:bg-[#f4f6ee] flex items-center justify-center transition-colors duration-150 dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#a8be8a]'
                                       >
                                         <Eye size={15} />
                                       </button>
@@ -1575,7 +1575,7 @@ export default function SuperAdminDashboard() {
                                         type='button'
                                         title='Edit experiment'
                                         onClick={() => handleOpenEditExp(row)}
-                                        className='w-9 h-9 rounded-xl border border-[#5c6e46] bg-white text-[#5c6e46] hover:bg-[#f4f6ee] flex items-center justify-center transition-colors duration-150 dark:border-[#a8be8a] dark:bg-[#1a1d16] dark:text-[#a8be8a]'
+                                        className='w-9 h-9 rounded-xl border border-[#5c6e46] bg-white text-[#5c6e46] hover:bg-[#f4f6ee] flex items-center justify-center transition-colors duration-150 dark:border-[#a8be8a] dark:bg-[#20251a] dark:text-[#a8be8a]'
                                       >
                                         <Edit3 size={15} />
                                       </button>
@@ -1585,7 +1585,7 @@ export default function SuperAdminDashboard() {
                                         type='button'
                                         title='Delete experiment'
                                         onClick={() => handleDeleteExp(row.id, row.name)}
-                                        className='w-9 h-9 rounded-xl border border-rose-300 bg-white text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors duration-150 dark:border-rose-800 dark:bg-[#1a1d16] dark:text-rose-400'
+                                        className='w-9 h-9 rounded-xl border border-rose-300 bg-white text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors duration-150 dark:border-rose-800 dark:bg-[#20251a] dark:text-rose-400'
                                       >
                                         <Trash2 size={15} />
                                       </button>
