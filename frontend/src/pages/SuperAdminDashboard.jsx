@@ -166,11 +166,12 @@ export default function SuperAdminDashboard() {
   const debouncedMatrixSearch = useDebounce(matrixSearch, 300);
   const debouncedCurrSearch = useDebounce(currSearch, 300);
 
-  // Chemical Activity Overview State
+  // Chemical Activity Overview State (Future-Proof 20+ Years Architecture)
   const [storeRequestsList, setStoreRequestsList] = useState([]);
   const [storeHistoryList, setStoreHistoryList] = useState([]);
   const [chemActivitySearch, setChemActivitySearch] = useState('');
   const [chemStatusFilter, setChemStatusFilter] = useState('all');
+  const [chemYearFilter, setChemYearFilter] = useState('all');
   const [chemMonthFilter, setChemMonthFilter] = useState('all');
 
   const debouncedChemActivitySearch = useDebounce(chemActivitySearch, 300);
@@ -212,70 +213,93 @@ export default function SuperAdminDashboard() {
     return Number(item.estimatedCost || item.totalCost || item.valueReleased || item.cost || (item.quantityRequested ? item.quantityRequested * 3.5 : 1200));
   };
 
-  // Available Months for selector
-  const availableMonths = useMemo(() => {
-    const monthsMap = {};
-    const now = new Date();
-    const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const currentLabel = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-    monthsMap[currentKey] = currentLabel;
+  // Available Years List (Scalable 20+ Years Future-Proofing)
+  const availableYears = useMemo(() => {
+    const yearsSet = new Set();
+    const currentYr = new Date().getFullYear();
+
+    // Include current year and past 20 years + future years
+    for (let y = currentYr + 2; y >= currentYr - 20; y--) {
+      yearsSet.add(String(y));
+    }
 
     storeRequestsList.forEach((r) => {
       const d = new Date(r.requestedAt || r.createdAt || Date.now());
       if (!isNaN(d.getTime())) {
-        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-        monthsMap[key] = label;
+        yearsSet.add(String(d.getFullYear()));
       }
     });
 
-    return Object.entries(monthsMap).sort((a, b) => b[0].localeCompare(a[0]));
+    return Array.from(yearsSet).sort((a, b) => b.localeCompare(a));
   }, [storeRequestsList]);
 
-  // Derived metrics for Chemical Activity Overview (Month Filtered)
-  const monthFilteredRequestsList = useMemo(() => {
-    if (chemMonthFilter === 'all') return storeRequestsList;
+  // Month Names reference
+  const MONTH_NAMES = [
+    { value: 'all', label: 'All Months' },
+    { value: '01', label: 'January' },
+    { value: '02', label: 'February' },
+    { value: '03', label: 'March' },
+    { value: '04', label: 'April' },
+    { value: '05', label: 'May' },
+    { value: '06', label: 'June' },
+    { value: '07', label: 'July' },
+    { value: '08', label: 'August' },
+    { value: '09', label: 'September' },
+    { value: '10', label: 'October' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'December' }
+  ];
+
+  // Derived metrics for Chemical Activity Overview (Year & Month Filtered)
+  const periodFilteredRequestsList = useMemo(() => {
     return storeRequestsList.filter((r) => {
       const d = new Date(r.requestedAt || r.createdAt || Date.now());
-      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      return monthKey === chemMonthFilter;
+      const rYear = String(d.getFullYear());
+      const rMonth = String(d.getMonth() + 1).padStart(2, '0');
+
+      const matchesYear = chemYearFilter === 'all' || rYear === chemYearFilter;
+      const matchesMonth = chemMonthFilter === 'all' || rMonth === chemMonthFilter;
+
+      return matchesYear && matchesMonth;
     });
-  }, [storeRequestsList, chemMonthFilter]);
+  }, [storeRequestsList, chemYearFilter, chemMonthFilter]);
 
   const totalRequestsThisMonth = useMemo(() => {
-    return monthFilteredRequestsList.length;
-  }, [monthFilteredRequestsList]);
+    return periodFilteredRequestsList.length;
+  }, [periodFilteredRequestsList]);
 
   const totalApprovedThisMonth = useMemo(() => {
-    return monthFilteredRequestsList.filter((r) => r.status === 'Approved').length;
-  }, [monthFilteredRequestsList]);
+    return periodFilteredRequestsList.filter((r) => r.status === 'Approved').length;
+  }, [periodFilteredRequestsList]);
 
   const totalLabsActiveCount = useMemo(() => {
     return labs.length || 4;
   }, [labs]);
 
   const totalChemicalsReleasedCount = useMemo(() => {
-    const approvedCount = monthFilteredRequestsList.filter((r) => r.status === 'Approved').length;
+    const approvedCount = periodFilteredRequestsList.filter((r) => r.status === 'Approved').length;
     const historyCount = storeHistoryList.filter((h) => {
       if ((h.action || 'Approved') !== 'Approved') return false;
-      if (chemMonthFilter === 'all') return true;
       const d = new Date(h.timestamp || h.createdAt);
-      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      return monthKey === chemMonthFilter;
+      const hYear = String(d.getFullYear());
+      const hMonth = String(d.getMonth() + 1).padStart(2, '0');
+      const matchesYear = chemYearFilter === 'all' || hYear === chemYearFilter;
+      const matchesMonth = chemMonthFilter === 'all' || hMonth === chemMonthFilter;
+      return matchesYear && matchesMonth;
     }).length;
     return approvedCount > 0 ? approvedCount : historyCount;
-  }, [monthFilteredRequestsList, storeHistoryList, chemMonthFilter]);
+  }, [periodFilteredRequestsList, storeHistoryList, chemYearFilter, chemMonthFilter]);
 
   // Total Chemical Cost (INR ₹)
   const totalChemicalCost = useMemo(() => {
-    return monthFilteredRequestsList
+    return periodFilteredRequestsList
       .filter((r) => r.status === 'Approved')
       .reduce((sum, r) => sum + getItemCost(r), 0);
-  }, [monthFilteredRequestsList]);
+  }, [periodFilteredRequestsList]);
 
   // Section 1: Chemical Requests Filtered
   const filteredRequests = useMemo(() => {
-    return monthFilteredRequestsList.filter((r) => {
+    return periodFilteredRequestsList.filter((r) => {
       const query = debouncedChemActivitySearch.trim().toLowerCase();
       const labNameStr = r.labName || r.labId?.name || r.labId?.labName || '';
       const chemNameStr = r.chemicalName || '';
@@ -285,13 +309,13 @@ export default function SuperAdminDashboard() {
 
       return matchesSearch && matchesStatus;
     });
-  }, [monthFilteredRequestsList, debouncedChemActivitySearch, chemStatusFilter]);
+  }, [periodFilteredRequestsList, debouncedChemActivitySearch, chemStatusFilter]);
 
   // Section 2: Approved & Received Chemicals
   const approvedReleases = useMemo(() => {
     const query = debouncedChemActivitySearch.trim().toLowerCase();
 
-    let fromRequests = monthFilteredRequestsList.filter((r) => r.status === 'Approved').map(r => ({
+    let fromRequests = periodFilteredRequestsList.filter((r) => r.status === 'Approved').map(r => ({
       id: r._id || r.id,
       labName: r.labName || r.labId?.name || r.labId?.labName || 'Central Lab',
       chemicalName: r.chemicalName || 'Chemical',
@@ -305,10 +329,12 @@ export default function SuperAdminDashboard() {
     if (fromRequests.length === 0 && storeHistoryList.length > 0) {
       fromRequests = storeHistoryList.filter((h) => {
         if ((h.action || 'Approved') !== 'Approved') return false;
-        if (chemMonthFilter === 'all') return true;
         const d = new Date(h.timestamp || h.createdAt);
-        const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        return monthKey === chemMonthFilter;
+        const hYear = String(d.getFullYear());
+        const hMonth = String(d.getMonth() + 1).padStart(2, '0');
+        const matchesYear = chemYearFilter === 'all' || hYear === chemYearFilter;
+        const matchesMonth = chemMonthFilter === 'all' || hMonth === chemMonthFilter;
+        return matchesYear && matchesMonth;
       }).map(h => ({
         id: h._id || h.id,
         labName: h.labName || 'Central Lab',
@@ -326,15 +352,17 @@ export default function SuperAdminDashboard() {
     return fromRequests.filter(item =>
       item.labName.toLowerCase().includes(query) || item.chemicalName.toLowerCase().includes(query)
     );
-  }, [monthFilteredRequestsList, storeHistoryList, chemMonthFilter, debouncedChemActivitySearch]);
+  }, [periodFilteredRequestsList, storeHistoryList, chemYearFilter, chemMonthFilter, debouncedChemActivitySearch]);
 
-  // Section 3: Monthly Saved Archive Ledger (Organized Monthly Record)
+  // Section 3: Monthly Saved Archive Ledger (Organized Monthly Record for 20+ Years)
   const monthlyLedgerArchive = useMemo(() => {
     const map = {};
 
     storeRequestsList.forEach((r) => {
       const d = new Date(r.requestedAt || r.createdAt || Date.now());
-      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const yearStr = String(d.getFullYear());
+      const monthStr = String(d.getMonth() + 1).padStart(2, '0');
+      const monthKey = `${yearStr}-${monthStr}`;
       const monthLabel = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
       const lab = r.labName || r.labId?.name || r.labId?.labName || 'Central Lab';
       const key = `${monthKey}__${lab}`;
@@ -343,6 +371,8 @@ export default function SuperAdminDashboard() {
         map[key] = {
           id: key,
           monthKey,
+          yearStr,
+          monthStr,
           monthLabel,
           labName: lab,
           totalRequests: 0,
@@ -363,8 +393,11 @@ export default function SuperAdminDashboard() {
 
     let list = Object.values(map);
 
+    if (chemYearFilter !== 'all') {
+      list = list.filter((item) => item.yearStr === chemYearFilter);
+    }
     if (chemMonthFilter !== 'all') {
-      list = list.filter((item) => item.monthKey === chemMonthFilter);
+      list = list.filter((item) => item.monthStr === chemMonthFilter);
     }
 
     const query = debouncedChemActivitySearch.trim().toLowerCase();
@@ -373,7 +406,7 @@ export default function SuperAdminDashboard() {
     }
 
     return list.sort((a, b) => b.monthKey.localeCompare(a.monthKey));
-  }, [storeRequestsList, chemMonthFilter, debouncedChemActivitySearch]);
+  }, [storeRequestsList, chemYearFilter, chemMonthFilter, debouncedChemActivitySearch]);
 
   const handleExportMonthlyLedgerCSV = () => {
     if (monthlyLedgerArchive.length === 0) return;
@@ -386,7 +419,7 @@ export default function SuperAdminDashboard() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Chemical_Monthly_Ledger_${chemMonthFilter}.csv`);
+    link.setAttribute("download", `Chemical_Monthly_Ledger_${chemYearFilter}_${chemMonthFilter}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1485,7 +1518,7 @@ export default function SuperAdminDashboard() {
         <div className='rounded-3xl border border-[#d9e1ca] bg-[#fffef8] p-6 sm:p-8 shadow-sm dark:border-[#414a33] dark:bg-[#20251a] space-y-6 animate-in fade-in'>
 
           {/* PAGE HEADER */}
-          <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-[#d9e1ca] pb-5 dark:border-[#414a33]'>
+          <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-[#d9e1ca] pb-5 dark:border-[#414a33]'>
             <div>
               <div className='mb-2 flex items-center gap-1.5 text-[11px] font-semibold text-[#87996c] dark:text-[#7a8f62]'>
                 <span>Super Admin</span>
@@ -1503,9 +1536,41 @@ export default function SuperAdminDashboard() {
               </p>
             </div>
 
-            <div className='flex items-center gap-2.5 shrink-0'>
+            {/* TOP RIGHT CONTROLS: YEAR SELECTOR, MONTH SELECTOR, EXPORT CSV */}
+            <div className='flex flex-wrap items-center gap-2.5 shrink-0'>
+              {/* Year Selector */}
+              <div className='flex items-center gap-1.5 bg-white dark:bg-[#1a1d16] px-3 py-1.5 rounded-xl border border-[#d9e1ca] dark:border-[#414a33] shadow-2xs'>
+                <Clock size={14} className='text-[#5c6e46] dark:text-[#a8be8a]' />
+                <span className='text-[11px] font-extrabold text-[#71805a] dark:text-[#a5b48b]'>Year:</span>
+                <select
+                  value={chemYearFilter}
+                  onChange={(e) => setChemYearFilter(e.target.value)}
+                  className='bg-transparent text-xs font-black text-[#37412a] outline-none cursor-pointer dark:text-[#e4e9d8]'
+                >
+                  <option value='all'>All Years (20+ Yrs)</option>
+                  {availableYears.map((yr) => (
+                    <option key={yr} value={yr}>{yr}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Month Selector */}
+              <div className='flex items-center gap-1.5 bg-white dark:bg-[#1a1d16] px-3 py-1.5 rounded-xl border border-[#d9e1ca] dark:border-[#414a33] shadow-2xs'>
+                <span className='text-[11px] font-extrabold text-[#71805a] dark:text-[#a5b48b]'>Month:</span>
+                <select
+                  value={chemMonthFilter}
+                  onChange={(e) => setChemMonthFilter(e.target.value)}
+                  className='bg-transparent text-xs font-black text-[#37412a] outline-none cursor-pointer dark:text-[#e4e9d8]'
+                >
+                  {MONTH_NAMES.map((m) => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Export Button */}
               <Button variant='outline' onClick={handleExportMonthlyLedgerCSV} className='text-xs px-3.5 py-2 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] font-bold dark:border-[#a8be8a] dark:text-[#a8be8a] dark:hover:bg-[#1e2418] rounded-xl'>
-                <Download size={14} className='mr-1.5' /> Export Monthly Record CSV
+                <Download size={14} className='mr-1.5' /> Export CSV
               </Button>
             </div>
           </div>
@@ -1563,47 +1628,31 @@ export default function SuperAdminDashboard() {
             </div>
           </div>
 
-          {/* FILTER BAR (MONTH SELECTOR + SEARCH + STATUS) */}
-          <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-white dark:bg-[#1a1d16] p-4 rounded-2xl border border-[#d9e1ca] dark:border-[#414a33] shadow-xs'>
+          {/* FILTER BAR (SEARCH + STATUS) */}
+          <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white dark:bg-[#1a1d16] p-4 rounded-2xl border border-[#d9e1ca] dark:border-[#414a33] shadow-xs'>
             
-            {/* MONTH SELECTOR */}
-            <div className='flex items-center gap-2 shrink-0'>
-              <Clock size={16} className='text-[#5c6e46] dark:text-[#a8be8a]' />
-              <span className='text-xs font-extrabold text-[#71805a] dark:text-[#a5b48b] whitespace-nowrap'>Select Month:</span>
-              <select
-                value={chemMonthFilter}
-                onChange={(e) => setChemMonthFilter(e.target.value)}
-                className='rounded-xl border border-[#d9e1ca] bg-[#fffef8] py-1.5 px-3 text-xs font-bold text-[#37412a] outline-none focus:border-[#5c6e46] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
-              >
-                <option value='all'>🗓️ All Months (Historical)</option>
-                {availableMonths.map(([key, label]) => (
-                  <option key={key} value={key}>📅 {label}</option>
-                ))}
-              </select>
-            </div>
-
             {/* SEARCH */}
-            <div className='relative flex-1 min-w-[200px]'>
+            <div className='relative flex-1'>
               <Search size={16} className='absolute left-3.5 top-1/2 -translate-y-1/2 text-[#87996c]' />
               <input
                 type='text'
                 value={chemActivitySearch}
                 onChange={(e) => setChemActivitySearch(e.target.value)}
                 placeholder='Search by lab name or chemical...'
-                className='w-full rounded-xl border border-[#d9e1ca] bg-[#fffef8] py-1.5 pl-10 pr-4 text-xs font-semibold text-[#37412a] outline-none focus:border-[#5c6e46] focus:ring-2 focus:ring-[#5c6e46]/20 transition-all dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
+                className='w-full rounded-xl border border-[#d9e1ca] bg-[#fffef8] py-2 pl-10 pr-4 text-xs font-semibold text-[#37412a] outline-none focus:border-[#5c6e46] focus:ring-2 focus:ring-[#5c6e46]/20 transition-all dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
               />
             </div>
 
             {/* STATUS FILTER */}
             <div className='flex items-center gap-2 shrink-0'>
-              <span className='text-xs font-extrabold text-[#71805a] dark:text-[#a5b48b]'>Status:</span>
+              <span className='text-xs font-extrabold text-[#71805a] dark:text-[#a5b48b]'>Filter Status:</span>
               <div className='flex items-center gap-1 bg-[#f4f6ee] dark:bg-[#20251a] p-1 rounded-xl border border-[#d9e1ca] dark:border-[#414a33]'>
                 {['all', 'pending', 'approved', 'rejected'].map((st) => (
                   <button
                     key={st}
                     type='button'
                     onClick={() => setChemStatusFilter(st)}
-                    className={`px-2.5 py-1 text-xs font-bold rounded-lg capitalize transition-all ${
+                    className={`px-3 py-1 text-xs font-bold rounded-lg capitalize transition-all ${
                       chemStatusFilter === st
                         ? 'bg-[#5c6e46] text-white shadow-2xs dark:bg-[#e4e9d8] dark:text-[#20251a]'
                         : 'text-[#5c6e46] hover:bg-white/60 dark:text-[#a5b48b] dark:hover:bg-[#1a1d16]'
@@ -1614,7 +1663,6 @@ export default function SuperAdminDashboard() {
                 ))}
               </div>
             </div>
-
           </div>
 
           {/* SECTION 1 — LAB REQUESTS TO STORE */}
@@ -1625,7 +1673,7 @@ export default function SuperAdminDashboard() {
                   <FileText size={18} className='text-[#5c6e46]' /> Chemical Requests
                 </h3>
                 <p className='text-xs text-[#71805a] dark:text-[#a5b48b] mt-0.5 font-medium'>
-                  All lab requests sent to store manager {chemMonthFilter !== 'all' ? `for ${availableMonths.find(m => m[0] === chemMonthFilter)?.[1] || chemMonthFilter}` : ''}
+                  All lab requests sent to store manager {chemYearFilter !== 'all' || chemMonthFilter !== 'all' ? `(${chemYearFilter !== 'all' ? chemYearFilter : ''} ${chemMonthFilter !== 'all' ? MONTH_NAMES.find(m => m.value === chemMonthFilter)?.label : ''})` : ''}
                 </p>
               </div>
               <span className='bg-[#e8efd9] text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a] text-xs font-black px-3 py-1 rounded-full'>
