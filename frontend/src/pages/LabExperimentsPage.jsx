@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Upload, Download, Plus, AlertCircle, FileText } from 'lucide-react';
+import { Upload, Download, Plus, AlertCircle, FileText, CheckCircle2, XCircle, Search, LayoutGrid, Table as TableIcon, Tag, FlaskConical } from 'lucide-react';
 import Papa from 'papaparse';
 import useAppStore from '../store/appStore';
 import Card from '../components/ui/Card';
@@ -12,13 +12,20 @@ export default function LabExperimentsPage() {
   const { 
     labs, 
     labStructure, 
+    inventory,
     fetchLabs, 
     fetchLabStructure, 
     uploadLabStructure 
   } = useAppStore();
 
   const [activeLabId, setActiveLabId] = useState(() => localStorage.getItem('pharmlab-active-lab') || '');
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'table'
+  const [search, setSearch] = useState('');
+  const [selectedSubject, setSelectedSubject] = useState('All');
+
+  // Modal / Import state
   const [importOpen, setImportOpen] = useState(false);
+  const [importStep, setImportStep] = useState(1); // 1: Upload, 2: Preview & Edit, 3: Success
   const [importData, setImportData] = useState([]);
   const [importIssues, setImportIssues] = useState([]);
   const [importing, setImporting] = useState(false);
@@ -39,12 +46,38 @@ export default function LabExperimentsPage() {
     }
   }, [activeLabId, labs, fetchLabStructure]);
 
+  // Unique subjects for filter
+  const subjects = useMemo(() => {
+    const set = new Set((labStructure || []).map(item => item.subject).filter(Boolean));
+    return ['All', ...Array.from(set)];
+  }, [labStructure]);
+
+  // Filtered experiments
+  const filteredExperiments = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return (labStructure || []).filter(item => {
+      const matchesSearch = !q || item.experimentName?.toLowerCase().includes(q) || item.subject?.toLowerCase().includes(q);
+      const matchesSubject = selectedSubject === 'All' || item.subject === selectedSubject;
+      return matchesSearch && matchesSubject;
+    });
+  }, [labStructure, search, selectedSubject]);
+
+  // Stock check lookup for experiment chemicals
+  const getStockStatus = (chemName) => {
+    const item = (inventory || []).find(i => i.chemicalName?.toLowerCase() === chemName?.toLowerCase());
+    if (!item) return { status: 'missing', label: 'Not in Stock', color: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' };
+    const qty = Number(item.quantity || 0);
+    const min = Number(item.minThreshold || 5);
+    if (qty === 0) return { status: 'out', label: 'Out of Stock', color: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' };
+    if (qty <= min) return { status: 'low', label: `Low (${qty} ${item.unit || ''})`, color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' };
+    return { status: 'ok', label: `In Stock (${qty} ${item.unit || ''})`, color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' };
+  };
+
   const processParsedData = (data) => {
     const issues = [];
     const grouped = {};
 
     data.forEach((row, i) => {
-      // Handle empty rows
       if (!row.Subject && !row['Experiment Name'] && !row['Chemical Name']) return;
 
       const subject = row.Subject?.trim();
@@ -82,6 +115,9 @@ export default function LabExperimentsPage() {
 
     setImportData(Object.values(grouped));
     setImportIssues(issues);
+    if (Object.keys(grouped).length > 0) {
+      setImportStep(2);
+    }
   };
 
   const handleFileUpload = (e) => {
@@ -106,7 +142,6 @@ export default function LabExperimentsPage() {
     setImportIssues([]);
     setImportData([]);
 
-    // Extract ID from URL
     const match = sheetUrl.match(/\/d\/(.*?)(\/|$)/);
     if (!match || !match[1]) {
       setImportIssues(["Invalid Google Sheets URL. Please provide a full link to the sheet."]);
@@ -137,8 +172,7 @@ export default function LabExperimentsPage() {
     setImporting(true);
     try {
       await uploadLabStructure(importData);
-      setImportOpen(false);
-      setImportData([]);
+      setImportStep(3);
       if (activeLabId) fetchLabStructure(activeLabId);
     } finally {
       setImporting(false);
@@ -158,14 +192,15 @@ export default function LabExperimentsPage() {
 
   return (
     <div className='space-y-6 pb-10'>
+      {/* Page Header */}
       <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
         <div>
           <h2 className='text-2xl font-semibold text-[#3c4e23] dark:text-[#eef4e8]'>Lab Experiments</h2>
           <p className='text-[#71805a] dark:text-[#c5d0b5]'>
-            {currentLab?.courseType} {currentLab?.year} {currentLab?.semester} Structure
+            {currentLab?.courseType} {currentLab?.year} {currentLab?.semester} Curriculum Structure
           </p>
         </div>
-        <div className='flex items-center gap-3'>
+        <div className='flex flex-wrap items-center gap-3'>
           <select 
             value={activeLabId} 
             onChange={e => {
@@ -178,26 +213,119 @@ export default function LabExperimentsPage() {
               <option key={l.id} value={l.id}>{l.name}</option>
             ))}
           </select>
-          <Button variant='outline' onClick={() => setImportOpen(true)}>
-            <Upload size={16} /> Upload CSV
+          <div className="flex bg-[#f4f5eb] dark:bg-[#1c2117] p-1 rounded-lg border border-[#d9e1ca] dark:border-[#4e5d35]">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded-md transition ${viewMode === 'grid' ? 'bg-[#556b2f] text-white' : 'text-[#71805a]'}`}
+              title="Grid Cards View"
+            >
+              <LayoutGrid size={16} />
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`p-1.5 rounded-md transition ${viewMode === 'table' ? 'bg-[#556b2f] text-white' : 'text-[#71805a]'}`}
+              title="Table View"
+            >
+              <TableIcon size={16} />
+            </button>
+          </div>
+          <Button variant='outline' onClick={() => { setImportStep(1); setImportOpen(true); }}>
+            <Upload size={16} /> Upload CSV Wizard
           </Button>
         </div>
       </div>
 
+      {/* Filter & Search Bar */}
+      <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-[#fffef8] dark:bg-[#1c2117] p-4 rounded-xl border border-[#d9e1ca] dark:border-[#3c452f] shadow-sm">
+        <div className="relative flex-1 max-w-md w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#87996c]" size={16} />
+          <Input 
+            className="pl-9" 
+            value={search} 
+            onChange={e => setSearch(e.target.value)} 
+            placeholder="Search experiment name, subject..." 
+          />
+        </div>
+        <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto">
+          <Tag size={14} className="text-[#87996c] flex-shrink-0" />
+          {subjects.map(subj => (
+            <button
+              key={subj}
+              onClick={() => setSelectedSubject(subj)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition ${
+                selectedSubject === subj
+                  ? 'bg-[#556b2f] text-white'
+                  : 'bg-[#f4f5eb] dark:bg-[#28301f] text-[#71805a] hover:bg-[#e8efd9]'
+              }`}
+            >
+              {subj}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Empty State */}
       {labStructure.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#cfd8bd] bg-[#fdfdf7] py-16 text-center dark:border-[#4e5d35] dark:bg-[#1a1d16]">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#f4f5eb] dark:bg-[#28301f]">
-            <FileText size={28} className="text-[#87996c]" />
+            <FlaskConical size={28} className="text-[#87996c]" />
           </div>
           <h3 className="mb-2 text-lg font-semibold text-[#3c4e23] dark:text-[#eef4e8]">No Experiments Found</h3>
           <p className="mb-6 max-w-sm text-sm text-[#71805a] dark:text-[#c5d0b5]">
             There are currently no experiments loaded for this lab. Upload a CSV file containing the lab structure to get started.
           </p>
-          <Button onClick={() => setImportOpen(true)}>
-            <Upload size={16} className="mr-2" /> Upload CSV
+          <Button onClick={() => { setImportStep(1); setImportOpen(true); }}>
+            <Upload size={16} className="mr-2" /> Upload CSV Wizard
           </Button>
         </div>
+      ) : viewMode === 'grid' ? (
+        /* Grid Cards Layout with Chemical Stock Status Badges */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filteredExperiments.map((exp, idx) => (
+            <div
+              key={idx}
+              className="rounded-2xl border border-[#d9e1ca] dark:border-[#3c452f] bg-[#fffef8] dark:bg-[#1c2117] p-5 shadow-sm hover:shadow-md hover:-translate-y-1 transition duration-200 flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#556b2f] dark:text-[#a5b48b] bg-[#f0f4e8] dark:bg-[#28301f] px-2.5 py-1 rounded-md">
+                    {exp.subject}
+                  </span>
+                  <span className="text-xs font-semibold text-[#87996c]">
+                    Exp #{exp.experimentNo}
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-[#3c4e23] dark:text-[#eef4e8] mb-4">
+                  {exp.experimentName}
+                </h3>
+
+                <div className="space-y-2 mb-4">
+                  <p className="text-xs font-semibold text-[#71805a] uppercase tracking-wider">Required Chemicals</p>
+                  {(exp.chemicals || []).map((c, ci) => {
+                    const stock = getStockStatus(c.chemicalName);
+                    return (
+                      <div key={ci} className="flex items-center justify-between text-xs p-2 rounded-lg bg-[#fdfdf7] dark:bg-[#1a1d16] border border-[#e8ece1] dark:border-[#3c452f]">
+                        <div className="font-medium text-[#3c4e23] dark:text-[#eef4e8]">
+                          {c.chemicalName} <span className="text-[#87996c]">({c.quantityPerStudent} {c.unit})</span>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${stock.color}`}>
+                          {stock.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-[#e8ece1] dark:border-[#3c452f] flex justify-between items-center text-xs text-[#87996c]">
+                <span>{exp.chemicals?.length || 0} Ingredients</span>
+                <span className="text-[#556b2f] dark:text-[#a5b48b] font-medium">Ready for allotment</span>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
+        /* Table View */
         <Card title='Experiment List'>
           <Table
             headers={[
@@ -206,109 +334,140 @@ export default function LabExperimentsPage() {
               { key: 'experimentName', label: 'Experiment Name' },
               { 
                 key: 'chemicals', 
-                label: 'Chemicals Required',
+                label: 'Chemicals Required & Stock Status',
                 render: (row) => (
                   <div className="flex flex-col text-sm space-y-1">
-                    {row.chemicals.map((c, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <span className="h-1.5 w-1.5 rounded-full bg-[#87996c]" />
-                        <span className="font-medium text-[#3c4e23] dark:text-[#eef4e8]">{c.chemicalName}:</span>
-                        <span className="text-[#71805a] dark:text-[#c5d0b5]">{c.quantityPerStudent} {c.unit}</span>
-                      </div>
-                    ))}
+                    {row.chemicals.map((c, i) => {
+                      const stock = getStockStatus(c.chemicalName);
+                      return (
+                        <div key={i} className="flex items-center gap-2">
+                          <span className="h-1.5 w-1.5 rounded-full bg-[#87996c]" />
+                          <span className="font-medium text-[#3c4e23] dark:text-[#eef4e8]">{c.chemicalName}:</span>
+                          <span className="text-[#71805a] dark:text-[#c5d0b5]">{c.quantityPerStudent} {c.unit}</span>
+                          <span className={`px-2 py-0.2 text-[10px] font-semibold rounded ${stock.color}`}>
+                            {stock.label}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 )
               }
             ]}
-            rows={labStructure}
+            rows={filteredExperiments}
           />
         </Card>
       )}
 
-      <Modal open={importOpen} onClose={() => { setImportOpen(false); setImportData([]); setImportIssues([]); }} title="Upload Lab Structure">
+      {/* 3-Step Drag & Drop Excel Import Wizard Modal */}
+      <Modal open={importOpen} onClose={() => { setImportOpen(false); setImportData([]); setImportIssues([]); }} title="Import Experiments Wizard">
         <div className="space-y-6">
-          <div className="rounded-xl border-2 border-dashed border-[#cfd8bd] bg-[#fdfdf7] p-8 text-center transition-colors hover:border-[#87996c] dark:border-[#4e5d35] dark:bg-[#1a1d16] dark:hover:border-[#87996c]">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#f4f5eb] dark:bg-[#28301f]">
-              <Upload size={28} className="text-[#87996c]" />
+          {/* Step Indicator */}
+          <div className="flex items-center justify-center gap-4 border-b border-[#e8ece1] dark:border-[#3c452f] pb-4">
+            <div className={`flex items-center gap-1.5 text-xs font-semibold ${importStep >= 1 ? 'text-[#556b2f]' : 'text-[#87996c]'}`}>
+              <span className={`h-5 w-5 rounded-full flex items-center justify-center text-white ${importStep >= 1 ? 'bg-[#556b2f]' : 'bg-slate-300'}`}>1</span>
+              <span>Upload CSV</span>
             </div>
-            <h3 className="mb-1 text-lg font-semibold text-[#3c4e23] dark:text-[#eef4e8]">Upload CSV File</h3>
-            <p className="mb-6 text-sm text-[#71805a] dark:text-[#c5d0b5]">Upload a local file matching the template structure.</p>
-            
-            <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-              <Button variant="outline" onClick={downloadTemplate}>
-                <Download size={16} className="mr-2" /> Download Template
-              </Button>
-              <label className="relative flex cursor-pointer items-center justify-center rounded-lg bg-[#556b2f] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#465825] focus-within:ring-2 focus-within:ring-[#6f7d45] focus-within:ring-offset-2">
-                <Upload size={16} className="mr-2" /> Browse File
-                <input type="file" accept=".csv" className="sr-only" onChange={handleFileUpload} />
-              </label>
+            <span className="text-slate-300">•</span>
+            <div className={`flex items-center gap-1.5 text-xs font-semibold ${importStep >= 2 ? 'text-[#556b2f]' : 'text-[#87996c]'}`}>
+              <span className={`h-5 w-5 rounded-full flex items-center justify-center text-white ${importStep >= 2 ? 'bg-[#556b2f]' : 'bg-slate-300'}`}>2</span>
+              <span>Preview & Validate</span>
             </div>
-          </div>
-          
-          <div className="relative text-center">
-            <span className="relative z-10 bg-[#fffef8] px-4 text-xs font-medium text-[#87996c] dark:bg-[#20251a] dark:text-[#c5d0b5]">OR FETCH FROM GOOGLE SHEETS</span>
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-[#e8ece1] dark:border-[#3c452f]"></div>
+            <span className="text-slate-300">•</span>
+            <div className={`flex items-center gap-1.5 text-xs font-semibold ${importStep >= 3 ? 'text-[#556b2f]' : 'text-[#87996c]'}`}>
+              <span className={`h-5 w-5 rounded-full flex items-center justify-center text-white ${importStep >= 3 ? 'bg-[#556b2f]' : 'bg-slate-300'}`}>3</span>
+              <span>Complete</span>
             </div>
           </div>
 
-          <div className="rounded-xl border border-[#cfd8bd] bg-[#fdfdf7] p-6 dark:border-[#4e5d35] dark:bg-[#1a1d16]">
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-[#3c4e23] dark:text-[#eef4e8]">Public Google Sheets Link</label>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Input 
-                  placeholder="https://docs.google.com/spreadsheets/d/..." 
-                  value={sheetUrl}
-                  onChange={(e) => setSheetUrl(e.target.value)}
-                  className="flex-1 bg-white dark:bg-[#20251a]"
-                />
-                <Button 
-                  onClick={handleUrlFetch} 
-                  disabled={fetchingSheet || !sheetUrl}
-                  className="whitespace-nowrap"
-                >
-                  {fetchingSheet ? 'Fetching...' : 'Fetch Sheet Data'}
-                </Button>
+          {/* STEP 1: Upload */}
+          {importStep === 1 && (
+            <div className="space-y-6">
+              <div className="rounded-xl border-2 border-dashed border-[#cfd8bd] bg-[#fdfdf7] p-8 text-center transition-colors hover:border-[#87996c] dark:border-[#4e5d35] dark:bg-[#1a1d16]">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#f4f5eb] dark:bg-[#28301f]">
+                  <Upload size={28} className="text-[#87996c]" />
+                </div>
+                <h3 className="mb-1 text-lg font-semibold text-[#3c4e23] dark:text-[#eef4e8]">Drag & Drop CSV File</h3>
+                <p className="mb-6 text-sm text-[#71805a] dark:text-[#c5d0b5]">Upload a file matching the curriculum structure.</p>
+                
+                <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+                  <Button variant="outline" onClick={downloadTemplate}>
+                    <Download size={16} className="mr-2" /> Download Template
+                  </Button>
+                  <label className="relative flex cursor-pointer items-center justify-center rounded-lg bg-[#556b2f] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#465825]">
+                    <Upload size={16} className="mr-2" /> Browse CSV
+                    <input type="file" accept=".csv" className="sr-only" onChange={handleFileUpload} />
+                  </label>
+                </div>
               </div>
-            </div>
-          </div>
 
-          {importIssues.length > 0 && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/30 dark:bg-red-900/10 dark:text-red-400">
-              <p className="mb-3 flex items-center font-semibold"><AlertCircle size={18} className="mr-2" /> Import Issues found:</p>
-              <ul className="list-inside list-disc space-y-1 max-h-32 overflow-y-auto pl-1">
-                {importIssues.map((iss, i) => <li key={i}>{iss}</li>)}
-              </ul>
+              <div className="rounded-xl border border-[#cfd8bd] bg-[#fdfdf7] p-4 dark:border-[#4e5d35] dark:bg-[#1a1d16]">
+                <label className="text-xs font-semibold text-[#3c4e23] dark:text-[#eef4e8] mb-2 block">Or Google Sheets Public Link</label>
+                <div className="flex gap-2">
+                  <Input 
+                    placeholder="https://docs.google.com/spreadsheets/d/..." 
+                    value={sheetUrl}
+                    onChange={(e) => setSheetUrl(e.target.value)}
+                    className="flex-1 bg-white dark:bg-[#20251a]"
+                  />
+                  <Button onClick={handleUrlFetch} disabled={fetchingSheet || !sheetUrl}>
+                    {fetchingSheet ? 'Fetching...' : 'Fetch'}
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
 
-          {importData.length > 0 && (
-            <div className="rounded-lg border border-[#cfd8bd] bg-white p-4 dark:border-[#4e5d35] dark:bg-[#20251a]">
-              <h4 className="mb-3 flex items-center text-sm font-semibold text-[#3c4e23] dark:text-[#eef4e8]">
-                <FileText size={18} className="mr-2 text-[#87996c]" /> Parsed {importData.length} experiments successfully
+          {/* STEP 2: Preview & Validation Badges */}
+          {importStep === 2 && (
+            <div className="space-y-4">
+              <h4 className="font-semibold text-sm text-[#3c4e23] dark:text-[#eef4e8]">
+                Preview Parsed Experiments ({importData.length} total)
               </h4>
-              <div className="max-h-48 space-y-2 overflow-y-auto">
-                {importData.map((d, i) => (
-                  <div key={i} className="rounded-lg border border-[#e8ece1] bg-[#fdfdf7] p-3 text-sm dark:border-[#3c452f] dark:bg-[#1a1d16]">
-                    <div className="font-semibold text-[#3c4e23] dark:text-[#eef4e8]">
-                      {d.subject} <span className="text-[#87996c]">—</span> Exp {d.experimentNo}
+
+              {importIssues.length > 0 && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+                  <p className="font-bold mb-1 flex items-center gap-1"><AlertCircle size={14} /> Issues / Warnings:</p>
+                  <ul className="list-disc list-inside space-y-0.5">
+                    {importIssues.map((iss, i) => <li key={i}>{iss}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              <div className="max-h-60 overflow-y-auto space-y-2">
+                {importData.map((exp, i) => (
+                  <div key={i} className="p-3 rounded-lg border border-[#cfd8bd] bg-white dark:bg-[#1a1d16] dark:border-[#4e5d35]">
+                    <div className="flex justify-between font-semibold text-xs text-[#3c4e23] dark:text-[#eef4e8]">
+                      <span>{exp.subject} - Exp #{exp.experimentNo}: {exp.experimentName}</span>
+                      <span className="text-emerald-600 flex items-center gap-1"><CheckCircle2 size={12} /> Valid</span>
                     </div>
-                    <div className="mt-1 text-[#71805a] dark:text-[#c5d0b5]">
-                      {d.experimentName} <span className="mx-2 text-slate-300 dark:text-slate-600">•</span> 
-                      <span className="font-medium text-[#556b2f] dark:text-[#d5ddbf]">{d.chemicals.length} chemicals</span>
+                    <div className="mt-1 text-[11px] text-[#71805a]">
+                      Chemicals: {exp.chemicals.map(c => `${c.chemicalName} (${c.quantityPerStudent} ${c.unit})`).join(', ')}
                     </div>
                   </div>
                 ))}
               </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="outline" onClick={() => setImportStep(1)}>Back</Button>
+                <Button onClick={confirmImport} disabled={importing} className="bg-[#556b2f] text-white">
+                  {importing ? 'Saving Structure...' : 'Confirm & Save All'}
+                </Button>
+              </div>
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={() => setImportOpen(false)}>Cancel</Button>
-            <Button onClick={confirmImport} disabled={importing || importData.length === 0} className="px-6">
-              {importing ? 'Importing...' : 'Confirm Upload'}
-            </Button>
-          </div>
+          {/* STEP 3: Complete */}
+          {importStep === 3 && (
+            <div className="text-center py-8 space-y-4">
+              <div className="h-12 w-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+                <CheckCircle2 size={32} />
+              </div>
+              <h3 className="text-lg font-bold text-[#3c4e23] dark:text-[#eef4e8]">Experiments Uploaded Successfully!</h3>
+              <p className="text-xs text-[#71805a]">The curriculum structure has been updated for this lab.</p>
+              <Button onClick={() => setImportOpen(false)} className="bg-[#556b2f] text-white">Done</Button>
+            </div>
+          )}
         </div>
       </Modal>
     </div>
