@@ -28,7 +28,7 @@ router.post(
 
 router.post(
   '/assign',
-  [body('labId').isMongoId(), body('adminId').isMongoId()],
+  [body('labId').isMongoId(), body('adminId').optional().isMongoId(), body('email').optional().isEmail()],
   validateRequest,
   assignAdmin,
 );
