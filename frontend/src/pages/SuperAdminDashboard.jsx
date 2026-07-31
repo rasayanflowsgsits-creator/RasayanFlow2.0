@@ -36,139 +36,6 @@ const MOCK_STORE_HISTORY = [
   { _id: 'sh-5', labName: 'Pharmacology Lab', chemicalName: 'Atropine Sulphate IP', qtyRequestedBase: 50, unit: 'g', valueReleased: 4200, action: 'Approved', approvedBy: 'Dr. Store Admin', timestamp: new Date(Date.now() - 86400000 * 65).toISOString(), receiptNumber: 'REC-2026-00-2' }
 ];
 
-const MOCK_AUDIT_LOGS = [
-  {
-    id: 'aud-1',
-    timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-    userName: 'Harsh Parmar',
-    userEmail: 'harsh@gmail.com',
-    role: 'student',
-    labName: 'Pharmaceutics Lab - I',
-    courseType: 'B.Pharm',
-    year: '1',
-    semester: '1',
-    actionDetails: 'Logged In',
-    status: 'Success'
-  },
-  {
-    id: 'aud-2',
-    timestamp: new Date(Date.now() - 1000 * 60 * 29).toISOString(),
-    userName: 'Prof. Sharma',
-    userEmail: 'sharma@gmail.com',
-    role: 'lab-admin',
-    labName: 'Pharma Lab Y1S1',
-    courseType: 'B.Pharm',
-    year: '1',
-    semester: '1',
-    actionDetails: 'Approved student request Exp 1 — Limit Test',
-    status: 'Success'
-  },
-  {
-    id: 'aud-3',
-    timestamp: new Date(Date.now() - 1000 * 60 * 77).toISOString(),
-    userName: 'Store Manager',
-    userEmail: 'store@sgsits.ac.in',
-    role: 'store-admin',
-    labName: 'Central Store',
-    courseType: '-',
-    year: '-',
-    semester: '-',
-    actionDetails: 'Approved lab request ACETONE LR 500ml',
-    status: 'Success'
-  },
-  {
-    id: 'aud-4',
-    timestamp: new Date(Date.now() - 1000 * 60 * 119).toISOString(),
-    userName: 'Unknown User',
-    userEmail: 'wrong@gmail.com',
-    role: 'unknown',
-    labName: '-',
-    courseType: '-',
-    year: '-',
-    semester: '-',
-    actionDetails: 'Failed login attempt (Invalid credentials)',
-    status: 'Failed'
-  },
-  {
-    id: 'aud-5',
-    timestamp: new Date(Date.now() - 1000 * 60 * 180).toISOString(),
-    userName: 'Super Administrator',
-    userEmail: 'vanshajbairagi10@gmail.com',
-    role: 'super-admin',
-    labName: 'Governance Hub',
-    courseType: '-',
-    year: '-',
-    semester: '-',
-    actionDetails: 'Updated Curriculum & Practicals syllabus for B.Pharm Sem 1',
-    status: 'Success'
-  },
-  {
-    id: 'aud-6',
-    timestamp: new Date(Date.now() - 1000 * 60 * 240).toISOString(),
-    userName: 'Prof. Gupta',
-    userEmail: 'gupta@sgsits.ac.in',
-    role: 'lab-admin',
-    labName: 'Pharma Lab Y1S2',
-    courseType: 'B.Pharm',
-    year: '1',
-    semester: '2',
-    actionDetails: 'Approved experiment request for Acid-Base Titrations',
-    status: 'Success'
-  },
-  {
-    id: 'aud-7',
-    timestamp: new Date(Date.now() - 1000 * 60 * 310).toISOString(),
-    userName: 'Ananya Roy',
-    userEmail: 'ananya.roy@student.sgsits.ac.in',
-    role: 'student',
-    labName: 'Pharmaceutical Analysis Lab',
-    courseType: 'B.Pharm',
-    year: '1',
-    semester: '2',
-    actionDetails: 'Submitted borrowing request for Paracetamol IP 250g',
-    status: 'Success'
-  },
-  {
-    id: 'aud-8',
-    timestamp: new Date(Date.now() - 1000 * 60 * 420).toISOString(),
-    userName: 'Rohan Mehta',
-    userEmail: 'rohan.mehta@student.sgsits.ac.in',
-    role: 'student',
-    labName: 'Pharmaceutics Lab - I',
-    courseType: 'B.Pharm',
-    year: '2',
-    semester: '3',
-    actionDetails: 'Logged In',
-    status: 'Success'
-  },
-  {
-    id: 'aud-9',
-    timestamp: new Date(Date.now() - 1000 * 60 * 580).toISOString(),
-    userName: 'Store Manager',
-    userEmail: 'store@sgsits.ac.in',
-    role: 'store-admin',
-    labName: 'Central Store',
-    courseType: '-',
-    year: '-',
-    semester: '-',
-    actionDetails: 'Issued 1000mL Ethanol 99.9% to Pharmaceutical Chemistry Lab',
-    status: 'Success'
-  },
-  {
-    id: 'aud-10',
-    timestamp: new Date(Date.now() - 1000 * 60 * 710).toISOString(),
-    userName: 'Suspicious IP 192.168.1.45',
-    userEmail: 'hacker@unauthorized.com',
-    role: 'unknown',
-    labName: '-',
-    courseType: '-',
-    year: '-',
-    semester: '-',
-    actionDetails: 'Unauthorized API access attempt to user permissions',
-    status: 'Failed'
-  }
-];
-
 export default function SuperAdminDashboard() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -567,14 +434,18 @@ export default function SuperAdminDashboard() {
   const [auditDateTo, setAuditDateTo] = useState('');
   const [auditViewMode, setAuditViewMode] = useState('table'); // 'table' | 'section'
 
-  const debouncedAuditSearch = useDebounce(auditSearchQuery, 300);
+  useEffect(() => {
+    if (activeTab === 'activity' && typeof fetchActivityLogs === 'function') {
+      fetchActivityLogs();
+    }
+  }, [activeTab, fetchActivityLogs]);
 
-  // Normalize Audit Logs (Combining activityLogs from store/API with mock seed logs)
+  // Normalize Audit Logs (Strictly real data from MongoDB backend API via /logs)
   const normalizedAuditLogs = useMemo(() => {
-    const rawLogs = (activityLogs && Array.isArray(activityLogs) && activityLogs.length > 0) ? activityLogs : [];
+    const rawLogs = (activityLogs && Array.isArray(activityLogs)) ? activityLogs : [];
     
-    const apiLogsStandardized = rawLogs.map((log, index) => {
-      const roleStr = (log.actorRole || log.role || 'user').toLowerCase();
+    return rawLogs.map((log, index) => {
+      const roleStr = (log.role || log.actorRole || 'student').toLowerCase();
       let normRole = 'student';
       if (roleStr.includes('super')) normRole = 'super-admin';
       else if (roleStr.includes('store')) normRole = 'store-admin';
@@ -582,30 +453,19 @@ export default function SuperAdminDashboard() {
       else if (roleStr.includes('student')) normRole = 'student';
 
       return {
-        id: log._id || log.id || `api-log-${index}`,
+        id: log._id || log.id || `log-${index}`,
         timestamp: log.timestamp || log.createdAt || new Date().toISOString(),
-        userName: log.actorName || log.userName || log.user?.name || 'User',
-        userEmail: log.actorEmail || log.userEmail || log.user?.email || 'user@rasayanflow.edu',
+        userName: log.userName || log.actorName || log.user?.name || 'User',
+        userEmail: log.userEmail || log.actorEmail || log.user?.email || '',
         role: normRole,
         labName: log.labName || log.lab?.name || (normRole === 'store-admin' ? 'Central Store' : normRole === 'super-admin' ? 'Governance Hub' : '-'),
         courseType: log.courseType || (normRole === 'student' || normRole === 'lab-admin' ? 'B.Pharm' : '-'),
-        year: log.year ? String(log.year) : (normRole === 'student' ? '1' : '-'),
-        semester: log.semester ? String(log.semester) : (normRole === 'student' ? '1' : '-'),
-        actionDetails: log.details || log.action || log.message || 'Logged In',
-        status: (log.status || ((log.details || '').toLowerCase().includes('failed') ? 'Failed' : 'Success'))
+        year: log.year && log.year !== '-' ? String(log.year) : (normRole === 'student' ? '1' : '-'),
+        semester: log.semester && log.semester !== '-' ? String(log.semester) : (normRole === 'student' ? '1' : '-'),
+        actionDetails: log.actionDetails || log.details || log.action || 'User Action',
+        status: log.status || (log.action === 'failed_login' ? 'Failed' : 'Success')
       };
-    });
-
-    const combined = [...apiLogsStandardized];
-    const existingIds = new Set(combined.map(l => l.id));
-
-    MOCK_AUDIT_LOGS.forEach(mock => {
-      if (!existingIds.has(mock.id)) {
-        combined.push(mock);
-      }
-    });
-
-    return combined.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   }, [activityLogs]);
 
   // Role Count Badges for Audit Top Tabs
@@ -714,10 +574,57 @@ export default function SuperAdminDashboard() {
     });
 
     return {
-      loginsToday: loginsToday || 14,
-      activeUsersRightNow: activeUsersTodaySet.size || 8,
-      actionsThisWeek: actionsThisWeek || 142,
-      suspiciousFailed: suspiciousFailed || 3
+      loginsToday: loginsToday,
+      activeUsersRightNow: activeUsersTodaySet.size,
+      actionsThisWeek: actionsThisWeek,
+      suspiciousFailed: suspiciousFailed
+    };
+  }, [normalizedAuditLogs]);
+
+  // Dynamic Section Metrics from Real Mongo Data
+  const auditSectionMetrics = useMemo(() => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+    // Store Manager
+    const storeLogs = normalizedAuditLogs.filter(l => l.role === 'store-admin');
+    const storeLogsToday = storeLogs.filter(l => new Date(l.timestamp).getTime() >= todayStart);
+    const lastStoreLog = storeLogs[0];
+
+    // Lab Admins
+    const labAdminLogs = normalizedAuditLogs.filter(l => l.role === 'lab-admin');
+    const activeLabAdminsSet = new Set(labAdminLogs.filter(l => new Date(l.timestamp).getTime() >= todayStart).map(l => l.userEmail || l.userName));
+    
+    // Unique Recent Active Lab Admins
+    const recentLabAdminsMap = new Map();
+    labAdminLogs.forEach(l => {
+      const key = l.userEmail || l.userName;
+      if (!recentLabAdminsMap.has(key)) {
+        recentLabAdminsMap.set(key, l);
+      }
+    });
+    const recentLabAdminsList = Array.from(recentLabAdminsMap.values()).slice(0, 3);
+
+    // Students
+    const studentLogs = normalizedAuditLogs.filter(l => l.role === 'student');
+    const activeStudentsSet = new Set(studentLogs.filter(l => new Date(l.timestamp).getTime() >= todayStart).map(l => l.userEmail || l.userName));
+    
+    // Student Breakdown by Year/Sem
+    const studentSemMap = {};
+    studentLogs.forEach(l => {
+      if (l.year !== '-' && l.semester !== '-') {
+        const key = `Year ${l.year} Sem ${l.semester}`;
+        studentSemMap[key] = (studentSemMap[key] || 0) + 1;
+      }
+    });
+
+    return {
+      storeCountToday: storeLogsToday.length,
+      lastStoreTime: lastStoreLog ? new Date(lastStoreLog.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'No Activity',
+      activeLabAdminsCount: activeLabAdminsSet.size,
+      recentLabAdminsList,
+      activeStudentsCount: activeStudentsSet.size,
+      studentSemMap
     };
   }, [normalizedAuditLogs]);
 
@@ -2935,11 +2842,11 @@ export default function SuperAdminDashboard() {
                   <div className='mt-4 space-y-3'>
                     <div className='flex justify-between items-center bg-white/80 dark:bg-[#1a1d16]/80 p-3 rounded-xl border border-sky-100 dark:border-sky-900/30'>
                       <span className='text-xs font-bold text-[#71805a] dark:text-[#a5b48b]'>Today's Activity:</span>
-                      <span className='text-sm font-black text-sky-900 dark:text-sky-200'>5 Actions</span>
+                      <span className='text-sm font-black text-sky-900 dark:text-sky-200'>{auditSectionMetrics.storeCountToday} Actions</span>
                     </div>
                     <div className='flex justify-between items-center bg-white/80 dark:bg-[#1a1d16]/80 p-3 rounded-xl border border-sky-100 dark:border-sky-900/30'>
                       <span className='text-xs font-bold text-[#71805a] dark:text-[#a5b48b]'>Last Store Activity:</span>
-                      <span className='text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8]'>10:30 AM Today</span>
+                      <span className='text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8]'>{auditSectionMetrics.lastStoreTime}</span>
                     </div>
                   </div>
                 </div>
@@ -2964,19 +2871,21 @@ export default function SuperAdminDashboard() {
                     </div>
                     <div>
                       <h4 className='font-black text-lg text-emerald-950 dark:text-emerald-100'>🧪 LAB ADMINS</h4>
-                      <p className='text-xs font-medium text-emerald-700 dark:text-emerald-300'>Active Lab Administrators today: 3</p>
+                      <p className='text-xs font-medium text-emerald-700 dark:text-emerald-300'>Active Lab Administrators today: {auditSectionMetrics.activeLabAdminsCount}</p>
                     </div>
                   </div>
 
                   <div className='mt-4 space-y-2.5'>
-                    <div className='bg-white/80 dark:bg-[#1a1d16]/80 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-xs'>
-                      <p className='font-bold text-[#37412a] dark:text-[#e4e9d8]'>Pharma Lab Y1S1 — Prof. Sharma</p>
-                      <p className='text-[11px] text-[#71805a] dark:text-[#a5b48b] mt-0.5'>Last active: 11:00 AM Today</p>
-                    </div>
-                    <div className='bg-white/80 dark:bg-[#1a1d16]/80 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-xs'>
-                      <p className='font-bold text-[#37412a] dark:text-[#e4e9d8]'>Pharma Lab Y1S2 — Prof. Gupta</p>
-                      <p className='text-[11px] text-[#71805a] dark:text-[#a5b48b] mt-0.5'>Last active: 09:30 AM Today</p>
-                    </div>
+                    {auditSectionMetrics.recentLabAdminsList.length === 0 ? (
+                      <p className='text-xs text-[#71805a] italic p-2'>No active lab admins recorded yet</p>
+                    ) : (
+                      auditSectionMetrics.recentLabAdminsList.map((log) => (
+                        <div key={log.id} className='bg-white/80 dark:bg-[#1a1d16]/80 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-xs'>
+                          <p className='font-bold text-[#37412a] dark:text-[#e4e9d8]'>{log.labName} — {log.userName}</p>
+                          <p className='text-[11px] text-[#71805a] dark:text-[#a5b48b] mt-0.5'>Last active: {new Date(log.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
 
@@ -3000,23 +2909,21 @@ export default function SuperAdminDashboard() {
                     </div>
                     <div>
                       <h4 className='font-black text-lg text-amber-950 dark:text-amber-100'>👨🎓 STUDENTS</h4>
-                      <p className='text-xs font-medium text-amber-700 dark:text-amber-300'>Active Students today: 24</p>
+                      <p className='text-xs font-medium text-amber-700 dark:text-amber-300'>Active Students today: {auditSectionMetrics.activeStudentsCount}</p>
                     </div>
                   </div>
 
                   <div className='mt-4 space-y-2 text-xs'>
-                    <div className='flex justify-between items-center bg-white/80 dark:bg-[#1a1d16]/80 p-2.5 rounded-xl border border-amber-100 dark:border-amber-900/30 font-semibold'>
-                      <span>B.Pharm Year 1 Sem 1:</span>
-                      <span className='font-black text-amber-900 dark:text-amber-300'>10 Students</span>
-                    </div>
-                    <div className='flex justify-between items-center bg-white/80 dark:bg-[#1a1d16]/80 p-2.5 rounded-xl border border-amber-100 dark:border-amber-900/30 font-semibold'>
-                      <span>B.Pharm Year 1 Sem 2:</span>
-                      <span className='font-black text-amber-900 dark:text-amber-300'>8 Students</span>
-                    </div>
-                    <div className='flex justify-between items-center bg-white/80 dark:bg-[#1a1d16]/80 p-2.5 rounded-xl border border-amber-100 dark:border-amber-900/30 font-semibold'>
-                      <span>B.Pharm Year 2 Sem 3:</span>
-                      <span className='font-black text-amber-900 dark:text-amber-300'>6 Students</span>
-                    </div>
+                    {Object.keys(auditSectionMetrics.studentSemMap).length === 0 ? (
+                      <p className='text-xs text-[#71805a] italic p-2'>No active student logs recorded yet</p>
+                    ) : (
+                      Object.entries(auditSectionMetrics.studentSemMap).map(([semLabel, count]) => (
+                        <div key={semLabel} className='flex justify-between items-center bg-white/80 dark:bg-[#1a1d16]/80 p-2.5 rounded-xl border border-amber-100 dark:border-amber-900/30 font-semibold'>
+                          <span>B.Pharm {semLabel}:</span>
+                          <span className='font-black text-amber-900 dark:text-amber-300'>{count} Actions</span>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
 

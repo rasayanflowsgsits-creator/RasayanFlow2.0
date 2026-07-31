@@ -542,6 +542,18 @@ const useAppStore = create((set) => ({
     const response = await api.put(`/users/approve/${userId}`);
     return normalizeUser(getPayload(response.data));
   },
+  fetchActivityLogs: async () => {
+    try {
+      const response = await api.get('/logs?limit=500');
+      const logsData = response?.data?.logs || response?.data?.data || response?.data || [];
+      const list = Array.isArray(logsData) ? logsData : [];
+      set({ activityLogs: list });
+      return list;
+    } catch (error) {
+      console.error('Failed to fetch real activity logs:', error);
+      return [];
+    }
+  },
   setUserBlockedState: async ({ userId, isBlocked, blockedReason = '' }) => {
     const response = await api.put(`/users/block/${userId}`, { isBlocked, blockedReason });
     const updatedUser = normalizeUser(getPayload(response.data));

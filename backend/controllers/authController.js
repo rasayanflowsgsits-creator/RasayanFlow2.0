@@ -119,6 +119,23 @@ const login = asyncHandler(async (req, res) => {
 
   const user = await User.findOne({ email });
   if (!user || !(await user.comparePassword(password))) {
+    try {
+      await ActivityLog.create({
+        userId: user?._id || null,
+        action: 'failed_login',
+        details: `Failed login attempt for ${email}`,
+        role: user?.role || 'unknown',
+        userName: user?.name || 'Unknown User',
+        userEmail: email,
+        labName: user?.labName || '-',
+        courseType: user?.course || '-',
+        year: user?.year ? String(user.year) : '-',
+        semester: user?.semester ? String(user.semester) : '-',
+        status: 'Failed'
+      });
+    } catch (e) {
+      // ignore log error
+    }
     res.status(401);
     throw new Error('Invalid credentials');
   }
@@ -140,7 +157,15 @@ const login = asyncHandler(async (req, res) => {
   await ActivityLog.create({
     userId: user._id,
     action: 'login',
-    details: `Login for ${user.email}`,
+    details: `User Logged In`,
+    role: user.role,
+    userName: user.name,
+    userEmail: user.email,
+    labName: user.labName || (user.role === 'storeAdmin' || user.role === 'store-admin' ? 'Central Store' : user.role === 'superAdmin' ? 'Governance Hub' : '-'),
+    courseType: user.course || (user.role === 'student' || user.role === 'labAdmin' ? 'B.Pharm' : '-'),
+    year: user.year ? String(user.year) : (user.role === 'student' ? '1' : '-'),
+    semester: user.semester ? String(user.semester) : (user.role === 'student' ? '1' : '-'),
+    status: 'Success'
   });
 
   res.json({
