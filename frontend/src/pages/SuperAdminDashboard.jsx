@@ -5,7 +5,7 @@ import {
   Building2, LayoutDashboard, Clock, UserCheck, AlertCircle, RefreshCw,
   BookOpen, FileSpreadsheet, Megaphone, ToggleLeft, ToggleRight, Download,
   Ban, ShieldAlert, FileText, Check, X, AlertTriangle, Layers, Edit3, Trash2, Folder, FolderOpen, Grid, List,
-  ChevronRight, ChevronDown, Eye
+  ChevronRight, ChevronDown, Eye, Activity
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import useDebounce from '../hooks/useDebounce';
