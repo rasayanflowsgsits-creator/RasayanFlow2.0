@@ -27,6 +27,9 @@ import LabNotifications from './pages/LabNotifications';
 import LabHistory from './pages/LabHistory';
 import LabExperimentsPage from './pages/LabExperimentsPage';
 import LabStudentRequestsPage from './pages/LabStudentRequestsPage';
+import LabGroupsPage from './pages/LabGroupsPage';
+import LabLiveMonitorPage from './pages/LabLiveMonitorPage';
+import LabAnalyticsPage from './pages/LabAnalyticsPage';
 import AboutPage from './pages/AboutPage';
 import NotFound from './pages/NotFound';
 import socket from './services/socket';
@@ -217,10 +220,12 @@ function App() {
                     <Route index element={role === 'super-admin' ? <SuperAdminDashboard /> : role === 'lab-admin' ? <LabAdminDashboard /> : isStoreAdmin ? <StoreManagerDashboard /> : <StudentDashboard />} />
                     <Route path='labs' element={role === 'super-admin' ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='inventory' element={role === 'lab-admin' ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
-                    <Route path='analytics' element={role === 'lab-admin' ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
+                    <Route path='analytics' element={role === 'lab-admin' ? <LabAnalyticsPage /> : <Navigate to='/' replace />} />
                     <Route path='transactions' element={role === 'lab-admin' ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='lab/experiments' element={role === 'lab-admin' ? <LabExperimentsPage /> : <Navigate to='/' replace />} />
                     <Route path='lab/student-requests' element={role === 'lab-admin' ? <LabStudentRequestsPage /> : <Navigate to='/' replace />} />
+                    <Route path='lab/groups' element={role === 'lab-admin' ? <LabGroupsPage /> : <Navigate to='/' replace />} />
+                    <Route path='lab/live' element={role === 'lab-admin' ? <LabLiveMonitorPage /> : <Navigate to='/' replace />} />
                     <Route path='lab/store-requests' element={role === 'lab-admin' ? <LabStoreRequests /> : <Navigate to='/' replace />} />
                     <Route path='lab/history' element={role === 'lab-admin' ? <LabHistory /> : <Navigate to='/' replace />} />
                     <Route path='lab/notifications' element={role === 'lab-admin' ? <LabNotifications /> : <Navigate to='/' replace />} />
