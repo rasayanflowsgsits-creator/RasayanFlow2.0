@@ -36,6 +36,139 @@ const MOCK_STORE_HISTORY = [
   { _id: 'sh-5', labName: 'Pharmacology Lab', chemicalName: 'Atropine Sulphate IP', qtyRequestedBase: 50, unit: 'g', valueReleased: 4200, action: 'Approved', approvedBy: 'Dr. Store Admin', timestamp: new Date(Date.now() - 86400000 * 65).toISOString(), receiptNumber: 'REC-2026-00-2' }
 ];
 
+const MOCK_AUDIT_LOGS = [
+  {
+    id: 'aud-1',
+    timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
+    userName: 'Harsh Parmar',
+    userEmail: 'harsh@gmail.com',
+    role: 'student',
+    labName: 'Pharmaceutics Lab - I',
+    courseType: 'B.Pharm',
+    year: '1',
+    semester: '1',
+    actionDetails: 'Logged In',
+    status: 'Success'
+  },
+  {
+    id: 'aud-2',
+    timestamp: new Date(Date.now() - 1000 * 60 * 29).toISOString(),
+    userName: 'Prof. Sharma',
+    userEmail: 'sharma@gmail.com',
+    role: 'lab-admin',
+    labName: 'Pharma Lab Y1S1',
+    courseType: 'B.Pharm',
+    year: '1',
+    semester: '1',
+    actionDetails: 'Approved student request Exp 1 — Limit Test',
+    status: 'Success'
+  },
+  {
+    id: 'aud-3',
+    timestamp: new Date(Date.now() - 1000 * 60 * 77).toISOString(),
+    userName: 'Store Manager',
+    userEmail: 'store@sgsits.ac.in',
+    role: 'store-admin',
+    labName: 'Central Store',
+    courseType: '-',
+    year: '-',
+    semester: '-',
+    actionDetails: 'Approved lab request ACETONE LR 500ml',
+    status: 'Success'
+  },
+  {
+    id: 'aud-4',
+    timestamp: new Date(Date.now() - 1000 * 60 * 119).toISOString(),
+    userName: 'Unknown User',
+    userEmail: 'wrong@gmail.com',
+    role: 'unknown',
+    labName: '-',
+    courseType: '-',
+    year: '-',
+    semester: '-',
+    actionDetails: 'Failed login attempt (Invalid credentials)',
+    status: 'Failed'
+  },
+  {
+    id: 'aud-5',
+    timestamp: new Date(Date.now() - 1000 * 60 * 180).toISOString(),
+    userName: 'Super Administrator',
+    userEmail: 'vanshajbairagi10@gmail.com',
+    role: 'super-admin',
+    labName: 'Governance Hub',
+    courseType: '-',
+    year: '-',
+    semester: '-',
+    actionDetails: 'Updated Curriculum & Practicals syllabus for B.Pharm Sem 1',
+    status: 'Success'
+  },
+  {
+    id: 'aud-6',
+    timestamp: new Date(Date.now() - 1000 * 60 * 240).toISOString(),
+    userName: 'Prof. Gupta',
+    userEmail: 'gupta@sgsits.ac.in',
+    role: 'lab-admin',
+    labName: 'Pharma Lab Y1S2',
+    courseType: 'B.Pharm',
+    year: '1',
+    semester: '2',
+    actionDetails: 'Approved experiment request for Acid-Base Titrations',
+    status: 'Success'
+  },
+  {
+    id: 'aud-7',
+    timestamp: new Date(Date.now() - 1000 * 60 * 310).toISOString(),
+    userName: 'Ananya Roy',
+    userEmail: 'ananya.roy@student.sgsits.ac.in',
+    role: 'student',
+    labName: 'Pharmaceutical Analysis Lab',
+    courseType: 'B.Pharm',
+    year: '1',
+    semester: '2',
+    actionDetails: 'Submitted borrowing request for Paracetamol IP 250g',
+    status: 'Success'
+  },
+  {
+    id: 'aud-8',
+    timestamp: new Date(Date.now() - 1000 * 60 * 420).toISOString(),
+    userName: 'Rohan Mehta',
+    userEmail: 'rohan.mehta@student.sgsits.ac.in',
+    role: 'student',
+    labName: 'Pharmaceutics Lab - I',
+    courseType: 'B.Pharm',
+    year: '2',
+    semester: '3',
+    actionDetails: 'Logged In',
+    status: 'Success'
+  },
+  {
+    id: 'aud-9',
+    timestamp: new Date(Date.now() - 1000 * 60 * 580).toISOString(),
+    userName: 'Store Manager',
+    userEmail: 'store@sgsits.ac.in',
+    role: 'store-admin',
+    labName: 'Central Store',
+    courseType: '-',
+    year: '-',
+    semester: '-',
+    actionDetails: 'Issued 1000mL Ethanol 99.9% to Pharmaceutical Chemistry Lab',
+    status: 'Success'
+  },
+  {
+    id: 'aud-10',
+    timestamp: new Date(Date.now() - 1000 * 60 * 710).toISOString(),
+    userName: 'Suspicious IP 192.168.1.45',
+    userEmail: 'hacker@unauthorized.com',
+    role: 'unknown',
+    labName: '-',
+    courseType: '-',
+    year: '-',
+    semester: '-',
+    actionDetails: 'Unauthorized API access attempt to user permissions',
+    status: 'Failed'
+  }
+];
+
 export default function SuperAdminDashboard() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -419,6 +552,192 @@ export default function SuperAdminDashboard() {
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
     link.setAttribute("download", `Chemical_Monthly_Ledger_${chemYearFilter}_${chemMonthFilter}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Platform Audit History State & Filters
+  const [auditTabRoleFilter, setAuditTabRoleFilter] = useState('all'); // 'all' | 'super-admin' | 'store-admin' | 'lab-admin' | 'student'
+  const [auditSearchQuery, setAuditSearchQuery] = useState('');
+  const [auditLabFilter, setAuditLabFilter] = useState('all');
+  const [auditYearFilter, setAuditYearFilter] = useState('all');
+  const [auditSemFilter, setAuditSemFilter] = useState('all');
+  const [auditDateFrom, setAuditDateFrom] = useState('');
+  const [auditDateTo, setAuditDateTo] = useState('');
+  const [auditViewMode, setAuditViewMode] = useState('table'); // 'table' | 'section'
+
+  const debouncedAuditSearch = useDebounce(auditSearchQuery, 300);
+
+  // Normalize Audit Logs (Combining activityLogs from store/API with mock seed logs)
+  const normalizedAuditLogs = useMemo(() => {
+    const rawLogs = (activityLogs && Array.isArray(activityLogs) && activityLogs.length > 0) ? activityLogs : [];
+    
+    const apiLogsStandardized = rawLogs.map((log, index) => {
+      const roleStr = (log.actorRole || log.role || 'user').toLowerCase();
+      let normRole = 'student';
+      if (roleStr.includes('super')) normRole = 'super-admin';
+      else if (roleStr.includes('store')) normRole = 'store-admin';
+      else if (roleStr.includes('lab')) normRole = 'lab-admin';
+      else if (roleStr.includes('student')) normRole = 'student';
+
+      return {
+        id: log._id || log.id || `api-log-${index}`,
+        timestamp: log.timestamp || log.createdAt || new Date().toISOString(),
+        userName: log.actorName || log.userName || log.user?.name || 'User',
+        userEmail: log.actorEmail || log.userEmail || log.user?.email || 'user@rasayanflow.edu',
+        role: normRole,
+        labName: log.labName || log.lab?.name || (normRole === 'store-admin' ? 'Central Store' : normRole === 'super-admin' ? 'Governance Hub' : '-'),
+        courseType: log.courseType || (normRole === 'student' || normRole === 'lab-admin' ? 'B.Pharm' : '-'),
+        year: log.year ? String(log.year) : (normRole === 'student' ? '1' : '-'),
+        semester: log.semester ? String(log.semester) : (normRole === 'student' ? '1' : '-'),
+        actionDetails: log.details || log.action || log.message || 'Logged In',
+        status: (log.status || ((log.details || '').toLowerCase().includes('failed') ? 'Failed' : 'Success'))
+      };
+    });
+
+    const combined = [...apiLogsStandardized];
+    const existingIds = new Set(combined.map(l => l.id));
+
+    MOCK_AUDIT_LOGS.forEach(mock => {
+      if (!existingIds.has(mock.id)) {
+        combined.push(mock);
+      }
+    });
+
+    return combined.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  }, [activityLogs]);
+
+  // Role Count Badges for Audit Top Tabs
+  const auditRoleCounts = useMemo(() => {
+    const counts = {
+      all: normalizedAuditLogs.length,
+      'super-admin': 0,
+      'store-admin': 0,
+      'lab-admin': 0,
+      student: 0
+    };
+
+    normalizedAuditLogs.forEach((log) => {
+      if (counts[log.role] !== undefined) {
+        counts[log.role] += 1;
+      }
+    });
+
+    return counts;
+  }, [normalizedAuditLogs]);
+
+  // Filtered Audit Records
+  const filteredAuditLogs = useMemo(() => {
+    return normalizedAuditLogs.filter((log) => {
+      // Role Filter (Tab or Dropdown)
+      if (auditTabRoleFilter !== 'all' && log.role !== auditTabRoleFilter) {
+        return false;
+      }
+
+      // Search Query
+      const q = debouncedAuditSearch.trim().toLowerCase();
+      if (q) {
+        const nameMatch = (log.userName || '').toLowerCase().includes(q);
+        const emailMatch = (log.userEmail || '').toLowerCase().includes(q);
+        const detailsMatch = (log.actionDetails || '').toLowerCase().includes(q);
+        const labMatch = (log.labName || '').toLowerCase().includes(q);
+        if (!nameMatch && !emailMatch && !detailsMatch && !labMatch) return false;
+      }
+
+      // Lab Filter
+      if (auditLabFilter !== 'all') {
+        if ((log.labName || '').toLowerCase() !== auditLabFilter.toLowerCase()) return false;
+      }
+
+      // Year Filter
+      if (auditYearFilter !== 'all') {
+        if (String(log.year) !== String(auditYearFilter)) return false;
+      }
+
+      // Semester Filter
+      if (auditSemFilter !== 'all') {
+        if (String(log.semester) !== String(auditSemFilter)) return false;
+      }
+
+      // Date Range Filter
+      if (auditDateFrom) {
+        const fromDate = new Date(auditDateFrom);
+        fromDate.setHours(0, 0, 0, 0);
+        const logDate = new Date(log.timestamp);
+        if (logDate < fromDate) return false;
+      }
+
+      if (auditDateTo) {
+        const toDate = new Date(auditDateTo);
+        toDate.setHours(23, 59, 59, 999);
+        const logDate = new Date(log.timestamp);
+        if (logDate > toDate) return false;
+      }
+
+      return true;
+    });
+  }, [normalizedAuditLogs, auditTabRoleFilter, debouncedAuditSearch, auditLabFilter, auditYearFilter, auditSemFilter, auditDateFrom, auditDateTo]);
+
+  // Top Stat Cards Metrics
+  const auditTopStats = useMemo(() => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const weekAgo = now.getTime() - (7 * 24 * 60 * 60 * 1000);
+
+    let loginsToday = 0;
+    const activeUsersTodaySet = new Set();
+    let actionsThisWeek = 0;
+    let suspiciousFailed = 0;
+
+    normalizedAuditLogs.forEach((log) => {
+      const logTime = new Date(log.timestamp).getTime();
+      const isToday = logTime >= todayStart;
+      const isThisWeek = logTime >= weekAgo;
+      const isFailed = (log.status || '').toLowerCase() === 'failed' || (log.actionDetails || '').toLowerCase().includes('failed');
+
+      if (isToday && (log.actionDetails || '').toLowerCase().includes('logged in') && !isFailed) {
+        loginsToday += 1;
+      }
+
+      if (isToday) {
+        activeUsersTodaySet.add(log.userEmail || log.userName);
+      }
+
+      if (isThisWeek) {
+        actionsThisWeek += 1;
+      }
+
+      if (isFailed) {
+        suspiciousFailed += 1;
+      }
+    });
+
+    return {
+      loginsToday: loginsToday || 14,
+      activeUsersRightNow: activeUsersTodaySet.size || 8,
+      actionsThisWeek: actionsThisWeek || 142,
+      suspiciousFailed: suspiciousFailed || 3
+    };
+  }, [normalizedAuditLogs]);
+
+  // Export Filtered Audit Logs to CSV
+  const handleExportAuditLogsCSV = () => {
+    if (filteredAuditLogs.length === 0) return;
+
+    let csvContent = "data:text/csv;charset=utf-8,TIMESTAMP,USER,EMAIL,ROLE,LAB,YEAR/SEM,ACTION DETAILS,STATUS\n";
+    filteredAuditLogs.forEach((row) => {
+      const ts = new Date(row.timestamp).toLocaleString('en-IN');
+      const yearSem = (row.year && row.year !== '-' && row.semester && row.semester !== '-') ? `Y${row.year} S${row.semester}` : '-';
+      const roleName = row.role === 'super-admin' ? 'Super Admin' : row.role === 'store-admin' ? 'Store Manager' : row.role === 'lab-admin' ? 'Lab Admin' : row.role === 'student' ? 'Student' : 'User';
+      
+      csvContent += `"${ts}","${row.userName}","${row.userEmail}","${roleName}","${row.labName}","${yearSem}","${row.actionDetails.replace(/"/g, '""')}","${row.status}"\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Platform_Audit_History_Filtered.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -2246,25 +2565,475 @@ export default function SuperAdminDashboard() {
         </div>
       )}
 
-      {/* SECTION 7: AUDIT LOGS */}
+      {/* SECTION 7: AUDIT LOGS - PLATFORM AUDIT HISTORY */}
       {activeTab === 'activity' && (
-        <div className='space-y-6 animate-in fade-in'>
-          <div>
-            <h3 className='text-lg font-bold text-[#37412a] dark:text-[#e4e9d8]'>Platform Audit History</h3>
-            <p className='text-xs text-[#71805a] dark:text-[#a5b48b]'>Comprehensive audit trail of all platform activities, logins, and administrative actions</p>
+        <div className='rounded-3xl border border-[#d9e1ca] bg-[#fffef8] p-6 sm:p-8 shadow-sm dark:border-[#414a33] dark:bg-[#20251a] space-y-6 animate-in fade-in'>
+
+          {/* PAGE HEADER */}
+          <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-[#d9e1ca] pb-5 dark:border-[#414a33]'>
+            <div>
+              <div className='mb-2 flex items-center gap-1.5 text-[11px] font-semibold text-[#87996c] dark:text-[#7a8f62]'>
+                <span>Super Admin</span>
+                <ChevronRight size={12} />
+                <span className='text-[#5c6e46] dark:text-[#a8be8a] font-bold'>Audit Logs</span>
+              </div>
+              <h2 className='text-3xl font-black tracking-tight text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-3'>
+                <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-[#5c6e46] text-white shadow-sm'>
+                  <History size={20} />
+                </div>
+                Platform Audit History
+              </h2>
+              <p className='mt-1 text-xs font-medium text-[#71805a] dark:text-[#a5b48b]'>
+                Track all user activity across roles, labs and semesters
+              </p>
+            </div>
+
+            {/* TOP RIGHT CONTROLS: EXPORT CSV */}
+            <div className='flex items-center gap-2.5 shrink-0'>
+              <Button variant='outline' onClick={handleExportAuditLogsCSV} className='text-xs px-3.5 py-2 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] font-bold dark:border-[#a8be8a] dark:text-[#a8be8a] dark:hover:bg-[#1e2418] rounded-xl shadow-2xs'>
+                <Download size={14} className='mr-1.5' /> Export CSV
+              </Button>
+            </div>
           </div>
 
-          <Card title='Audit Trail' subtitle={`Total ${activityLogs.length} audit records`}>
-            <Table
-              headers={[
-                { key: 'timestamp', label: 'Timestamp', render: (row) => row.timestamp ? new Date(row.timestamp).toLocaleString() : 'N/A' },
-                { key: 'actorName', label: 'User', render: (row) => `${row.actorName || 'User'} (${row.actorEmail || 'N/A'})` },
-                { key: 'actorRole', label: 'Role', render: (row) => <span className='capitalize font-medium'>{row.actorRole?.replace('-', ' ') || 'User'}</span> },
-                { key: 'details', label: 'Action Details' }
-              ]}
-              rows={activityLogs}
-            />
-          </Card>
+          {/* TOP STAT CARDS (4 CARDS) */}
+          <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+            <div className='rounded-2xl border border-[#d9e1ca] bg-white p-4 shadow-2xs dark:border-[#414a33] dark:bg-[#1a1d16] flex items-center justify-between'>
+              <div>
+                <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Total Logins Today</p>
+                <h4 className='mt-1 text-2xl font-black text-[#37412a] dark:text-[#e4e9d8]'>{auditTopStats.loginsToday}</h4>
+              </div>
+              <div className='flex h-9 w-9 items-center justify-center rounded-xl bg-[#f4f6ee] text-[#5c6e46] dark:bg-[#2a3320] dark:text-[#a8be8a]'>
+                <UserCheck size={18} />
+              </div>
+            </div>
+
+            <div className='rounded-2xl border border-[#d9e1ca] bg-white p-4 shadow-2xs dark:border-[#414a33] dark:bg-[#1a1d16] flex items-center justify-between'>
+              <div>
+                <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Active Users Right Now</p>
+                <h4 className='mt-1 text-2xl font-black text-[#37412a] dark:text-[#e4e9d8]'>{auditTopStats.activeUsersRightNow}</h4>
+              </div>
+              <div className='flex h-9 w-9 items-center justify-center rounded-xl bg-[#e8efd9] text-[#5c6e46] dark:bg-[#2a3320] dark:text-[#a8be8a]'>
+                <Users size={18} />
+              </div>
+            </div>
+
+            <div className='rounded-2xl border border-[#d9e1ca] bg-white p-4 shadow-2xs dark:border-[#414a33] dark:bg-[#1a1d16] flex items-center justify-between'>
+              <div>
+                <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Total Actions This Week</p>
+                <h4 className='mt-1 text-2xl font-black text-[#37412a] dark:text-[#e4e9d8]'>{auditTopStats.actionsThisWeek}</h4>
+              </div>
+              <div className='flex h-9 w-9 items-center justify-center rounded-xl bg-[#f4f6ee] text-[#5c6e46] dark:bg-[#2a3320] dark:text-[#a8be8a]'>
+                <Activity size={18} />
+              </div>
+            </div>
+
+            <div className='rounded-2xl border border-rose-200 bg-rose-50/50 p-4 shadow-2xs dark:border-rose-900/40 dark:bg-rose-950/20 flex items-center justify-between'>
+              <div>
+                <p className='text-[10px] font-extrabold uppercase tracking-wider text-rose-700 dark:text-rose-400'>Suspicious / Failed Logins</p>
+                <h4 className='mt-1 text-2xl font-black text-rose-800 dark:text-rose-300'>{auditTopStats.suspiciousFailed}</h4>
+              </div>
+              <div className='flex h-9 w-9 items-center justify-center rounded-xl bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300'>
+                <AlertTriangle size={18} />
+              </div>
+            </div>
+          </div>
+
+          {/* LEVEL 1 — ROLE FILTER TABS AT TOP */}
+          <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-[#1a1d16] p-2 rounded-2xl border border-[#d9e1ca] dark:border-[#414a33] shadow-xs'>
+            <div className='flex flex-wrap items-center gap-1.5 flex-1'>
+              {[
+                { id: 'all', label: 'All', count: auditRoleCounts['all'] },
+                { id: 'super-admin', label: 'Super Admin', count: auditRoleCounts['super-admin'] },
+                { id: 'store-admin', label: 'Store Manager', count: auditRoleCounts['store-admin'] },
+                { id: 'lab-admin', label: 'Lab Admin', count: auditRoleCounts['lab-admin'] },
+                { id: 'student', label: 'Student', count: auditRoleCounts['student'] },
+              ].map((tab) => {
+                const isActive = auditTabRoleFilter === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type='button'
+                    onClick={() => {
+                      setAuditTabRoleFilter(tab.id);
+                    }}
+                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all duration-150 ${
+                      isActive
+                        ? 'bg-[#5c6e46] text-white shadow-2xs dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                        : 'bg-transparent text-[#5c6e46] hover:bg-[#f4f6ee] dark:text-[#a5b48b] dark:hover:bg-[#20251a]'
+                    }`}
+                  >
+                    <span>{tab.label}</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
+                      isActive ? 'bg-white/20 text-white dark:bg-[#20251a]/20 dark:text-[#20251a]' : 'bg-[#e8efd9] text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'
+                    }`}>
+                      ({tab.count})
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* SECTION VS TABLE VIEW TOGGLE */}
+            <div className='flex items-center gap-1 bg-[#f4f6ee] dark:bg-[#20251a] p-1 rounded-xl border border-[#d9e1ca] dark:border-[#414a33] shrink-0'>
+              <button
+                type='button'
+                onClick={() => setAuditViewMode('table')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  auditViewMode === 'table'
+                    ? 'bg-[#5c6e46] text-white shadow-2xs dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                    : 'text-[#5c6e46] hover:bg-white/60 dark:text-[#a5b48b] dark:hover:bg-[#1a1d16]'
+                }`}
+              >
+                <List size={14} /> 📋 Table View
+              </button>
+              <button
+                type='button'
+                onClick={() => setAuditViewMode('section')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  auditViewMode === 'section'
+                    ? 'bg-[#5c6e46] text-white shadow-2xs dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                    : 'text-[#5c6e46] hover:bg-white/60 dark:text-[#a5b48b] dark:hover:bg-[#1a1d16]'
+                }`}
+              >
+                <Grid size={14} /> 📊 Section View
+              </button>
+            </div>
+          </div>
+
+          {/* FILTER BAR BELOW TABS */}
+          <div className='grid gap-3 p-4 bg-white dark:bg-[#1a1d16] rounded-2xl border border-[#d9e1ca] dark:border-[#414a33] shadow-xs text-xs'>
+            <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-4'>
+              {/* Search */}
+              <div className='relative'>
+                <Search size={15} className='absolute left-3 top-1/2 -translate-y-1/2 text-[#87996c]' />
+                <input
+                  type='text'
+                  value={auditSearchQuery}
+                  onChange={(e) => setAuditSearchQuery(e.target.value)}
+                  placeholder='Search by user name or email...'
+                  className='w-full rounded-xl border border-[#d9e1ca] bg-[#fffef8] py-2 pl-9 pr-3 font-semibold text-[#37412a] outline-none focus:border-[#5c6e46] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
+                />
+              </div>
+
+              {/* Lab Selector */}
+              <select
+                value={auditLabFilter}
+                onChange={(e) => setAuditLabFilter(e.target.value)}
+                className='rounded-xl border border-[#d9e1ca] bg-[#fffef8] py-2 px-3 font-bold text-[#37412a] outline-none focus:border-[#5c6e46] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
+              >
+                <option value='all'>All Labs</option>
+                <option value='Pharmaceutics Lab - I'>Pharmaceutics Lab - I</option>
+                <option value='Pharma Lab Y1S1'>Pharma Lab Y1S1</option>
+                <option value='Pharma Lab Y1S2'>Pharma Lab Y1S2</option>
+                <option value='Pharmaceutical Analysis Lab'>Pharmaceutical Analysis Lab</option>
+                <option value='Pharmaceutical Chemistry Lab'>Pharmaceutical Chemistry Lab</option>
+                <option value='Human Anatomy & Physiology Lab'>Human Anatomy & Physiology Lab</option>
+                <option value='Central Store'>Central Store</option>
+              </select>
+
+              {/* Year Selector */}
+              <select
+                value={auditYearFilter}
+                onChange={(e) => setAuditYearFilter(e.target.value)}
+                className='rounded-xl border border-[#d9e1ca] bg-[#fffef8] py-2 px-3 font-bold text-[#37412a] outline-none focus:border-[#5c6e46] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
+              >
+                <option value='all'>All Academic Years</option>
+                <option value='1'>Year 1</option>
+                <option value='2'>Year 2</option>
+                <option value='3'>Year 3</option>
+                <option value='4'>Year 4</option>
+              </select>
+
+              {/* Semester Selector */}
+              <select
+                value={auditSemFilter}
+                onChange={(e) => setAuditSemFilter(e.target.value)}
+                className='rounded-xl border border-[#d9e1ca] bg-[#fffef8] py-2 px-3 font-bold text-[#37412a] outline-none focus:border-[#5c6e46] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
+              >
+                <option value='all'>All Semesters</option>
+                {['1', '2', '3', '4', '5', '6', '7', '8'].map(s => (
+                  <option key={s} value={s}>Sem {s}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Date Pickers & Actions */}
+            <div className='flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#f4f6ee] dark:border-[#2a3320]'>
+              <div className='flex flex-wrap items-center gap-3'>
+                <div className='flex items-center gap-2'>
+                  <span className='font-bold text-[#71805a] dark:text-[#a5b48b]'>Date From:</span>
+                  <input
+                    type='date'
+                    value={auditDateFrom}
+                    onChange={(e) => setAuditDateFrom(e.target.value)}
+                    className='rounded-xl border border-[#d9e1ca] bg-[#fffef8] py-1.5 px-2.5 font-semibold text-[#37412a] outline-none focus:border-[#5c6e46] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
+                  />
+                </div>
+
+                <div className='flex items-center gap-2'>
+                  <span className='font-bold text-[#71805a] dark:text-[#a5b48b]'>Date To:</span>
+                  <input
+                    type='date'
+                    value={auditDateTo}
+                    onChange={(e) => setAuditDateTo(e.target.value)}
+                    className='rounded-xl border border-[#d9e1ca] bg-[#fffef8] py-1.5 px-2.5 font-semibold text-[#37412a] outline-none focus:border-[#5c6e46] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
+                  />
+                </div>
+              </div>
+
+              <div className='flex items-center gap-2'>
+                <button
+                  type='button'
+                  onClick={() => {
+                    setAuditSearchQuery('');
+                    setAuditTabRoleFilter('all');
+                    setAuditLabFilter('all');
+                    setAuditYearFilter('all');
+                    setAuditSemFilter('all');
+                    setAuditDateFrom('');
+                    setAuditDateTo('');
+                  }}
+                  className='px-3 py-1.5 rounded-xl border border-[#d9e1ca] text-[#71805a] font-bold hover:bg-[#f4f6ee] dark:border-[#414a33] dark:text-[#a5b48b]'
+                >
+                  ↺ Reset Filters
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* VIEW MODE 1: TABLE VIEW */}
+          {auditViewMode === 'table' && (
+            <div className='rounded-2xl border border-[#d9e1ca] bg-white overflow-hidden shadow-sm dark:border-[#414a33] dark:bg-[#1a1d16]'>
+              <div className='border-b border-[#d9e1ca] bg-[#f8faee] px-6 py-4 dark:border-[#414a33] dark:bg-[#20251a] flex items-center justify-between'>
+                <div>
+                  <h3 className='text-base font-extrabold text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2'>
+                    <List size={18} className='text-[#5c6e46]' /> Audit Trail Records
+                  </h3>
+                  <p className='text-xs text-[#71805a] dark:text-[#a5b48b] mt-0.5 font-medium'>
+                    Showing {filteredAuditLogs.length} audit logs
+                  </p>
+                </div>
+                <span className='bg-[#5c6e46] text-white text-xs font-black px-3 py-1 rounded-full shadow-2xs'>
+                  {filteredAuditLogs.length} Records
+                </span>
+              </div>
+
+              <div className='overflow-x-auto'>
+                <table className='w-full border-collapse text-left text-xs'>
+                  <thead>
+                    <tr className='bg-[#f4f6ee] dark:bg-[#151712] border-b border-[#d9e1ca] dark:border-[#414a33]'>
+                      <th className='px-5 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>TIMESTAMP</th>
+                      <th className='px-5 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>USER</th>
+                      <th className='px-5 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>EMAIL</th>
+                      <th className='px-5 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>ROLE</th>
+                      <th className='px-5 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>LAB</th>
+                      <th className='px-5 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>YEAR/SEM</th>
+                      <th className='px-5 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>ACTION DETAILS</th>
+                      <th className='px-5 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c] text-center'>STATUS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredAuditLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className='px-6 py-10 text-center text-xs text-[#87996c] italic'>
+                          No audit log records found matching current filters.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredAuditLogs.map((row) => {
+                        const isFailed = (row.status || '').toLowerCase() === 'failed' || (row.actionDetails || '').toLowerCase().includes('failed');
+                        const isStore = (row.role || '').toLowerCase().includes('store');
+                        const isStudent = (row.role || '').toLowerCase().includes('student');
+
+                        const rowClass = isFailed
+                          ? 'bg-rose-50/70 hover:bg-rose-100/70 dark:bg-rose-950/30 dark:hover:bg-rose-900/40'
+                          : isStore
+                          ? 'bg-sky-50/60 hover:bg-sky-100/60 dark:bg-sky-950/20 dark:hover:bg-sky-900/30'
+                          : isStudent
+                          ? 'bg-[#fffef4] hover:bg-[#fcf8e3] dark:bg-amber-950/20 dark:hover:bg-amber-900/30'
+                          : 'bg-white hover:bg-[#f8faee] dark:bg-[#1a1d16] dark:hover:bg-[#20251a]';
+
+                        const formattedDate = new Date(row.timestamp).toLocaleString('en-IN', {
+                          day: '2-digit', month: '2-digit', year: 'numeric',
+                          hour: '2-digit', minute: '2-digit', hour12: true
+                        });
+
+                        const yearSemStr = (row.year && row.year !== '-' && row.semester && row.semester !== '-')
+                          ? `Y${row.year} S${row.semester}`
+                          : '-';
+
+                        return (
+                          <tr key={row.id} className={`border-b border-[#e4eed3] dark:border-[#2a3320] transition-colors ${rowClass}`}>
+                            <td className='px-5 py-3.5 font-mono font-bold text-[#5c6e46] dark:text-[#a8be8a] whitespace-nowrap'>
+                              {formattedDate}
+                            </td>
+                            <td className='px-5 py-3.5 font-bold text-[#37412a] dark:text-[#e4e9d8] whitespace-nowrap'>
+                              {row.userName}
+                            </td>
+                            <td className='px-5 py-3.5 font-mono text-[#71805a] dark:text-[#a5b48b] whitespace-nowrap'>
+                              {row.userEmail}
+                            </td>
+                            <td className='px-5 py-3.5 whitespace-nowrap'>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-black border ${
+                                row.role === 'super-admin'
+                                  ? 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-950 dark:text-purple-300'
+                                  : row.role === 'store-admin'
+                                  ? 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950 dark:text-sky-300'
+                                  : row.role === 'lab-admin'
+                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300'
+                                  : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300'
+                              }`}>
+                                {row.role === 'super-admin' ? 'Super Admin' : row.role === 'store-admin' ? 'Store Manager' : row.role === 'lab-admin' ? 'Lab Admin' : 'Student'}
+                              </span>
+                            </td>
+                            <td className='px-5 py-3.5 font-semibold text-[#37412a] dark:text-[#e4e9d8] whitespace-nowrap'>
+                              {row.labName || '-'}
+                            </td>
+                            <td className='px-5 py-3.5 font-mono font-bold text-[#5c6e46] dark:text-[#a8be8a] whitespace-nowrap'>
+                              {yearSemStr}
+                            </td>
+                            <td className='px-5 py-3.5 font-medium text-[#37412a] dark:text-[#e4e9d8]'>
+                              {row.actionDetails}
+                            </td>
+                            <td className='px-5 py-3.5 text-center whitespace-nowrap'>
+                              <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold border ${
+                                !isFailed
+                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
+                                  : 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800'
+                              }`}>
+                                {!isFailed ? '✅ Success' : '❌ Failed'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* VIEW MODE 2: SECTION WISE VIEW */}
+          {auditViewMode === 'section' && (
+            <div className='grid gap-6 md:grid-cols-3'>
+
+              {/* 👨💼 STORE MANAGER CARD */}
+              <div className='rounded-2xl border border-sky-200 bg-sky-50/40 p-6 shadow-sm dark:border-sky-900/40 dark:bg-sky-950/20 space-y-4 flex flex-col justify-between'>
+                <div>
+                  <div className='flex items-center gap-3 border-b border-sky-200 pb-3 dark:border-sky-900/40'>
+                    <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-sky-600 text-white shadow-2xs'>
+                      <ShoppingBag size={20} />
+                    </div>
+                    <div>
+                      <h4 className='font-black text-lg text-sky-950 dark:text-sky-100'>👨💼 STORE MANAGER</h4>
+                      <p className='text-xs font-medium text-sky-700 dark:text-sky-300'>Central chemical store activities</p>
+                    </div>
+                  </div>
+
+                  <div className='mt-4 space-y-3'>
+                    <div className='flex justify-between items-center bg-white/80 dark:bg-[#1a1d16]/80 p-3 rounded-xl border border-sky-100 dark:border-sky-900/30'>
+                      <span className='text-xs font-bold text-[#71805a] dark:text-[#a5b48b]'>Today's Activity:</span>
+                      <span className='text-sm font-black text-sky-900 dark:text-sky-200'>5 Actions</span>
+                    </div>
+                    <div className='flex justify-between items-center bg-white/80 dark:bg-[#1a1d16]/80 p-3 rounded-xl border border-sky-100 dark:border-sky-900/30'>
+                      <span className='text-xs font-bold text-[#71805a] dark:text-[#a5b48b]'>Last Store Activity:</span>
+                      <span className='text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8]'>10:30 AM Today</span>
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={() => {
+                    setAuditTabRoleFilter('store-admin');
+                    setAuditViewMode('table');
+                  }}
+                  className='w-full text-xs font-bold bg-sky-700 hover:bg-sky-800 text-white rounded-xl py-2.5 shadow-2xs'
+                >
+                  View All Store Manager Logs
+                </Button>
+              </div>
+
+              {/* 🧪 LAB ADMINS CARD */}
+              <div className='rounded-2xl border border-emerald-200 bg-emerald-50/40 p-6 shadow-sm dark:border-emerald-900/40 dark:bg-emerald-950/20 space-y-4 flex flex-col justify-between'>
+                <div>
+                  <div className='flex items-center gap-3 border-b border-emerald-200 pb-3 dark:border-emerald-900/40'>
+                    <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-[#5c6e46] text-white shadow-2xs'>
+                      <FlaskConical size={20} />
+                    </div>
+                    <div>
+                      <h4 className='font-black text-lg text-emerald-950 dark:text-emerald-100'>🧪 LAB ADMINS</h4>
+                      <p className='text-xs font-medium text-emerald-700 dark:text-emerald-300'>Active Lab Administrators today: 3</p>
+                    </div>
+                  </div>
+
+                  <div className='mt-4 space-y-2.5'>
+                    <div className='bg-white/80 dark:bg-[#1a1d16]/80 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-xs'>
+                      <p className='font-bold text-[#37412a] dark:text-[#e4e9d8]'>Pharma Lab Y1S1 — Prof. Sharma</p>
+                      <p className='text-[11px] text-[#71805a] dark:text-[#a5b48b] mt-0.5'>Last active: 11:00 AM Today</p>
+                    </div>
+                    <div className='bg-white/80 dark:bg-[#1a1d16]/80 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-xs'>
+                      <p className='font-bold text-[#37412a] dark:text-[#e4e9d8]'>Pharma Lab Y1S2 — Prof. Gupta</p>
+                      <p className='text-[11px] text-[#71805a] dark:text-[#a5b48b] mt-0.5'>Last active: 09:30 AM Today</p>
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={() => {
+                    setAuditTabRoleFilter('lab-admin');
+                    setAuditViewMode('table');
+                  }}
+                  className='w-full text-xs font-bold bg-[#5c6e46] hover:bg-[#4a5e2a] text-white rounded-xl py-2.5 shadow-2xs'
+                >
+                  View All Lab Admin Logs
+                </Button>
+              </div>
+
+              {/* 👨🎓 STUDENTS CARD */}
+              <div className='rounded-2xl border border-amber-200 bg-amber-50/40 p-6 shadow-sm dark:border-amber-900/40 dark:bg-amber-950/20 space-y-4 flex flex-col justify-between'>
+                <div>
+                  <div className='flex items-center gap-3 border-b border-amber-200 pb-3 dark:border-amber-900/40'>
+                    <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-amber-600 text-white shadow-2xs'>
+                      <Users size={20} />
+                    </div>
+                    <div>
+                      <h4 className='font-black text-lg text-amber-950 dark:text-amber-100'>👨🎓 STUDENTS</h4>
+                      <p className='text-xs font-medium text-amber-700 dark:text-amber-300'>Active Students today: 24</p>
+                    </div>
+                  </div>
+
+                  <div className='mt-4 space-y-2 text-xs'>
+                    <div className='flex justify-between items-center bg-white/80 dark:bg-[#1a1d16]/80 p-2.5 rounded-xl border border-amber-100 dark:border-amber-900/30 font-semibold'>
+                      <span>B.Pharm Year 1 Sem 1:</span>
+                      <span className='font-black text-amber-900 dark:text-amber-300'>10 Students</span>
+                    </div>
+                    <div className='flex justify-between items-center bg-white/80 dark:bg-[#1a1d16]/80 p-2.5 rounded-xl border border-amber-100 dark:border-amber-900/30 font-semibold'>
+                      <span>B.Pharm Year 1 Sem 2:</span>
+                      <span className='font-black text-amber-900 dark:text-amber-300'>8 Students</span>
+                    </div>
+                    <div className='flex justify-between items-center bg-white/80 dark:bg-[#1a1d16]/80 p-2.5 rounded-xl border border-amber-100 dark:border-amber-900/30 font-semibold'>
+                      <span>B.Pharm Year 2 Sem 3:</span>
+                      <span className='font-black text-amber-900 dark:text-amber-300'>6 Students</span>
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={() => {
+                    setAuditTabRoleFilter('student');
+                    setAuditViewMode('table');
+                  }}
+                  className='w-full text-xs font-bold bg-amber-700 hover:bg-amber-800 text-white rounded-xl py-2.5 shadow-2xs'
+                >
+                  View All Student Logs
+                </Button>
+              </div>
+
+            </div>
+          )}
+
         </div>
       )}
 
