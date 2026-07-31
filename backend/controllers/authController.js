@@ -154,19 +154,23 @@ const login = asyncHandler(async (req, res) => {
     throw new Error('Account not approved yet');
   }
 
-  await ActivityLog.create({
-    userId: user._id,
-    action: 'login',
-    details: `User Logged In`,
-    role: user.role,
-    userName: user.name,
-    userEmail: user.email,
-    labName: user.labName || (user.role === 'storeAdmin' || user.role === 'store-admin' ? 'Central Store' : user.role === 'superAdmin' ? 'Governance Hub' : '-'),
-    courseType: user.course || (user.role === 'student' || user.role === 'labAdmin' ? 'B.Pharm' : '-'),
-    year: user.year ? String(user.year) : (user.role === 'student' ? '1' : '-'),
-    semester: user.semester ? String(user.semester) : (user.role === 'student' ? '1' : '-'),
-    status: 'Success'
-  });
+  try {
+    await ActivityLog.create({
+      userId: user._id,
+      action: 'login',
+      details: `User Logged In`,
+      role: user.role,
+      userName: user.name,
+      userEmail: user.email,
+      labName: user.labName || (user.role === 'storeAdmin' || user.role === 'store-admin' ? 'Central Store' : user.role === 'superAdmin' ? 'Governance Hub' : '-'),
+      courseType: user.course || (user.role === 'student' || user.role === 'labAdmin' ? 'B.Pharm' : '-'),
+      year: user.year ? String(user.year) : (user.role === 'student' ? '1' : '-'),
+      semester: user.semester ? String(user.semester) : (user.role === 'student' ? '1' : '-'),
+      status: 'Success'
+    });
+  } catch (e) {
+    // ignore log create error
+  }
 
   res.json({
     success: true,

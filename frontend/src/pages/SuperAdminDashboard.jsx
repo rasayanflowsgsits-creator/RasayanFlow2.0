@@ -434,6 +434,8 @@ export default function SuperAdminDashboard() {
   const [auditDateTo, setAuditDateTo] = useState('');
   const [auditViewMode, setAuditViewMode] = useState('table'); // 'table' | 'section'
 
+  const debouncedAuditSearch = useDebounce(auditSearchQuery, 300);
+
   useEffect(() => {
     if (activeTab === 'activity' && typeof fetchActivityLogs === 'function') {
       fetchActivityLogs();
