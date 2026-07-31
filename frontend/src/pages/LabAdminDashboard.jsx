@@ -58,11 +58,12 @@ export default function LabAdminDashboard() {
       // 2. Check user.labId link
       const matchesUserLabId = Boolean(currentUserLabId && currentUserLabId === labIdStr);
 
-      // 3. Check lab admin string / email property
+      // 3. Check lab admin string / email / labName property
       const matchesAdminNameOrEmail = Boolean(
         (lab.adminEmail && lab.adminEmail.toLowerCase() === currentUserEmail) ||
         (lab.email && lab.email.toLowerCase() === currentUserEmail) ||
-        (lab.admin && user?.name && lab.admin.toLowerCase().includes(user.name.toLowerCase()))
+        (lab.admin && user?.name && lab.admin.toLowerCase().includes(user.name.toLowerCase())) ||
+        (user?.labName && (lab.name || lab.labName) && (lab.name || lab.labName).toLowerCase() === user.labName.toLowerCase())
       );
 
       return isDirectAdmin || matchesUserLabId || matchesAdminNameOrEmail;
