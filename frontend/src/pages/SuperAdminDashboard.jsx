@@ -19,15 +19,21 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 
 const MOCK_STORE_REQUESTS = [
-  { _id: 'sr-1', labName: 'Pharmaceutics Lab - I', chemicalName: 'Hydrochloric Acid 0.1M', quantityRequested: 500, unit: 'mL', requestedAt: new Date(Date.now() - 86400000 * 2).toISOString(), status: 'Approved', approvedBy: { name: 'Dr. Store Admin' }, receiptNumber: 'REC-2026-001' },
-  { _id: 'sr-2', labName: 'Pharmaceutical Chemistry Lab', chemicalName: 'Ethanol 99.9% Absolute', quantityRequested: 1000, unit: 'mL', requestedAt: new Date(Date.now() - 86400000 * 1).toISOString(), status: 'Pending', approvedBy: null, receiptNumber: null },
-  { _id: 'sr-3', labName: 'Pharmaceutical Analysis Lab', chemicalName: 'Paracetamol IP/BP', quantityRequested: 250, unit: 'g', requestedAt: new Date(Date.now() - 86400000 * 4).toISOString(), status: 'Approved', approvedBy: { name: 'Dr. Store Admin' }, receiptNumber: 'REC-2026-002' },
-  { _id: 'sr-4', labName: 'Human Anatomy & Physiology Lab', chemicalName: 'Sodium Hydroxide Pellets', quantityRequested: 100, unit: 'g', requestedAt: new Date(Date.now() - 86400000 * 5).toISOString(), status: 'Rejected', approvedBy: { name: 'Dr. Store Admin' }, receiptNumber: null }
+  { _id: 'sr-1', labName: 'Pharmaceutics Lab - I', chemicalName: 'Hydrochloric Acid 0.1M', quantityRequested: 500, unit: 'mL', estimatedCost: 1450, requestedAt: new Date(Date.now() - 86400000 * 2).toISOString(), status: 'Approved', approvedBy: { name: 'Dr. Store Admin' }, receiptNumber: 'REC-2026-001' },
+  { _id: 'sr-2', labName: 'Pharmaceutical Chemistry Lab', chemicalName: 'Ethanol 99.9% Absolute', quantityRequested: 1000, unit: 'mL', estimatedCost: 2850, requestedAt: new Date(Date.now() - 86400000 * 1).toISOString(), status: 'Pending', approvedBy: null, receiptNumber: null },
+  { _id: 'sr-3', labName: 'Pharmaceutical Analysis Lab', chemicalName: 'Paracetamol IP/BP', quantityRequested: 250, unit: 'g', estimatedCost: 3200, requestedAt: new Date(Date.now() - 86400000 * 4).toISOString(), status: 'Approved', approvedBy: { name: 'Dr. Store Admin' }, receiptNumber: 'REC-2026-002' },
+  { _id: 'sr-4', labName: 'Human Anatomy & Physiology Lab', chemicalName: 'Sodium Hydroxide Pellets', quantityRequested: 100, unit: 'g', estimatedCost: 980, requestedAt: new Date(Date.now() - 86400000 * 5).toISOString(), status: 'Rejected', approvedBy: { name: 'Dr. Store Admin' }, receiptNumber: null },
+  { _id: 'sr-5', labName: 'Pharmaceutics Lab - I', chemicalName: 'Sulphuric Acid 98% AR', quantityRequested: 500, unit: 'mL', estimatedCost: 1750, requestedAt: new Date(Date.now() - 86400000 * 35).toISOString(), status: 'Approved', approvedBy: { name: 'Dr. Store Admin' }, receiptNumber: 'REC-2026-000' },
+  { _id: 'sr-6', labName: 'Pharmaceutical Chemistry Lab', chemicalName: 'Methanol HPLC Grade', quantityRequested: 1000, unit: 'mL', estimatedCost: 3400, requestedAt: new Date(Date.now() - 86400000 * 40).toISOString(), status: 'Approved', approvedBy: { name: 'Dr. Store Admin' }, receiptNumber: 'REC-2026-00-1' },
+  { _id: 'sr-7', labName: 'Pharmacology Lab', chemicalName: 'Atropine Sulphate IP', quantityRequested: 50, unit: 'g', estimatedCost: 4200, requestedAt: new Date(Date.now() - 86400000 * 65).toISOString(), status: 'Approved', approvedBy: { name: 'Dr. Store Admin' }, receiptNumber: 'REC-2026-00-2' }
 ];
 
 const MOCK_STORE_HISTORY = [
-  { _id: 'sh-1', labName: 'Pharmaceutics Lab - I', chemicalName: 'Hydrochloric Acid 0.1M', qtyRequestedBase: 500, unit: 'mL', action: 'Approved', approvedBy: 'Dr. Store Admin', timestamp: new Date(Date.now() - 86400000 * 2).toISOString(), receiptNumber: 'REC-2026-001' },
-  { _id: 'sh-2', labName: 'Pharmaceutical Analysis Lab', chemicalName: 'Paracetamol IP/BP', qtyRequestedBase: 250, unit: 'g', action: 'Approved', approvedBy: 'Dr. Store Admin', timestamp: new Date(Date.now() - 86400000 * 4).toISOString(), receiptNumber: 'REC-2026-002' }
+  { _id: 'sh-1', labName: 'Pharmaceutics Lab - I', chemicalName: 'Hydrochloric Acid 0.1M', qtyRequestedBase: 500, unit: 'mL', valueReleased: 1450, action: 'Approved', approvedBy: 'Dr. Store Admin', timestamp: new Date(Date.now() - 86400000 * 2).toISOString(), receiptNumber: 'REC-2026-001' },
+  { _id: 'sh-2', labName: 'Pharmaceutical Analysis Lab', chemicalName: 'Paracetamol IP/BP', qtyRequestedBase: 250, unit: 'g', valueReleased: 3200, action: 'Approved', approvedBy: 'Dr. Store Admin', timestamp: new Date(Date.now() - 86400000 * 4).toISOString(), receiptNumber: 'REC-2026-002' },
+  { _id: 'sh-3', labName: 'Pharmaceutics Lab - I', chemicalName: 'Sulphuric Acid 98% AR', qtyRequestedBase: 500, unit: 'mL', valueReleased: 1750, action: 'Approved', approvedBy: 'Dr. Store Admin', timestamp: new Date(Date.now() - 86400000 * 35).toISOString(), receiptNumber: 'REC-2026-000' },
+  { _id: 'sh-4', labName: 'Pharmaceutical Chemistry Lab', chemicalName: 'Methanol HPLC Grade', qtyRequestedBase: 1000, unit: 'mL', valueReleased: 3400, action: 'Approved', approvedBy: 'Dr. Store Admin', timestamp: new Date(Date.now() - 86400000 * 40).toISOString(), receiptNumber: 'REC-2026-00-1' },
+  { _id: 'sh-5', labName: 'Pharmacology Lab', chemicalName: 'Atropine Sulphate IP', qtyRequestedBase: 50, unit: 'g', valueReleased: 4200, action: 'Approved', approvedBy: 'Dr. Store Admin', timestamp: new Date(Date.now() - 86400000 * 65).toISOString(), receiptNumber: 'REC-2026-00-2' }
 ];
 
 export default function SuperAdminDashboard() {
@@ -165,6 +171,7 @@ export default function SuperAdminDashboard() {
   const [storeHistoryList, setStoreHistoryList] = useState([]);
   const [chemActivitySearch, setChemActivitySearch] = useState('');
   const [chemStatusFilter, setChemStatusFilter] = useState('all');
+  const [chemMonthFilter, setChemMonthFilter] = useState('all');
 
   const debouncedChemActivitySearch = useDebounce(chemActivitySearch, 300);
 
@@ -200,41 +207,75 @@ export default function SuperAdminDashboard() {
     }
   }, [activeTab]);
 
-  // Derived metrics for Chemical Activity Overview
-  const totalRequestsThisMonth = useMemo(() => {
+  // Helper to extract cost
+  const getItemCost = (item) => {
+    return Number(item.estimatedCost || item.totalCost || item.valueReleased || item.cost || (item.quantityRequested ? item.quantityRequested * 3.5 : 1200));
+  };
+
+  // Available Months for selector
+  const availableMonths = useMemo(() => {
+    const monthsMap = {};
     const now = new Date();
-    const curM = now.getMonth();
-    const curY = now.getFullYear();
-    return storeRequestsList.filter((r) => {
+    const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const currentLabel = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    monthsMap[currentKey] = currentLabel;
+
+    storeRequestsList.forEach((r) => {
       const d = new Date(r.requestedAt || r.createdAt || Date.now());
-      return d.getMonth() === curM && d.getFullYear() === curY;
-    }).length;
+      if (!isNaN(d.getTime())) {
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        monthsMap[key] = label;
+      }
+    });
+
+    return Object.entries(monthsMap).sort((a, b) => b[0].localeCompare(a[0]));
   }, [storeRequestsList]);
 
-  const totalApprovedThisMonth = useMemo(() => {
-    const now = new Date();
-    const curM = now.getMonth();
-    const curY = now.getFullYear();
+  // Derived metrics for Chemical Activity Overview (Month Filtered)
+  const monthFilteredRequestsList = useMemo(() => {
+    if (chemMonthFilter === 'all') return storeRequestsList;
     return storeRequestsList.filter((r) => {
-      if (r.status !== 'Approved') return false;
-      const d = new Date(r.approvedAt || r.requestedAt || r.createdAt || Date.now());
-      return d.getMonth() === curM && d.getFullYear() === curY;
-    }).length;
-  }, [storeRequestsList]);
+      const d = new Date(r.requestedAt || r.createdAt || Date.now());
+      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      return monthKey === chemMonthFilter;
+    });
+  }, [storeRequestsList, chemMonthFilter]);
+
+  const totalRequestsThisMonth = useMemo(() => {
+    return monthFilteredRequestsList.length;
+  }, [monthFilteredRequestsList]);
+
+  const totalApprovedThisMonth = useMemo(() => {
+    return monthFilteredRequestsList.filter((r) => r.status === 'Approved').length;
+  }, [monthFilteredRequestsList]);
 
   const totalLabsActiveCount = useMemo(() => {
     return labs.length || 4;
   }, [labs]);
 
   const totalChemicalsReleasedCount = useMemo(() => {
-    const approvedCount = storeRequestsList.filter((r) => r.status === 'Approved').length;
-    const historyCount = storeHistoryList.filter(h => (h.action || 'Approved') === 'Approved').length;
-    return approvedCount > 0 ? approvedCount : (historyCount > 0 ? historyCount : 2);
-  }, [storeRequestsList, storeHistoryList]);
+    const approvedCount = monthFilteredRequestsList.filter((r) => r.status === 'Approved').length;
+    const historyCount = storeHistoryList.filter((h) => {
+      if ((h.action || 'Approved') !== 'Approved') return false;
+      if (chemMonthFilter === 'all') return true;
+      const d = new Date(h.timestamp || h.createdAt);
+      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      return monthKey === chemMonthFilter;
+    }).length;
+    return approvedCount > 0 ? approvedCount : historyCount;
+  }, [monthFilteredRequestsList, storeHistoryList, chemMonthFilter]);
+
+  // Total Chemical Cost (INR ₹)
+  const totalChemicalCost = useMemo(() => {
+    return monthFilteredRequestsList
+      .filter((r) => r.status === 'Approved')
+      .reduce((sum, r) => sum + getItemCost(r), 0);
+  }, [monthFilteredRequestsList]);
 
   // Section 1: Chemical Requests Filtered
   const filteredRequests = useMemo(() => {
-    return storeRequestsList.filter((r) => {
+    return monthFilteredRequestsList.filter((r) => {
       const query = debouncedChemActivitySearch.trim().toLowerCase();
       const labNameStr = r.labName || r.labId?.name || r.labId?.labName || '';
       const chemNameStr = r.chemicalName || '';
@@ -244,28 +285,36 @@ export default function SuperAdminDashboard() {
 
       return matchesSearch && matchesStatus;
     });
-  }, [storeRequestsList, debouncedChemActivitySearch, chemStatusFilter]);
+  }, [monthFilteredRequestsList, debouncedChemActivitySearch, chemStatusFilter]);
 
   // Section 2: Approved & Received Chemicals
   const approvedReleases = useMemo(() => {
     const query = debouncedChemActivitySearch.trim().toLowerCase();
 
-    let fromRequests = storeRequestsList.filter((r) => r.status === 'Approved').map(r => ({
+    let fromRequests = monthFilteredRequestsList.filter((r) => r.status === 'Approved').map(r => ({
       id: r._id || r.id,
       labName: r.labName || r.labId?.name || r.labId?.labName || 'Central Lab',
       chemicalName: r.chemicalName || 'Chemical',
       quantityReleased: `${r.quantityRequested || 0} ${r.unit || ''}`.trim(),
+      cost: getItemCost(r),
       approvedBy: typeof r.approvedBy === 'object' ? (r.approvedBy?.name || 'Store Admin') : (r.approvedBy || 'Store Admin'),
       date: r.approvedAt || r.requestedAt || r.createdAt,
       receiptNo: r.receiptNumber || r.requestId || 'REC-2026-001'
     }));
 
     if (fromRequests.length === 0 && storeHistoryList.length > 0) {
-      fromRequests = storeHistoryList.filter(h => (h.action || 'Approved') === 'Approved').map(h => ({
+      fromRequests = storeHistoryList.filter((h) => {
+        if ((h.action || 'Approved') !== 'Approved') return false;
+        if (chemMonthFilter === 'all') return true;
+        const d = new Date(h.timestamp || h.createdAt);
+        const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        return monthKey === chemMonthFilter;
+      }).map(h => ({
         id: h._id || h.id,
         labName: h.labName || 'Central Lab',
         chemicalName: h.chemicalName || 'Chemical',
         quantityReleased: `${h.qtyRequestedBase || h.quantity || 0} ${h.unit || h.baseUnit || ''}`.trim(),
+        cost: getItemCost(h),
         approvedBy: h.approvedBy || 'Store Admin',
         date: h.timestamp || h.createdAt,
         receiptNo: h.receiptNumber || 'REC-2026-001'
@@ -277,7 +326,71 @@ export default function SuperAdminDashboard() {
     return fromRequests.filter(item =>
       item.labName.toLowerCase().includes(query) || item.chemicalName.toLowerCase().includes(query)
     );
-  }, [storeRequestsList, storeHistoryList, debouncedChemActivitySearch]);
+  }, [monthFilteredRequestsList, storeHistoryList, chemMonthFilter, debouncedChemActivitySearch]);
+
+  // Section 3: Monthly Saved Archive Ledger (Organized Monthly Record)
+  const monthlyLedgerArchive = useMemo(() => {
+    const map = {};
+
+    storeRequestsList.forEach((r) => {
+      const d = new Date(r.requestedAt || r.createdAt || Date.now());
+      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const monthLabel = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      const lab = r.labName || r.labId?.name || r.labId?.labName || 'Central Lab';
+      const key = `${monthKey}__${lab}`;
+
+      if (!map[key]) {
+        map[key] = {
+          id: key,
+          monthKey,
+          monthLabel,
+          labName: lab,
+          totalRequests: 0,
+          approvedCount: 0,
+          rejectedCount: 0,
+          totalCost: 0
+        };
+      }
+
+      map[key].totalRequests += 1;
+      if (r.status === 'Approved') {
+        map[key].approvedCount += 1;
+        map[key].totalCost += getItemCost(r);
+      } else if (r.status === 'Rejected') {
+        map[key].rejectedCount += 1;
+      }
+    });
+
+    let list = Object.values(map);
+
+    if (chemMonthFilter !== 'all') {
+      list = list.filter((item) => item.monthKey === chemMonthFilter);
+    }
+
+    const query = debouncedChemActivitySearch.trim().toLowerCase();
+    if (query) {
+      list = list.filter((item) => item.labName.toLowerCase().includes(query) || item.monthLabel.toLowerCase().includes(query));
+    }
+
+    return list.sort((a, b) => b.monthKey.localeCompare(a.monthKey));
+  }, [storeRequestsList, chemMonthFilter, debouncedChemActivitySearch]);
+
+  const handleExportMonthlyLedgerCSV = () => {
+    if (monthlyLedgerArchive.length === 0) return;
+
+    let csvContent = "data:text/csv;charset=utf-8,Month,Lab Name,Total Requests,Approved Count,Total Cost (INR),Status\n";
+    monthlyLedgerArchive.forEach((row) => {
+      csvContent += `"${row.monthLabel}","${row.labName}",${row.totalRequests},${row.approvedCount},${row.totalCost},"Verified Ledger"\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Chemical_Monthly_Ledger_${chemMonthFilter}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const formatDateStr = (dateStr) => {
     if (!dateStr) return 'N/A';
@@ -1372,7 +1485,7 @@ export default function SuperAdminDashboard() {
         <div className='rounded-3xl border border-[#d9e1ca] bg-[#fffef8] p-6 sm:p-8 shadow-sm dark:border-[#414a33] dark:bg-[#20251a] space-y-6 animate-in fade-in'>
 
           {/* PAGE HEADER */}
-          <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-[#d9e1ca] pb-5 dark:border-[#414a33]'>
+          <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-[#d9e1ca] pb-5 dark:border-[#414a33]'>
             <div>
               <div className='mb-2 flex items-center gap-1.5 text-[11px] font-semibold text-[#87996c] dark:text-[#7a8f62]'>
                 <span>Super Admin</span>
@@ -1386,75 +1499,111 @@ export default function SuperAdminDashboard() {
                 Chemical Activity Overview
               </h2>
               <p className='mt-1 text-xs font-medium text-[#71805a] dark:text-[#a5b48b]'>
-                Overview of lab chemical requests, store approvals, and release history
+                Monthly historical ledger of chemical requests, store approvals, and lab expenditure records
               </p>
             </div>
+
+            <div className='flex items-center gap-2.5 shrink-0'>
+              <Button variant='outline' onClick={handleExportMonthlyLedgerCSV} className='text-xs px-3.5 py-2 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] font-bold dark:border-[#a8be8a] dark:text-[#a8be8a] dark:hover:bg-[#1e2418] rounded-xl'>
+                <Download size={14} className='mr-1.5' /> Export Monthly Record CSV
+              </Button>
+            </div>
           </div>
 
-          {/* TOP STAT CARDS */}
-          <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
-            <div className='rounded-2xl border border-[#d9e1ca] bg-white p-5 shadow-2xs dark:border-[#414a33] dark:bg-[#1a1d16] flex items-center justify-between'>
+          {/* TOP STAT CARDS (WITH TOTAL COST METRIC) */}
+          <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-5'>
+            <div className='rounded-2xl border border-[#d9e1ca] bg-white p-4 shadow-2xs dark:border-[#414a33] dark:bg-[#1a1d16] flex items-center justify-between'>
               <div>
-                <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Total Requests This Month</p>
+                <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Total Requests</p>
                 <h4 className='mt-1 text-2xl font-black text-[#37412a] dark:text-[#e4e9d8]'>{totalRequestsThisMonth}</h4>
               </div>
-              <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-[#f4f6ee] text-[#5c6e46] dark:bg-[#2a3320] dark:text-[#a8be8a]'>
-                <FileText size={20} />
+              <div className='flex h-9 w-9 items-center justify-center rounded-xl bg-[#f4f6ee] text-[#5c6e46] dark:bg-[#2a3320] dark:text-[#a8be8a]'>
+                <FileText size={18} />
               </div>
             </div>
 
-            <div className='rounded-2xl border border-[#d9e1ca] bg-white p-5 shadow-2xs dark:border-[#414a33] dark:bg-[#1a1d16] flex items-center justify-between'>
+            <div className='rounded-2xl border border-[#d9e1ca] bg-white p-4 shadow-2xs dark:border-[#414a33] dark:bg-[#1a1d16] flex items-center justify-between'>
               <div>
-                <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Total Approved This Month</p>
+                <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Total Approved</p>
                 <h4 className='mt-1 text-2xl font-black text-[#37412a] dark:text-[#e4e9d8]'>{totalApprovedThisMonth}</h4>
               </div>
-              <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-[#e8efd9] text-[#5c6e46] dark:bg-[#2a3320] dark:text-[#a8be8a]'>
-                <CheckCircle2 size={20} />
+              <div className='flex h-9 w-9 items-center justify-center rounded-xl bg-[#e8efd9] text-[#5c6e46] dark:bg-[#2a3320] dark:text-[#a8be8a]'>
+                <CheckCircle2 size={18} />
               </div>
             </div>
 
-            <div className='rounded-2xl border border-[#d9e1ca] bg-white p-5 shadow-2xs dark:border-[#414a33] dark:bg-[#1a1d16] flex items-center justify-between'>
+            <div className='rounded-2xl border border-[#d9e1ca] bg-white p-4 shadow-2xs dark:border-[#414a33] dark:bg-[#1a1d16] flex items-center justify-between'>
               <div>
-                <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Total Labs Active</p>
+                <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Active Labs</p>
                 <h4 className='mt-1 text-2xl font-black text-[#37412a] dark:text-[#e4e9d8]'>{totalLabsActiveCount}</h4>
               </div>
-              <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-[#f4f6ee] text-[#5c6e46] dark:bg-[#2a3320] dark:text-[#a8be8a]'>
-                <Building2 size={20} />
+              <div className='flex h-9 w-9 items-center justify-center rounded-xl bg-[#f4f6ee] text-[#5c6e46] dark:bg-[#2a3320] dark:text-[#a8be8a]'>
+                <Building2 size={18} />
               </div>
             </div>
 
-            <div className='rounded-2xl border border-[#d9e1ca] bg-white p-5 shadow-2xs dark:border-[#414a33] dark:bg-[#1a1d16] flex items-center justify-between'>
+            <div className='rounded-2xl border border-[#d9e1ca] bg-white p-4 shadow-2xs dark:border-[#414a33] dark:bg-[#1a1d16] flex items-center justify-between'>
               <div>
-                <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Total Chemicals Released</p>
+                <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Chemicals Released</p>
                 <h4 className='mt-1 text-2xl font-black text-[#37412a] dark:text-[#e4e9d8]'>{totalChemicalsReleasedCount}</h4>
               </div>
-              <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-[#f4f6ee] text-[#c8a030] dark:bg-[#2a3320] dark:text-[#c8a030]'>
-                <FlaskConical size={20} />
+              <div className='flex h-9 w-9 items-center justify-center rounded-xl bg-[#f4f6ee] text-[#c8a030] dark:bg-[#2a3320] dark:text-[#c8a030]'>
+                <FlaskConical size={18} />
+              </div>
+            </div>
+
+            <div className='rounded-2xl border border-[#c5d6aa] bg-[#f8faee] p-4 shadow-2xs dark:border-[#414a33] dark:bg-[#242c1c] flex items-center justify-between col-span-1 sm:col-span-2 lg:col-span-1'>
+              <div>
+                <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#a8be8a]'>Total Chemical Cost</p>
+                <h4 className='mt-1 text-2xl font-black text-[#3c4e23] dark:text-[#e4e9d8]'>₹ {totalChemicalCost.toLocaleString('en-IN')}</h4>
+              </div>
+              <div className='flex h-9 w-9 items-center justify-center rounded-xl bg-[#5c6e46] text-white shadow-2xs'>
+                <span className='font-black text-sm'>₹</span>
               </div>
             </div>
           </div>
 
-          {/* FILTER BAR */}
-          <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white dark:bg-[#1a1d16] p-4 rounded-2xl border border-[#d9e1ca] dark:border-[#414a33] shadow-xs'>
-            <div className='relative flex-1'>
+          {/* FILTER BAR (MONTH SELECTOR + SEARCH + STATUS) */}
+          <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-white dark:bg-[#1a1d16] p-4 rounded-2xl border border-[#d9e1ca] dark:border-[#414a33] shadow-xs'>
+            
+            {/* MONTH SELECTOR */}
+            <div className='flex items-center gap-2 shrink-0'>
+              <Clock size={16} className='text-[#5c6e46] dark:text-[#a8be8a]' />
+              <span className='text-xs font-extrabold text-[#71805a] dark:text-[#a5b48b] whitespace-nowrap'>Select Month:</span>
+              <select
+                value={chemMonthFilter}
+                onChange={(e) => setChemMonthFilter(e.target.value)}
+                className='rounded-xl border border-[#d9e1ca] bg-[#fffef8] py-1.5 px-3 text-xs font-bold text-[#37412a] outline-none focus:border-[#5c6e46] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
+              >
+                <option value='all'>🗓️ All Months (Historical)</option>
+                {availableMonths.map(([key, label]) => (
+                  <option key={key} value={key}>📅 {label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* SEARCH */}
+            <div className='relative flex-1 min-w-[200px]'>
               <Search size={16} className='absolute left-3.5 top-1/2 -translate-y-1/2 text-[#87996c]' />
               <input
                 type='text'
                 value={chemActivitySearch}
                 onChange={(e) => setChemActivitySearch(e.target.value)}
                 placeholder='Search by lab name or chemical...'
-                className='w-full rounded-xl border border-[#d9e1ca] bg-[#fffef8] py-2 pl-10 pr-4 text-xs font-semibold text-[#37412a] outline-none focus:border-[#5c6e46] focus:ring-2 focus:ring-[#5c6e46]/20 transition-all dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
+                className='w-full rounded-xl border border-[#d9e1ca] bg-[#fffef8] py-1.5 pl-10 pr-4 text-xs font-semibold text-[#37412a] outline-none focus:border-[#5c6e46] focus:ring-2 focus:ring-[#5c6e46]/20 transition-all dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
               />
             </div>
+
+            {/* STATUS FILTER */}
             <div className='flex items-center gap-2 shrink-0'>
-              <span className='text-xs font-extrabold text-[#71805a] dark:text-[#a5b48b]'>Filter Status:</span>
+              <span className='text-xs font-extrabold text-[#71805a] dark:text-[#a5b48b]'>Status:</span>
               <div className='flex items-center gap-1 bg-[#f4f6ee] dark:bg-[#20251a] p-1 rounded-xl border border-[#d9e1ca] dark:border-[#414a33]'>
                 {['all', 'pending', 'approved', 'rejected'].map((st) => (
                   <button
                     key={st}
                     type='button'
                     onClick={() => setChemStatusFilter(st)}
-                    className={`px-3 py-1 text-xs font-bold rounded-lg capitalize transition-all ${
+                    className={`px-2.5 py-1 text-xs font-bold rounded-lg capitalize transition-all ${
                       chemStatusFilter === st
                         ? 'bg-[#5c6e46] text-white shadow-2xs dark:bg-[#e4e9d8] dark:text-[#20251a]'
                         : 'text-[#5c6e46] hover:bg-white/60 dark:text-[#a5b48b] dark:hover:bg-[#1a1d16]'
@@ -1465,17 +1614,23 @@ export default function SuperAdminDashboard() {
                 ))}
               </div>
             </div>
+
           </div>
 
           {/* SECTION 1 — LAB REQUESTS TO STORE */}
           <div className='rounded-2xl border border-[#d9e1ca] bg-white overflow-hidden shadow-sm dark:border-[#414a33] dark:bg-[#1a1d16]'>
-            <div className='border-b border-[#d9e1ca] bg-[#f8faee] px-6 py-4 dark:border-[#414a33] dark:bg-[#20251a]'>
-              <h3 className='text-base font-extrabold text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2'>
-                <FileText size={18} className='text-[#5c6e46]' /> Chemical Requests
-              </h3>
-              <p className='text-xs text-[#71805a] dark:text-[#a5b48b] mt-0.5 font-medium'>
-                All lab requests sent to store manager
-              </p>
+            <div className='border-b border-[#d9e1ca] bg-[#f8faee] px-6 py-4 dark:border-[#414a33] dark:bg-[#20251a] flex items-center justify-between'>
+              <div>
+                <h3 className='text-base font-extrabold text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2'>
+                  <FileText size={18} className='text-[#5c6e46]' /> Chemical Requests
+                </h3>
+                <p className='text-xs text-[#71805a] dark:text-[#a5b48b] mt-0.5 font-medium'>
+                  All lab requests sent to store manager {chemMonthFilter !== 'all' ? `for ${availableMonths.find(m => m[0] === chemMonthFilter)?.[1] || chemMonthFilter}` : ''}
+                </p>
+              </div>
+              <span className='bg-[#e8efd9] text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a] text-xs font-black px-3 py-1 rounded-full'>
+                {filteredRequests.length} Requests
+              </span>
             </div>
 
             <div className='overflow-x-auto'>
@@ -1485,6 +1640,7 @@ export default function SuperAdminDashboard() {
                     <th className='px-6 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>Lab Name</th>
                     <th className='px-6 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>Chemical Name</th>
                     <th className='px-6 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>Quantity</th>
+                    <th className='px-6 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>Est. Cost (₹)</th>
                     <th className='px-6 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>Date</th>
                     <th className='px-6 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c] text-center'>Status</th>
                   </tr>
@@ -1492,13 +1648,14 @@ export default function SuperAdminDashboard() {
                 <tbody>
                   {filteredRequests.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className='px-6 py-8 text-center text-xs text-[#87996c] italic'>
-                        No chemical requests found matching filters.
+                      <td colSpan={6} className='px-6 py-8 text-center text-xs text-[#87996c] italic'>
+                        No chemical requests found matching filters for selected period.
                       </td>
                     </tr>
                   ) : (
                     filteredRequests.map((req) => {
                       const st = req.status || 'Pending';
+                      const cost = getItemCost(req);
                       return (
                         <tr key={req._id || req.id} className='border-b border-[#e4eed3] dark:border-[#2a3320] hover:bg-[#f8faee] dark:hover:bg-[#20251a] transition-colors'>
                           <td className='px-6 py-4 font-bold text-[#37412a] dark:text-[#e4e9d8]'>
@@ -1509,6 +1666,9 @@ export default function SuperAdminDashboard() {
                           </td>
                           <td className='px-6 py-4 font-mono font-bold text-[#5c6e46] dark:text-[#a8be8a]'>
                             {req.quantityRequested} {req.unit}
+                          </td>
+                          <td className='px-6 py-4 font-mono font-bold text-[#3c4e23] dark:text-[#e4e9d8]'>
+                            ₹ {cost.toLocaleString('en-IN')}
                           </td>
                           <td className='px-6 py-4 font-medium text-[#71805a] dark:text-[#a5b48b]'>
                             {formatDateStr(req.requestedAt || req.createdAt)}
@@ -1535,13 +1695,18 @@ export default function SuperAdminDashboard() {
 
           {/* SECTION 2 — APPROVED & RECEIVED */}
           <div className='rounded-2xl border border-[#d9e1ca] bg-white overflow-hidden shadow-sm dark:border-[#414a33] dark:bg-[#1a1d16]'>
-            <div className='border-b border-[#d9e1ca] bg-[#f8faee] px-6 py-4 dark:border-[#414a33] dark:bg-[#20251a]'>
-              <h3 className='text-base font-extrabold text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2'>
-                <CheckCircle2 size={18} className='text-[#5c6e46]' /> Chemicals Approved
-              </h3>
-              <p className='text-xs text-[#71805a] dark:text-[#a5b48b] mt-0.5 font-medium'>
-                Chemicals released from store to labs
-              </p>
+            <div className='border-b border-[#d9e1ca] bg-[#f8faee] px-6 py-4 dark:border-[#414a33] dark:bg-[#20251a] flex items-center justify-between'>
+              <div>
+                <h3 className='text-base font-extrabold text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2'>
+                  <CheckCircle2 size={18} className='text-[#5c6e46]' /> Chemicals Approved
+                </h3>
+                <p className='text-xs text-[#71805a] dark:text-[#a5b48b] mt-0.5 font-medium'>
+                  Chemicals released from store to labs
+                </p>
+              </div>
+              <span className='bg-[#5c6e46] text-white text-xs font-black px-3 py-1 rounded-full shadow-2xs'>
+                {approvedReleases.length} Approved Releases
+              </span>
             </div>
 
             <div className='overflow-x-auto'>
@@ -1552,6 +1717,7 @@ export default function SuperAdminDashboard() {
                     <th className='px-6 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>Chemical Name</th>
                     <th className='px-6 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>Quantity Released</th>
                     <th className='px-6 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>Approved By</th>
+                    <th className='px-6 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>Total Cost (₹)</th>
                     <th className='px-6 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>Date</th>
                     <th className='px-6 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>Receipt No</th>
                   </tr>
@@ -1559,8 +1725,8 @@ export default function SuperAdminDashboard() {
                 <tbody>
                   {approvedReleases.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className='px-6 py-8 text-center text-xs text-[#87996c] italic'>
-                        No approved chemical releases recorded yet.
+                      <td colSpan={7} className='px-6 py-8 text-center text-xs text-[#87996c] italic'>
+                        No approved chemical releases recorded for selected period.
                       </td>
                     </tr>
                   ) : (
@@ -1578,11 +1744,81 @@ export default function SuperAdminDashboard() {
                         <td className='px-6 py-4 font-semibold text-[#71805a] dark:text-[#a5b48b]'>
                           {item.approvedBy}
                         </td>
+                        <td className='px-6 py-4 font-mono font-bold text-[#3c4e23] dark:text-[#e4e9d8]'>
+                          ₹ {item.cost.toLocaleString('en-IN')}
+                        </td>
                         <td className='px-6 py-4 font-medium text-[#71805a] dark:text-[#a5b48b]'>
                           {formatDateStr(item.date)}
                         </td>
                         <td className='px-6 py-4 font-mono font-bold text-[#c8a030]'>
                           {item.receiptNo}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* SECTION 3 — SAVED MONTHLY CHEMICAL EXPENSE & USAGE LEDGER ARCHIVE */}
+          <div className='rounded-2xl border border-[#d9e1ca] bg-white overflow-hidden shadow-sm dark:border-[#414a33] dark:bg-[#1a1d16]'>
+            <div className='border-b border-[#d9e1ca] bg-[#f8faee] px-6 py-4 dark:border-[#414a33] dark:bg-[#20251a] flex items-center justify-between'>
+              <div>
+                <h3 className='text-base font-extrabold text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2'>
+                  <History size={18} className='text-[#5c6e46]' /> Saved Monthly Chemical Expense & Usage Ledger Archive
+                </h3>
+                <p className='text-xs text-[#71805a] dark:text-[#a5b48b] mt-0.5 font-medium'>
+                  Permanent monthly historical record of chemical consumption, approval count, and costs per lab
+                </p>
+              </div>
+              <Button size='sm' variant='outline' onClick={handleExportMonthlyLedgerCSV} className='text-xs border-[#5c6e46] text-[#5c6e46] rounded-xl font-bold'>
+                <Download size={13} className='mr-1' /> Export Archive
+              </Button>
+            </div>
+
+            <div className='overflow-x-auto'>
+              <table className='w-full border-collapse text-left text-xs'>
+                <thead>
+                  <tr className='bg-[#f4f6ee] dark:bg-[#151712] border-b border-[#d9e1ca] dark:border-[#414a33]'>
+                    <th className='px-6 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>Month / Period</th>
+                    <th className='px-6 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>Lab Name</th>
+                    <th className='px-6 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>Total Requests</th>
+                    <th className='px-6 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>Approved Releases</th>
+                    <th className='px-6 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>Monthly Expense (₹)</th>
+                    <th className='px-6 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c] text-center'>Audit Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {monthlyLedgerArchive.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className='px-6 py-8 text-center text-xs text-[#87996c] italic'>
+                        No monthly ledger archives recorded yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    monthlyLedgerArchive.map((row) => (
+                      <tr key={row.id} className='border-b border-[#e4eed3] dark:border-[#2a3320] hover:bg-[#f8faee] dark:hover:bg-[#20251a] transition-colors'>
+                        <td className='px-6 py-4 font-extrabold text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2'>
+                          <Clock size={14} className='text-[#5c6e46]' />
+                          {row.monthLabel}
+                        </td>
+                        <td className='px-6 py-4 font-bold text-[#37412a] dark:text-[#e4e9d8]'>
+                          {row.labName}
+                        </td>
+                        <td className='px-6 py-4 font-semibold text-[#71805a] dark:text-[#a5b48b]'>
+                          {row.totalRequests} Requests
+                        </td>
+                        <td className='px-6 py-4 font-semibold text-emerald-700 dark:text-emerald-400'>
+                          {row.approvedCount} Released
+                        </td>
+                        <td className='px-6 py-4 font-mono font-black text-[#5c6e46] dark:text-[#a8be8a] text-sm'>
+                          ₹ {row.totalCost.toLocaleString('en-IN')}
+                        </td>
+                        <td className='px-6 py-4 text-center'>
+                          <span className='inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-extrabold bg-[#e8efd9] text-[#3c4e23] border border-[#c5d6aa] dark:bg-[#2a3320] dark:text-[#a8be8a] dark:border-[#414a33]'>
+                            ✅ Verified Ledger
+                          </span>
                         </td>
                       </tr>
                     ))
