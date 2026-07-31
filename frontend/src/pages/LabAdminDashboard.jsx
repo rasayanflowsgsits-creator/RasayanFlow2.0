@@ -42,7 +42,32 @@ export default function LabAdminDashboard() {
   const isAnalyticsPage = location.pathname === '/analytics';
   const assignedLabs = useMemo(() => {
     const currentUserId = String(user?.id || user?._id || '');
-    return store.labs.filter((lab) => Array.isArray(lab.admins) && lab.admins.some((admin) => String(admin.id || admin._id || admin) === currentUserId));
+    const currentUserEmail = (user?.email || '').toLowerCase();
+    const currentUserLabId = String(user?.labId?._id || user?.labId || '');
+
+    return store.labs.filter((lab) => {
+      const labIdStr = String(lab.id || lab._id || '');
+
+      // 1. Check lab.admins array by ID or email
+      const isDirectAdmin = Array.isArray(lab.admins) && lab.admins.some((admin) => {
+        const adminIdStr = String(admin.id || admin._id || admin);
+        const adminEmailStr = (admin.email || '').toLowerCase();
+        return (adminIdStr && adminIdStr === currentUserId) || (adminEmailStr && adminEmailStr === currentUserEmail);
+      });
+
+      // 2. Check user.labId link
+      const matchesUserLabId = Boolean(currentUserLabId && currentUserLabId === labIdStr);
+
+      // 3. Check lab admin string / email / labName property
+      const matchesAdminNameOrEmail = Boolean(
+        (lab.adminEmail && lab.adminEmail.toLowerCase() === currentUserEmail) ||
+        (lab.email && lab.email.toLowerCase() === currentUserEmail) ||
+        (lab.admin && user?.name && lab.admin.toLowerCase().includes(user.name.toLowerCase())) ||
+        (user?.labName && (lab.name || lab.labName) && (lab.name || lab.labName).toLowerCase() === user.labName.toLowerCase())
+      );
+
+      return isDirectAdmin || matchesUserLabId || matchesAdminNameOrEmail;
+    });
   }, [store.labs, user]);
   const [selectedLabId, setSelectedLabId] = useState(() => localStorage.getItem('pharmlab-active-lab') || '');
   const labId = selectedLabId || assignedLabs[0]?.id || assignedLabs[0]?._id || user?.labId || '';
@@ -509,6 +534,16 @@ export default function LabAdminDashboard() {
       setExperimentImporting(false);
     }
   };
+
+  if (store.loading && !store.labs.length) {
+    return (
+      <div className="flex min-h-[300px] items-center justify-center p-8">
+        <div className="text-center text-sm font-semibold text-[#71805a] dark:text-[#a5b48b]">
+          Loading Lab Dashboard...
+        </div>
+      </div>
+    );
+  }
 
   if (!assignedLabs.length) return <Card title='Lab Not Assigned' subtitle='This lab admin account is not linked to a lab yet'><p className='text-sm text-slate-500 dark:text-slate-400'>Ask the super admin to assign this account to a lab from the Manage dialog.</p></Card>;
 
