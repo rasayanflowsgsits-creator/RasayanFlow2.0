@@ -42,7 +42,7 @@ const listLabs = asyncHandler(async (req, res) => {
 });
 
 const assignAdmin = asyncHandler(async (req, res) => {
-  const { labId, adminId } = req.body;
+  const { labId, adminId, email, name, password } = req.body;
 
   const lab = await Lab.findById(labId);
   if (!lab) {
@@ -50,7 +50,27 @@ const assignAdmin = asyncHandler(async (req, res) => {
     throw new Error('Lab not found');
   }
 
-  const admin = await User.findById(adminId);
+  let admin = null;
+  if (adminId) {
+    admin = await User.findById(adminId);
+  }
+  
+  if (!admin && email) {
+    admin = await User.findOne({ email: email.toLowerCase() });
+  }
+
+  if (!admin && email) {
+    admin = await User.create({
+      name: name || email.split('@')[0],
+      email: email.toLowerCase(),
+      password: password || '123456',
+      role: 'labAdmin',
+      isApproved: true,
+      labId: lab._id,
+      labName: lab.labName
+    });
+  }
+
   if (!admin) {
     res.status(404);
     throw new Error('Admin user not found');
@@ -60,6 +80,8 @@ const assignAdmin = asyncHandler(async (req, res) => {
   admin.labId = lab._id;
   admin.labName = lab.labName;
   admin.isApproved = true;
+  if (name) admin.name = name;
+  if (password) admin.password = password;
   await admin.save();
 
   if (!lab.admins.some((id) => id.toString() === admin._id.toString())) {
@@ -69,7 +91,7 @@ const assignAdmin = asyncHandler(async (req, res) => {
 
   const updatedLab = await Lab.findById(lab._id).populate('admins', 'name email role isApproved');
 
-  await ActivityLog.create({ userId: req.user._id, action: 'assign_admin', details: `Assigned ${admin.email} to lab ${lab.labCode}` });
+  await ActivityLog.create({ userId: req.user._id, action: 'assign_admin', details: `Assigned ${admin.email} as labAdmin to lab ${lab.labCode}` });
 
   res.json({ success: true, data: updatedLab });
 });

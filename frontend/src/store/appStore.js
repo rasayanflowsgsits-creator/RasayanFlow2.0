@@ -518,8 +518,8 @@ const useAppStore = create((set) => ({
     const response = await api.put(`/transactions/reject/${transactionId}`, { reviewNotes });
     return getPayload(response.data);
   },
-  assignAdminToLab: async ({ labId, adminId }) => {
-    const response = await api.post('/labs/assign', { labId, adminId });
+  assignAdminToLab: async ({ labId, adminId, email, name, password }) => {
+    const response = await api.post('/labs/assign', { labId, adminId, email, name, password });
     return getPayload(response.data);
   },
   removeAdminFromLab: async ({ labId, adminId }) => {
