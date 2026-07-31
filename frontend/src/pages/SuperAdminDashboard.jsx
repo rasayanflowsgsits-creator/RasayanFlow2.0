@@ -213,13 +213,12 @@ export default function SuperAdminDashboard() {
     return Number(item.estimatedCost || item.totalCost || item.valueReleased || item.cost || (item.quantityRequested ? item.quantityRequested * 3.5 : 1200));
   };
 
-  // Available Years List (Scalable 20+ Years Future-Proofing)
+  // Available Years List (Scalable 30+ Years Future-Proofing from 2026 to 2056+)
   const availableYears = useMemo(() => {
     const yearsSet = new Set();
-    const currentYr = new Date().getFullYear();
 
-    // Include current year and past 20 years + future years
-    for (let y = currentYr + 2; y >= currentYr - 20; y--) {
+    // Generate 30+ years range: 2026 to 2056
+    for (let y = 2026; y <= 2056; y++) {
       yearsSet.add(String(y));
     }
 
@@ -230,7 +229,7 @@ export default function SuperAdminDashboard() {
       }
     });
 
-    return Array.from(yearsSet).sort((a, b) => b.localeCompare(a));
+    return Array.from(yearsSet).sort((a, b) => Number(a) - Number(b));
   }, [storeRequestsList]);
 
   // Month Names reference
@@ -1547,7 +1546,7 @@ export default function SuperAdminDashboard() {
                   onChange={(e) => setChemYearFilter(e.target.value)}
                   className='bg-transparent text-xs font-black text-[#37412a] outline-none cursor-pointer dark:text-[#e4e9d8]'
                 >
-                  <option value='all'>All Years (20+ Yrs)</option>
+                  <option value='all'>All Years (2026–2056+)</option>
                   {availableYears.map((yr) => (
                     <option key={yr} value={yr}>{yr}</option>
                   ))}
