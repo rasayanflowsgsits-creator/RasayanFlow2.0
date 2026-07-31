@@ -424,7 +424,7 @@ export default function SuperAdminDashboard() {
     document.body.removeChild(link);
   };
 
-  // Platform Audit History State & Filters
+  // Platform Audit History State & Filters (30+ Year History Architecture)
   const [auditTabRoleFilter, setAuditTabRoleFilter] = useState('all'); // 'all' | 'super-admin' | 'store-admin' | 'lab-admin' | 'student'
   const [auditSearchQuery, setAuditSearchQuery] = useState('');
   const [auditLabFilter, setAuditLabFilter] = useState('all');
@@ -433,6 +433,11 @@ export default function SuperAdminDashboard() {
   const [auditDateFrom, setAuditDateFrom] = useState('');
   const [auditDateTo, setAuditDateTo] = useState('');
   const [auditViewMode, setAuditViewMode] = useState('table'); // 'table' | 'section'
+  
+  // 30+ Year Historical Archive Filters & Modal
+  const [auditHistYearFilter, setAuditHistYearFilter] = useState('all');
+  const [auditHistMonthFilter, setAuditHistMonthFilter] = useState('all');
+  const [auditArchiveModalOpen, setAuditArchiveModalOpen] = useState(false);
 
   const debouncedAuditSearch = useDebounce(auditSearchQuery, 300);
 
@@ -470,6 +475,96 @@ export default function SuperAdminDashboard() {
     }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   }, [activityLogs]);
 
+  // Available Years List (Scalable 30+ Years Future-Proofing from 2026 to 2056+)
+  const availableAuditYears = useMemo(() => {
+    const yearsSet = new Set();
+    for (let y = 2026; y <= 2056; y++) {
+      yearsSet.add(String(y));
+    }
+    normalizedAuditLogs.forEach((log) => {
+      const d = new Date(log.timestamp);
+      if (!isNaN(d.getTime())) {
+        yearsSet.add(String(d.getFullYear()));
+      }
+    });
+    return Array.from(yearsSet).sort((a, b) => Number(a) - Number(b));
+  }, [normalizedAuditLogs]);
+
+  // Monthly Audit History Ledger Archive (30+ Years Future-Proofing)
+  const monthlyAuditArchiveData = useMemo(() => {
+    const map = {};
+
+    normalizedAuditLogs.forEach((log) => {
+      const d = new Date(log.timestamp);
+      if (isNaN(d.getTime())) return;
+
+      const yearStr = String(d.getFullYear());
+      const monthStr = String(d.getMonth() + 1).padStart(2, '0');
+      const monthKey = `${yearStr}-${monthStr}`;
+      
+      const monthName = d.toLocaleString('en-US', { month: 'long' });
+      const monthLabel = `${monthName} ${yearStr}`;
+
+      if (!map[monthKey]) {
+        map[monthKey] = {
+          monthKey,
+          yearStr,
+          monthStr,
+          monthLabel,
+          totalLogs: 0,
+          loginsCount: 0,
+          storeCount: 0,
+          labAdminCount: 0,
+          studentCount: 0,
+          failedCount: 0,
+          usersSet: new Set()
+        };
+      }
+
+      const item = map[monthKey];
+      item.totalLogs += 1;
+      if (log.userName || log.userEmail) item.usersSet.add(log.userEmail || log.userName);
+
+      const isFailed = (log.status || '').toLowerCase() === 'failed' || (log.actionDetails || '').toLowerCase().includes('failed');
+      if (isFailed) item.failedCount += 1;
+
+      if ((log.actionDetails || '').toLowerCase().includes('logged in') && !isFailed) item.loginsCount += 1;
+
+      if (log.role === 'store-admin') item.storeCount += 1;
+      else if (log.role === 'lab-admin') item.labAdminCount += 1;
+      else if (log.role === 'student') item.studentCount += 1;
+    });
+
+    let list = Object.values(map);
+
+    if (auditHistYearFilter !== 'all') {
+      list = list.filter(item => item.yearStr === auditHistYearFilter);
+    }
+    if (auditHistMonthFilter !== 'all') {
+      list = list.filter(item => item.monthStr === auditHistMonthFilter);
+    }
+
+    return list.sort((a, b) => b.monthKey.localeCompare(a.monthKey));
+  }, [normalizedAuditLogs, auditHistYearFilter, auditHistMonthFilter]);
+
+  // Export 30+ Year Monthly Audit Archive to CSV
+  const handleExportMonthlyAuditArchiveCSV = () => {
+    if (monthlyAuditArchiveData.length === 0) return;
+
+    let csvContent = "data:text/csv;charset=utf-8,Month/Year,Total Logs,Logins Count,Unique Active Users,Store Manager Actions,Lab Admin Actions,Student Actions,Failed Logins\n";
+    monthlyAuditArchiveData.forEach((row) => {
+      csvContent += `"${row.monthLabel}",${row.totalLogs},${row.loginsCount},${row.usersSet.size},${row.storeCount},${row.labAdminCount},${row.studentCount},${row.failedCount}\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Platform_Monthly_Audit_Ledger_${auditHistYearFilter}_${auditHistMonthFilter}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Role Count Badges for Audit Top Tabs
   const auditRoleCounts = useMemo(() => {
     const counts = {
@@ -489,9 +584,21 @@ export default function SuperAdminDashboard() {
     return counts;
   }, [normalizedAuditLogs]);
 
-  // Filtered Audit Records
+  // Filtered Audit Records (Tied to Role Tabs, Search, Lab, Year, Semester, Date Pickers, and 30+ Year Historical Year/Month Filters)
   const filteredAuditLogs = useMemo(() => {
     return normalizedAuditLogs.filter((log) => {
+      // 30+ Year Historical Year Filter
+      if (auditHistYearFilter !== 'all') {
+        const logYear = String(new Date(log.timestamp).getFullYear());
+        if (logYear !== auditHistYearFilter) return false;
+      }
+
+      // 30+ Year Historical Month Filter
+      if (auditHistMonthFilter !== 'all') {
+        const logMonth = String(new Date(log.timestamp).getMonth() + 1).padStart(2, '0');
+        if (logMonth !== auditHistMonthFilter) return false;
+      }
+
       // Role Filter (Tab or Dropdown)
       if (auditTabRoleFilter !== 'all' && log.role !== auditTabRoleFilter) {
         return false;
@@ -512,7 +619,7 @@ export default function SuperAdminDashboard() {
         if ((log.labName || '').toLowerCase() !== auditLabFilter.toLowerCase()) return false;
       }
 
-      // Year Filter
+      // Academic Year Filter
       if (auditYearFilter !== 'all') {
         if (String(log.year) !== String(auditYearFilter)) return false;
       }
@@ -539,7 +646,7 @@ export default function SuperAdminDashboard() {
 
       return true;
     });
-  }, [normalizedAuditLogs, auditTabRoleFilter, debouncedAuditSearch, auditLabFilter, auditYearFilter, auditSemFilter, auditDateFrom, auditDateTo]);
+  }, [normalizedAuditLogs, auditHistYearFilter, auditHistMonthFilter, auditTabRoleFilter, debouncedAuditSearch, auditLabFilter, auditYearFilter, auditSemFilter, auditDateFrom, auditDateTo]);
 
   // Top Stat Cards Metrics
   const auditTopStats = useMemo(() => {
@@ -2497,10 +2604,53 @@ export default function SuperAdminDashboard() {
               </p>
             </div>
 
-            {/* TOP RIGHT CONTROLS: EXPORT CSV */}
-            <div className='flex items-center gap-2.5 shrink-0'>
-              <Button variant='outline' onClick={handleExportAuditLogsCSV} className='text-xs px-3.5 py-2 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] font-bold dark:border-[#a8be8a] dark:text-[#a8be8a] dark:hover:bg-[#1e2418] rounded-xl shadow-2xs'>
-                <Download size={14} className='mr-1.5' /> Export CSV
+            {/* TOP RIGHT CONTROLS: EXPORT CSV & 30+ YEAR HISTORICAL ARCHIVE SELECTORS */}
+            <div className='flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0'>
+              {/* Year Select (2026 to 2056+) */}
+              <div className='flex items-center gap-1.5 bg-white dark:bg-[#1a1d16] px-3 py-2 rounded-xl border border-[#5c6e46] dark:border-[#a8be8a] shadow-2xs'>
+                <span className='text-xs font-bold text-[#5c6e46] dark:text-[#a8be8a]'>Year:</span>
+                <select
+                  value={auditHistYearFilter}
+                  onChange={(e) => setAuditHistYearFilter(e.target.value)}
+                  className='bg-transparent text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8] outline-none cursor-pointer'
+                >
+                  <option value='all'>All Years (2026-2056+)</option>
+                  {availableAuditYears.map(yr => (
+                    <option key={yr} value={yr}>{yr}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Month Select */}
+              <div className='flex items-center gap-1.5 bg-white dark:bg-[#1a1d16] px-3 py-2 rounded-xl border border-[#5c6e46] dark:border-[#a8be8a] shadow-2xs'>
+                <span className='text-xs font-bold text-[#5c6e46] dark:text-[#a8be8a]'>Month:</span>
+                <select
+                  value={auditHistMonthFilter}
+                  onChange={(e) => setAuditHistMonthFilter(e.target.value)}
+                  className='bg-transparent text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8] outline-none cursor-pointer'
+                >
+                  {MONTH_NAMES.map(m => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 30+ Year Monthly Ledger Archive Button */}
+              <Button
+                variant='outline'
+                onClick={() => setAuditArchiveModalOpen(true)}
+                className='text-xs px-3.5 py-2 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] font-bold dark:border-[#a8be8a] dark:text-[#a8be8a] dark:hover:bg-[#1e2418] rounded-xl shadow-2xs flex items-center gap-1.5'
+              >
+                <Clock size={14} /> 30-Year Archive Ledger
+              </Button>
+
+              {/* Export CSV Button */}
+              <Button
+                variant='outline'
+                onClick={handleExportAuditLogsCSV}
+                className='text-xs px-3.5 py-2 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] font-bold dark:border-[#a8be8a] dark:text-[#a8be8a] dark:hover:bg-[#1e2418] rounded-xl shadow-2xs flex items-center gap-1.5'
+              >
+                <Download size={14} /> Export CSV
               </Button>
             </div>
           </div>
@@ -2945,6 +3095,81 @@ export default function SuperAdminDashboard() {
 
         </div>
       )}
+
+      {/* 30-YEAR MONTHLY AUDIT ARCHIVE LEDGER MODAL */}
+      <Modal
+        isOpen={auditArchiveModalOpen}
+        onClose={() => setAuditArchiveModalOpen(false)}
+        title="🗓️ 30-Year Monthly Audit Archive Ledger (2026 - 2056+)"
+        maxWidth="max-w-4xl"
+      >
+        <div className="space-y-4 text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-[#f8faee] dark:bg-[#20251a] rounded-xl border border-[#d9e1ca] dark:border-[#414a33]">
+            <p className="text-xs font-semibold text-[#5c6e46] dark:text-[#a8be8a]">
+              Monthly audit history recorded across all 30+ years. Click any row to inspect detailed logs.
+            </p>
+            <Button
+              onClick={handleExportMonthlyAuditArchiveCSV}
+              className="text-xs font-bold px-3 py-1.5 bg-[#5c6e46] text-white rounded-lg shadow-2xs"
+            >
+              <Download size={13} className="mr-1 inline" /> Export Archive CSV
+            </Button>
+          </div>
+
+          <div className="max-h-[450px] overflow-y-auto overflow-x-auto rounded-xl border border-[#d9e1ca] dark:border-[#414a33]">
+            <table className="w-full border-collapse text-left text-xs">
+              <thead className="bg-[#f4f6ee] dark:bg-[#151712] sticky top-0 border-b border-[#d9e1ca] dark:border-[#414a33]">
+                <tr>
+                  <th className="p-3 font-black text-[#5c6e46]">MONTH / YEAR</th>
+                  <th className="p-3 font-black text-[#5c6e46] text-center">TOTAL LOGS</th>
+                  <th className="p-3 font-black text-[#5c6e46] text-center">LOGINS</th>
+                  <th className="p-3 font-black text-[#5c6e46] text-center">ACTIVE USERS</th>
+                  <th className="p-3 font-black text-[#5c6e46] text-center">STORE ACTIONS</th>
+                  <th className="p-3 font-black text-[#5c6e46] text-center">LAB ADMINS</th>
+                  <th className="p-3 font-black text-[#5c6e46] text-center">STUDENTS</th>
+                  <th className="p-3 font-black text-[#5c6e46] text-center">FAILED</th>
+                  <th className="p-3 font-black text-[#5c6e46] text-center">ACTION</th>
+                </tr>
+              </thead>
+              <tbody>
+                {monthlyAuditArchiveData.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="p-6 text-center text-[#87996c] italic">
+                      No monthly audit records recorded for selected filters.
+                    </td>
+                  </tr>
+                ) : (
+                  monthlyAuditArchiveData.map((row) => (
+                    <tr key={row.monthKey} className="border-b border-[#e4eed3] dark:border-[#2a3320] hover:bg-[#f8faee] dark:hover:bg-[#20251a]">
+                      <td className="p-3 font-extrabold text-[#37412a] dark:text-[#e4e9d8]">{row.monthLabel}</td>
+                      <td className="p-3 font-black text-center text-[#5c6e46] dark:text-[#a8be8a]">{row.totalLogs}</td>
+                      <td className="p-3 font-bold text-center">{row.loginsCount}</td>
+                      <td className="p-3 font-bold text-center">{row.usersSet.size}</td>
+                      <td className="p-3 font-semibold text-center text-sky-700">{row.storeCount}</td>
+                      <td className="p-3 font-semibold text-center text-emerald-700">{row.labAdminCount}</td>
+                      <td className="p-3 font-semibold text-center text-amber-700">{row.studentCount}</td>
+                      <td className="p-3 font-bold text-center text-rose-700">{row.failedCount}</td>
+                      <td className="p-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAuditHistYearFilter(row.yearStr);
+                            setAuditHistMonthFilter(row.monthStr);
+                            setAuditArchiveModalOpen(false);
+                          }}
+                          className="px-2.5 py-1 rounded-md bg-[#5c6e46] text-white font-bold text-[11px] hover:bg-[#4a5e2a]"
+                        >
+                          View Logs
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </Modal>
 
       {/* SECTION 10: SECURITY & SETTINGS */}
       {activeTab === 'settings' && (
