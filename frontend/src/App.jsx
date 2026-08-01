@@ -238,7 +238,7 @@ function App() {
                     <Route path='store/requests' element={isStoreAdmin ? <StoreRequests /> : <Navigate to='/' replace />} />
                     <Route path='store/history' element={isStoreAdmin ? <StoreHistory /> : <Navigate to='/' replace />} />
                     <Route path='store/reports' element={isStoreAdmin ? <StoreReports /> : <Navigate to='/' replace />} />
-                    <Route path='store' element={role === 'student' ? <StudentStorePage /> : <Navigate to='/' replace />} />
+                    <Route path='store' element={<Navigate to='/' replace />} />
                     <Route path='my-borrowings' element={role === 'student' ? <StudentBorrowingsPage /> : <Navigate to='/' replace />} />
                     <Route path='approval' element={role === 'super-admin' ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='master-chemicals' element={role === 'super-admin' ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />

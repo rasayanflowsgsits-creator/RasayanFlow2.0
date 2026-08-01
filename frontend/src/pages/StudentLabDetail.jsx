@@ -463,8 +463,8 @@ export default function StudentLabDetail() {
                 label: 'Actions',
                 render: (row) => (
                   <div className='flex items-center gap-2'>
-                    <Button className='px-3 py-1.5 text-xs bg-[#556b2f] text-white hover:bg-[#435525]' onClick={() => openBorrowModal(row)}>
-                      Request
+                    <Button className='px-3 py-1.5 text-xs bg-[#556b2f] text-white hover:bg-[#435525] font-semibold' onClick={() => openBorrowModal(row)}>
+                      {row.category?.toLowerCase().includes('chemical') || row.category?.toLowerCase().includes('reagent') || row.category?.toLowerCase().includes('acid') ? 'Request Chemical' : 'Request Item'}
                     </Button>
                     {row.displayAbstract && (
                       <button
@@ -653,11 +653,11 @@ export default function StudentLabDetail() {
 
       {/* ========== MODALS ========== */}
 
-      {/* Borrow Request Modal */}
-      <Modal open={borrowOpen} onClose={() => setBorrowOpen(false)} title={selectedItem ? `Request: ${selectedItem.name}` : 'Borrow Request'}>
+      {/* Chemical / Item Request Modal */}
+      <Modal open={borrowOpen} onClose={() => setBorrowOpen(false)} title={selectedItem ? `Request ${selectedItem.name}` : 'Request Chemical'}>
         <div className='space-y-4'>
-          <div className='rounded-xl bg-[#f4f5eb] p-3 text-sm text-[#556b2f] dark:bg-[#28301f] dark:text-[#d5ddbf]'>
-            Available: {selectedItem?.quantity} {selectedItem?.quantityUnit || 'units'}
+          <div className='rounded-xl bg-[#f4f5eb] p-3 text-sm font-medium text-[#556b2f] dark:bg-[#28301f] dark:text-[#d5ddbf]'>
+            Available in {lab?.name || 'this lab'}: <span className="font-bold">{selectedItem?.quantity} {selectedItem?.quantityUnit || 'units'}</span>
           </div>
           {selectedItem?.displayAbstract && (
             <div className='rounded-lg border border-[#d9e1ca] bg-[#f9faef] p-3 dark:border-[#414a33] dark:bg-[#1f2419]'>
@@ -672,11 +672,11 @@ export default function StudentLabDetail() {
             <Input label='Quantity requested' type='number' value={borrowForm.quantity} onChange={(e) => setBorrowForm((s) => ({ ...s, quantity: e.target.value }))} />
             <Input label='Unit' value={selectedItem?.quantityUnit || 'units'} readOnly className='bg-[#f4f5eb] dark:bg-[#28301f]' />
           </div>
-          <Input label='Purpose / experiment use' value={borrowForm.purpose} onChange={(e) => setBorrowForm((s) => ({ ...s, purpose: e.target.value }))} placeholder='Practical class, assay, project work...' />
+          <Input label='Purpose / experiment use' value={borrowForm.purpose} onChange={(e) => setBorrowForm((s) => ({ ...s, purpose: e.target.value }))} placeholder='Practical class, titration, synthesis...' />
           <Input label='Needed until' type='date' value={borrowForm.neededUntil} onChange={(e) => setBorrowForm((s) => ({ ...s, neededUntil: e.target.value }))} />
-          <Input label='Additional notes' value={borrowForm.notes} onChange={(e) => setBorrowForm((s) => ({ ...s, notes: e.target.value }))} placeholder='Section, faculty name...' />
-          <Button onClick={submitBorrowRequest} className='w-full bg-[#556b2f] text-white hover:bg-[#435525]' disabled={submitting}>
-            {submitting ? 'Submitting...' : 'Send Borrow Request'}
+          <Input label='Additional notes' value={borrowForm.notes} onChange={(e) => setBorrowForm((s) => ({ ...s, notes: e.target.value }))} placeholder='Batch, section, faculty name...' />
+          <Button onClick={submitBorrowRequest} className='w-full bg-[#556b2f] text-white hover:bg-[#435525] font-semibold py-2.5 rounded-xl' disabled={submitting}>
+            {submitting ? 'Submitting...' : 'Send Request to Lab Admin'}
           </Button>
         </div>
       </Modal>
