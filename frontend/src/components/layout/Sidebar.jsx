@@ -63,9 +63,9 @@ const linksMap = {
     { to: "/about", label: "About Us", icon: Info },
   ],
   student: [
-    { to: "/", label: "Browse Labs", icon: MapPin },
-    { to: "/store", label: "Store", icon: Boxes },
-    { to: "/my-borrowings", label: "My Borrowings", icon: PackageSearch },
+    { to: "/", label: "Dashboard", icon: LayoutDashboard },
+    { to: "/store", label: "Central Store", icon: Boxes },
+    { to: "/my-borrowings", label: "My Activity", icon: PackageSearch },
     { to: "/about", label: "About Us", icon: Info },
   ],
 };
