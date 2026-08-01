@@ -107,26 +107,26 @@ export default function ResearchDashboard() {
   return (
     <div className="min-h-screen bg-[#fdfdf7] dark:bg-[#1a1d16] text-gray-900 dark:text-[#eef4e8] p-6 space-y-6">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-[#556b2f] to-[#3c4e23] rounded-2xl p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-8 opacity-20 pointer-events-none">
+      <div className="bg-gradient-to-r from-[#556b2f] to-[#3c4e23] rounded-2xl p-5 sm:p-8 text-white shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-8 opacity-20 pointer-events-none hidden sm:block">
           <Beaker className="w-32 h-32 text-[#c8a030]" />
         </div>
         <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold">Welcome back, {user?.name || 'Scholar'}!</h1>
-            <span className="px-3 py-1 bg-[#c8a030] text-black text-xs font-bold rounded-full uppercase tracking-wider shadow-sm">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <h1 className="text-2xl sm:text-3xl font-bold">Welcome back, {user?.name || 'Scholar'}!</h1>
+            <span className="px-2.5 py-0.5 sm:px-3 sm:py-1 bg-[#c8a030] text-black text-[11px] sm:text-xs font-bold rounded-full uppercase tracking-wider shadow-sm">
               Direct Store Access
             </span>
           </div>
-          <p className="text-green-100 flex items-center gap-2">
-            <Award className="w-5 h-5" /> 
+          <p className="text-green-100 flex items-center gap-2 text-xs sm:text-sm">
+            <Award className="w-4 h-4 sm:w-5 sm:h-5" /> 
             {user?.course || 'Research'} • {user?.year || 'Program'}
           </p>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
         <Card className="bg-white dark:bg-[#1c2117] border-[#e2e8f0] dark:border-[#3c452f] shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
           <div className="p-6 flex flex-col h-full justify-between">
             <div>

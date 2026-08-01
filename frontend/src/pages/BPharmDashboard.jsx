@@ -79,44 +79,48 @@ const BPharmDashboard = () => {
     <div className="min-h-screen bg-[#fdfdf7] dark:bg-[#1a1d16] text-[#2c3320] dark:text-[#eef4e8] p-4 md:p-8 space-y-8 font-sans pb-24 transition-colors duration-300">
       
       {/* Welcome Hero Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#556b2f] to-[#3c4e23] text-white p-8 shadow-lg">
-        <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#556b2f] to-[#3c4e23] text-white p-5 sm:p-8 shadow-lg">
+        <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none hidden sm:block">
           <FlaskConical className="w-48 h-48" />
         </div>
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">Welcome back, {user?.name}!</h1>
-            <p className="text-[#eef4e8]/80 text-sm md:text-base font-medium flex items-center gap-2">
-              <span className="bg-[#c8a030] text-black px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-                B.Pharm Year {user?.year} • Sem {user?.semester}
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">Welcome back, {user?.name}!</h1>
+            <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm font-medium">
+              <span className="bg-[#c8a030] text-black px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-bold uppercase tracking-wider">
+                B.Pharm Y{user?.year || 1} • Sem {user?.semester || 1}
               </span>
-              {user?.group && <span className="opacity-90">• Group {user?.group}</span>}
-            </p>
+              {user?.group && user?.group !== 'No Group' && (
+                <span className="bg-black/30 text-white px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-medium">
+                  {user.group.startsWith('Group') ? user.group : `Group ${user.group}`}
+                </span>
+              )}
+            </div>
           </div>
-          <div className="text-right">
-            <p className="text-sm font-medium text-[#eef4e8]/80 bg-black/20 px-4 py-2 rounded-lg backdrop-blur-sm">
+          <div className="self-start sm:self-auto">
+            <p className="text-xs sm:text-sm font-medium text-[#eef4e8]/80 bg-black/20 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg backdrop-blur-sm">
               {currentDate}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Stats Cards - 2x2 on mobile for quick scanning */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {[
           { title: "My Subjects", count: stats.subjectsCount, icon: BookOpen, color: "text-blue-500", bg: "bg-blue-500/10" },
           { title: "Pending Requests", count: stats.pending, icon: Clock, color: "text-amber-500", bg: "bg-amber-500/10" },
           { title: "Approved Requests", count: stats.approved, icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-500/10" },
           { title: "Total Requests", count: stats.totalRequests, icon: Activity, color: "text-[#c8a030]", bg: "bg-[#c8a030]/10" }
         ].map((stat, idx) => (
-          <Card key={idx} className="p-6 bg-white dark:bg-[#1f2419] border-[#e8eadf] dark:border-[#3c452f] hover:shadow-md transition-all">
-            <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-xl ${stat.bg} ${stat.color}`}>
-                <stat.icon className="w-6 h-6" />
+          <Card key={idx} className="p-3.5 sm:p-6 bg-white dark:bg-[#1f2419] border-[#e8eadf] dark:border-[#3c452f] hover:shadow-md transition-all">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
+              <div className={`p-2.5 sm:p-3 rounded-xl ${stat.bg} ${stat.color} shrink-0`}>
+                <stat.icon className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">{stat.title}</p>
-                <h3 className="text-2xl font-bold text-[#3c4e23] dark:text-[#c8a030]">{stat.count}</h3>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium truncate">{stat.title}</p>
+                <h3 className="text-xl sm:text-2xl font-bold text-[#3c4e23] dark:text-[#c8a030]">{stat.count}</h3>
               </div>
             </div>
           </Card>

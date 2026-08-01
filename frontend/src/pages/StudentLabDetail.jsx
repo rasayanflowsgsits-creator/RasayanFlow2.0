@@ -341,20 +341,21 @@ export default function StudentLabDetail() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex gap-1 bg-[#f4f6ee] dark:bg-[#1c2117] p-1.5 rounded-xl border border-[#d9e1ca] dark:border-[#414a33]">
+      <div className="grid grid-cols-4 gap-1 bg-[#f4f6ee] dark:bg-[#1c2117] p-1.5 rounded-xl border border-[#d9e1ca] dark:border-[#414a33]">
         {TABS.map(tab => {
           const Icon = tab.icon;
           return (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all flex-1 justify-center ${
+              className={`flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-2.5 rounded-lg text-[11px] sm:text-sm font-semibold transition-all justify-center text-center ${
                 activeTab === tab.id
-                  ? 'bg-[#556b2f] text-white shadow-md'
+                  ? 'bg-[#556b2f] text-white shadow-sm'
                   : 'text-[#71805a] dark:text-[#c5d0b5] hover:bg-[#e8ece1] dark:hover:bg-[#28301f]'
               }`}
             >
-              <Icon size={16} /> <span className="hidden sm:inline">{tab.label}</span>
+              <Icon size={16} className="shrink-0" />
+              <span className="truncate max-w-full">{tab.label}</span>
             </button>
           );
         })}

@@ -121,8 +121,8 @@ export default function StudentBorrowingsPage() {
         <p className="text-sm text-[#71805a] dark:text-[#a5b48b]">Track your lab requests, borrowings, and central store allotments</p>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Stat Cards - 2x2 grid on mobile */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Card title="Lab Borrowings" subtitle="Active approved requests">
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f4f6ee] dark:bg-[#20251a]">
