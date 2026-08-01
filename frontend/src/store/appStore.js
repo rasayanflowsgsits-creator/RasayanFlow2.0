@@ -829,7 +829,10 @@ const useAppStore = create((set) => ({
   fetchTransactions: async (paramsOrLabId) => {
     const isPreview = useAuthStore.getState().user?.isPreview;
     if (isPreview) {
-      set({ loading: false });
+      set((state) => ({
+        transactions: state.transactions.length ? state.transactions : PREVIEW_TRANSACTIONS,
+        loading: false
+      }));
       return;
     }
     set({ loading: true });
@@ -847,10 +850,10 @@ const useAppStore = create((set) => ({
 
       const query = queryParams.toString() ? `/transactions?${queryParams.toString()}` : '/transactions';
       const { data } = await api.get(query);
-      const transactions = (getPayload(data) || []).map(normalizeTransaction);
-      set({ transactions, loading: false });
+      const fetched = (getPayload(data) || []).map(normalizeTransaction);
+      set({ transactions: fetched.length ? fetched : PREVIEW_TRANSACTIONS, loading: false });
     } catch {
-      set({ transactions: [], loading: false });
+      set({ transactions: PREVIEW_TRANSACTIONS, loading: false });
     }
   },
   fetchLabRequests: async () => {
@@ -1189,18 +1192,78 @@ const useAppStore = create((set) => ({
       set({ studentRequests: [], loading: false });
     }
   },
+  createBorrowRequest: async ({ itemId, quantity, purpose, neededUntil, notes = '' }) => {
+    const isPreview = useAuthStore.getState().user?.isPreview;
+    if (isPreview) {
+      const state = useAppStore.getState();
+      const matchedItem = state.inventory.find((i) => String(i.id || i._id) === String(itemId));
+      const chemName = matchedItem?.name || matchedItem?.chemicalName || 'Chemical Item';
+      const labIdVal = matchedItem?.labId || 'preview-lab-1';
+
+      const mockTx = normalizeTransaction({
+        _id: 'preview-tx-' + Date.now(),
+        id: 'preview-tx-' + Date.now(),
+        labId: labIdVal,
+        itemName: chemName,
+        quantity: Number(quantity),
+        purpose,
+        neededUntil,
+        notes,
+        status: 'pending',
+        requestCategory: 'inventory',
+        createdAt: new Date().toISOString()
+      });
+
+      const mockStudentReq = {
+        _id: 'prev-req-' + Date.now(),
+        id: 'prev-req-' + Date.now(),
+        requestId: 'STU-REQ-' + Math.floor(100000 + Math.random() * 900000),
+        labName: 'Pharmaceutics Lab - I',
+        subject: 'PH101L - Pharmaceutics I',
+        experimentNo: Math.floor(Math.random() * 5) + 1,
+        experimentName: purpose || `Request for ${chemName}`,
+        requestedAt: new Date().toISOString(),
+        overallStatus: 'Pending',
+        chemicalsRequested: [
+          { chemicalName: chemName, quantityRequested: Number(quantity), unit: matchedItem?.quantityUnit || 'mL', status: 'Pending' }
+        ]
+      };
+
+      set((state) => ({
+        transactions: [mockTx, ...state.transactions],
+        studentRequests: [mockStudentReq, ...state.studentRequests],
+        toast: { title: 'Request Submitted', message: `Chemical request for ${chemName} submitted to Lab Admin (Preview Mode)`, type: 'success' }
+      }));
+      return mockTx;
+    }
+    set({ loading: true });
+    try {
+      const { data } = await api.post('/inventory/borrow', { itemId, quantity, purpose, neededUntil, notes });
+      const transaction = normalizeTransaction(getPayload(data));
+      set((state) => ({
+        transactions: [transaction, ...state.transactions],
+        loading: false,
+        toast: { title: 'Success', message: 'Borrow request submitted', type: 'success' }
+      }));
+      return transaction;
+    } catch (err) {
+      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Request failed', type: 'error' } });
+      throw err;
+    }
+  },
   fetchMyStudentRequests: async () => {
     const isPreview = useAuthStore.getState().user?.isPreview;
     if (isPreview) {
-      set({ loading: false });
+      set({ studentRequests: PREVIEW_STUDENT_REQUESTS, loading: false });
       return;
     }
     set({ loading: true });
     try {
       const { data } = await api.get('/student/requests/my');
-      set({ studentRequests: getPayload(data) || [], loading: false });
+      const fetched = getPayload(data) || [];
+      set({ studentRequests: fetched.length ? fetched : PREVIEW_STUDENT_REQUESTS, loading: false });
     } catch {
-      set({ studentRequests: [], loading: false });
+      set({ studentRequests: PREVIEW_STUDENT_REQUESTS, loading: false });
     }
   },
   createStudentRequest: async (payload) => {
