@@ -220,29 +220,29 @@ const BPharmDashboard = () => {
       </div>
 
       {/* My Requests Section */}
-      <Card className="bg-white dark:bg-[#1f2419] border-[#e8eadf] dark:border-[#3c452f] overflow-hidden">
-        <div className="p-6 border-b border-[#e8eadf] dark:border-[#3c452f] space-y-4">
-          <h2 className="text-xl font-bold text-[#3c4e23] dark:text-[#c8a030] flex items-center gap-2">
+      <Card className="bg-white dark:bg-[#1f2419] border-[#e8eadf] dark:border-[#3c452f] overflow-hidden text-left">
+        <div className="p-4 sm:p-6 border-b border-[#e8eadf] dark:border-[#3c452f] space-y-4 text-left">
+          <h2 className="text-xl font-bold text-[#3c4e23] dark:text-[#c8a030] flex items-center gap-2 text-left">
             <Activity className="w-5 h-5" /> Requisition History
           </h2>
           
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="relative w-full md:w-96">
+          <div className="flex flex-col md:flex-row md:items-center justify-start gap-3 text-left">
+            <div className="relative w-full md:w-80">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 placeholder="Search by lab or experiment..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 w-full bg-gray-50 dark:bg-[#1a1d16] border-[#e8eadf] dark:border-[#3c452f] focus:border-[#556b2f] dark:focus:border-[#c8a030]"
+                className="pl-9 w-full bg-gray-50 dark:bg-[#1a1d16] border-[#e8eadf] dark:border-[#3c452f] focus:border-[#556b2f] dark:focus:border-[#c8a030] text-sm"
               />
             </div>
             
-            <div className="flex overflow-x-auto gap-2 pb-2 md:pb-0 hide-scrollbar">
+            <div className="flex overflow-x-auto gap-2 pb-1 text-left justify-start">
               {['All', 'Pending', 'Approved', 'Partial', 'Rejected'].map(status => (
                 <button
                   key={status}
                   onClick={() => setStatusFilter(status)}
-                  className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                     statusFilter === status 
                       ? 'bg-[#556b2f] text-white dark:bg-[#c8a030] dark:text-black' 
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
@@ -255,48 +255,26 @@ const BPharmDashboard = () => {
           </div>
         </div>
 
-        <div className="p-0">
-          <Table className="w-full">
-            <thead className="bg-gray-50 dark:bg-[#1a1d16]">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject / Lab</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Experiment</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#e8eadf] dark:divide-[#3c452f]">
-              {filteredRequests?.length > 0 ? (
-                filteredRequests.map((req, i) => (
-                  <tr key={req._id || i} className="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
-                      {new Date(req.requestedAt).toLocaleDateString('en-GB')}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{req.labName}</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">{req.subject}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 dark:text-gray-100 truncate max-w-[200px] md:max-w-[300px]">
-                        <span className="font-medium mr-1 text-gray-500 dark:text-gray-400">Exp {req.experimentNo}:</span> 
-                        {req.experimentName}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(req.overallStatus)}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="4" className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
-                    <Activity className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    No requests found matching your filters.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </Table>
+        <div className="p-4 text-left">
+          <Table
+            headers={[
+              { key: 'date', label: 'Date', render: (row) => new Date(row.requestedAt).toLocaleDateString('en-GB') },
+              { key: 'subject', label: 'Subject / Lab', render: (row) => (
+                <div className="text-left">
+                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{row.labName}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">{row.subject}</div>
+                </div>
+              )},
+              { key: 'experiment', label: 'Experiment', render: (row) => (
+                <div className="text-sm text-gray-900 dark:text-gray-100 text-left">
+                  <span className="font-medium mr-1 text-[#556b2f] dark:text-[#c8a030]">Exp {row.experimentNo}:</span> 
+                  {row.experimentName}
+                </div>
+              )},
+              { key: 'status', label: 'Status', render: (row) => getStatusBadge(row.overallStatus) }
+            ]}
+            rows={filteredRequests}
+          />
         </div>
       </Card>
     </div>

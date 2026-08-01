@@ -2,7 +2,7 @@ import clsx from 'clsx';
 
 export default function Table({ headers = [], rows = [], className, expandedRowId = null, renderExpandedRow = null, onRowClick = null }) {
   if (!rows.length) {
-    return <div className='rounded-xl border border-dashed border-[#cfd8bd] px-5 py-10 text-center text-[#71805a] dark:border-[#4e5d35] dark:text-[#c5d0b5]'>No records found</div>;
+    return <div className='rounded-xl border border-dashed border-[#cfd8bd] p-6 text-left text-sm text-[#71805a] dark:border-[#4e5d35] dark:text-[#c5d0b5]'>No records found matching criteria.</div>;
   }
 
   const getCellValue = (row, header, index) => {
