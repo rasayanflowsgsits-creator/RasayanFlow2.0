@@ -95,54 +95,54 @@ export default function Navbar({ onToggleSidebar, isDark, toggleTheme }) {
   return (
     <header className='sticky top-0 z-30 border-b border-[#d9e1ca] bg-[#fffef8]/92 backdrop-blur-md dark:border-[#3c452f] dark:bg-[#1c2117]/92'>
       {user?.isPreview && (
-        <div className="bg-[#5c6e46] px-4 py-2 text-center text-xs font-semibold text-white flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-emerald-400/20 px-2 py-0.5 text-[10px] uppercase tracking-wider text-emerald-200">Interactive Preview</span>
-            <span>You are viewing Student Preview Mode (B.Pharm • Year 1 • Sem 1)</span>
+        <div className="bg-[#5c6e46] px-3 py-1.5 text-center text-xs font-semibold text-white flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="rounded-full bg-emerald-400/20 px-2 py-0.5 text-[9px] uppercase tracking-wider text-emerald-200 shrink-0">Preview</span>
+            <span className="truncate text-[11px] sm:text-xs">Student Mode ({user?.course || 'B.Pharm'} • Y{user?.year || 1} S{user?.semester || 1})</span>
           </div>
           <button 
             onClick={logout}
-            className="flex items-center gap-1 rounded-lg bg-white/20 px-3 py-1 text-xs font-bold hover:bg-white/30 transition-colors"
+            className="flex items-center gap-1 rounded-lg bg-white/20 px-2.5 py-1 text-[11px] font-bold hover:bg-white/30 transition-colors shrink-0 whitespace-nowrap"
           >
-            <LogOut size={13} /> Exit Preview / Back to Login
+            <LogOut size={12} /> <span className="hidden sm:inline">Exit Preview</span><span className="sm:hidden">Exit</span>
           </button>
         </div>
       )}
-      <div className='mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8'>
-        <div className='flex items-center gap-3'>
-          <button className='rounded-lg p-2 text-[#71805a] hover:bg-[#f4f6ee] dark:text-[#c5d0b5] dark:hover:bg-[#28301f]' onClick={onToggleSidebar}>
+      <div className='mx-auto flex h-14 sm:h-16 max-w-7xl items-center justify-between px-3 sm:px-6 lg:px-8'>
+        <div className='flex items-center gap-2 sm:gap-3 min-w-0'>
+          <button className='rounded-lg p-1.5 text-[#71805a] hover:bg-[#f4f6ee] dark:text-[#c5d0b5] dark:hover:bg-[#28301f] shrink-0' onClick={onToggleSidebar}>
             <span className='sr-only'>Toggle sidebar</span>
             <svg className='h-5 w-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'><path d='M4 6h16M4 12h16M4 18h16' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' /></svg>
           </button>
           <img
             src={avatarUrl}
             alt={`${userName} avatar`}
-            className='h-10 w-10 rounded-full border border-[#d9e1ca] bg-[#f4f5eb] object-cover dark:border-[#4e5d35] dark:bg-[#28301f]'
+            className='h-8 w-8 sm:h-10 sm:w-10 rounded-full border border-[#d9e1ca] bg-[#f4f5eb] object-cover dark:border-[#4e5d35] dark:bg-[#28301f] shrink-0'
             onError={(e) => {
               e.currentTarget.onerror = null;
               e.currentTarget.src = 'https://api.dicebear.com/9.x/initials/svg?seed=PharmLab';
             }}
           />
-          <div>
-            <p className='text-xs font-medium text-[#8b9874]'>Welcome back</p>
-            <p className='text-sm font-semibold text-[#3c4e23] dark:text-[#eef4e8]'>{userName}</p>
+          <div className="min-w-0 truncate">
+            <p className='text-[10px] sm:text-xs font-medium text-[#8b9874] hidden xs:block'>Welcome back</p>
+            <p className='text-xs sm:text-sm font-semibold text-[#3c4e23] dark:text-[#eef4e8] truncate'>{userName}</p>
           </div>
         </div>
-        <div className='flex items-center gap-2'>
+        <div className='flex items-center gap-1.5 sm:gap-2 shrink-0'>
           <div className='relative'>
             <button
-              className='rounded-lg p-2 text-[#71805a] hover:bg-[#f4f6ee] dark:text-[#c5d0b5] dark:hover:bg-[#28301f]'
+              className='rounded-lg p-1.5 sm:p-2 text-[#71805a] hover:bg-[#f4f6ee] dark:text-[#c5d0b5] dark:hover:bg-[#28301f]'
               onClick={() => setNotificationsOpen((value) => !value)}
               aria-label='Toggle notifications'
             >
               <Bell size={18} />
               {(user?.role === 'store-admin' || user?.role === 'store_admin') && storeLowStockAlerts.length > 0 && (
-                <span className="absolute top-1 right-1.5 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full shadow-sm">
+                <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full shadow-sm">
                   {storeLowStockAlerts.length}
                 </span>
               )}
               {user?.role === 'lab-admin' && unreadNotificationCount > 0 && (
-                <span className="absolute top-1 right-1.5 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full shadow-sm">
+                <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full shadow-sm">
                   {unreadNotificationCount}
                 </span>
               )}
