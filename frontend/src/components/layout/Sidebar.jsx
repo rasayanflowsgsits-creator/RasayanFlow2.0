@@ -64,7 +64,6 @@ const linksMap = {
   ],
   student: [
     { to: "/", label: "Dashboard", icon: LayoutDashboard },
-    { to: "/store", label: "Central Store", icon: Boxes },
     { to: "/my-borrowings", label: "My Activity", icon: PackageSearch },
     { to: "/about", label: "About Us", icon: Info },
   ],

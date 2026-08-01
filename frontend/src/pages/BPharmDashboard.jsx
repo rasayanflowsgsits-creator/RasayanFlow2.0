@@ -130,19 +130,7 @@ const BPharmDashboard = () => {
       {/* Quick Actions */}
       <div>
         <h2 className="text-xl font-bold text-[#3c4e23] dark:text-[#c8a030] mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <button 
-            onClick={() => navigate('/store')}
-            className="flex items-center justify-between p-4 rounded-xl bg-white dark:bg-[#1f2419] border border-[#e8eadf] dark:border-[#3c452f] hover:border-[#556b2f] dark:hover:border-[#c8a030] hover:shadow-md transition-all group"
-          >
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-[#556b2f]/10 dark:bg-[#c8a030]/10 rounded-lg text-[#556b2f] dark:text-[#c8a030]">
-                <Store className="w-5 h-5" />
-              </div>
-              <span className="font-semibold text-left">Visit Central Store</span>
-            </div>
-            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#556b2f] dark:group-hover:text-[#c8a030] transition-colors" />
-          </button>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           
           <button 
             onClick={() => navigate('/my-borrowings')}
