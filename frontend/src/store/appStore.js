@@ -1303,17 +1303,38 @@ const useAppStore = create((set) => ({
     set({ loading: true });
     try {
       let response;
-      try {
-        response = await api.put('/student/profile/setup', payload);
-      } catch (err1) {
-        if (err1?.response?.status === 404) {
-          response = await api.put('/api/student/profile/setup', payload);
-        } else {
-          throw err1;
+      const endpoints = [
+        '/student/profile/setup',
+        '/api/student/profile/setup',
+        '/student/profile',
+        '/api/student/profile'
+      ];
+      let lastErr = null;
+      for (const ep of endpoints) {
+        try {
+          response = await api.put(ep, payload);
+          if (response?.data) break;
+        } catch (e) {
+          lastErr = e;
+          if (e?.response?.status === 404) {
+            try {
+              response = await api.post(ep, payload);
+              if (response?.data) break;
+            } catch (postE) {
+              lastErr = postE;
+            }
+          } else {
+            throw e;
+          }
         }
       }
+
+      if (!response && lastErr) {
+        throw lastErr;
+      }
+
       set({ loading: false });
-      return getPayload(response.data);
+      return getPayload(response?.data);
     } catch (err) {
       set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Setup failed', type: 'error' } });
       throw err;
