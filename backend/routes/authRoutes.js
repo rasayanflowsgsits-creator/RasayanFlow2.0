@@ -1,6 +1,6 @@
 const express = require('express');
 const { body } = require('express-validator');
-const { register, login, me, changePassword, refreshToken } = require('../controllers/authController');
+const { register, login, me, changePassword, refreshToken, updateStudentOnboarding } = require('../controllers/authController');
 const authMiddleware = require('../middleware/authMiddleware');
 const validateRequest = require('../middleware/validateMiddleware');
 const { authLimiter, passwordLimiter } = require('../middleware/rateLimiter');
@@ -28,6 +28,10 @@ router.post(
 );
 
 router.get('/me', authMiddleware, me);
+router.put('/onboarding', authMiddleware, updateStudentOnboarding);
+router.post('/onboarding', authMiddleware, updateStudentOnboarding);
+router.put('/profile', authMiddleware, updateStudentOnboarding);
+router.post('/profile', authMiddleware, updateStudentOnboarding);
 
 router.put(
   '/password',

@@ -267,4 +267,29 @@ const refreshToken = asyncHandler(async (req, res) => {
   res.json({ success: true, data: { accessToken, refreshToken: newRefreshToken } });
 });
 
-module.exports = { register, login, me, changePassword, refreshToken };
+const updateStudentOnboarding = asyncHandler(async (req, res) => {
+  const { rollNumber, course, year, semester, group } = req.body;
+  const userId = req.user?._id || req.user?.id;
+  const user = await User.findById(userId);
+
+  if (!user) {
+    res.status(404);
+    throw new Error('User not found');
+  }
+
+  if (rollNumber) user.rollNumber = rollNumber;
+  if (course) user.course = course;
+  if (year) user.year = String(year);
+  if (semester) user.semester = String(semester);
+  if (group) user.group = group;
+  user.onboardingComplete = true;
+
+  await user.save();
+
+  res.json({
+    success: true,
+    data: serializeUser(user),
+  });
+});
+
+module.exports = { register, login, me, changePassword, refreshToken, updateStudentOnboarding };
