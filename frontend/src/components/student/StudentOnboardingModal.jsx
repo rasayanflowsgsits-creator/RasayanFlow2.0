@@ -73,7 +73,13 @@ export default function StudentOnboardingModal() {
     }
   };
 
-  if (user?.onboardingComplete) return null;
+  const isComplete = Boolean(
+    user?.onboardingComplete ||
+    (user?.rollNumber && user?.course && user?.year) ||
+    user?.isPreview
+  );
+
+  if (isComplete) return null;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#23281d]/80 p-4 backdrop-blur-md">
