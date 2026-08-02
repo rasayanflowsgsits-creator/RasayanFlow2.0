@@ -1307,15 +1307,7 @@ const useAppStore = create((set) => ({
         response = await api.put('/student/profile/setup', payload);
       } catch (err1) {
         if (err1?.response?.status === 404) {
-          try {
-            response = await api.put('/users/profile/setup', payload);
-          } catch (err2) {
-            if (err2?.response?.status === 404) {
-              response = await api.put('/auth/profile/setup', payload);
-            } else {
-              throw err2;
-            }
-          }
+          response = await api.put('/api/student/profile/setup', payload);
         } else {
           throw err1;
         }
