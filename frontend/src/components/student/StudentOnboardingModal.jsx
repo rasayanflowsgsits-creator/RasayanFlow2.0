@@ -47,6 +47,9 @@ export default function StudentOnboardingModal() {
   const markCompleteLocally = (extraPayload = {}) => {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem('pharmlab-onboarding-complete', 'true');
+      if (user?._id) {
+        localStorage.setItem(`pharmlab-onboarding-complete-${user._id}`, 'true');
+      }
     }
     updateUser({
       ...formData,
@@ -102,6 +105,7 @@ export default function StudentOnboardingModal() {
     user?.course ||
     user?.year ||
     user?.isPreview ||
+    (typeof localStorage !== 'undefined' && user?._id && localStorage.getItem(`pharmlab-onboarding-complete-${user._id}`) === 'true') ||
     (typeof localStorage !== 'undefined' && localStorage.getItem('pharmlab-onboarding-complete') === 'true')
   );
 
