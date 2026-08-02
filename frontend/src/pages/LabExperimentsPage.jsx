@@ -190,6 +190,55 @@ export default function LabExperimentsPage() {
     link.remove();
   };
 
+  const [addOpen, setAddOpen] = useState(false);
+  const [addingExp, setAddingExp] = useState(false);
+  const [newExp, setNewExp] = useState({
+    subject: 'HAP1',
+    experimentNo: '1',
+    experimentName: '',
+    chemicals: [{ chemicalName: '', quantityPerStudent: '10', unit: 'mL' }]
+  });
+
+  const handleAddChemicalRow = () => {
+    setNewExp(prev => ({
+      ...prev,
+      chemicals: [...prev.chemicals, { chemicalName: '', quantityPerStudent: '10', unit: 'mL' }]
+    }));
+  };
+
+  const handleRemoveChemicalRow = (idx) => {
+    setNewExp(prev => ({
+      ...prev,
+      chemicals: prev.chemicals.filter((_, i) => i !== idx)
+    }));
+  };
+
+  const handleSaveManualExperiment = async () => {
+    if (!newExp.subject || !newExp.experimentName) {
+      alert('Please fill in the subject and experiment name');
+      return;
+    }
+    setAddingExp(true);
+    try {
+      await api.post('/lab/structure/experiment', {
+        ...newExp,
+        labId: activeLabId
+      });
+      setAddOpen(false);
+      fetchLabStructure(activeLabId);
+      setNewExp({
+        subject: 'HAP1',
+        experimentNo: '1',
+        experimentName: '',
+        chemicals: [{ chemicalName: '', quantityPerStudent: '10', unit: 'mL' }]
+      });
+    } catch (err) {
+      alert(err?.response?.data?.message || 'Failed to save experiment');
+    } finally {
+      setAddingExp(false);
+    }
+  };
+
   return (
     <div className='space-y-6 pb-10'>
       {/* Page Header */}
@@ -197,7 +246,7 @@ export default function LabExperimentsPage() {
         <div>
           <h2 className='text-2xl font-semibold text-[#3c4e23] dark:text-[#eef4e8]'>Lab Experiments</h2>
           <p className='text-[#71805a] dark:text-[#c5d0b5]'>
-            {currentLab?.courseType} {currentLab?.year} {currentLab?.semester} Curriculum Structure
+            {currentLab?.courseType || 'B.Pharm'} {currentLab?.year || '1'} {currentLab?.semester || '1'} Curriculum Structure
           </p>
         </div>
         <div className='flex flex-wrap items-center gap-3'>
@@ -210,7 +259,7 @@ export default function LabExperimentsPage() {
             className='rounded-lg border border-[#cfd8bd] bg-white px-3 py-2 text-sm text-[#3c4e23] outline-none focus:ring-2 focus:ring-[#6f7d45] dark:border-[#4e5d35] dark:bg-[#1a1d16] dark:text-[#eef4e8]'
           >
             {labs.map(l => (
-              <option key={l.id} value={l.id}>{l.name}</option>
+              <option key={l.id || l._id} value={l.id || l._id}>{l.name || l.labName}</option>
             ))}
           </select>
           <div className="flex bg-[#f4f5eb] dark:bg-[#1c2117] p-1 rounded-lg border border-[#d9e1ca] dark:border-[#4e5d35]">
@@ -229,6 +278,9 @@ export default function LabExperimentsPage() {
               <TableIcon size={16} />
             </button>
           </div>
+          <Button onClick={() => setAddOpen(true)} className="bg-[#556b2f] text-white">
+            <Plus size={16} className="mr-1" /> Add Experiment
+          </Button>
           <Button variant='outline' onClick={() => { setImportStep(1); setImportOpen(true); }}>
             <Upload size={16} /> Upload CSV Wizard
           </Button>
@@ -468,6 +520,102 @@ export default function LabExperimentsPage() {
               <Button onClick={() => setImportOpen(false)} className="bg-[#556b2f] text-white">Done</Button>
             </div>
           )}
+        </div>
+      </Modal>
+
+      {/* Add Single Experiment Modal */}
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add Single Experiment">
+        <div className="space-y-4 text-left">
+          <div className="grid grid-cols-2 gap-4">
+            <Input 
+              label="Subject / Lab Code" 
+              value={newExp.subject} 
+              onChange={(e) => setNewExp({ ...newExp, subject: e.target.value })} 
+              placeholder="e.g. HAP1 or Pharmaceutics-I" 
+            />
+            <Input 
+              label="Experiment No." 
+              type="number" 
+              value={newExp.experimentNo} 
+              onChange={(e) => setNewExp({ ...newExp, experimentNo: e.target.value })} 
+              placeholder="e.g. 1" 
+            />
+          </div>
+
+          <Input 
+            label="Experiment Title / Objective" 
+            value={newExp.experimentName} 
+            onChange={(e) => setNewExp({ ...newExp, experimentName: e.target.value })} 
+            placeholder="e.g. Study of Compound Microscope" 
+          />
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-[#3c4e23] dark:text-[#c8a030] uppercase tracking-wider">Required Chemicals</label>
+              <button 
+                type="button" 
+                onClick={handleAddChemicalRow} 
+                className="text-xs font-semibold text-[#556b2f] hover:underline"
+              >
+                + Add Chemical
+              </button>
+            </div>
+
+            {newExp.chemicals.map((chem, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <input 
+                  type="text" 
+                  placeholder="Chemical Name" 
+                  value={chem.chemicalName} 
+                  onChange={(e) => {
+                    const updated = [...newExp.chemicals];
+                    updated[idx].chemicalName = e.target.value;
+                    setNewExp({ ...newExp, chemicals: updated });
+                  }} 
+                  className="flex-1 rounded-xl border border-[#cfd8bd] px-3 py-1.5 text-xs bg-white dark:bg-[#20251a]" 
+                />
+                <input 
+                  type="number" 
+                  placeholder="Qty" 
+                  value={chem.quantityPerStudent} 
+                  onChange={(e) => {
+                    const updated = [...newExp.chemicals];
+                    updated[idx].quantityPerStudent = e.target.value;
+                    setNewExp({ ...newExp, chemicals: updated });
+                  }} 
+                  className="w-20 rounded-xl border border-[#cfd8bd] px-3 py-1.5 text-xs bg-white dark:bg-[#20251a]" 
+                />
+                <input 
+                  type="text" 
+                  placeholder="Unit" 
+                  value={chem.unit} 
+                  onChange={(e) => {
+                    const updated = [...newExp.chemicals];
+                    updated[idx].unit = e.target.value;
+                    setNewExp({ ...newExp, chemicals: updated });
+                  }} 
+                  className="w-16 rounded-xl border border-[#cfd8bd] px-3 py-1.5 text-xs bg-white dark:bg-[#20251a]" 
+                />
+                {newExp.chemicals.length > 1 && (
+                  <button 
+                    type="button" 
+                    onClick={() => handleRemoveChemicalRow(idx)} 
+                    className="text-rose-500 text-xs font-bold p-1"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <Button 
+            onClick={handleSaveManualExperiment} 
+            disabled={addingExp} 
+            className="w-full bg-[#556b2f] text-white font-bold py-2.5 rounded-xl mt-4"
+          >
+            {addingExp ? 'Saving Experiment...' : 'Save Experiment to Lab Structure'}
+          </Button>
         </div>
       </Modal>
     </div>
