@@ -7,6 +7,9 @@ const router = express.Router();
 router.use(authMiddleware);
 
 router.put('/setup', setupProfile);
+router.post('/setup', setupProfile);
+router.put('/', setupProfile);
+router.post('/', setupProfile);
 router.get('/', getProfile);
 
 module.exports = router;

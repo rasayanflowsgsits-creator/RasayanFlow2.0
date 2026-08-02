@@ -6,7 +6,7 @@ import { navigate } from '../utils/navigate';
 const API_BASE = 
   import.meta.env.VITE_API_BASE_URL || 
   import.meta.env.VITE_API_BASE || 
-  'http://localhost:5000';
+  (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? window.location.origin : 'http://localhost:5000');
 
 const TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT || '30000', 10);
 let refreshPromise = null;
