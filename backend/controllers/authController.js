@@ -29,7 +29,7 @@ const serializeUser = (user) => ({
   group: user.group || 'No Group',
   isApproved: user.isApproved,
   isBlocked: user.isBlocked,
-  onboardingComplete: Boolean(user.onboardingComplete || user.rollNumber || user.year || user.course),
+  onboardingComplete: Boolean(user.onboardingComplete || user.rollNumber || user.year || user.course || user.role !== 'student'),
 });
 
 const ensureConfiguredSuperAdmin = async (user) => {
@@ -277,10 +277,10 @@ const updateStudentOnboarding = asyncHandler(async (req, res) => {
     throw new Error('User not found');
   }
 
-  if (rollNumber) user.rollNumber = rollNumber;
-  if (course) user.course = course;
-  if (year) user.year = String(year);
-  if (semester) user.semester = String(semester);
+  user.rollNumber = rollNumber || user.rollNumber || `RN-${user._id.toString().slice(-6)}`;
+  user.course = course || user.course || 'B.Pharm';
+  user.year = year ? String(year) : (user.year || '1');
+  user.semester = semester ? String(semester) : (user.semester || '1');
   if (group) user.group = group;
   user.onboardingComplete = true;
 

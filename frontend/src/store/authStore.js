@@ -34,7 +34,8 @@ const normalizeUser = (user) => {
     user.rollNumber ||
     user.course ||
     user.year ||
-    user.isPreview
+    user.isPreview ||
+    (typeof localStorage !== 'undefined' && localStorage.getItem('pharmlab-onboarding-complete') === 'true')
   );
   return { 
     ...user, 

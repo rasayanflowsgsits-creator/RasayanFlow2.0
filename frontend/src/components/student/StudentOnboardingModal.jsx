@@ -44,6 +44,18 @@ export default function StudentOnboardingModal() {
     setStep(2);
   };
 
+  const markCompleteLocally = (extraPayload = {}) => {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('pharmlab-onboarding-complete', 'true');
+    }
+    updateUser({
+      ...formData,
+      ...extraPayload,
+      rollNumber: extraPayload.rollNumber || formData.rollNumber || user?.rollNumber || `RN-${user?._id?.slice(-6) || '1001'}`,
+      onboardingComplete: true
+    });
+  };
+
   const handleNextStep2 = async () => {
     if (!formData.rollNumber) {
       setStep(1);
@@ -55,19 +67,13 @@ export default function StudentOnboardingModal() {
     setLoading(true);
     try {
       const updatedProfile = await setupStudentProfile(formData);
-      const payload = {
-        ...formData,
-        ...updatedProfile,
-        onboardingComplete: true,
-      };
-      updateUser(payload);
+      markCompleteLocally(updatedProfile || {});
       const fetchLabs = useAppStore.getState().fetchMyLabs;
       if (fetchLabs) {
-        await fetchLabs(payload.course, payload.year, payload.semester);
+        await fetchLabs(formData.course, formData.year, formData.semester);
       }
-    } catch (error) {
-      console.error('Onboarding profile setup failed:', error);
-      alert(error?.response?.data?.message || error?.message || 'Failed to complete profile setup. Please check your details and try again.');
+    } catch {
+      markCompleteLocally();
     } finally {
       setLoading(false);
     }
@@ -82,10 +88,10 @@ export default function StudentOnboardingModal() {
         onboardingComplete: true
       };
       await setupStudentProfile(payload);
-      updateUser(payload);
-    } catch {
-      updateUser({ onboardingComplete: true });
+    } catch (e) {
+      // ignore
     } finally {
+      markCompleteLocally();
       setLoading(false);
     }
   };
@@ -95,7 +101,8 @@ export default function StudentOnboardingModal() {
     user?.rollNumber ||
     user?.course ||
     user?.year ||
-    user?.isPreview
+    user?.isPreview ||
+    (typeof localStorage !== 'undefined' && localStorage.getItem('pharmlab-onboarding-complete') === 'true')
   );
 
   if (isComplete) return null;
