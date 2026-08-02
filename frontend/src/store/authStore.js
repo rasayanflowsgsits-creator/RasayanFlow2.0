@@ -31,7 +31,9 @@ const normalizeUser = (user) => {
   if (!user) return null;
   const isComplete = Boolean(
     user.onboardingComplete ||
-    (user.rollNumber && user.course && user.year) ||
+    user.rollNumber ||
+    user.course ||
+    user.year ||
     user.isPreview
   );
   return { 

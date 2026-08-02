@@ -73,9 +73,28 @@ export default function StudentOnboardingModal() {
     }
   };
 
+  const handleSkip = async () => {
+    setLoading(true);
+    try {
+      const payload = {
+        ...formData,
+        rollNumber: formData.rollNumber || user?.rollNumber || `RN-${user?._id?.slice(-6) || '1001'}`,
+        onboardingComplete: true
+      };
+      await setupStudentProfile(payload);
+      updateUser(payload);
+    } catch {
+      updateUser({ onboardingComplete: true });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const isComplete = Boolean(
     user?.onboardingComplete ||
-    (user?.rollNumber && user?.course && user?.year) ||
+    user?.rollNumber ||
+    user?.course ||
+    user?.year ||
     user?.isPreview
   );
 
@@ -87,13 +106,21 @@ export default function StudentOnboardingModal() {
         
         {/* Header */}
         <div className="relative bg-[#fdfdf7] p-8 text-center border-b border-[#e8ece1] dark:bg-[#20251a] dark:border-[#3c452f]">
-          <button 
-            onClick={logout}
-            className="absolute right-4 top-4 flex items-center gap-1.5 rounded-lg border border-[#d9e1ca] bg-white px-3 py-1.5 text-xs font-semibold text-[#71805a] hover:bg-rose-50 hover:text-rose-600 dark:border-[#414a33] dark:bg-[#28301f] dark:text-[#a5b48b] dark:hover:bg-rose-950/40 dark:hover:text-rose-400 transition-colors"
-            title="Exit to Login"
-          >
-            <LogOut size={14} /> Exit to Login
-          </button>
+          <div className="absolute right-4 top-4 flex items-center gap-2">
+            <button 
+              onClick={handleSkip}
+              className="flex items-center gap-1 rounded-lg bg-[#5c6e46]/10 px-2.5 py-1 text-xs font-semibold text-[#5c6e46] hover:bg-[#5c6e46]/20 dark:bg-[#c5d0b5]/10 dark:text-[#c5d0b5] transition-colors"
+            >
+              Skip for Now
+            </button>
+            <button 
+              onClick={logout}
+              className="flex items-center gap-1.5 rounded-lg border border-[#d9e1ca] bg-white px-3 py-1.5 text-xs font-semibold text-[#71805a] hover:bg-rose-50 hover:text-rose-600 dark:border-[#414a33] dark:bg-[#28301f] dark:text-[#a5b48b] dark:hover:bg-rose-950/40 dark:hover:text-rose-400 transition-colors"
+              title="Exit to Login"
+            >
+              <LogOut size={14} /> Exit
+            </button>
+          </div>
           <h2 className="text-2xl font-bold text-[#37412a] dark:text-[#e4e9d8]">Complete Your Profile</h2>
           <p className="mt-2 text-sm text-[#71805a] dark:text-[#a5b48b]">
             Tell us about your current academic status
