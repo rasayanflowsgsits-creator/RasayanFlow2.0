@@ -16,6 +16,7 @@ const generateRefreshToken = (id) => {
 
 const serializeUser = (user) => ({
   id: user._id,
+  _id: user._id,
   name: user.name,
   email: user.email,
   role: user.role,
@@ -28,6 +29,7 @@ const serializeUser = (user) => ({
   group: user.group,
   isApproved: user.isApproved,
   isBlocked: user.isBlocked,
+  onboardingComplete: Boolean(user.onboardingComplete || (user.rollNumber && user.course && user.year)),
 });
 
 const ensureConfiguredSuperAdmin = async (user) => {
