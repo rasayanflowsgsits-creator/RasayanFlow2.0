@@ -200,9 +200,18 @@ const BPharmDashboard = () => {
             ))}
           </div>
         ) : (
-          <Card className="p-8 text-center bg-white dark:bg-[#1f2419] border-dashed">
-            <Beaker className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-500 dark:text-gray-400">No subjects assigned for this semester yet.</p>
+          <Card className="p-6 sm:p-8 text-left bg-white dark:bg-[#1f2419] border border-dashed border-[#d9e1ca] dark:border-[#414a33] rounded-2xl">
+            <div className="flex flex-col items-start gap-3">
+              <div className="p-3 bg-[#f4f6ee] dark:bg-[#28301f] rounded-2xl text-[#556b2f] dark:text-[#c8a030]">
+                <Beaker className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-[#3c4e23] dark:text-[#eef4e8]">No Labs Assigned for {user?.course || 'B.Pharm'} Year {user?.year || '1'} • Sem {user?.semester || '1'} Yet</h3>
+                <p className="text-sm text-[#71805a] dark:text-[#c5d0b5] mt-1 max-w-lg">
+                  No laboratories or subjects have been created for your semester yet. Your profile has been saved successfully! Once your faculty or lab administrator sets up labs for Year {user?.year || '1'} Sem {user?.semester || '1'}, they will automatically appear here.
+                </p>
+              </div>
+            </div>
           </Card>
         )}
       </div>

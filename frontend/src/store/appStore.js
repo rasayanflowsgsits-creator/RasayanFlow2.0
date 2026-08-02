@@ -1321,19 +1321,24 @@ const useAppStore = create((set) => ({
   },
   myLabs: [],
   fetchMyLabs: async (courseType, year, semester) => {
-    const isPreview = useAuthStore.getState().user?.isPreview;
+    const currentUser = useAuthStore.getState().user;
+    const isPreview = currentUser?.isPreview;
+    const cType = courseType || currentUser?.course || 'B.Pharm';
+    const y = year || currentUser?.year || '1';
+    const sem = semester || currentUser?.semester || '1';
+
     if (isPreview) {
       set({ myLabs: PREVIEW_LABS, labs: PREVIEW_LABS, loading: false });
       return;
     }
     set({ loading: true });
     try {
-      const { data } = await api.get(`/labs/matching?courseType=${courseType}&year=${year}&semester=${semester}`);
-      const fetched = getPayload(data) || [];
-      set({ myLabs: fetched.length ? fetched : PREVIEW_LABS, loading: false });
+      const { data } = await api.get(`/labs/matching?courseType=${encodeURIComponent(cType)}&year=${encodeURIComponent(y)}&semester=${encodeURIComponent(sem)}`);
+      const fetched = (getPayload(data) || []).map(normalizeLab);
+      set({ myLabs: fetched, loading: false });
     } catch (err) {
       console.error('Failed to fetch my labs', err);
-      set({ myLabs: PREVIEW_LABS, loading: false });
+      set({ myLabs: [], loading: false });
     }
   },
   fetchStudentLabStructure: async () => {
