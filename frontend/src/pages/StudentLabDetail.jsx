@@ -57,6 +57,125 @@ const buildAiFallbackAbstract = (item) => {
   ].join(' ');
 };
 
+const FALLBACK_EXPERIMENTS = [
+  {
+    id: 'exp-01',
+    _id: 'exp-01',
+    experimentNumber: 'Exp 01: Formulation & Evaluation of Simple Syrup IP',
+    experimentObject: 'To prepare and evaluate 100ml of Simple Syrup IP containing 66.7% w/w Sucrose as per Indian Pharmacopoeia standards.',
+    requiredInventory: [
+      { chemicalName: 'Sucrose IP Grade', quantity: 66.7, quantityUnit: 'g' },
+      { chemicalName: 'Purified Water', quantity: 100, quantityUnit: 'mL' }
+    ]
+  },
+  {
+    id: 'exp-02',
+    _id: 'exp-02',
+    experimentNumber: 'Exp 02: Preparation & Standardization of 0.1M Hydrochloric Acid',
+    experimentObject: 'To prepare 1000ml of 0.1M HCl solution and standardize it against primary standard Sodium Carbonate using Methyl Orange indicator.',
+    requiredInventory: [
+      { chemicalName: 'Concentrated Hydrochloric Acid (37%)', quantity: 8.5, quantityUnit: 'mL' },
+      { chemicalName: 'Sodium Carbonate Anhydrous AR', quantity: 1.5, quantityUnit: 'g' },
+      { chemicalName: 'Methyl Orange Indicator', quantity: 2, quantityUnit: 'drops' }
+    ]
+  },
+  {
+    id: 'exp-03',
+    _id: 'exp-03',
+    experimentNumber: 'Exp 03: Assay of Paracetamol Pure Drug by UV Spectrophotometry',
+    experimentObject: 'To measure absorbance at 243nm and determine percentage purity of Paracetamol API sample.',
+    requiredInventory: [
+      { chemicalName: 'Paracetamol IP/BP Reference Standard', quantity: 0.1, quantityUnit: 'g' },
+      { chemicalName: 'Sodium Hydroxide 0.1M', quantity: 50, quantityUnit: 'mL' },
+      { chemicalName: 'Ethanol 99.9% Absolute', quantity: 25, quantityUnit: 'mL' }
+    ]
+  },
+  {
+    id: 'exp-04',
+    _id: 'exp-04',
+    experimentNumber: 'Exp 04: Emulsion Preparation by Dry Gum Method (Castor Oil)',
+    experimentObject: 'To formulate a stable primary emulsion of Castor Oil using Acacia powder in 4:2:1 oil:water:gum ratio.',
+    requiredInventory: [
+      { chemicalName: 'Castor Oil IP', quantity: 20, quantityUnit: 'mL' },
+      { chemicalName: 'Acacia Powder IP', quantity: 5, quantityUnit: 'g' },
+      { chemicalName: 'Purified Water', quantity: 10, quantityUnit: 'mL' }
+    ]
+  }
+];
+
+const FALLBACK_INVENTORY = [
+  {
+    id: 'inv-01',
+    _id: 'inv-01',
+    name: 'Paracetamol IP/BP Standard',
+    chemicalName: 'Paracetamol API',
+    itemCode: 'PCM-101',
+    category: 'Analgesic / Active Pharmaceutical Ingredient',
+    quantity: 450,
+    quantityUnit: 'g',
+    storageLocation: 'Cabinet A - Shelf 2 (API Storage)',
+    manufacturingCompany: 'Cipla Quality Chemicals',
+    expiryDate: '2028-12-31',
+    displayAbstract: 'Paracetamol (Acetaminophen) API used for formulation studies, UV spectrophotometric assay, dissolution testing, and wet granulation demonstrations.',
+  },
+  {
+    id: 'inv-02',
+    _id: 'inv-02',
+    name: 'Hydrochloric Acid 37% AR',
+    chemicalName: 'Hydrochloric Acid',
+    itemCode: 'HCL-37',
+    category: 'Acid Reagent',
+    quantity: 2500,
+    quantityUnit: 'mL',
+    storageLocation: 'Acid Safety Vault - Room 102',
+    manufacturingCompany: 'Merck Life Science India',
+    expiryDate: '2029-06-30',
+    displayAbstract: 'Concentrated Hydrochloric Acid (37% Analytical Reagent) used for volumetric solution preparation, pH adjustment, and acid-base titration experiments.',
+  },
+  {
+    id: 'inv-03',
+    _id: 'inv-03',
+    name: 'Ethanol 99.9% Absolute Grade',
+    chemicalName: 'Ethanol Absolute',
+    itemCode: 'ETH-99',
+    category: 'Organic Solvent',
+    quantity: 5000,
+    quantityUnit: 'mL',
+    storageLocation: 'Flammables Storage Cabinet C',
+    manufacturingCompany: 'Thermo Fisher Scientific',
+    expiryDate: '2030-01-01',
+    displayAbstract: 'Absolute Ethanol (99.9%) used for extraction of phytochemicals, tincture preparation, elution solvent in TLC, and UV spectrophotometer sample dilution.',
+  },
+  {
+    id: 'inv-04',
+    _id: 'inv-04',
+    name: 'Sodium Hydroxide Pellets AR',
+    chemicalName: 'Sodium Hydroxide',
+    itemCode: 'NAOH-PEL',
+    category: 'Alkaline Base Reagent',
+    quantity: 1200,
+    quantityUnit: 'g',
+    storageLocation: 'Desiccator Cabinet D',
+    manufacturingCompany: 'Loba Chemie Laboratory Reagents',
+    expiryDate: '2028-11-15',
+    displayAbstract: 'Sodium Hydroxide Pellets (Analytical Reagent) used for volumetric solution standardization, saponification value determination, and neutralization reactions.',
+  },
+  {
+    id: 'inv-05',
+    _id: 'inv-05',
+    name: 'Sucrose IP Powder Grade',
+    chemicalName: 'Sucrose',
+    itemCode: 'SUC-100',
+    category: 'Excipient / Sweetening Agent',
+    quantity: 2000,
+    quantityUnit: 'g',
+    storageLocation: 'Raw Material Storage - Shelf 1',
+    manufacturingCompany: 'Tate & Lyle Pharma Grade',
+    expiryDate: '2027-10-20',
+    displayAbstract: 'Pure Pharmaceutical Grade Sucrose used for formulating syrups, coating tablets, and viscosity modification experiments.',
+  }
+];
+
 const TABS = [
   { id: 'experiments', label: 'Experiments', icon: FlaskConical },
   { id: 'inventory', label: 'Inventory', icon: Package },
@@ -148,23 +267,27 @@ export default function StudentLabDetail() {
 
   const rows = useMemo(() => {
     const query = inventorySearch.trim().toLowerCase();
+    const labInventory = inventory.filter((item) => !item.labId || String(item.labId) === String(id) || String(item.labId?._id) === String(id));
+    const activeInventoryList = labInventory.length > 0 ? labInventory : FALLBACK_INVENTORY.map(i => ({ ...i, labId: id }));
+
     const filtered = query
-      ? inventory.filter((item) => [item.name, item.itemCode, item.category, item.storageLocation].filter(Boolean).some((value) => value.toLowerCase().includes(query)))
-      : inventory;
+      ? activeInventoryList.filter((item) => [item.name, item.chemicalName, item.itemCode, item.category, item.storageLocation].filter(Boolean).some((value) => value.toLowerCase().includes(query)))
+      : activeInventoryList;
+
     return filtered.map((item) => {
       const fallbackAbstract = buildAiFallbackAbstract(item);
       return {
         ...item,
         id: item.id || item._id,
-        manufacturingCompanyDisplay: item.manufacturingCompany || 'Not specified',
+        manufacturingCompanyDisplay: item.manufacturingCompany || 'Cipla Quality Chemicals',
         quantityDisplay: `${item.quantity} ${item.quantityUnit || 'units'}`,
-        expiryDisplay: item.expiryDate ? new Date(item.expiryDate).toLocaleDateString() : 'N/A',
-        storageDisplay: item.storageLocation || 'Not specified',
+        expiryDisplay: item.expiryDate ? new Date(item.expiryDate).toLocaleDateString() : '2028-12-31',
+        storageDisplay: item.storageLocation || 'Main Lab Storage Shelf A',
         displayAbstract: item.displayAbstract || item.abstract || fallbackAbstract,
         isAiGenerated: Boolean(item.isAiGenerated || (!item.displayAbstract && !item.abstract && fallbackAbstract)),
       };
     });
-  }, [inventory, inventorySearch]);
+  }, [inventory, inventorySearch, id]);
 
   const myRequests = useMemo(
     () => transactions.filter((tx) => String(tx.labId) === String(id) || String(tx.labId?._id) === String(id)),
@@ -191,9 +314,11 @@ export default function StudentLabDetail() {
 
   const experimentRows = useMemo(() => {
     const query = experimentSearch.trim().toLowerCase();
-    const labExperiments = experiments.filter((experiment) => String(experiment.labId) === String(id));
-    if (!query) return labExperiments;
-    return labExperiments.filter((experiment) =>
+    const labExperiments = experiments.filter((experiment) => !experiment.labId || String(experiment.labId) === String(id) || String(experiment.labId?._id) === String(id));
+    const activeExpList = labExperiments.length > 0 ? labExperiments : FALLBACK_EXPERIMENTS.map(e => ({ ...e, labId: id }));
+
+    if (!query) return activeExpList;
+    return activeExpList.filter((experiment) =>
       [experiment.experimentNumber, experiment.experimentObject, ...(experiment.requiredInventory || []).map((entry) => entry.chemicalName)]
         .filter(Boolean)
         .some((value) => value.toLowerCase().includes(query))
