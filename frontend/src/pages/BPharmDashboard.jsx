@@ -29,9 +29,12 @@ const BPharmDashboard = () => {
   const [statusFilter, setStatusFilter] = useState('All');
 
   useEffect(() => {
-    fetchMyLabs();
+    const c = user?.course || 'B.Pharm';
+    const y = user?.year || '1';
+    const s = user?.semester || '1';
+    fetchMyLabs(c, y, s);
     fetchMyStudentRequests();
-  }, [fetchMyLabs, fetchMyStudentRequests]);
+  }, [user?.course, user?.year, user?.semester, fetchMyLabs, fetchMyStudentRequests]);
 
   // Derived Stats
   const stats = useMemo(() => {

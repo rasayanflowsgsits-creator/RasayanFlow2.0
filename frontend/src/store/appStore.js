@@ -1370,21 +1370,52 @@ const useAppStore = create((set) => ({
     const currentUser = useAuthStore.getState().user;
     const isPreview = currentUser?.isPreview;
     const cType = courseType || currentUser?.course || 'B.Pharm';
-    const y = year || currentUser?.year || '1';
-    const sem = semester || currentUser?.semester || '1';
+    const y = year !== undefined && year !== null && year !== '' ? String(year) : (currentUser?.year || '1');
+    const sem = semester !== undefined && semester !== null && semester !== '' ? String(semester) : (currentUser?.semester || '1');
 
     if (isPreview) {
       set({ myLabs: PREVIEW_LABS, labs: PREVIEW_LABS, loading: false });
-      return;
+      return PREVIEW_LABS;
     }
     set({ loading: true });
     try {
-      const { data } = await api.get(`/labs/matching?courseType=${encodeURIComponent(cType)}&year=${encodeURIComponent(y)}&semester=${encodeURIComponent(sem)}`);
-      const fetched = (getPayload(data) || []).map(normalizeLab);
-      set({ myLabs: fetched, loading: false });
+      let response = await api.get(`/labs/matching?courseType=${encodeURIComponent(cType)}&year=${encodeURIComponent(y)}&semester=${encodeURIComponent(sem)}`);
+      let rawLabs = getPayload(response.data) || [];
+
+      // Fallback 1: Try course matching if exact year/sem query returned empty
+      if (!Array.isArray(rawLabs) || rawLabs.length === 0) {
+        try {
+          const courseRes = await api.get(`/labs/matching?courseType=${encodeURIComponent(cType)}`);
+          rawLabs = getPayload(courseRes.data) || [];
+        } catch (e) {
+          // ignore error
+        }
+      }
+
+      // Fallback 2: Fetch all labs if matching is still empty
+      if (!Array.isArray(rawLabs) || rawLabs.length === 0) {
+        try {
+          const allLabsRes = await api.get('/labs');
+          rawLabs = getPayload(allLabsRes.data) || [];
+        } catch (e) {
+          // ignore error
+        }
+      }
+
+      const fetched = (rawLabs || []).map(normalizeLab);
+      set({ myLabs: fetched, labs: fetched, loading: false });
+      return fetched;
     } catch (err) {
-      console.error('Failed to fetch my labs', err);
-      set({ myLabs: [], loading: false });
+      console.error('Failed to fetch my labs:', err);
+      try {
+        const fallbackRes = await api.get('/labs');
+        const fallbackLabs = (getPayload(fallbackRes.data) || []).map(normalizeLab);
+        set({ myLabs: fallbackLabs, labs: fallbackLabs, loading: false });
+        return fallbackLabs;
+      } catch {
+        set({ myLabs: [], loading: false });
+        return [];
+      }
     }
   },
   fetchStudentLabStructure: async () => {
