@@ -23,13 +23,13 @@ const serializeUser = (user) => ({
   labId: user.labId,
   labName: user.labName,
   rollNumber: user.rollNumber || '',
-  course: user.course || 'B.Pharm',
-  year: user.year || '1',
-  semester: user.semester || '1',
+  course: user.course || (user.onboardingComplete ? 'B.Pharm' : ''),
+  year: user.year || (user.onboardingComplete ? '1' : ''),
+  semester: user.semester || (user.onboardingComplete ? '1' : ''),
   group: user.group || 'No Group',
   isApproved: user.isApproved,
   isBlocked: user.isBlocked,
-  onboardingComplete: Boolean(user.onboardingComplete || user.rollNumber || user.year || user.course || user.role !== 'student'),
+  onboardingComplete: Boolean(user.onboardingComplete || user.rollNumber || (user.role && user.role !== 'student')),
 });
 
 const ensureConfiguredSuperAdmin = async (user) => {
