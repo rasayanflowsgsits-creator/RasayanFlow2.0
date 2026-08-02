@@ -333,7 +333,30 @@ export default function StudentLabDetail() {
   // Handlers
   const openBorrowModal = (item) => {
     setSelectedItem(item);
-    setBorrowForm({ quantity: '', purpose: '', neededUntil: '', notes: '' });
+    setBorrowForm({ 
+      quantity: String(item?.quantity || 10), 
+      purpose: `Lab Practical Use (${lab?.name || 'Practical Subject'})`, 
+      neededUntil: new Date(Date.now() + 86400000).toISOString().split('T')[0], 
+      notes: '' 
+    });
+    setBorrowOpen(true);
+  };
+
+  const openDirectChemicalRequest = (chemicalName, defaultQty, defaultUnit, experiment) => {
+    const matchedItem = rows.find(r => r.name?.toLowerCase().includes(chemicalName?.toLowerCase()) || r.chemicalName?.toLowerCase().includes(chemicalName?.toLowerCase())) || {
+      id: 'inv-item-' + Date.now(),
+      name: chemicalName,
+      chemicalName: chemicalName,
+      quantityUnit: defaultUnit || 'mL',
+      quantity: 500
+    };
+    setSelectedItem(matchedItem);
+    setBorrowForm({
+      quantity: String(defaultQty || 10),
+      purpose: experiment ? `For ${experiment.experimentNumber || 'Practical Experiment'}` : `Lab Practical - ${chemicalName}`,
+      neededUntil: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+      notes: `Requested from student dashboard for ${lab?.name || 'Practical Subject'}`
+    });
     setBorrowOpen(true);
   };
 
@@ -520,17 +543,32 @@ export default function StudentLabDetail() {
                   </div>
                   <h4 className='text-base font-bold text-[#3c4e23] dark:text-[#eef4e8] mb-3'>{experiment.experimentObject}</h4>
                   
-                  {/* Chemical Requirements with Stock Badges */}
+                  {/* Chemical Requirements with Stock Badges & Per-Chemical Request Button */}
                   <div className="space-y-1.5 mb-4">
                     <p className="text-xs font-semibold text-[#71805a] uppercase tracking-wider">Required Chemicals</p>
                     {(experiment.requiredInventory || []).map((entry, i) => {
                       const badge = getStockBadge(entry.chemicalName, inventory);
                       return (
-                        <div key={i} className="flex items-center justify-between text-xs p-2 rounded-lg bg-[#fdfdf7] dark:bg-[#1a1d16] border border-[#e8ece1] dark:border-[#3c452f]">
-                          <span className="font-medium text-[#3c4e23] dark:text-[#eef4e8]">
-                            {entry.chemicalName} <span className="text-[#87996c]">({entry.quantity} {entry.quantityUnit})</span>
-                          </span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${badge.cls}`}>{badge.label}</span>
+                        <div key={i} className="flex items-center justify-between text-xs p-2.5 rounded-xl bg-[#fdfdf7] dark:bg-[#1a1d16] border border-[#e8ece1] dark:border-[#3c452f] hover:border-[#556b2f]/40 transition-colors">
+                          <div className="min-w-0 flex-1 pr-2">
+                            <span className="font-semibold text-[#3c4e23] dark:text-[#eef4e8] block truncate">
+                              {entry.chemicalName}
+                            </span>
+                            <span className="text-[11px] text-[#87996c]">Required: {entry.quantity} {entry.quantityUnit}</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${badge.cls}`}>{badge.label}</span>
+                            <button 
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openDirectChemicalRequest(entry.chemicalName, entry.quantity, entry.quantityUnit, experiment);
+                              }}
+                              className="px-2.5 py-1 text-[11px] font-bold bg-[#556b2f] text-white hover:bg-[#435525] rounded-lg transition-colors shadow-sm flex items-center gap-1"
+                            >
+                              <Beaker size={12} /> Request
+                            </button>
+                          </div>
                         </div>
                       );
                     })}
