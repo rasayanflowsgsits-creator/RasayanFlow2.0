@@ -201,32 +201,49 @@ const deleteLab = asyncHandler(async (req, res) => {
 
 const getMatchingLabs = asyncHandler(async (req, res) => {
   const { courseType, year, semester } = req.query;
-  const allLabs = await Lab.find({}).populate('admins', 'name email role');
+  const allLabs = await Lab.find({}).populate('admins', 'name email role isApproved');
 
   if (!courseType && !year && !semester) {
     return res.json({ success: true, count: allLabs.length, data: allLabs });
   }
 
+  const reqCourse = (courseType || 'B.Pharm').toLowerCase().trim();
+  const reqYr = year ? String(year).replace(/\D/g, '') : '';
+  const reqSem = semester ? String(semester).replace(/\D/g, '') : '';
+
   let matchingLabs = allLabs.filter((lab) => {
-    if (courseType && lab.courseType && lab.courseType !== courseType && lab.courseType !== 'Other') {
+    // 1. Course type match
+    const labCourse = (lab.courseType || 'B.Pharm').toLowerCase().trim();
+    if (labCourse !== 'other' && labCourse !== reqCourse && !labCourse.includes(reqCourse) && !reqCourse.includes(labCourse)) {
       return false;
     }
-    if (year && lab.year && lab.year.trim() !== '') {
-      const yrStr = String(lab.year).toLowerCase();
-      const reqYr = String(year).toLowerCase();
-      if (!yrStr.includes(reqYr) && yrStr !== reqYr) return false;
+
+    // 2. Year match (only filter out if lab explicitly specifies a different year)
+    if (reqYr && lab.year && String(lab.year).trim() !== '') {
+      const labYrNum = String(lab.year).replace(/\D/g, '');
+      if (labYrNum && labYrNum !== reqYr) {
+        return false;
+      }
     }
-    if (semester && lab.semester && lab.semester.trim() !== '') {
-      const semStr = String(lab.semester).toLowerCase();
-      const reqSem = String(semester).toLowerCase();
-      if (!semStr.includes(reqSem) && semStr !== reqSem) return false;
+
+    // 3. Semester match (only filter out if lab explicitly specifies a different semester)
+    if (reqSem && lab.semester && String(lab.semester).trim() !== '') {
+      const labSemNum = String(lab.semester).replace(/\D/g, '');
+      if (labSemNum && labSemNum !== reqSem) {
+        return false;
+      }
     }
+
     return true;
   });
 
-  // Fallback to all labs if no labs matched the specific filter so student can always view active labs
+  // Fallback: If no exact year/semester match found, return all labs matching course (or all labs)
   if (matchingLabs.length === 0 && allLabs.length > 0) {
-    matchingLabs = allLabs;
+    const courseLabs = allLabs.filter((l) => {
+      const c = (l.courseType || '').toLowerCase().trim();
+      return c === reqCourse || c === 'b.pharm' || c === 'other' || !c;
+    });
+    matchingLabs = courseLabs.length > 0 ? courseLabs : allLabs;
   }
 
   res.json({ success: true, count: matchingLabs.length, data: matchingLabs });
