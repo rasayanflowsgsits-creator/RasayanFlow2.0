@@ -198,11 +198,22 @@ const BPharmDashboard = () => {
                     </h3>
 
                     {/* Faculty In-Charge / Lab Admin */}
-                    <div className="flex items-center gap-2 mt-2 py-2 border-t border-[#e8eadf] dark:border-[#3c452f]/60 text-xs text-gray-600 dark:text-gray-300">
-                      <Users className="w-3.5 h-3.5 text-[#556b2f] dark:text-[#c8a030] shrink-0" />
-                      <span className="truncate">
-                        Faculty: <strong className="font-semibold text-[#3c4e23] dark:text-[#eef4e8]">{adminName}</strong>
-                      </span>
+                    <div className="mt-3 pt-3 border-t border-[#e8eadf] dark:border-[#3c452f]/60 flex items-center gap-2.5">
+                      <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold shrink-0 ${
+                        adminName === 'Unassigned' 
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' 
+                          : 'bg-[#556b2f]/10 text-[#556b2f] dark:bg-[#c8a030]/20 dark:text-[#c8a030]'
+                      }`}>
+                        {adminName === 'Unassigned' ? '?' : adminName.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-[#3c4e23] dark:text-[#eef4e8] truncate">
+                          {adminName}
+                        </p>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                          {lab.adminEmail || (adminName === 'Unassigned' ? 'No admin assigned' : 'Faculty In-Charge')}
+                        </p>
+                      </div>
                     </div>
                     
                     <div className="mt-4 pt-3 border-t border-[#f0f2eb] dark:border-[#2a3121] flex items-center justify-between text-xs font-semibold text-[#556b2f] dark:text-[#c8a030] group-hover:translate-x-1 transition-transform">

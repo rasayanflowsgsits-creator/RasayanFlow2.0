@@ -207,18 +207,18 @@ const getMatchingLabs = asyncHandler(async (req, res) => {
     return res.json({ success: true, count: allLabs.length, data: allLabs });
   }
 
-  const reqCourse = (courseType || 'B.Pharm').toLowerCase();
+  const reqCourse = (courseType || 'B.Pharm').toLowerCase().trim();
   const reqYr = year ? String(year).replace(/\D/g, '') : '';
   const reqSem = semester ? String(semester).replace(/\D/g, '') : '';
 
   let matchingLabs = allLabs.filter((lab) => {
-    // Course type match
-    const labCourse = (lab.courseType || 'B.Pharm').toLowerCase();
+    // 1. Course type match
+    const labCourse = (lab.courseType || 'B.Pharm').toLowerCase().trim();
     if (labCourse !== 'other' && labCourse !== reqCourse && !labCourse.includes(reqCourse) && !reqCourse.includes(labCourse)) {
       return false;
     }
 
-    // Year match (only filter out if lab explicitly has a different year)
+    // 2. Year match (only filter out if lab explicitly specifies a different year)
     if (reqYr && lab.year && String(lab.year).trim() !== '') {
       const labYrNum = String(lab.year).replace(/\D/g, '');
       if (labYrNum && labYrNum !== reqYr) {
@@ -226,7 +226,7 @@ const getMatchingLabs = asyncHandler(async (req, res) => {
       }
     }
 
-    // Semester match (only filter out if lab explicitly has a different semester)
+    // 3. Semester match (only filter out if lab explicitly specifies a different semester)
     if (reqSem && lab.semester && String(lab.semester).trim() !== '') {
       const labSemNum = String(lab.semester).replace(/\D/g, '');
       if (labSemNum && labSemNum !== reqSem) {
@@ -237,10 +237,10 @@ const getMatchingLabs = asyncHandler(async (req, res) => {
     return true;
   });
 
-  // Fallback to course labs or all labs if no specific lab matches filter
+  // Fallback: If no exact year/semester match found, return all labs matching course (or all labs)
   if (matchingLabs.length === 0 && allLabs.length > 0) {
     const courseLabs = allLabs.filter((l) => {
-      const c = (l.courseType || '').toLowerCase();
+      const c = (l.courseType || '').toLowerCase().trim();
       return c === reqCourse || c === 'b.pharm' || c === 'other' || !c;
     });
     matchingLabs = courseLabs.length > 0 ? courseLabs : allLabs;

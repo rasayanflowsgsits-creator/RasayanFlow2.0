@@ -154,17 +154,32 @@ const PREVIEW_EXPERIMENTS = [
   }
 ];
 
-const normalizeLab = (lab) => ({
-  ...lab,
-  id: lab._id || lab.id,
-  name: lab.name || lab.labName || 'Unnamed Lab',
-  location: lab.location || lab.labCode || 'N/A',
-  admin: lab.admin || (Array.isArray(lab.admins) && lab.admins.length ? lab.admins.map((admin) => admin.name).join(', ') : 'Unassigned'),
-  courseType: lab.courseType || '',
-  department: lab.department || '',
-  year: lab.year || '',
-  semester: lab.semester || '',
-});
+const normalizeLab = (lab) => {
+  const adminName = lab.admin || (Array.isArray(lab.admins) && lab.admins.length 
+    ? lab.admins.map((a) => (typeof a === 'object' ? (a.name || a.email) : a)).join(', ') 
+    : 'Unassigned');
+  const adminEmail = lab.adminEmail || (Array.isArray(lab.admins) && lab.admins.length 
+    ? lab.admins.map((a) => (typeof a === 'object' ? a.email : '')).filter(Boolean).join(', ') 
+    : '');
+
+  return {
+    ...lab,
+    _id: lab._id || lab.id,
+    id: lab._id || lab.id,
+    labName: lab.labName || lab.name || 'Unnamed Lab',
+    name: lab.name || lab.labName || 'Unnamed Lab',
+    labCode: lab.labCode || lab.code || 'LAB',
+    code: lab.labCode || lab.code || 'LAB',
+    location: lab.location || lab.labCode || 'N/A',
+    admin: adminName,
+    adminEmail,
+    admins: lab.admins || [],
+    courseType: lab.courseType || 'B.Pharm',
+    department: lab.department || '',
+    year: lab.year ? String(lab.year) : '',
+    semester: lab.semester ? String(lab.semester) : '',
+  };
+};
 
 const normalizeRole = (role) => {
   if (role === 'superAdmin') return 'super-admin';
