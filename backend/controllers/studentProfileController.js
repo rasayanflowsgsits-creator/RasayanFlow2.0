@@ -8,16 +8,17 @@ const Lab = require('../models/Lab');
 const setupProfile = asyncHandler(async (req, res) => {
   const { rollNumber, course, year, semester } = req.body;
 
-  const user = await User.findById(req.user.id);
+  const userId = req.user._id || req.user.id;
+  const user = await User.findById(userId);
   if (!user) {
     res.status(404);
     throw new Error('User not found');
   }
 
-  user.rollNumber = rollNumber;
-  user.course = course;
-  user.year = year;
-  user.semester = semester;
+  user.rollNumber = rollNumber || user.rollNumber;
+  user.course = course || user.course || 'B.Pharm';
+  user.year = String(year || user.year || '1');
+  user.semester = String(semester || user.semester || '1');
   user.onboardingComplete = true;
 
   await user.save();

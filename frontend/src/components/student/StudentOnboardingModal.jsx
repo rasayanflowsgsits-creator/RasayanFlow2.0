@@ -45,15 +45,29 @@ export default function StudentOnboardingModal() {
   };
 
   const handleNextStep2 = async () => {
+    if (!formData.rollNumber) {
+      setStep(1);
+      return alert('Please enter your Roll Number first.');
+    }
     if (!formData.year || (formData.course !== 'PhD' && !formData.semester)) {
-      return alert('Please complete all fields');
+      return alert('Please complete all academic fields (Year and Semester).');
     }
     setLoading(true);
     try {
       const updatedProfile = await setupStudentProfile(formData);
-      updateUser(updatedProfile);
+      const payload = {
+        ...formData,
+        ...updatedProfile,
+        onboardingComplete: true,
+      };
+      updateUser(payload);
+      const fetchLabs = useAppStore.getState().fetchMyLabs;
+      if (fetchLabs) {
+        await fetchLabs(payload.course, payload.year, payload.semester);
+      }
     } catch (error) {
-      console.error(error);
+      console.error('Onboarding profile setup failed:', error);
+      alert(error?.response?.data?.message || error?.message || 'Failed to complete profile setup. Please check your details and try again.');
     } finally {
       setLoading(false);
     }
