@@ -179,7 +179,7 @@ const BPharmDashboard = () => {
               return (
                 <Card 
                   key={lab._id || lab.id}
-                  onClick={() => navigate(`/labs/${lab._id || lab.id}`)}
+                  onClick={() => navigate(`/labs/${lab._id || lab.id}`, { state: { lab } })}
                   className="cursor-pointer group relative overflow-hidden bg-white dark:bg-[#1f2419] border-[#e8eadf] dark:border-[#3c452f] hover:border-[#556b2f] dark:hover:border-[#c8a030] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-6 flex flex-col justify-between"
                 >
                   <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity dark:opacity-[0.05] dark:group-hover:opacity-[0.1]">

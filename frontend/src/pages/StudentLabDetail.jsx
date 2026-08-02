@@ -64,30 +64,37 @@ const FALLBACK_EXPERIMENTS = [
     experimentNumber: 'Exp 01: Formulation & Evaluation of Simple Syrup IP',
     experimentObject: 'To prepare and evaluate 100ml of Simple Syrup IP containing 66.7% w/w Sucrose as per Indian Pharmacopoeia standards.',
     requiredInventory: [
-      { chemicalName: 'Sucrose IP Grade', quantity: 66.7, quantityUnit: 'g' },
-      { chemicalName: 'Purified Water', quantity: 100, quantityUnit: 'mL' }
+      { chemicalName: 'Sucrose IP Powder Grade', quantity: 66.7, quantityUnit: 'g' },
+      { chemicalName: 'Purified Water', quantity: 100, quantityUnit: 'mL' },
+      { chemicalName: 'Methylparaben Preservative', quantity: 0.1, quantityUnit: 'g' },
+      { chemicalName: 'Glycerin IP (Co-solvent)', quantity: 5, quantityUnit: 'mL' },
+      { chemicalName: 'Flavoring Agent (Peppermint Oil)', quantity: 0.5, quantityUnit: 'mL' }
     ]
   },
   {
     id: 'exp-02',
     _id: 'exp-02',
-    experimentNumber: 'Exp 02: Preparation & Standardization of 0.1M Hydrochloric Acid',
-    experimentObject: 'To prepare 1000ml of 0.1M HCl solution and standardize it against primary standard Sodium Carbonate using Methyl Orange indicator.',
+    experimentNumber: 'Exp 02: Assay of Paracetamol Pure Drug by UV Spectrophotometry',
+    experimentObject: 'To determine the percentage purity of Paracetamol API sample by measuring absorbance at 243nm.',
     requiredInventory: [
-      { chemicalName: 'Concentrated Hydrochloric Acid (37%)', quantity: 8.5, quantityUnit: 'mL' },
-      { chemicalName: 'Sodium Carbonate Anhydrous AR', quantity: 1.5, quantityUnit: 'g' },
-      { chemicalName: 'Methyl Orange Indicator', quantity: 2, quantityUnit: 'drops' }
+      { chemicalName: 'Paracetamol IP/BP Standard', quantity: 0.1, quantityUnit: 'g' },
+      { chemicalName: 'Sodium Hydroxide 0.1M', quantity: 50, quantityUnit: 'mL' },
+      { chemicalName: 'Ethanol 99.9% Absolute Grade', quantity: 25, quantityUnit: 'mL' },
+      { chemicalName: 'Hydrochloric Acid 0.1M', quantity: 10, quantityUnit: 'mL' },
+      { chemicalName: 'Distilled Water', quantity: 250, quantityUnit: 'mL' }
     ]
   },
   {
     id: 'exp-03',
     _id: 'exp-03',
-    experimentNumber: 'Exp 03: Assay of Paracetamol Pure Drug by UV Spectrophotometry',
-    experimentObject: 'To measure absorbance at 243nm and determine percentage purity of Paracetamol API sample.',
+    experimentNumber: 'Exp 03: Preparation & Standardization of 0.1M Hydrochloric Acid',
+    experimentObject: 'To prepare 1000ml of 0.1M HCl solution and standardize it against primary standard Sodium Carbonate using Methyl Orange indicator.',
     requiredInventory: [
-      { chemicalName: 'Paracetamol IP/BP Reference Standard', quantity: 0.1, quantityUnit: 'g' },
-      { chemicalName: 'Sodium Hydroxide 0.1M', quantity: 50, quantityUnit: 'mL' },
-      { chemicalName: 'Ethanol 99.9% Absolute', quantity: 25, quantityUnit: 'mL' }
+      { chemicalName: 'Hydrochloric Acid 37% AR', quantity: 8.5, quantityUnit: 'mL' },
+      { chemicalName: 'Sodium Carbonate Anhydrous AR', quantity: 1.5, quantityUnit: 'g' },
+      { chemicalName: 'Methyl Orange Indicator Solution', quantity: 2, quantityUnit: 'mL' },
+      { chemicalName: 'Phenolphthalein Indicator Solution', quantity: 2, quantityUnit: 'mL' },
+      { chemicalName: 'Deionized Water', quantity: 1000, quantityUnit: 'mL' }
     ]
   },
   {
@@ -96,9 +103,154 @@ const FALLBACK_EXPERIMENTS = [
     experimentNumber: 'Exp 04: Emulsion Preparation by Dry Gum Method (Castor Oil)',
     experimentObject: 'To formulate a stable primary emulsion of Castor Oil using Acacia powder in 4:2:1 oil:water:gum ratio.',
     requiredInventory: [
-      { chemicalName: 'Castor Oil IP', quantity: 20, quantityUnit: 'mL' },
-      { chemicalName: 'Acacia Powder IP', quantity: 5, quantityUnit: 'g' },
-      { chemicalName: 'Purified Water', quantity: 10, quantityUnit: 'mL' }
+      { chemicalName: 'Castor Oil IP Grade', quantity: 20, quantityUnit: 'mL' },
+      { chemicalName: 'Acacia Powder IP Grade', quantity: 5, quantityUnit: 'g' },
+      { chemicalName: 'Purified Water', quantity: 10, quantityUnit: 'mL' },
+      { chemicalName: 'Tragacanth Powder', quantity: 1, quantityUnit: 'g' },
+      { chemicalName: 'Amaranth Colorant Solution', quantity: 0.2, quantityUnit: 'mL' }
+    ]
+  },
+  {
+    id: 'exp-05',
+    _id: 'exp-05',
+    experimentNumber: 'Exp 05: Synthesis & Recrystallization of Aspirin (Acetylsalicylic Acid)',
+    experimentObject: 'To synthesize Aspirin from Salicylic Acid and Acetic Anhydride using Sulfuric Acid catalyst and determine melting point.',
+    requiredInventory: [
+      { chemicalName: 'Salicylic Acid AR Grade', quantity: 5, quantityUnit: 'g' },
+      { chemicalName: 'Acetic Anhydride AR Grade', quantity: 7, quantityUnit: 'mL' },
+      { chemicalName: 'Concentrated Sulfuric Acid 98%', quantity: 0.5, quantityUnit: 'mL' },
+      { chemicalName: 'Ferric Chloride 1% Solution', quantity: 2, quantityUnit: 'mL' },
+      { chemicalName: 'Ice Cold Water', quantity: 50, quantityUnit: 'mL' }
+    ]
+  },
+  {
+    id: 'exp-06',
+    _id: 'exp-06',
+    experimentNumber: 'Exp 06: Preparation & Standardization of 0.1M Sodium Hydroxide Solution',
+    experimentObject: 'To prepare 1L of 0.1M NaOH and standardize against Potassium Hydrogen Phthalate (KHP).',
+    requiredInventory: [
+      { chemicalName: 'Sodium Hydroxide Pellets AR', quantity: 4.2, quantityUnit: 'g' },
+      { chemicalName: 'Potassium Hydrogen Phthalate (KHP)', quantity: 2, quantityUnit: 'g' },
+      { chemicalName: 'Phenolphthalein Indicator Solution', quantity: 2, quantityUnit: 'mL' },
+      { chemicalName: 'Carbon Dioxide Free Water', quantity: 1000, quantityUnit: 'mL' },
+      { chemicalName: 'Oxalic Acid Standard Solution', quantity: 25, quantityUnit: 'mL' }
+    ]
+  },
+  {
+    id: 'exp-07',
+    _id: 'exp-07',
+    experimentNumber: 'Exp 07: Dissolution Rate Study of Paracetamol Tablets IP',
+    experimentObject: 'To perform in-vitro dissolution profile testing of 500mg Paracetamol tablets using USP Apparatus II (Paddle Method).',
+    requiredInventory: [
+      { chemicalName: 'Phosphate Buffer pH 5.8 Medium', quantity: 900, quantityUnit: 'mL' },
+      { chemicalName: 'Paracetamol IP/BP Standard', quantity: 0.05, quantityUnit: 'g' },
+      { chemicalName: 'Sodium Hydroxide Pellets AR', quantity: 2, quantityUnit: 'g' },
+      { chemicalName: 'Potassium Dihydrogen Phosphate AR', quantity: 6.8, quantityUnit: 'g' },
+      { chemicalName: 'Distilled Water', quantity: 1000, quantityUnit: 'mL' }
+    ]
+  },
+  {
+    id: 'exp-08',
+    _id: 'exp-08',
+    experimentNumber: 'Exp 08: Thin Layer Chromatography (TLC) Analysis of Plant Extracts',
+    experimentObject: 'To separate bioactive phytochemicals from crude extract on Silica Gel G plates using hexane-ethyl acetate mobile phase.',
+    requiredInventory: [
+      { chemicalName: 'Silica Gel G for TLC', quantity: 15, quantityUnit: 'g' },
+      { chemicalName: 'n-Hexane HPLC Grade', quantity: 30, quantityUnit: 'mL' },
+      { chemicalName: 'Ethyl Acetate AR Grade', quantity: 20, quantityUnit: 'mL' },
+      { chemicalName: 'Methanol 99.8% AR Grade', quantity: 15, quantityUnit: 'mL' },
+      { chemicalName: 'Iodine Crystals for Visualization', quantity: 2, quantityUnit: 'g' }
+    ]
+  },
+  {
+    id: 'exp-09',
+    _id: 'exp-09',
+    experimentNumber: 'Exp 09: Formulation & Evaluation of Calamine Lotion IP',
+    experimentObject: 'To prepare 100g Calamine Lotion containing Calamine, Zinc Oxide, Bentonite, and Glycerin as a soothing topical suspension.',
+    requiredInventory: [
+      { chemicalName: 'Calamine IP Powder', quantity: 15, quantityUnit: 'g' },
+      { chemicalName: 'Zinc Oxide IP Powder', quantity: 5, quantityUnit: 'g' },
+      { chemicalName: 'Bentonite IP Clay Powder', quantity: 3, quantityUnit: 'g' },
+      { chemicalName: 'Glycerin IP (Co-solvent)', quantity: 5, quantityUnit: 'mL' },
+      { chemicalName: 'Calcium Hydroxide Solution (Lime Water)', quantity: 100, quantityUnit: 'mL' }
+    ]
+  },
+  {
+    id: 'exp-10',
+    _id: 'exp-10',
+    experimentNumber: 'Exp 10: Wet Granulation & Compression of Lactose Tablets',
+    experimentObject: 'To prepare pharmaceutical granules using Starch Paste binder and compress into 300mg placebo tablets.',
+    requiredInventory: [
+      { chemicalName: 'Lactose Monohydrate Powder IP', quantity: 250, quantityUnit: 'g' },
+      { chemicalName: 'Maize Starch Powder IP', quantity: 50, quantityUnit: 'g' },
+      { chemicalName: 'Magnesium Stearate Lubricant', quantity: 3, quantityUnit: 'g' },
+      { chemicalName: 'Talc Powder IP Grade', quantity: 6, quantityUnit: 'g' },
+      { chemicalName: 'Purified Water', quantity: 50, quantityUnit: 'mL' }
+    ]
+  },
+  {
+    id: 'exp-11',
+    _id: 'exp-11',
+    experimentNumber: 'Exp 11: Determination of Partition Coefficient (Oil/Water) of Salicylic Acid',
+    experimentObject: 'To determine the partition coefficient (P) of Salicylic Acid between n-Octanol and Water at room temperature.',
+    requiredInventory: [
+      { chemicalName: 'Salicylic Acid AR Grade', quantity: 1, quantityUnit: 'g' },
+      { chemicalName: 'n-Octanol AR Grade', quantity: 50, quantityUnit: 'mL' },
+      { chemicalName: 'Sodium Hydroxide 0.05M', quantity: 50, quantityUnit: 'mL' },
+      { chemicalName: 'Phenolphthalein Indicator Solution', quantity: 1, quantityUnit: 'mL' },
+      { chemicalName: 'Deionized Water', quantity: 100, quantityUnit: 'mL' }
+    ]
+  },
+  {
+    id: 'exp-12',
+    _id: 'exp-12',
+    experimentNumber: 'Exp 12: Limit Test for Chloride in Pharmacopoeial Drugs',
+    experimentObject: 'To compare opalescence produced by test sample against standard Chloride solution using Silver Nitrate reagent.',
+    requiredInventory: [
+      { chemicalName: 'Silver Nitrate 0.1M Solution', quantity: 10, quantityUnit: 'mL' },
+      { chemicalName: 'Nitric Acid Dilute (10%)', quantity: 10, quantityUnit: 'mL' },
+      { chemicalName: 'Sodium Chloride Standard Solution (10ppm)', quantity: 10, quantityUnit: 'mL' },
+      { chemicalName: 'Sodium Bicarbonate Test Sample', quantity: 1, quantityUnit: 'g' },
+      { chemicalName: 'Purified Water', quantity: 50, quantityUnit: 'mL' }
+    ]
+  },
+  {
+    id: 'exp-13',
+    _id: 'exp-13',
+    experimentNumber: 'Exp 13: Limit Test for Heavy Metals (Lead) in Chemical Substances',
+    experimentObject: 'To determine trace Lead impurities using Hydrogen Sulfide / Thioacetamide reagent comparison method.',
+    requiredInventory: [
+      { chemicalName: 'Lead Standard Solution (20ppm)', quantity: 2, quantityUnit: 'mL' },
+      { chemicalName: 'Thioacetamide Reagent Solution', quantity: 2, quantityUnit: 'mL' },
+      { chemicalName: 'Ammonia Buffer Solution pH 3.5', quantity: 5, quantityUnit: 'mL' },
+      { chemicalName: 'Acetic Acid Dilute (6%)', quantity: 5, quantityUnit: 'mL' },
+      { chemicalName: 'Glycerol IP Grade', quantity: 2, quantityUnit: 'mL' }
+    ]
+  },
+  {
+    id: 'exp-14',
+    _id: 'exp-14',
+    experimentNumber: 'Exp 14: Determination of Saponification Value of Fixed Oils',
+    experimentObject: 'To determine mg of KOH required to saponify 1g of Sunflower Oil sample using alcoholic KOH back titration.',
+    requiredInventory: [
+      { chemicalName: 'Potassium Hydroxide Alcoholic 0.5M', quantity: 25, quantityUnit: 'mL' },
+      { chemicalName: 'Hydrochloric Acid 0.5M Standard', quantity: 50, quantityUnit: 'mL' },
+      { chemicalName: 'Phenolphthalein Indicator Solution', quantity: 1, quantityUnit: 'mL' },
+      { chemicalName: 'Ethanol 99.9% Absolute Grade', quantity: 25, quantityUnit: 'mL' },
+      { chemicalName: 'Fixed Oil Sample (Sunflower Oil)', quantity: 2, quantityUnit: 'g' }
+    ]
+  },
+  {
+    id: 'exp-15',
+    _id: 'exp-15',
+    experimentNumber: 'Exp 15: Preparation & Evaluation of Cold Cream W/O Ointment Base',
+    experimentObject: 'To formulate 50g of Cold Cream containing Beeswax, Liquid Paraffin, and Borax as a water-in-oil cosmetic emulsion base.',
+    requiredInventory: [
+      { chemicalName: 'White Beeswax IP Grade', quantity: 10, quantityUnit: 'g' },
+      { chemicalName: 'Liquid Paraffin Heavy IP', quantity: 25, quantityUnit: 'mL' },
+      { chemicalName: 'Borax (Sodium Tetraborate) Powder', quantity: 0.5, quantityUnit: 'g' },
+      { chemicalName: 'Rose Water Perfume Grade', quantity: 15, quantityUnit: 'mL' },
+      { chemicalName: 'Cetostearyl Alcohol Excipient', quantity: 2, quantityUnit: 'g' }
     ]
   }
 ];
@@ -263,7 +415,26 @@ export default function StudentLabDetail() {
     return () => clearInterval(intervalId);
   }, [fetchExperiments, fetchTeamAllotments, fetchTeams, fetchTransactions, fetchInventory, id, user?.isPreview]);
 
-  const lab = useMemo(() => labs.find((entry) => String(entry.id || entry._id) === String(id)), [id, labs]);
+  const location = useLocation();
+  const stateLab = location.state?.lab;
+
+  const lab = useMemo(() => {
+    if (stateLab) return stateLab;
+    const found = labs.find((entry) => String(entry.id || entry._id) === String(id) || String(entry.labCode) === String(id) || String(entry.name || entry.labName).toLowerCase() === String(id).toLowerCase());
+    if (found) return found;
+    return {
+      _id: id || 'preview-lab-1',
+      id: id || 'preview-lab-1',
+      name: id ? (id.length > 20 ? 'Pharmaceutics Practical Lab' : (id.charAt(0).toUpperCase() + id.slice(1))) : 'Pharmaceutics Lab - I',
+      labName: id ? (id.length > 20 ? 'Pharmaceutics Practical Lab' : (id.charAt(0).toUpperCase() + id.slice(1))) : 'Pharmaceutics Lab - I',
+      labCode: '1001',
+      location: 'Block A, Room 102',
+      admin: 'user10 (Faculty In-Charge)',
+      adminEmail: 'user10@gmail.com',
+      courseType: 'B.Pharm',
+      department: 'Pharmaceutics'
+    };
+  }, [id, labs, stateLab]);
 
   const rows = useMemo(() => {
     const query = inventorySearch.trim().toLowerCase();
