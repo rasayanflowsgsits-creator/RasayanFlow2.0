@@ -136,33 +136,38 @@ app.use(morgan("combined", { stream: logger.stream }));
 // Rate limiting (applied after CORS so preflight isn't rate limited)
 app.use(limiter);
 
-// Routes
-app.use("/auth", require("./routes/authRoutes"));
-app.use("/labs", require("./routes/labRoutes"));
-app.use("/inventory", require("./routes/inventoryRoutes"));
-app.use("/experiments", require("./routes/experimentRoutes"));
-app.use("/experiment-requests", require("./routes/experimentRequestRoutes"));
-app.use("/store-items", require("./routes/storeRoutes"));
-app.use("/store-allotments", require("./routes/storeAllotmentRoutes"));
-app.use("/transactions", require("./routes/transactionRoutes"));
-app.use("/teams", require("./routes/teamRoutes"));
-app.use("/users", require("./routes/userRoutes"));
-app.use("/logs", require("./routes/logRoutes"));
+// Routes & API endpoints
+const routePairs = [
+  ["/auth", require("./routes/authRoutes")],
+  ["/labs", require("./routes/labRoutes")],
+  ["/inventory", require("./routes/inventoryRoutes")],
+  ["/experiments", require("./routes/experimentRoutes")],
+  ["/experiment-requests", require("./routes/experimentRequestRoutes")],
+  ["/store-items", require("./routes/storeRoutes")],
+  ["/store-allotments", require("./routes/storeAllotmentRoutes")],
+  ["/transactions", require("./routes/transactionRoutes")],
+  ["/teams", require("./routes/teamRoutes")],
+  ["/users", require("./routes/userRoutes")],
+  ["/logs", require("./routes/logRoutes")],
+  ["/store/inventory", require("./routes/storeInventoryRoutes")],
+  ["/store/requests", require("./routes/storeRequestRoutes")],
+  ["/store/history", require("./routes/storeHistoryRoutes")],
+  ["/store/tracking", require("./routes/storeTrackingRoutes")],
+  ["/notifications", require("./routes/notificationRoutes")],
+  ["/lab/requests", require("./routes/labRequestRoutes")],
+  ["/lab/history", require("./routes/labHistoryRoutes")],
+  ["/lab/structure", require("./routes/labStructureRoutes")],
+  ["/student/requests", require("./routes/studentRequestRoutes")],
+  ["/student/research-requests", require("./routes/researchRequestRoutes")],
+  ["/student/profile", require("./routes/studentProfileRoutes")],
+  ["/users/profile", require("./routes/studentProfileRoutes")],
+  ["/auth/profile", require("./routes/studentProfileRoutes")],
+];
 
-// New Store Backend Routes
-app.use("/store/inventory", require("./routes/storeInventoryRoutes"));
-app.use("/store/requests", require("./routes/storeRequestRoutes"));
-app.use("/store/history", require("./routes/storeHistoryRoutes"));
-app.use("/store/tracking", require("./routes/storeTrackingRoutes"));
-app.use("/notifications", require("./routes/notificationRoutes"));
-
-// New Lab backend routes
-app.use("/lab/requests", require("./routes/labRequestRoutes"));
-app.use("/lab/history", require("./routes/labHistoryRoutes"));
-app.use("/lab/structure", require("./routes/labStructureRoutes"));
-app.use("/student/requests", require("./routes/studentRequestRoutes"));
-app.use("/student/research-requests", require("./routes/researchRequestRoutes"));
-app.use("/student/profile", require("./routes/studentProfileRoutes"));
+routePairs.forEach(([routePath, router]) => {
+  app.use(routePath, router);
+  app.use(`/api${routePath}`, router);
+});
 
 // Serve frontend in production
 if (process.env.NODE_ENV === 'production') {
