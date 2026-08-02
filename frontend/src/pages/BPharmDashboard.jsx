@@ -168,36 +168,51 @@ const BPharmDashboard = () => {
         
         {myLabs && myLabs.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {myLabs.map(lab => (
-              <Card 
-                key={lab._id || lab.id}
-                onClick={() => navigate(`/labs/${lab._id || lab.id}`)}
-                className="cursor-pointer group relative overflow-hidden bg-white dark:bg-[#1f2419] border-[#e8eadf] dark:border-[#3c452f] hover:border-[#556b2f] dark:hover:border-[#c8a030] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-6"
-              >
-                <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity dark:opacity-[0.05] dark:group-hover:opacity-[0.1]">
-                  <Beaker className="w-32 h-32 text-[#556b2f] dark:text-[#c8a030]" />
-                </div>
-                
-                <div className="relative z-10 flex flex-col h-full">
-                  <div className="flex justify-between items-start mb-4">
-                    <span className="inline-block px-2.5 py-1 bg-[#556b2f]/10 dark:bg-[#c8a030]/10 text-[#556b2f] dark:text-[#c8a030] text-xs font-bold rounded-lg uppercase tracking-wide">
-                      {lab.labCode}
-                    </span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400 font-medium px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md">
-                      {lab.department || lab.courseType || 'Department'}
-                    </span>
+            {myLabs.map(lab => {
+              const adminName = lab.admin && lab.admin !== 'Unassigned' 
+                ? lab.admin 
+                : (Array.isArray(lab.admins) && lab.admins.length ? lab.admins.map(a => a.name || a.email).join(', ') : 'Lab Admin');
+
+              return (
+                <Card 
+                  key={lab._id || lab.id}
+                  onClick={() => navigate(`/labs/${lab._id || lab.id}`)}
+                  className="cursor-pointer group relative overflow-hidden bg-white dark:bg-[#1f2419] border-[#e8eadf] dark:border-[#3c452f] hover:border-[#556b2f] dark:hover:border-[#c8a030] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-6 flex flex-col justify-between"
+                >
+                  <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity dark:opacity-[0.05] dark:group-hover:opacity-[0.1]">
+                    <Beaker className="w-32 h-32 text-[#556b2f] dark:text-[#c8a030]" />
                   </div>
                   
-                  <h3 className="text-lg font-bold mb-2 group-hover:text-[#556b2f] dark:group-hover:text-[#c8a030] transition-colors line-clamp-2">
-                    {lab.labName}
-                  </h3>
-                  
-                  <div className="mt-auto pt-4 flex items-center text-sm font-semibold text-[#556b2f] dark:text-[#c8a030] group-hover:translate-x-1 transition-transform">
-                    Enter Subject <ChevronRight className="w-4 h-4 ml-1" />
+                  <div className="relative z-10 flex flex-col h-full">
+                    <div className="flex justify-between items-start mb-3">
+                      <span className="inline-block px-2.5 py-1 bg-[#556b2f]/10 dark:bg-[#c8a030]/10 text-[#556b2f] dark:text-[#c8a030] text-xs font-bold rounded-lg uppercase tracking-wide">
+                        {lab.labCode || 'LAB'}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 font-medium px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md">
+                        {lab.department || lab.courseType || 'Department'}
+                      </span>
+                    </div>
+                    
+                    <h3 className="text-lg font-bold mb-2 text-[#3c4e23] dark:text-[#eef4e8] group-hover:text-[#556b2f] dark:group-hover:text-[#c8a030] transition-colors line-clamp-2">
+                      {lab.labName || lab.name}
+                    </h3>
+
+                    {/* Faculty In-Charge / Lab Admin */}
+                    <div className="flex items-center gap-2 mt-2 py-2 border-t border-[#e8eadf] dark:border-[#3c452f]/60 text-xs text-gray-600 dark:text-gray-300">
+                      <Users className="w-3.5 h-3.5 text-[#556b2f] dark:text-[#c8a030] shrink-0" />
+                      <span className="truncate">
+                        Faculty: <strong className="font-semibold text-[#3c4e23] dark:text-[#eef4e8]">{adminName}</strong>
+                      </span>
+                    </div>
+                    
+                    <div className="mt-4 pt-3 border-t border-[#f0f2eb] dark:border-[#2a3121] flex items-center justify-between text-xs font-semibold text-[#556b2f] dark:text-[#c8a030] group-hover:translate-x-1 transition-transform">
+                      <span>Enter Subject & Experiments</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </div>
                   </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
         ) : (
           <Card className="p-6 sm:p-8 text-left bg-white dark:bg-[#1f2419] border border-dashed border-[#d9e1ca] dark:border-[#414a33] rounded-2xl">
