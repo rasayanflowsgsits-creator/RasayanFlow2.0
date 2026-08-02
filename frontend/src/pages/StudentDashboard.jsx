@@ -9,7 +9,9 @@ export default function StudentDashboard() {
 
   const isProfileComplete = Boolean(
     user?.onboardingComplete ||
-    (user?.rollNumber && user?.course && user?.year) ||
+    user?.rollNumber ||
+    user?.course ||
+    user?.year ||
     user?.isPreview
   );
 
