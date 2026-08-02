@@ -29,7 +29,16 @@ const normalizeRole = (role) => {
 
 const normalizeUser = (user) => {
   if (!user) return null;
-  return { ...user, role: normalizeRole(user.role) };
+  const isComplete = Boolean(
+    user.onboardingComplete ||
+    (user.rollNumber && user.course && user.year) ||
+    user.isPreview
+  );
+  return { 
+    ...user, 
+    role: normalizeRole(user.role),
+    onboardingComplete: isComplete
+  };
 };
 
 const useAuthStore = create((set) => ({
