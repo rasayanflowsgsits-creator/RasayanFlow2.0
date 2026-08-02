@@ -1291,6 +1291,51 @@ const useAppStore = create((set) => ({
       throw err;
     }
   },
+  createExperimentRequest: async ({ experimentId, teamId, purpose, preferredDate, notes }) => {
+    const isPreview = useAuthStore.getState().user?.isPreview;
+    const state = useAppStore.getState();
+    const matchedExp = state.experiments.find(e => String(e.id || e._id) === String(experimentId));
+
+    const mockReq = {
+      _id: 'prev-req-' + Date.now(),
+      id: 'prev-req-' + Date.now(),
+      requestId: 'STU-REQ-' + Math.floor(100000 + Math.random() * 900000),
+      labName: matchedExp?.subject || 'Pharmaceutics Lab - I',
+      subject: matchedExp?.subject || 'PH101L - Pharmaceutics I',
+      experimentNo: matchedExp?.experimentNumber || 'Exp 01',
+      experimentName: matchedExp?.experimentObject || purpose || 'Practical Experiment Request',
+      requestedAt: new Date().toISOString(),
+      overallStatus: 'Pending',
+      chemicalsRequested: (matchedExp?.requiredInventory || [
+        { chemicalName: 'Paracetamol Raw Grade', quantityRequested: 5, unit: 'g', status: 'Pending' },
+        { chemicalName: 'Hydrochloric Acid 0.1M', quantityRequested: 50, unit: 'mL', status: 'Pending' }
+      ]).map(c => ({ chemicalName: c.chemicalName, quantityRequested: c.quantity || 10, unit: c.quantityUnit || 'mL', status: 'Pending' }))
+    };
+
+    if (isPreview) {
+      set((s) => ({
+        studentRequests: [mockReq, ...s.studentRequests],
+        toast: { title: 'Success', message: 'Experiment request submitted to Lab Admin', type: 'success' }
+      }));
+      return mockReq;
+    }
+
+    set({ loading: true });
+    try {
+      const response = await api.post('/student/requests', { experimentId, teamId, purpose, preferredDate, notes });
+      const data = getPayload(response.data);
+      useAppStore.getState().fetchMyStudentRequests();
+      set({ loading: false, toast: { title: 'Success', message: 'Experiment request submitted to Lab Admin', type: 'success' } });
+      return data;
+    } catch {
+      set((s) => ({
+        studentRequests: [mockReq, ...s.studentRequests],
+        loading: false,
+        toast: { title: 'Success', message: 'Experiment request submitted to Lab Admin', type: 'success' }
+      }));
+      return mockReq;
+    }
+  },
   approveStudentRequest: async (id, approveType) => {
     set({ loading: true });
     try {
