@@ -1,7 +1,9 @@
 const asyncHandler = require('express-async-handler');
+const mongoose = require('mongoose');
 const LabStructure = require('../models/LabStructure');
 const Lab = require('../models/Lab');
 const Inventory = require('../models/Inventory');
+const StudentRequest = require('../models/StudentRequest');
 
 const DEFAULT_HAP1_EXPERIMENTS = [
   {
@@ -104,10 +106,14 @@ const DEFAULT_HAP1_EXPERIMENTS = [
 ];
 
 const resolveTargetLab = async (req) => {
-  let targetId = req.body?.labId || req.query?.labId || req.user?.labId;
+  let targetId = req.params?.labId || req.body?.labId || req.query?.labId || req.user?.labId;
   if (targetId && targetId !== 'undefined' && targetId !== 'null') {
-    const found = await Lab.findById(targetId);
-    if (found) return found;
+    if (mongoose.Types.ObjectId.isValid(targetId)) {
+      const found = await Lab.findById(targetId);
+      if (found) return found;
+    }
+    const foundByCode = await Lab.findOne({ $or: [{ labCode: targetId }, { name: targetId }, { labName: targetId }] });
+    if (foundByCode) return foundByCode;
   }
   
   // Search by assigned admin
@@ -125,6 +131,16 @@ const resolveTargetLab = async (req) => {
 
   // Fallback to first available lab
   return await Lab.findOne();
+};
+
+// Helper to build flexible query array for labId (String & ObjectId)
+const getLabIdQuery = (labId) => {
+  if (!labId) return [];
+  const list = [labId, labId.toString()];
+  if (mongoose.Types.ObjectId.isValid(labId)) {
+    list.push(new mongoose.Types.ObjectId(labId));
+  }
+  return list;
 };
 
 // @desc    Upload or update lab structure from CSV/Excel
@@ -145,6 +161,7 @@ const uploadStructure = asyncHandler(async (req, res) => {
   }
 
   const uploadedRecords = [];
+  const queryIds = getLabIdQuery(lab._id);
 
   for (const exp of structures) {
     const { subject, experimentNo, experimentName, chemicals } = exp;
@@ -153,7 +170,11 @@ const uploadStructure = asyncHandler(async (req, res) => {
       continue;
     }
 
-    const existing = await LabStructure.findOne({ labId: lab._id, subject, experimentNo });
+    const existing = await LabStructure.findOne({ 
+      labId: { $in: queryIds }, 
+      subject, 
+      experimentNo: Number(experimentNo) 
+    });
 
     if (existing) {
       existing.experimentName = experimentName;
@@ -170,7 +191,7 @@ const uploadStructure = asyncHandler(async (req, res) => {
         year: lab.year || '1',
         semester: lab.semester || '1',
         subject,
-        experimentNo,
+        experimentNo: Number(experimentNo),
         experimentName,
         chemicals: chemicals || [],
         uploadedBy: req.user._id || req.user.id
@@ -192,7 +213,18 @@ const getStructure = asyncHandler(async (req, res) => {
     return res.status(200).json({ success: true, count: 0, data: [] });
   }
 
-  let structure = await LabStructure.find({ labId: lab._id }).sort({ subject: 1, experimentNo: 1 });
+  const queryIds = getLabIdQuery(lab._id);
+  let structure = await LabStructure.find({ labId: { $in: queryIds } }).sort({ subject: 1, experimentNo: 1 });
+
+  // Fallback match by labName / course
+  if (structure.length === 0) {
+    structure = await LabStructure.find({
+      $or: [
+        { labName: lab.labName || lab.name },
+        { courseType: lab.courseType, year: lab.year, semester: lab.semester }
+      ]
+    }).sort({ subject: 1, experimentNo: 1 });
+  }
 
   // Auto-seed default HAP1 experiments if 0 experiments exist for this lab
   if (structure.length === 0) {
@@ -206,7 +238,7 @@ const getStructure = asyncHandler(async (req, res) => {
         courseType: lab.courseType || 'B.Pharm',
         year: lab.year || '1',
         semester: lab.semester || '1',
-        subject: subjName.includes('HAP') ? 'HAP1' : subjName,
+        subject: subjName.includes('HAP') ? 'HAP - I' : subjName,
         experimentNo: exp.experimentNo,
         experimentName: exp.experimentName,
         chemicals: exp.chemicals,
@@ -220,18 +252,37 @@ const getStructure = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, count: structure.length, data: structure });
 });
 
-// @desc    Get lab structure for student with inventory status
-// @route   GET /api/lab/structure/student
+// @desc    Get lab structure for student with inventory status & requests
+// @route   GET /api/lab/structure/student/:labId
 // @access  Private (Student)
 const getStudentStructure = asyncHandler(async (req, res) => {
+  const targetId = req.params?.labId || req.query?.labId || req.body?.labId || req.user?.labId;
   const lab = await resolveTargetLab(req);
-  if (!lab) {
-    return res.status(200).json({ success: true, count: 0, data: [] });
+  
+  const actualLabId = lab ? lab._id : targetId;
+  const queryIds = [];
+
+  if (actualLabId) {
+    queryIds.push(...getLabIdQuery(actualLabId));
+  }
+  if (targetId && targetId !== actualLabId?.toString()) {
+    queryIds.push(...getLabIdQuery(targetId));
   }
 
-  let structure = await LabStructure.find({ labId: lab._id }).lean().sort({ subject: 1, experimentNo: 1 });
+  let structure = await LabStructure.find({ labId: { $in: queryIds } }).lean().sort({ subject: 1, experimentNo: 1 });
 
-  if (structure.length === 0) {
+  // If still 0, try searching by labName / courseType / year / semester
+  if (structure.length === 0 && lab) {
+    structure = await LabStructure.find({
+      $or: [
+        { labName: lab.labName || lab.name },
+        { courseType: lab.courseType, year: lab.year, semester: lab.semester }
+      ]
+    }).lean().sort({ subject: 1, experimentNo: 1 });
+  }
+
+  // Auto-seed default experiments if still 0
+  if (structure.length === 0 && lab) {
     const seeded = [];
     const subjName = lab.labName || lab.name || 'HAP1 (Human Anatomy & Physiology I)';
     for (const exp of DEFAULT_HAP1_EXPERIMENTS) {
@@ -241,7 +292,7 @@ const getStudentStructure = asyncHandler(async (req, res) => {
         courseType: lab.courseType || 'B.Pharm',
         year: lab.year || '1',
         semester: lab.semester || '1',
-        subject: subjName.includes('HAP') ? 'HAP1' : subjName,
+        subject: subjName.includes('HAP') ? 'HAP - I' : subjName,
         experimentNo: exp.experimentNo,
         experimentName: exp.experimentName,
         chemicals: exp.chemicals,
@@ -252,7 +303,16 @@ const getStudentStructure = asyncHandler(async (req, res) => {
     structure = seeded;
   }
 
-  const inventory = await Inventory.find({ labId: lab._id }).lean();
+  // Fetch student requests for this lab
+  let studentRequests = [];
+  if (req.user) {
+    studentRequests = await StudentRequest.find({
+      studentId: req.user.id,
+      labId: { $in: queryIds }
+    }).sort({ requestedAt: -1 }).lean();
+  }
+
+  const inventory = lab ? await Inventory.find({ labId: { $in: queryIds } }).lean() : [];
   
   const enrichedStructure = structure.map(exp => {
     let allAvailable = true;
@@ -263,7 +323,7 @@ const getStudentStructure = asyncHandler(async (req, res) => {
       const stock = invItem ? invItem.quantity : 100;
       
       let stockStatus = 'Out';
-      if (stock >= chem.quantityPerStudent) {
+      if (stock >= (chem.quantityPerStudent || chem.quantity || 1)) {
         stockStatus = 'Available';
         anyAvailable = true;
       } else if (stock > 0) {
@@ -285,7 +345,27 @@ const getStudentStructure = asyncHandler(async (req, res) => {
     return exp;
   });
 
-  res.status(200).json({ success: true, count: enrichedStructure.length, data: enrichedStructure });
+  res.status(200).json({ 
+    success: true, 
+    labId: targetId,
+    lab: lab ? {
+      _id: lab._id,
+      id: lab._id,
+      name: lab.name || lab.labName,
+      labName: lab.labName || lab.name,
+      labCode: lab.labCode || '0001',
+      courseType: lab.courseType || 'B.Pharm',
+      year: lab.year || '1',
+      semester: lab.semester || '1',
+      admin: lab.admin || 'user10',
+      adminEmail: lab.adminEmail || 'user10@gmail.com',
+      admins: lab.admins || [],
+      department: lab.department || 'Pharmaceutics'
+    } : null,
+    count: enrichedStructure.length, 
+    data: enrichedStructure,
+    studentRequests
+  });
 });
 
 // @desc    Add single experiment manually
