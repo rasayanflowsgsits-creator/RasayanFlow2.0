@@ -243,15 +243,7 @@ const getMatchingLabs = asyncHandler(async (req, res) => {
     return true;
   });
 
-  // Fallback: If no exact year/semester match found, return all labs matching course (or all labs)
-  if (matchingLabs.length === 0 && allLabs.length > 0) {
-    const courseLabs = allLabs.filter((l) => {
-      const c = (l.courseType || '').toLowerCase().trim();
-      return c === reqCourse || c === 'b.pharm' || c === 'other' || !c;
-    });
-    matchingLabs = courseLabs.length > 0 ? courseLabs : allLabs;
-  }
-
+  // Return exact matching labs for this student's course, year, and semester
   res.json({ success: true, count: matchingLabs.length, data: matchingLabs });
 });
 

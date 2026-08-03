@@ -389,6 +389,25 @@ const useAppStore = create((set) => ({
       set({ labs: isPreview ? PREVIEW_LABS : [], loading: false });
     }
   },
+  fetchMyLabs: async (courseType, year, semester) => {
+    const isPreview = useAuthStore.getState().user?.isPreview;
+    set({ loading: true });
+    try {
+      const user = useAuthStore.getState().user;
+      const c = courseType || user?.course || 'B.Pharm';
+      const y = year || user?.year || '1';
+      const s = semester || user?.semester || '1';
+
+      const res = await api.get(`/labs/matching?courseType=${encodeURIComponent(c)}&year=${encodeURIComponent(y)}&semester=${encodeURIComponent(s)}`);
+      const labs = (getPayload(res.data) || []).map(normalizeLab);
+      set({ myLabs: labs, loading: false });
+      return labs;
+    } catch (err) {
+      console.error('Failed to fetch student labs:', err);
+      set({ myLabs: isPreview ? PREVIEW_LABS : [], loading: false });
+      return [];
+    }
+  },
   createLab: async ({ name, code, courseType, department, year, semester }) => {
     const { data } = await api.post('/labs', {
       labName: name,
