@@ -314,6 +314,9 @@ const getStudentStructure = asyncHandler(async (req, res) => {
     queryOr.push({ labId: labObjectId });
     queryOr.push({ labId: labObjectId.toString() });
     queryOr.push({ labName: lab.labName || lab.name });
+    if (lab.courseType && lab.year && lab.semester) {
+      queryOr.push({ courseType: lab.courseType, year: String(lab.year), semester: String(lab.semester) });
+    }
   }
   if (labIdParam) {
     queryOr.push({ labId: labIdParam });
