@@ -316,22 +316,32 @@ const getStudentStructure = asyncHandler(async (req, res) => {
     experiments = await LabStructure.find({}).lean().sort({ subject: 1, experimentNo: 1 });
   }
 
-  // Fallback 2: if still 0 found in MongoDB, auto-seed default HAP1 experiments into MongoDB for this lab
+  // Fallback 2: if still 0 found in MongoDB, auto-seed default experiments into MongoDB for this lab dynamically
   if (experiments.length === 0) {
     const seeded = [];
     const targetLabId = (labIdParam && mongoose.Types.ObjectId.isValid(labIdParam))
       ? new mongoose.Types.ObjectId(labIdParam)
       : new mongoose.Types.ObjectId();
 
+    let labDoc = null;
+    if (labIdParam && mongoose.Types.ObjectId.isValid(labIdParam)) {
+      labDoc = await Lab.findById(labIdParam);
+    }
+    const dynamicLabName = labDoc?.labName || labDoc?.name || 'HAP1';
+    const dynamicSubject = labDoc?.department || dynamicLabName;
+    const dynamicCourse = labDoc?.courseType || 'B.Pharm';
+    const dynamicYear = labDoc?.year ? String(labDoc.year) : '1';
+    const dynamicSem = labDoc?.semester ? String(labDoc.semester) : '1';
+
     for (const exp of DEFAULT_HAP1_EXPERIMENTS) {
       try {
         const created = await LabStructure.create({
           labId: targetLabId,
-          labName: 'HAP1',
-          courseType: 'B.Pharm',
-          year: '1',
-          semester: '1',
-          subject: 'HAP - I',
+          labName: dynamicLabName,
+          courseType: dynamicCourse,
+          year: dynamicYear,
+          semester: dynamicSem,
+          subject: dynamicSubject,
           experimentNo: exp.experimentNo,
           experimentName: exp.experimentName,
           chemicals: exp.chemicals,
