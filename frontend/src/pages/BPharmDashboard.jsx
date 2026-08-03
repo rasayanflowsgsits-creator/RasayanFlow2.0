@@ -472,10 +472,20 @@ const BPharmDashboard = () => {
                 ? lab.admin 
                 : (Array.isArray(lab.admins) && lab.admins.length ? lab.admins.map(a => a.name || a.email).join(', ') : 'user10');
 
+              const targetId = lab._id || lab.id || lab.labId;
+
+              const handleNavigateToLab = (e) => {
+                if (e) e.stopPropagation();
+                console.log('Navigating to lab detail for lab object:', lab, 'Target ID:', targetId);
+                if (targetId) {
+                  navigate(`/student/lab/${targetId}`, { state: { lab } });
+                }
+              };
+
               return (
                 <Card 
-                  key={lab._id || lab.id}
-                  onClick={() => navigate(`/student/subjects/${lab._id || lab.id}`, { state: { lab } })}
+                  key={targetId || lab.labCode || lab.name}
+                  onClick={handleNavigateToLab}
                   className="cursor-pointer group relative overflow-hidden bg-white dark:bg-[#1f2419] border-[#e8eadf] dark:border-[#3c452f] hover:border-[#556b2f] dark:hover:border-[#c8a030] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-6 flex flex-col justify-between"
                 >
                   <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity dark:opacity-[0.05] dark:group-hover:opacity-[0.1]">
@@ -507,7 +517,10 @@ const BPharmDashboard = () => {
                       </div>
                     </div>
                     
-                    <div className="mt-4 pt-3 border-t border-[#f0f2eb] dark:border-[#2a3121] flex items-center justify-between text-xs font-semibold text-[#556b2f] dark:text-[#c8a030] group-hover:translate-x-1 transition-transform">
+                    <div 
+                      onClick={handleNavigateToLab}
+                      className="mt-4 pt-3 border-t border-[#f0f2eb] dark:border-[#2a3121] flex items-center justify-between text-xs font-semibold text-[#556b2f] dark:text-[#c8a030] group-hover:translate-x-1 transition-transform cursor-pointer"
+                    >
                       <span>Enter Subject & Experiments →</span>
                       <ChevronRight className="w-4 h-4" />
                     </div>
