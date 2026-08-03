@@ -229,7 +229,6 @@ const uploadStructure = asyncHandler(async (req, res) => {
           experimentObject: experimentName,
           subject: subject,
           department: subject,
-          requiredInventory: reqInv,
           createdBy: req.user._id || req.user.id
         },
         { upsert: true, new: true }
