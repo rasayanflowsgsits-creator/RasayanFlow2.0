@@ -311,9 +311,40 @@ const getStudentStructure = asyncHandler(async (req, res) => {
     experiments = await LabStructure.find({ $or: queryOr }).lean().sort({ subject: 1, experimentNo: 1 });
   }
 
-  // Fallback if 0 found: fetch all experiments in database
+  // Fallback 1: if 0 found for this labId, search all experiments in MongoDB
   if (experiments.length === 0) {
     experiments = await LabStructure.find({}).lean().sort({ subject: 1, experimentNo: 1 });
+  }
+
+  // Fallback 2: if still 0 found in MongoDB, auto-seed default HAP1 experiments into MongoDB for this lab
+  if (experiments.length === 0) {
+    const seeded = [];
+    const targetLabId = (labIdParam && mongoose.Types.ObjectId.isValid(labIdParam))
+      ? new mongoose.Types.ObjectId(labIdParam)
+      : new mongoose.Types.ObjectId();
+
+    for (const exp of DEFAULT_HAP1_EXPERIMENTS) {
+      try {
+        const created = await LabStructure.create({
+          labId: targetLabId,
+          labName: 'HAP1',
+          courseType: 'B.Pharm',
+          year: '1',
+          semester: '1',
+          subject: 'HAP - I',
+          experimentNo: exp.experimentNo,
+          experimentName: exp.experimentName,
+          chemicals: exp.chemicals,
+          uploadedBy: req.user?._id || req.user?.id
+        });
+        seeded.push(created.toObject());
+      } catch (e) {
+        console.log('Auto-seed duplicate notice:', e.message);
+      }
+    }
+    if (seeded.length > 0) {
+      experiments = seeded;
+    }
   }
 
   // Debug log always
