@@ -1658,31 +1658,6 @@ const useAppStore = create((set) => ({
       }
     }
   },
-  fetchLabStructure: async (labId) => {
-    set({ loading: true });
-    try {
-      const url = labId ? `/lab/structure/student/${labId}` : '/lab/structure';
-      const { data } = await api.get(url);
-      const list = data.experiments || data.data || [];
-      set({ labStructure: list, loading: false });
-      return list;
-    } catch (err) {
-      console.error('Failed to fetch lab structure:', err);
-      set({ labStructure: [], loading: false });
-      return [];
-    }
-  },
-  uploadLabStructure: async (structures, labId) => {
-    set({ loading: true });
-    try {
-      const { data } = await api.post('/lab/structure/upload', { structures, labId });
-      set({ loading: false, toast: { title: 'Success', message: 'Lab structure uploaded successfully', type: 'success' } });
-      return data;
-    } catch (err) {
-      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Upload failed', type: 'error' } });
-      throw err;
-    }
-  },
   fetchStudentLabStructure: async () => {
     set({ loading: true });
     try {

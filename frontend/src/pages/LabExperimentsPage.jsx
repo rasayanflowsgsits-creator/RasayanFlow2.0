@@ -45,13 +45,11 @@ export default function LabExperimentsPage() {
 
   useEffect(() => {
     const targetLab = activeLabId || user?.labId || (labs.length > 0 ? (labs[0]._id || labs[0].id) : '');
-    if (targetLab) {
-      if (targetLab !== activeLabId) {
-        setActiveLabId(targetLab);
-      }
-      fetchLabStructure(targetLab);
-      if (fetchInventory) fetchInventory(targetLab);
+    if (targetLab && targetLab !== activeLabId) {
+      setActiveLabId(targetLab);
     }
+    fetchLabStructure(targetLab);
+    if (fetchInventory) fetchInventory(targetLab);
   }, [activeLabId, user?.labId, labs, fetchLabStructure, fetchInventory]);
 
   // Unique subjects for filter
