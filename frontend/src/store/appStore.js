@@ -984,26 +984,6 @@ const useAppStore = create((set) => ({
   setToast: (toast) => set({ toast }),
   removeToast: () => set({ toast: null }),
   // Lab Structure Methods
-  fetchLabStructure: async (labId) => {
-    set({ loading: true });
-    try {
-      const { data } = await api.get(labId ? `/lab/structure?labId=${labId}` : '/lab/structure');
-      set({ labStructure: getPayload(data) || [], loading: false });
-    } catch {
-      set({ labStructure: [], loading: false });
-    }
-  },
-  uploadLabStructure: async (structures) => {
-    set({ loading: true });
-    try {
-      await api.post('/lab/structure/upload', { structures });
-      set({ loading: false, toast: { title: 'Success', message: 'Lab structure uploaded successfully', type: 'success' } });
-    } catch (err) {
-      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Upload failed', type: 'error' } });
-      throw err;
-    }
-  },
-
   // Student Request Methods
   fetchStudentRequests: async (labId) => {
     set({ loading: true });
@@ -1179,26 +1159,6 @@ const useAppStore = create((set) => ({
   setToast: (toast) => set({ toast }),
   removeToast: () => set({ toast: null }),
   // Lab Structure Methods
-  fetchLabStructure: async (labId) => {
-    set({ loading: true });
-    try {
-      const { data } = await api.get(labId ? `/lab/structure?labId=${labId}` : '/lab/structure');
-      set({ labStructure: getPayload(data) || [], loading: false });
-    } catch {
-      set({ labStructure: [], loading: false });
-    }
-  },
-  uploadLabStructure: async (structures) => {
-    set({ loading: true });
-    try {
-      await api.post('/lab/structure/upload', { structures });
-      set({ loading: false, toast: { title: 'Success', message: 'Lab structure uploaded successfully', type: 'success' } });
-    } catch (err) {
-      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Upload failed', type: 'error' } });
-      throw err;
-    }
-  },
-
   // Student Request Methods
   fetchStudentRequests: async (labId) => {
     set({ loading: true });
@@ -1294,32 +1254,6 @@ const useAppStore = create((set) => ({
     }
   },
   labStructure: [],
-  fetchLabStructure: async (labId) => {
-    set({ loading: true });
-    try {
-      const url = labId ? `/lab/structure?labId=${labId}` : '/lab/structure';
-      const { data } = await api.get(url);
-      const list = getPayload(data) || [];
-      set({ labStructure: list, loading: false });
-      return list;
-    } catch (err) {
-      console.error('Failed to fetch lab structure:', err);
-      set({ labStructure: [], loading: false });
-      return [];
-    }
-  },
-  uploadLabStructure: async (structures, labId) => {
-    set({ loading: true });
-    try {
-      const response = await api.post('/lab/structure/upload', { structures, labId });
-      const result = getPayload(response.data);
-      set({ loading: false, toast: { title: 'Success', message: 'Experiments uploaded successfully', type: 'success' } });
-      return result;
-    } catch (err) {
-      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Upload failed', type: 'error' } });
-      throw err;
-    }
-  },
   markNotificationAsRead: async (id) => {
     try {
       await api.put(`/notifications/${id}/read`);
@@ -1404,26 +1338,6 @@ const useAppStore = create((set) => ({
   setToast: (toast) => set({ toast }),
   removeToast: () => set({ toast: null }),
   // Lab Structure Methods
-  fetchLabStructure: async (labId) => {
-    set({ loading: true });
-    try {
-      const { data } = await api.get(labId ? `/lab/structure?labId=${labId}` : '/lab/structure');
-      set({ labStructure: getPayload(data) || [], loading: false });
-    } catch {
-      set({ labStructure: [], loading: false });
-    }
-  },
-  uploadLabStructure: async (structures) => {
-    set({ loading: true });
-    try {
-      await api.post('/lab/structure/upload', { structures });
-      set({ loading: false, toast: { title: 'Success', message: 'Lab structure uploaded successfully', type: 'success' } });
-    } catch (err) {
-      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Upload failed', type: 'error' } });
-      throw err;
-    }
-  },
-
   // Student Request Methods
   fetchStudentRequests: async (labId) => {
     set({ loading: true });

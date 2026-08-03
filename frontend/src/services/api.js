@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getToken, getRefreshToken, saveToken, saveRefreshToken, clearAuthSession } from '../utils/auth';
+import { getToken, getRefreshToken, saveToken, saveRefreshToken, clearAuthSession, getUser } from '../utils/auth';
 import { navigate } from '../utils/navigate';
 
 // Support both VITE_API_BASE and VITE_API_BASE_URL for compatibility
