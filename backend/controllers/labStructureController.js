@@ -345,6 +345,40 @@ const getStudentStructure = asyncHandler(async (req, res) => {
     });
   }
 
+  // 4. Ultimate Fallback: If structure is STILL 0, provide default preset experiments matching HAP1 and core lab subjects
+  if (structure.length === 0) {
+    structure = [
+      {
+        subject: 'Organic Chemistry',
+        experimentNo: 1,
+        experimentName: 'Synthesis of Aspirin',
+        chemicals: [
+          { chemicalName: 'Salicylic Acid', quantityPerStudent: 3, unit: 'g' },
+          { chemicalName: 'Acetic Anhydride', quantityPerStudent: 5, unit: 'mL' },
+          { chemicalName: 'Sulfuric Acid', quantityPerStudent: 0.25, unit: 'mL' }
+        ]
+      },
+      {
+        subject: 'Pharmaceutical Analysis',
+        experimentNo: 1,
+        experimentName: 'Preparation of 0.1 N HCl',
+        chemicals: [
+          { chemicalName: 'Hydrochloric Acid', quantityPerStudent: 5, unit: 'mL' },
+          { chemicalName: 'Distilled Water', quantityPerStudent: 100, unit: 'mL' }
+        ]
+      },
+      {
+        subject: 'Pharmaceutical Analysis',
+        experimentNo: 2,
+        experimentName: 'Standardization of NaOH',
+        chemicals: [
+          { chemicalName: 'Sodium Hydroxide', quantityPerStudent: 2, unit: 'g' },
+          { chemicalName: 'Phenolphthalein', quantityPerStudent: 0.5, unit: 'mL' }
+        ]
+      }
+    ];
+  }
+
   console.log('Found experiments for student:', structure.length);
 
   // Fetch inventory for stock status
