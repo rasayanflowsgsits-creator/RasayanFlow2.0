@@ -43,17 +43,27 @@ export default function StudentLabDetail() {
   const [experimentsData, setExperimentsData] = useState([]);
   const [subjectsData, setSubjectsData] = useState({});
 
+  const [totalExperimentsCount, setTotalExperimentsCount] = useState(0);
+
   // Fetch Lab Details & Experiments dynamically from API
   const fetchLabData = async () => {
     if (!labId) return;
     setLoading(true);
     try {
       const res = await api.get(`/lab/structure/student/${labId}`);
-      console.log('Experiments data:', res.data);
+      console.log('API response:', res.data);
+      if (res.data) {
+        console.log('Total experiments:', res.data.totalExperiments);
+        if (res.data.subjects) {
+          console.log('Subjects:', Object.keys(res.data.subjects));
+        }
+      }
       if (res.data.success) {
         const exps = res.data.experiments || res.data.data || [];
+        const total = res.data.totalExperiments ?? exps.length;
         setStructure(exps);
         setExperimentsData(exps);
+        setTotalExperimentsCount(total);
         
         const subjMap = res.data.subjects && Object.keys(res.data.subjects).length > 0 ? { ...res.data.subjects } : {};
         if (Object.keys(subjMap).length === 0 && exps.length > 0) {
@@ -303,7 +313,7 @@ export default function StudentLabDetail() {
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-[#556b2f] border-t-transparent mb-3" />
           <p className="text-sm font-medium">Loading lab experiments...</p>
         </div>
-      ) : structure.length === 0 ? (
+      ) : (totalExperimentsCount === 0 && structure.length === 0) ? (
         /* IF NO EXPERIMENTS UPLOADED */
         <div className="bg-white dark:bg-[#1f2419] border border-dashed border-[#d9e1ca] dark:border-[#414a33] rounded-2xl p-12 text-center my-6 max-w-xl mx-auto shadow-sm">
           <div className="w-16 h-16 rounded-full bg-[#f4f6ee] dark:bg-[#2a3121] text-[#556b2f] dark:text-[#c8a030] flex items-center justify-center mx-auto mb-4">
