@@ -87,6 +87,10 @@ export default function SuperAdminDashboard() {
   // Modals
   const [createOpen, setCreateOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
+  const [deleteLabModalOpen, setDeleteLabModalOpen] = useState(false);
+  const [deletingLabItem, setDeletingLabItem] = useState(null);
+  const [deleteStep, setDeleteStep] = useState(1);
+  const [confirmLabNameInput, setConfirmLabNameInput] = useState('');
   const [storeAdminModalOpen, setStoreAdminModalOpen] = useState(false);
   const [superAdminModalOpen, setSuperAdminModalOpen] = useState(false);
   const [masterChemModalOpen, setMasterChemModalOpen] = useState(false);
@@ -981,6 +985,38 @@ export default function SuperAdminDashboard() {
     setManageOpen(true);
   };
 
+  const openDeleteLabModal = (lab) => {
+    setDeletingLabItem(lab);
+    setDeleteStep(1);
+    setConfirmLabNameInput('');
+    setDeleteLabModalOpen(true);
+  };
+
+  const handleConfirmDeleteLab = async () => {
+    if (!deletingLabItem) return;
+    const targetLabName = deletingLabItem.name || deletingLabItem.labName || '';
+    if (deleteStep === 2 && confirmLabNameInput.trim().toLowerCase() !== targetLabName.trim().toLowerCase()) {
+      setToast({ type: 'error', message: 'Lab name does not match. Please type the exact lab name.' });
+      return;
+    }
+
+    setDeletingLab(true);
+    try {
+      const labId = deletingLabItem.id || deletingLabItem._id;
+      await deleteLab(labId);
+      await Promise.all([fetchLabs(), fetchUsers(), fetchActivityLogs({ limit: 100 })]);
+      setToast({ type: 'success', message: `Lab "${targetLabName}" has been permanently deleted.` });
+      setDeleteLabModalOpen(false);
+      setManageOpen(false);
+      setDeletingLabItem(null);
+      setConfirmLabNameInput('');
+    } catch (err) {
+      setToast({ type: 'error', message: err?.response?.data?.message || err?.message || 'Failed to delete lab.' });
+    } finally {
+      setDeletingLab(false);
+    }
+  };
+
   const handleCreateLab = async () => {
     if (!newLab.name.trim() || !newLab.code.trim()) {
       setToast({ type: 'error', message: 'Please enter Lab Name and Lab Code.' });
@@ -1710,9 +1746,19 @@ export default function SuperAdminDashboard() {
                                 </div>
                               </div>
 
-                              <Button variant='outline' onClick={() => openManageModal(lab)} className='text-xs px-2.5 py-1 h-7 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] font-bold dark:border-[#a8be8a] dark:text-[#a8be8a] shrink-0'>
-                                Manage
-                              </Button>
+                              <div className='flex items-center gap-1.5 shrink-0'>
+                                <Button variant='outline' onClick={() => openManageModal(lab)} className='text-xs px-2.5 py-1 h-7 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] font-bold dark:border-[#a8be8a] dark:text-[#a8be8a]'>
+                                  Manage
+                                </Button>
+                                <button
+                                  type='button'
+                                  onClick={() => openDeleteLabModal(lab)}
+                                  className='h-7 w-7 flex items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 transition-colors dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400'
+                                  title='Delete Lab'
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         );
@@ -3485,11 +3531,139 @@ export default function SuperAdminDashboard() {
 
           <div className='rounded-2xl border border-red-200 p-4 dark:border-red-900/50 bg-red-50/40 dark:bg-red-950/20'>
             <p className='text-sm font-bold text-red-700 dark:text-red-300'>Delete Lab</p>
-            <Button variant='outline' onClick={handleDeleteLab} className='mt-3 w-full border-red-300 text-red-700 hover:bg-red-100 dark:border-red-900 dark:text-red-300' disabled={deletingLab}>
-              {deletingLab ? 'Deleting...' : 'Delete Lab'}
+            <Button
+              variant='outline'
+              onClick={() => {
+                if (selectedLab) openDeleteLabModal(selectedLab);
+              }}
+              className='mt-3 w-full border-red-300 text-red-700 hover:bg-red-100 dark:border-red-900 dark:text-red-300 font-bold'
+              disabled={deletingLab}
+            >
+              <Trash2 size={14} className='mr-1.5' /> Delete Lab...
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Two-Step Confirmation Delete Lab Modal */}
+      <Modal
+        open={deleteLabModalOpen}
+        onClose={() => {
+          if (!deletingLab) {
+            setDeleteLabModalOpen(false);
+            setDeletingLabItem(null);
+          }
+        }}
+        title={deleteStep === 1 ? '⚠️ Step 1 of 2: Confirm Lab Deletion' : '🚨 Step 2 of 2: Final Verification Required'}
+      >
+        {deletingLabItem && (
+          <div className='space-y-4'>
+            {deleteStep === 1 ? (
+              <>
+                <div className='rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/60 dark:bg-amber-950/40'>
+                  <div className='flex items-start gap-3'>
+                    <AlertTriangle className='h-6 w-6 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5' />
+                    <div>
+                      <h4 className='text-sm font-extrabold text-amber-900 dark:text-amber-200'>
+                        Are you sure you want to delete this lab?
+                      </h4>
+                      <p className='text-xs text-amber-800 dark:text-amber-300 mt-1 font-medium'>
+                        You are about to delete <span className='font-black underline'>{deletingLabItem.name || deletingLabItem.labName}</span> ({deletingLabItem.labCode || deletingLabItem.code || 'LAB'}).
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className='rounded-xl border border-[#d9e1ca] bg-[#fffef8] p-3 text-xs text-[#5c6e46] space-y-1.5 dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#a5b48b]'>
+                  <p className='font-bold text-[#37412a] dark:text-[#e4e9d8]'>Consequences of deleting this lab:</p>
+                  <ul className='list-disc list-inside space-y-1 text-[11px]'>
+                    <li>All chemical inventory items associated with this lab will be erased.</li>
+                    <li>All experiment uploads and curriculum data for this lab will be deleted.</li>
+                    <li>Any assigned Lab Admin will be unassigned and reset to student role.</li>
+                    <li>Transaction logs for this lab will be archived.</li>
+                  </ul>
+                </div>
+
+                <div className='flex items-center gap-2 pt-2'>
+                  <Button
+                    variant='outline'
+                    onClick={() => setDeleteLabModalOpen(false)}
+                    className='flex-1 font-bold'
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => setDeleteStep(2)}
+                    className='flex-1 font-bold bg-amber-600 hover:bg-amber-700 text-white border-none'
+                  >
+                    Proceed to Step 2 →
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className='rounded-2xl border border-red-200 bg-red-50 p-4 dark:border-red-900/60 dark:bg-red-950/40'>
+                  <div className='flex items-start gap-3'>
+                    <ShieldAlert className='h-6 w-6 text-red-600 dark:text-red-400 shrink-0 mt-0.5' />
+                    <div>
+                      <h4 className='text-sm font-extrabold text-red-900 dark:text-red-200'>
+                        FINAL SECURITY VERIFICATION
+                      </h4>
+                      <p className='text-xs text-red-800 dark:text-red-300 mt-1 font-medium'>
+                        To permanently delete this lab, please type the exact lab name below:
+                      </p>
+                      <p className='text-xs font-black text-red-900 dark:text-red-100 mt-1.5 select-all bg-white/60 dark:bg-black/30 px-2.5 py-1 rounded border border-red-200 dark:border-red-900 inline-block font-mono'>
+                        {deletingLabItem.name || deletingLabItem.labName}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className='block text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8] mb-1'>
+                    Type Lab Name to Confirm *
+                  </label>
+                  <Input
+                    value={confirmLabNameInput}
+                    onChange={(e) => setConfirmLabNameInput(e.target.value)}
+                    placeholder={`Type "${deletingLabItem.name || deletingLabItem.labName}"...`}
+                    className='font-semibold'
+                  />
+                  {confirmLabNameInput.trim().toLowerCase() === (deletingLabItem.name || deletingLabItem.labName || '').trim().toLowerCase() ? (
+                    <p className='text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1'>
+                      <CheckCircle2 size={12} /> Name match verified. Ready to delete.
+                    </p>
+                  ) : confirmLabNameInput.length > 0 ? (
+                    <p className='text-[11px] font-medium text-red-500 mt-1'>
+                      Name does not match yet.
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className='flex items-center gap-2 pt-2'>
+                  <Button
+                    variant='outline'
+                    onClick={() => setDeleteStep(1)}
+                    disabled={deletingLab}
+                    className='px-4 font-bold'
+                  >
+                    ← Back
+                  </Button>
+                  <Button
+                    onClick={handleConfirmDeleteLab}
+                    disabled={
+                      deletingLab ||
+                      confirmLabNameInput.trim().toLowerCase() !== (deletingLabItem.name || deletingLabItem.labName || '').trim().toLowerCase()
+                    }
+                    className='flex-1 font-bold bg-red-600 hover:bg-red-700 text-white border-none disabled:opacity-40'
+                  >
+                    {deletingLab ? 'Deleting Lab...' : 'Permanently Delete Lab'}
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </Modal>
 
       {/* Add Master Chemical Modal */}

@@ -422,22 +422,31 @@ const useAppStore = create((set) => ({
     return createdLab;
   },
   deleteLab: async (labId) => {
-    await api.delete(`/labs/${labId}`);
-    set((state) => ({
-      labs: state.labs.filter((lab) => lab.id !== labId),
-      users: state.users.map((user) =>
-        user.labId === labId
-          ? {
-              ...user,
-              labId: null,
-              role: user.role === 'lab-admin' ? 'student' : user.role,
-              isApproved: user.role === 'lab-admin' ? false : user.isApproved,
-            }
-          : user
-      ),
-      inventory: state.inventory.filter((item) => item.labId !== labId),
-      transactions: state.transactions.filter((tx) => String(tx.labId) !== String(labId) && String(tx.labId?._id) !== String(labId)),
-    }));
+    set({ loading: true });
+    try {
+      await api.delete(`/labs/${labId}`);
+      set((state) => ({
+        labs: state.labs.filter((l) => l._id !== labId && l.id !== labId),
+        myLabs: state.myLabs.filter((l) => l._id !== labId && l.id !== labId),
+        users: state.users.map((user) =>
+          user.labId === labId
+            ? {
+                ...user,
+                labId: null,
+                role: user.role === 'lab-admin' ? 'student' : user.role,
+                isApproved: user.role === 'lab-admin' ? false : user.isApproved,
+              }
+            : user
+        ),
+        inventory: state.inventory.filter((item) => item.labId !== labId),
+        transactions: state.transactions.filter((tx) => String(tx.labId) !== String(labId) && String(tx.labId?._id) !== String(labId)),
+        loading: false,
+        toast: { title: 'Success', message: 'Lab deleted successfully', type: 'success' }
+      }));
+    } catch (err) {
+      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Delete failed', type: 'error' } });
+      throw err;
+    }
   },
   createInventoryItem: async ({ labId, itemCode, chemicalName, name, category, quantity, quantityUnit, costPerUnit = 0, minThreshold = 5, casNumber = '', smiles = '', inchi = '', chemicalFormula = '', manufacturingCompany = '', entryDate = '', storageLocation = '', lotNumber = '', expiryDate = '', abstract = '', pubmedId = '' }) => {
     const response = await api.post('/inventory', {

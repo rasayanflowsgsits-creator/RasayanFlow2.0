@@ -147,60 +147,39 @@ const approveAdmin = asyncHandler(async (req, res) => {
 const deleteLab = asyncHandler(async (req, res) => {
   const { labId } = req.params;
 
-  const session = await mongoose.startSession();
-
-  try {
-    await session.withTransaction(async () => {
-      const lab = await Lab.findById(labId).session(session);
-      if (!lab) {
-        res.status(404);
-        throw new Error('Lab not found');
-      }
-
-      const linkedUsers = await User.find({ labId: lab._id }).session(session).select('_id');
-      const linkedUserIds = linkedUsers.map((user) => user._id);
-      const inventoryItemIds = await Inventory.find({ labId: lab._id }).session(session).distinct('_id');
-
-      await Inventory.deleteMany({ labId: lab._id }).session(session);
-      await Transaction.deleteMany({
-        $or: [
-          { labId: lab._id },
-          { itemId: { $in: inventoryItemIds } },
-        ],
-      }).session(session);
-
-      if (linkedUserIds.length > 0) {
-        await User.updateMany(
-          { _id: { $in: linkedUserIds } },
-          [
-            {
-              $set: {
-                labId: null,
-                role: {
-                  $cond: [{ $eq: ['$role', 'labAdmin'] }, 'student', '$role'],
-                },
-                isApproved: {
-                  $cond: [{ $eq: ['$role', 'labAdmin'] }, false, '$isApproved'],
-                },
-              },
-            },
-          ],
-          { session },
-        );
-      }
-
-      await lab.deleteOne({ session });
-      await ActivityLog.create([
-        {
-          userId: req.user._id,
-          action: 'delete_lab',
-          details: `Deleted lab ${lab.labName} (${lab.labCode})`,
-        },
-      ], { session });
-    });
-  } finally {
-    session.endSession();
+  const lab = await Lab.findById(labId);
+  if (!lab) {
+    res.status(404);
+    throw new Error('Lab not found');
   }
+
+  const LabStructure = require('../models/LabStructure');
+  const Experiment = require('../models/Experiment');
+
+  const linkedUsers = await User.find({ labId: lab._id }).select('_id');
+  const linkedUserIds = linkedUsers.map((u) => u._id);
+  const inventoryItemIds = await Inventory.find({ labId: lab._id }).distinct('_id');
+
+  await Inventory.deleteMany({ labId: lab._id });
+  await Transaction.deleteMany({
+    $or: [{ labId: lab._id }, { itemId: { $in: inventoryItemIds } }],
+  });
+  await LabStructure.deleteMany({ labId: lab._id });
+  await Experiment.deleteMany({ labId: lab._id });
+
+  if (linkedUserIds.length > 0) {
+    await User.updateMany(
+      { _id: { $in: linkedUserIds } },
+      { $set: { labId: null, role: 'student', isApproved: false } }
+    );
+  }
+
+  await lab.deleteOne();
+  await ActivityLog.create({
+    userId: req.user._id,
+    action: 'delete_lab',
+    details: `Deleted lab ${lab.labName} (${lab.labCode})`
+  });
 
   res.json({ success: true, message: 'Lab deleted successfully' });
 });
