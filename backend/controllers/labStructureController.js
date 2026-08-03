@@ -162,7 +162,9 @@ const uploadStructure = asyncHandler(async (req, res) => {
   }
 
   const uploadedRecords = [];
-  const queryIds = getLabIdQuery(lab._id);
+  const labObjectId = mongoose.Types.ObjectId.isValid(lab._id)
+    ? new mongoose.Types.ObjectId(lab._id)
+    : lab._id;
 
   for (const exp of structures) {
     const { subject, experimentNo, experimentName, chemicals } = exp;
@@ -172,12 +174,16 @@ const uploadStructure = asyncHandler(async (req, res) => {
     }
 
     const existing = await LabStructure.findOne({ 
-      labId: { $in: queryIds }, 
+      $or: [
+        { labId: labObjectId },
+        { labId: labObjectId.toString() }
+      ],
       subject, 
       experimentNo: Number(experimentNo) 
     });
 
     if (existing) {
+      existing.labId = labObjectId;
       existing.experimentName = experimentName;
       existing.chemicals = chemicals || [];
       existing.updatedAt = Date.now();
@@ -186,7 +192,7 @@ const uploadStructure = asyncHandler(async (req, res) => {
       uploadedRecords.push(existing);
     } else {
       const newStructure = await LabStructure.create({
-        labId: lab._id,
+        labId: labObjectId,
         labName: lab.labName || lab.name,
         courseType: lab.courseType || 'B.Pharm',
         year: lab.year || '1',
@@ -257,71 +263,53 @@ const getStructure = asyncHandler(async (req, res) => {
 // @route   GET /api/lab/structure/student/:labId
 // @access  Private (Student)
 const getStudentStructure = asyncHandler(async (req, res) => {
-  const targetId = req.params?.labId || req.query?.labId || req.body?.labId || req.user?.labId;
-  console.log('Student fetching experiments for labId:', targetId);
+  const labIdParam = req.params?.labId || req.query?.labId || req.body?.labId || req.user?.labId;
 
-  let targetLab = null;
-  if (targetId && targetId !== 'undefined' && targetId !== 'null') {
-    if (mongoose.Types.ObjectId.isValid(targetId)) {
-      targetLab = await Lab.findById(targetId);
-    }
-    if (!targetLab) {
-      targetLab = await Lab.findOne({ $or: [{ labCode: targetId }, { name: targetId }, { labName: targetId }] });
-    }
+  // Try all possible formats
+  let experiments = [];
+
+  // Attempt 1: Direct string match
+  if (labIdParam) {
+    experiments = await LabStructure.find({ labId: labIdParam }).lean().sort({ subject: 1, experimentNo: 1 });
   }
 
-  if (!targetLab) {
-    targetLab = await resolveTargetLab(req);
-  }
-
-  // Find linked Lab Admins for this lab
-  let adminUserIds = [];
-  if (targetLab) {
-    const admins = await User.find({
-      $or: [
-        { labId: targetLab._id },
-        { email: targetLab.adminEmail },
-        { _id: { $in: targetLab.admins || [] } }
-      ]
-    }).select('_id');
-    adminUserIds = admins.map(u => u._id);
-  }
-
-  // Construct dynamic $or search conditions
-  const searchOrs = [];
-  if (targetId) {
-    searchOrs.push({ labId: targetId });
-    searchOrs.push({ labId: targetId.toString() });
-    if (mongoose.Types.ObjectId.isValid(targetId)) {
-      searchOrs.push({ labId: new mongoose.Types.ObjectId(targetId) });
+  // Attempt 2: If empty, try ObjectId
+  if (experiments.length === 0 && labIdParam) {
+    try {
+      if (mongoose.Types.ObjectId.isValid(labIdParam)) {
+        const objectId = new mongoose.Types.ObjectId(labIdParam);
+        experiments = await LabStructure.find({ labId: objectId }).lean().sort({ subject: 1, experimentNo: 1 });
+      }
+    } catch (e) {
+      console.log('ObjectId conversion failed:', e.message);
     }
   }
-  if (targetLab) {
-    searchOrs.push({ labId: targetLab._id });
-    searchOrs.push({ labId: targetLab._id.toString() });
-    if (targetLab.labName || targetLab.name) {
-      searchOrs.push({ labName: { $regex: new RegExp(`^${targetLab.labName || targetLab.name}`, 'i') } });
+
+  // Attempt 3: If still empty, try string on _id / .toString()
+  if (experiments.length === 0 && labIdParam) {
+    experiments = await LabStructure.find({ labId: labIdParam.toString() }).lean().sort({ subject: 1, experimentNo: 1 });
+  }
+
+  // Attempt 4: Also query Experiment model (from Experiment Manager) using the same 3 fallbacks
+  let dbExps = [];
+  if (labIdParam) {
+    dbExps = await Experiment.find({ labId: labIdParam }).lean().sort({ experimentNumber: 1 });
+    if (dbExps.length === 0 && mongoose.Types.ObjectId.isValid(labIdParam)) {
+      try {
+        dbExps = await Experiment.find({ labId: new mongoose.Types.ObjectId(labIdParam) }).lean().sort({ experimentNumber: 1 });
+      } catch (e) {}
+    }
+    if (dbExps.length === 0) {
+      dbExps = await Experiment.find({ labId: labIdParam.toString() }).lean().sort({ experimentNumber: 1 });
     }
   }
-  if (adminUserIds.length > 0) {
-    searchOrs.push({ uploadedBy: { $in: adminUserIds } });
-    searchOrs.push({ createdBy: { $in: adminUserIds } });
-  }
 
-  const queryFilter = searchOrs.length > 0 ? { $or: searchOrs } : {};
-
-  // 1. Fetch from LabStructure collection
-  let structure = await LabStructure.find(queryFilter).lean().sort({ subject: 1, experimentNo: 1 });
-
-  // 2. Fetch from Experiment collection (created by Lab Admin Experiment Manager)
-  const dbExperiments = await Experiment.find(queryFilter).lean().sort({ experimentNumber: 1 });
-  
-  if (dbExperiments.length > 0) {
-    const mappedDbExperiments = dbExperiments.map(exp => ({
+  if (dbExps.length > 0) {
+    const mapped = dbExps.map(exp => ({
       _id: exp._id,
       id: exp._id,
       labId: exp.labId,
-      subject: exp.subject || exp.department || targetLab?.labName || targetLab?.name || 'Lab Experiments',
+      subject: exp.subject || exp.department || 'Organic Chemistry',
       experimentNo: parseInt(exp.experimentNumber, 10) || 1,
       experimentName: exp.experimentObject || exp.experimentName || 'Experiment',
       chemicals: (exp.requiredInventory || []).map(r => ({
@@ -331,59 +319,46 @@ const getStudentStructure = asyncHandler(async (req, res) => {
       }))
     }));
 
-    mappedDbExperiments.forEach(m => {
-      if (!structure.some(s => s.experimentName === m.experimentName && Number(s.experimentNo) === Number(m.experimentNo))) {
-        structure.push(m);
+    mapped.forEach(m => {
+      if (!experiments.some(s => s.experimentName === m.experimentName && Number(s.experimentNo) === Number(m.experimentNo))) {
+        experiments.push(m);
       }
     });
   }
 
-  // If still no experiments found specifically for this lab, query all experiments in database matching lab course/year/sem or created by any lab admin
-  if (structure.length === 0 && targetLab) {
-    const fallbackStructures = await LabStructure.find({
-      $or: [
-        { courseType: targetLab.courseType, year: targetLab.year, semester: targetLab.semester },
-        { courseType: targetLab.courseType }
-      ]
-    }).lean().sort({ subject: 1, experimentNo: 1 });
+  // Attempt 5: Fallback search by resolved target lab or any experiments in MongoDB
+  if (experiments.length === 0) {
+    const targetLab = await resolveTargetLab(req);
+    if (targetLab) {
+      const byName = await LabStructure.find({
+        $or: [
+          { labId: targetLab._id },
+          { labName: { $regex: new RegExp(`^${targetLab.labName || targetLab.name}`, 'i') } },
+          { courseType: targetLab.courseType, year: targetLab.year, semester: targetLab.semester }
+        ]
+      }).lean().sort({ subject: 1, experimentNo: 1 });
+      experiments = byName;
+    }
 
-    const fallbackExps = await Experiment.find({}).lean().sort({ experimentNumber: 1 });
-    structure = [...fallbackStructures];
-
-    fallbackExps.forEach(exp => {
-      const m = {
-        _id: exp._id,
-        id: exp._id,
-        labId: exp.labId,
-        subject: exp.subject || exp.department || targetLab?.labName || targetLab?.name || 'Lab Practical',
-        experimentNo: parseInt(exp.experimentNumber, 10) || 1,
-        experimentName: exp.experimentObject || exp.experimentName || 'Experiment',
-        chemicals: (exp.requiredInventory || []).map(r => ({
-          chemicalName: r.chemicalName,
-          quantityPerStudent: r.quantity,
-          unit: r.quantityUnit || 'mL'
-        }))
-      };
-      if (!structure.some(s => s.experimentName === m.experimentName)) {
-        structure.push(m);
-      }
-    });
+    if (experiments.length === 0) {
+      experiments = await LabStructure.find({}).lean().sort({ subject: 1, experimentNo: 1 });
+    }
   }
 
-  console.log('Total dynamic experiments found for student:', structure.length);
+  // Debug log always
+  console.log('labId searched:', labIdParam);
+  console.log('experiments found:', experiments.length);
+  console.log('sample doc labId type:', experiments[0]?.labId, typeof experiments[0]?.labId);
 
-  // Fetch Inventory for Stock Status calculation
-  const inventory = await Inventory.find(queryFilter).lean();
-
-  const enrichedStructure = structure.map(exp => {
+  // Inventory lookup for stock status
+  const inventory = await Inventory.find({}).lean();
+  const enriched = experiments.map(exp => {
     let allAvailable = true;
     let anyAvailable = false;
-    
     exp.chemicals = (exp.chemicals || []).map(chem => {
       const invItem = inventory.find(i => i.chemicalName?.toLowerCase() === chem.chemicalName?.toLowerCase());
       const stock = invItem ? invItem.quantity : 0;
       const reqQty = Number(chem.quantityPerStudent || chem.quantity || 1);
-      
       let stockStatus = 'Not in Stock';
       if (stock >= reqQty) {
         stockStatus = `In Stock (${stock})`;
@@ -395,59 +370,40 @@ const getStudentStructure = asyncHandler(async (req, res) => {
       } else {
         allAvailable = false;
       }
-      
-      return {
-        ...chem,
-        stock,
-        stockStatus
-      };
+      return { ...chem, stock, stockStatus };
     });
-    
     exp.status = exp.chemicals.length === 0 || allAvailable ? 'Available' : anyAvailable ? 'Low' : 'Out';
     return exp;
   });
 
-  // Group experiments dynamically by subject
-  const subjectsGrouped = {};
-  enrichedStructure.forEach(exp => {
-    const subjKey = exp.subject || targetLab?.labName || targetLab?.name || 'General';
-    if (!subjectsGrouped[subjKey]) {
-      subjectsGrouped[subjKey] = [];
+  // Group by subject
+  const grouped = {};
+  enriched.forEach(exp => {
+    const subjKey = exp.subject || 'General';
+    if (!grouped[subjKey]) {
+      grouped[subjKey] = [];
     }
-    subjectsGrouped[subjKey].push(exp);
+    grouped[subjKey].push(exp);
   });
 
   // Fetch student requests
   let studentRequests = [];
   if (req.user) {
-    studentRequests = await StudentRequest.find({
-      studentId: req.user.id
-    }).sort({ requestedAt: -1 }).lean();
+    studentRequests = await StudentRequest.find({ studentId: req.user.id }).sort({ requestedAt: -1 }).lean();
   }
 
-  res.status(200).json({
+  return res.json({
     success: true,
-    labId: targetId,
-    totalExperiments: enrichedStructure.length,
-    subjects: subjectsGrouped,
-    experiments: enrichedStructure,
-    lab: targetLab ? {
-      _id: targetLab._id,
-      id: targetLab._id,
-      name: targetLab.name || targetLab.labName,
-      labName: targetLab.labName || targetLab.name,
-      labCode: targetLab.labCode || '0001',
-      courseType: targetLab.courseType || 'B.Pharm',
-      year: targetLab.year || '1',
-      semester: targetLab.semester || '1',
-      admin: targetLab.admin || 'user10',
-      adminEmail: targetLab.adminEmail || 'user10@gmail.com',
-      admins: targetLab.admins || [],
-      department: targetLab.department || 'Pharmaceutics'
-    } : null,
-    count: enrichedStructure.length,
-    data: enrichedStructure,
-    studentRequests
+    totalExperiments: enriched.length,
+    subjects: grouped,
+    experiments: enriched,
+    count: enriched.length,
+    data: enriched,
+    studentRequests,
+    debug: {
+      labIdSearched: labIdParam,
+      totalFound: enriched.length
+    }
   });
 });
 
