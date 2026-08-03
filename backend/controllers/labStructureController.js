@@ -297,84 +297,23 @@ const getStructure = asyncHandler(async (req, res) => {
 const getStudentStructure = asyncHandler(async (req, res) => {
   const labIdParam = req.params?.labId || req.query?.labId || req.body?.labId || req.user?.labId;
 
-  // Try all possible formats
+  const queryOr = [];
+  if (labIdParam) {
+    queryOr.push({ labId: labIdParam });
+    if (mongoose.Types.ObjectId.isValid(labIdParam)) {
+      queryOr.push({ labId: new mongoose.Types.ObjectId(labIdParam) });
+    }
+    queryOr.push({ labId: String(labIdParam) });
+  }
+
   let experiments = [];
-
-  // Attempt 1: Direct string match
-  if (labIdParam) {
-    experiments = await LabStructure.find({ labId: labIdParam }).lean().sort({ subject: 1, experimentNo: 1 });
+  if (queryOr.length > 0) {
+    experiments = await LabStructure.find({ $or: queryOr }).lean().sort({ subject: 1, experimentNo: 1 });
   }
 
-  // Attempt 2: If empty, try ObjectId
-  if (experiments.length === 0 && labIdParam) {
-    try {
-      if (mongoose.Types.ObjectId.isValid(labIdParam)) {
-        const objectId = new mongoose.Types.ObjectId(labIdParam);
-        experiments = await LabStructure.find({ labId: objectId }).lean().sort({ subject: 1, experimentNo: 1 });
-      }
-    } catch (e) {
-      console.log('ObjectId conversion failed:', e.message);
-    }
-  }
-
-  // Attempt 3: If still empty, try string on _id / .toString()
-  if (experiments.length === 0 && labIdParam) {
-    experiments = await LabStructure.find({ labId: labIdParam.toString() }).lean().sort({ subject: 1, experimentNo: 1 });
-  }
-
-  // Attempt 4: Also query Experiment model (from Experiment Manager) using the same 3 fallbacks
-  let dbExps = [];
-  if (labIdParam) {
-    dbExps = await Experiment.find({ labId: labIdParam }).lean().sort({ experimentNumber: 1 });
-    if (dbExps.length === 0 && mongoose.Types.ObjectId.isValid(labIdParam)) {
-      try {
-        dbExps = await Experiment.find({ labId: new mongoose.Types.ObjectId(labIdParam) }).lean().sort({ experimentNumber: 1 });
-      } catch (e) {}
-    }
-    if (dbExps.length === 0) {
-      dbExps = await Experiment.find({ labId: labIdParam.toString() }).lean().sort({ experimentNumber: 1 });
-    }
-  }
-
-  if (dbExps.length > 0) {
-    const mapped = dbExps.map(exp => ({
-      _id: exp._id,
-      id: exp._id,
-      labId: exp.labId,
-      subject: exp.subject || exp.department || 'Organic Chemistry',
-      experimentNo: parseInt(exp.experimentNumber, 10) || 1,
-      experimentName: exp.experimentObject || exp.experimentName || 'Experiment',
-      chemicals: (exp.requiredInventory || []).map(r => ({
-        chemicalName: r.chemicalName,
-        quantityPerStudent: r.quantity,
-        unit: r.quantityUnit || 'mL'
-      }))
-    }));
-
-    mapped.forEach(m => {
-      if (!experiments.some(s => s.experimentName === m.experimentName && Number(s.experimentNo) === Number(m.experimentNo))) {
-        experiments.push(m);
-      }
-    });
-  }
-
-  // Attempt 5: Fallback search by resolved target lab or any experiments in MongoDB
+  // Fallback if 0 found: fetch all experiments in database
   if (experiments.length === 0) {
-    const targetLab = await resolveTargetLab(req);
-    if (targetLab) {
-      const byName = await LabStructure.find({
-        $or: [
-          { labId: targetLab._id },
-          { labName: { $regex: new RegExp(`^${targetLab.labName || targetLab.name}`, 'i') } },
-          { courseType: targetLab.courseType, year: targetLab.year, semester: targetLab.semester }
-        ]
-      }).lean().sort({ subject: 1, experimentNo: 1 });
-      experiments = byName;
-    }
-
-    if (experiments.length === 0) {
-      experiments = await LabStructure.find({}).lean().sort({ subject: 1, experimentNo: 1 });
-    }
+    experiments = await LabStructure.find({}).lean().sort({ subject: 1, experimentNo: 1 });
   }
 
   // Debug log always
