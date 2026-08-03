@@ -67,7 +67,10 @@ const assignAdmin = asyncHandler(async (req, res) => {
       role: 'labAdmin',
       isApproved: true,
       labId: lab._id,
-      labName: lab.labName
+      labName: lab.labName,
+      year: lab.year || '1',
+      semester: lab.semester || '1',
+      courseType: lab.courseType || 'B.Pharm'
     });
   }
 
@@ -79,6 +82,9 @@ const assignAdmin = asyncHandler(async (req, res) => {
   admin.role = 'labAdmin';
   admin.labId = lab._id;
   admin.labName = lab.labName;
+  admin.year = lab.year || '1';
+  admin.semester = lab.semester || '1';
+  admin.courseType = lab.courseType || 'B.Pharm';
   admin.isApproved = true;
   if (name) admin.name = name;
   if (password) admin.password = password;
