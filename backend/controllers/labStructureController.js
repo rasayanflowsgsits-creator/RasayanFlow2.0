@@ -1,3 +1,4 @@
+// Lab Structure Controller - Updated for student experiment visibility & upload sync
 const asyncHandler = require('express-async-handler');
 const mongoose = require('mongoose');
 const LabStructure = require('../models/LabStructure');
