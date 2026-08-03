@@ -32,7 +32,7 @@ export default function LabExperimentsPage() {
   const [sheetUrl, setSheetUrl] = useState('');
   const [fetchingSheet, setFetchingSheet] = useState(false);
   
-  const currentLab = labs.find(l => l.id === activeLabId) || labs[0];
+  const currentLab = labs.find(l => (l.id === activeLabId || l._id === activeLabId)) || labs[0];
 
   useEffect(() => {
     fetchLabs();
@@ -42,7 +42,8 @@ export default function LabExperimentsPage() {
     if (activeLabId) {
       fetchLabStructure(activeLabId);
     } else if (labs.length > 0) {
-      setActiveLabId(labs[0].id);
+      const firstId = labs[0].id || labs[0]._id;
+      if (firstId) setActiveLabId(firstId);
     }
   }, [activeLabId, labs, fetchLabStructure]);
 
