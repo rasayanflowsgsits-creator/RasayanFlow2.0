@@ -40,20 +40,26 @@ export default function StudentLabDetail() {
 
   const labId = routeLabId || stateLab?._id || stateLab?.id;
 
+  const [experimentsData, setExperimentsData] = useState([]);
+  const [subjectsData, setSubjectsData] = useState({});
+
   // Fetch Lab Details & Experiments
   const fetchLabData = async () => {
     if (!labId) return;
     setLoading(true);
     try {
       const res = await api.get(`/lab/structure/student/${labId}`);
+      console.log('Experiments data:', res.data);
       if (res.data.success) {
-        setStructure(res.data.data || []);
+        const exps = res.data.experiments || res.data.data || [];
+        setStructure(exps);
+        setExperimentsData(exps);
+        setSubjectsData(res.data.subjects || {});
         setLabInfo(res.data.lab || null);
         setRequests(res.data.studentRequests || []);
       }
     } catch (err) {
-      console.error('Failed to load student lab structure:', err);
-      // Fallback request list load
+      console.error('Error fetching student lab structure:', err);
       try {
         const reqRes = await api.get(`/student/requests/lab/${labId}`);
         if (reqRes.data.success) {
@@ -358,26 +364,46 @@ export default function StudentLabDetail() {
                               <thead className="bg-[#f4f6ee] dark:bg-[#28301f] text-[#3c4e23] dark:text-[#eef4e8] font-bold">
                                 <tr>
                                   <th className="px-3 py-2 border-b border-[#f0ede6] dark:border-[#3c452f]">Chemical Name</th>
-                                  <th className="px-3 py-2 border-b border-[#f0ede6] dark:border-[#3c452f] w-28">Quantity</th>
+                                  <th className="px-3 py-2 border-b border-[#f0ede6] dark:border-[#3c452f] w-16">Qty</th>
+                                  <th className="px-3 py-2 border-b border-[#f0ede6] dark:border-[#3c452f] w-16">Unit</th>
+                                  <th className="px-3 py-2 border-b border-[#f0ede6] dark:border-[#3c452f] w-36">Stock Status</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                {(exp.chemicals || []).map((chem, idx) => (
-                                  <tr 
-                                    key={idx} 
-                                    className={`${idx % 2 === 0 ? 'bg-white dark:bg-[#1a1d16]' : 'bg-[#fafdf7] dark:bg-[#20251a]'} border-b last:border-none border-[#f0ede6] dark:border-[#3c452f]`}
-                                  >
-                                    <td className="px-3 py-2 font-medium text-gray-800 dark:text-gray-200">
-                                      {chem.chemicalName}
-                                    </td>
-                                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400 font-semibold">
-                                      {chem.quantityPerStudent || chem.quantity || 1} {chem.unit || 'mL'}
-                                    </td>
-                                  </tr>
-                                ))}
+                                {(exp.chemicals || []).map((chem, idx) => {
+                                  const statusText = chem.stockStatus || 'Not in Stock';
+                                  const isAvailable = statusText.includes('In Stock');
+                                  const isLow = statusText.includes('Low Stock');
+                                  return (
+                                    <tr 
+                                      key={idx} 
+                                      className={`${idx % 2 === 0 ? 'bg-white dark:bg-[#1a1d16]' : 'bg-[#fafdf7] dark:bg-[#20251a]'} border-b last:border-none border-[#f0ede6] dark:border-[#3c452f]`}
+                                    >
+                                      <td className="px-3 py-2 font-medium text-gray-800 dark:text-gray-200">
+                                        {chem.chemicalName}
+                                      </td>
+                                      <td className="px-3 py-2 text-gray-600 dark:text-gray-400 font-semibold">
+                                        {chem.quantityPerStudent || chem.quantity || 1}
+                                      </td>
+                                      <td className="px-3 py-2 text-gray-500 font-medium">
+                                        {chem.unit || 'mL'}
+                                      </td>
+                                      <td className="px-3 py-2">
+                                        <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
+                                          isAvailable ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' :
+                                          isLow ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' :
+                                          'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300'
+                                        }`}>
+                                          {isAvailable ? '✅ ' : isLow ? '⚠️ ' : '❌ '}
+                                          {statusText}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
                                 {(!exp.chemicals || exp.chemicals.length === 0) && (
                                   <tr>
-                                    <td colSpan="2" className="px-3 py-2 text-gray-400 italic text-center">
+                                    <td colSpan="4" className="px-3 py-2 text-gray-400 italic text-center">
                                       No chemicals configured
                                     </td>
                                   </tr>

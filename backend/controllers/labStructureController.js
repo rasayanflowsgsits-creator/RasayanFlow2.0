@@ -257,6 +257,8 @@ const getStructure = asyncHandler(async (req, res) => {
 // @access  Private (Student)
 const getStudentStructure = asyncHandler(async (req, res) => {
   const targetId = req.params?.labId || req.query?.labId || req.body?.labId || req.user?.labId;
+  console.log('Searching for labId:', targetId);
+
   const lab = await resolveTargetLab(req);
   
   const actualLabId = lab ? lab._id : targetId;
@@ -303,6 +305,8 @@ const getStudentStructure = asyncHandler(async (req, res) => {
     structure = seeded;
   }
 
+  console.log('Found experiments:', structure.length);
+
   // Fetch student requests for this lab
   let studentRequests = [];
   if (req.user) {
@@ -320,14 +324,15 @@ const getStudentStructure = asyncHandler(async (req, res) => {
     
     exp.chemicals = (exp.chemicals || []).map(chem => {
       const invItem = inventory.find(i => i.chemicalName?.toLowerCase() === chem.chemicalName?.toLowerCase());
-      const stock = invItem ? invItem.quantity : 100;
+      const stock = invItem ? invItem.quantity : 0;
+      const reqQty = Number(chem.quantityPerStudent || chem.quantity || 1);
       
-      let stockStatus = 'Out';
-      if (stock >= (chem.quantityPerStudent || chem.quantity || 1)) {
-        stockStatus = 'Available';
+      let stockStatus = 'Not in Stock';
+      if (stock >= reqQty) {
+        stockStatus = `In Stock (${stock})`;
         anyAvailable = true;
       } else if (stock > 0) {
-        stockStatus = 'Low';
+        stockStatus = `Low Stock (${stock})`;
         allAvailable = false;
         anyAvailable = true;
       } else {
@@ -345,9 +350,22 @@ const getStudentStructure = asyncHandler(async (req, res) => {
     return exp;
   });
 
+  // Group experiments by subject
+  const subjectsGrouped = {};
+  enrichedStructure.forEach(exp => {
+    const subjKey = exp.subject || exp.labName || 'HAP - I (Human Anatomy & Physiology 1)';
+    if (!subjectsGrouped[subjKey]) {
+      subjectsGrouped[subjKey] = [];
+    }
+    subjectsGrouped[subjKey].push(exp);
+  });
+
   res.status(200).json({ 
     success: true, 
     labId: targetId,
+    totalExperiments: enrichedStructure.length,
+    subjects: subjectsGrouped,
+    experiments: enrichedStructure,
     lab: lab ? {
       _id: lab._id,
       id: lab._id,
