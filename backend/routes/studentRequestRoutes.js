@@ -2,6 +2,7 @@ const express = require('express');
 const {
   createRequest,
   getMyRequests,
+  getStudentRequestsForLab,
   getLabRequests,
   approveBulk,
   approveRequest,
@@ -19,6 +20,7 @@ router.use(authMiddleware);
 router.post('/', createRequest);
 router.get('/my', getMyRequests);
 router.get('/history', getStudentHistory);
+router.get('/lab/:labId', getStudentRequestsForLab);
 
 // Lab Admin routes
 router.get('/lab', getLabRequests);

@@ -18,6 +18,7 @@ router.use(authMiddleware);
 router.post('/upload', uploadStructure); // Ideally Lab Admin only, but controller handles auth implicitly by req.user.labId
 router.get('/', getStructure); // Lab Admin & Students
 router.get('/student', getStudentStructure); // Students
+router.get('/student/:labId', getStudentStructure); // Students for specific labId
 router.post('/experiment', addExperiment);
 router.put('/experiment/:id', updateExperiment);
 router.delete('/experiment/:id', deleteExperiment);

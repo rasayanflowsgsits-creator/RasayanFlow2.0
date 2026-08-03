@@ -1,1076 +1,639 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, FlaskConical, Package, Info, ExternalLink, Users, Beaker, Clock, CheckCircle2, XCircle, Search, ChevronRight } from 'lucide-react';
-import useAppStore from '../store/appStore';
+import { useEffect, useState, useMemo } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { 
+  ArrowLeft, FlaskConical, Beaker, CheckCircle2, Clock, 
+  XCircle, AlertTriangle, FileText, RefreshCw, Send, Check
+} from 'lucide-react';
+import api from '../services/api';
 import useAuthStore from '../store/authStore';
-import Card from '../components/ui/Card';
-import Table from '../components/ui/Table';
-import Button from '../components/ui/Button';
+import useAppStore from '../store/appStore';
 import Modal from '../components/ui/Modal';
-import Input from '../components/ui/Input';
-
-const CHEMICAL_HINTS = ['chemical', 'acid', 'base', 'solvent', 'reagent', 'drug', 'antibiotic', 'analgesic', 'sedative', 'iv fluid', 'emergency'];
-
-const isChemicalLike = (item) => {
-  const combined = `${item?.category || ''} ${item?.name || item?.itemName || ''}`.toLowerCase();
-  return CHEMICAL_HINTS.some((hint) => combined.includes(hint));
-};
-
-const buildAiFallbackAbstract = (item) => {
-  if (!isChemicalLike(item)) return '';
-  const itemName = item?.name || item?.itemName || 'This chemical';
-  const category = item?.category || 'chemical';
-  const storage = item?.storageLocation || 'designated storage';
-  const quantity = Number(item?.quantity || 0);
-  const quantityUnit = item?.quantityUnit || 'units';
-  const lowerName = itemName.toLowerCase();
-
-  let useCase = 'used for supervised laboratory learning, demonstration, and controlled handling.';
-  let precautions = 'Wear appropriate PPE, keep the container closed, and use only under supervision.';
-  let avoid = 'Avoid direct contact, inhalation, and incompatible mixing unless a protocol allows it.';
-
-  if (lowerName.includes('acid')) {
-    useCase = 'used for pH adjustment, titration work, cleaning protocols, and controlled reaction studies.';
-    precautions = 'Wear gloves, eye protection, and a lab coat; handle in a ventilated area and add acid to water, not the reverse.';
-    avoid = 'Avoid skin and eye contact, incompatible bases, metals, and uncontrolled dilution.';
-  } else if (lowerName.includes('solvent') || lowerName.includes('ethanol')) {
-    useCase = 'used as a solvent for preparation, extraction, cleaning, and sample handling in laboratory work.';
-    precautions = 'Keep away from heat and ignition sources and work in a well-ventilated area.';
-    avoid = 'Avoid open flames, sparks, and strong oxidizers unless a protocol explicitly permits it.';
-  } else if (lowerName.includes('antibiotic')) {
-    useCase = 'used in laboratory and teaching settings to study antimicrobial handling, dosage, and formulation concepts.';
-    precautions = 'Handle carefully, follow the approved protocol, and use sterile technique where required.';
-    avoid = 'Avoid unauthorized use, contamination, and application outside approved instruction or clinical protocol.';
-  } else if (lowerName.includes('sedative') || lowerName.includes('diazepam')) {
-    useCase = 'used in pharmacology teaching to demonstrate controlled drug handling, dosing concepts, and safety procedures.';
-    precautions = 'Treat as a controlled medicine, keep access restricted, and document every use.';
-    avoid = 'Avoid unauthorized handling, sharing, or use outside approved supervision and recordkeeping.';
-  }
-
-  return [
-    `AI-generated summary: ${itemName} is a ${category} item used in educational laboratory workflows.`,
-    `It is ${useCase}`,
-    `Current recorded stock is ${quantity} ${quantityUnit}, stored at ${storage}.`,
-    `Precautions: ${precautions}`,
-    `Avoid: ${avoid}`,
-    'This summary is generated automatically because no admin or PubMed abstract is available; verify with official references before critical use.',
-  ].join(' ');
-};
-
-const FALLBACK_EXPERIMENTS = [
-  {
-    id: 'exp-01',
-    _id: 'exp-01',
-    experimentNumber: 'Exp 01: Formulation & Evaluation of Simple Syrup IP',
-    experimentObject: 'To prepare and evaluate 100ml of Simple Syrup IP containing 66.7% w/w Sucrose as per Indian Pharmacopoeia standards.',
-    requiredInventory: [
-      { chemicalName: 'Sucrose IP Powder Grade', quantity: 66.7, quantityUnit: 'g' },
-      { chemicalName: 'Purified Water', quantity: 100, quantityUnit: 'mL' },
-      { chemicalName: 'Methylparaben Preservative', quantity: 0.1, quantityUnit: 'g' },
-      { chemicalName: 'Glycerin IP (Co-solvent)', quantity: 5, quantityUnit: 'mL' },
-      { chemicalName: 'Flavoring Agent (Peppermint Oil)', quantity: 0.5, quantityUnit: 'mL' }
-    ]
-  },
-  {
-    id: 'exp-02',
-    _id: 'exp-02',
-    experimentNumber: 'Exp 02: Assay of Paracetamol Pure Drug by UV Spectrophotometry',
-    experimentObject: 'To determine the percentage purity of Paracetamol API sample by measuring absorbance at 243nm.',
-    requiredInventory: [
-      { chemicalName: 'Paracetamol IP/BP Standard', quantity: 0.1, quantityUnit: 'g' },
-      { chemicalName: 'Sodium Hydroxide 0.1M', quantity: 50, quantityUnit: 'mL' },
-      { chemicalName: 'Ethanol 99.9% Absolute Grade', quantity: 25, quantityUnit: 'mL' },
-      { chemicalName: 'Hydrochloric Acid 0.1M', quantity: 10, quantityUnit: 'mL' },
-      { chemicalName: 'Distilled Water', quantity: 250, quantityUnit: 'mL' }
-    ]
-  },
-  {
-    id: 'exp-03',
-    _id: 'exp-03',
-    experimentNumber: 'Exp 03: Preparation & Standardization of 0.1M Hydrochloric Acid',
-    experimentObject: 'To prepare 1000ml of 0.1M HCl solution and standardize it against primary standard Sodium Carbonate using Methyl Orange indicator.',
-    requiredInventory: [
-      { chemicalName: 'Hydrochloric Acid 37% AR', quantity: 8.5, quantityUnit: 'mL' },
-      { chemicalName: 'Sodium Carbonate Anhydrous AR', quantity: 1.5, quantityUnit: 'g' },
-      { chemicalName: 'Methyl Orange Indicator Solution', quantity: 2, quantityUnit: 'mL' },
-      { chemicalName: 'Phenolphthalein Indicator Solution', quantity: 2, quantityUnit: 'mL' },
-      { chemicalName: 'Deionized Water', quantity: 1000, quantityUnit: 'mL' }
-    ]
-  },
-  {
-    id: 'exp-04',
-    _id: 'exp-04',
-    experimentNumber: 'Exp 04: Emulsion Preparation by Dry Gum Method (Castor Oil)',
-    experimentObject: 'To formulate a stable primary emulsion of Castor Oil using Acacia powder in 4:2:1 oil:water:gum ratio.',
-    requiredInventory: [
-      { chemicalName: 'Castor Oil IP Grade', quantity: 20, quantityUnit: 'mL' },
-      { chemicalName: 'Acacia Powder IP Grade', quantity: 5, quantityUnit: 'g' },
-      { chemicalName: 'Purified Water', quantity: 10, quantityUnit: 'mL' },
-      { chemicalName: 'Tragacanth Powder', quantity: 1, quantityUnit: 'g' },
-      { chemicalName: 'Amaranth Colorant Solution', quantity: 0.2, quantityUnit: 'mL' }
-    ]
-  },
-  {
-    id: 'exp-05',
-    _id: 'exp-05',
-    experimentNumber: 'Exp 05: Synthesis & Recrystallization of Aspirin (Acetylsalicylic Acid)',
-    experimentObject: 'To synthesize Aspirin from Salicylic Acid and Acetic Anhydride using Sulfuric Acid catalyst and determine melting point.',
-    requiredInventory: [
-      { chemicalName: 'Salicylic Acid AR Grade', quantity: 5, quantityUnit: 'g' },
-      { chemicalName: 'Acetic Anhydride AR Grade', quantity: 7, quantityUnit: 'mL' },
-      { chemicalName: 'Concentrated Sulfuric Acid 98%', quantity: 0.5, quantityUnit: 'mL' },
-      { chemicalName: 'Ferric Chloride 1% Solution', quantity: 2, quantityUnit: 'mL' },
-      { chemicalName: 'Ice Cold Water', quantity: 50, quantityUnit: 'mL' }
-    ]
-  },
-  {
-    id: 'exp-06',
-    _id: 'exp-06',
-    experimentNumber: 'Exp 06: Preparation & Standardization of 0.1M Sodium Hydroxide Solution',
-    experimentObject: 'To prepare 1L of 0.1M NaOH and standardize against Potassium Hydrogen Phthalate (KHP).',
-    requiredInventory: [
-      { chemicalName: 'Sodium Hydroxide Pellets AR', quantity: 4.2, quantityUnit: 'g' },
-      { chemicalName: 'Potassium Hydrogen Phthalate (KHP)', quantity: 2, quantityUnit: 'g' },
-      { chemicalName: 'Phenolphthalein Indicator Solution', quantity: 2, quantityUnit: 'mL' },
-      { chemicalName: 'Carbon Dioxide Free Water', quantity: 1000, quantityUnit: 'mL' },
-      { chemicalName: 'Oxalic Acid Standard Solution', quantity: 25, quantityUnit: 'mL' }
-    ]
-  },
-  {
-    id: 'exp-07',
-    _id: 'exp-07',
-    experimentNumber: 'Exp 07: Dissolution Rate Study of Paracetamol Tablets IP',
-    experimentObject: 'To perform in-vitro dissolution profile testing of 500mg Paracetamol tablets using USP Apparatus II (Paddle Method).',
-    requiredInventory: [
-      { chemicalName: 'Phosphate Buffer pH 5.8 Medium', quantity: 900, quantityUnit: 'mL' },
-      { chemicalName: 'Paracetamol IP/BP Standard', quantity: 0.05, quantityUnit: 'g' },
-      { chemicalName: 'Sodium Hydroxide Pellets AR', quantity: 2, quantityUnit: 'g' },
-      { chemicalName: 'Potassium Dihydrogen Phosphate AR', quantity: 6.8, quantityUnit: 'g' },
-      { chemicalName: 'Distilled Water', quantity: 1000, quantityUnit: 'mL' }
-    ]
-  },
-  {
-    id: 'exp-08',
-    _id: 'exp-08',
-    experimentNumber: 'Exp 08: Thin Layer Chromatography (TLC) Analysis of Plant Extracts',
-    experimentObject: 'To separate bioactive phytochemicals from crude extract on Silica Gel G plates using hexane-ethyl acetate mobile phase.',
-    requiredInventory: [
-      { chemicalName: 'Silica Gel G for TLC', quantity: 15, quantityUnit: 'g' },
-      { chemicalName: 'n-Hexane HPLC Grade', quantity: 30, quantityUnit: 'mL' },
-      { chemicalName: 'Ethyl Acetate AR Grade', quantity: 20, quantityUnit: 'mL' },
-      { chemicalName: 'Methanol 99.8% AR Grade', quantity: 15, quantityUnit: 'mL' },
-      { chemicalName: 'Iodine Crystals for Visualization', quantity: 2, quantityUnit: 'g' }
-    ]
-  },
-  {
-    id: 'exp-09',
-    _id: 'exp-09',
-    experimentNumber: 'Exp 09: Formulation & Evaluation of Calamine Lotion IP',
-    experimentObject: 'To prepare 100g Calamine Lotion containing Calamine, Zinc Oxide, Bentonite, and Glycerin as a soothing topical suspension.',
-    requiredInventory: [
-      { chemicalName: 'Calamine IP Powder', quantity: 15, quantityUnit: 'g' },
-      { chemicalName: 'Zinc Oxide IP Powder', quantity: 5, quantityUnit: 'g' },
-      { chemicalName: 'Bentonite IP Clay Powder', quantity: 3, quantityUnit: 'g' },
-      { chemicalName: 'Glycerin IP (Co-solvent)', quantity: 5, quantityUnit: 'mL' },
-      { chemicalName: 'Calcium Hydroxide Solution (Lime Water)', quantity: 100, quantityUnit: 'mL' }
-    ]
-  },
-  {
-    id: 'exp-10',
-    _id: 'exp-10',
-    experimentNumber: 'Exp 10: Wet Granulation & Compression of Lactose Tablets',
-    experimentObject: 'To prepare pharmaceutical granules using Starch Paste binder and compress into 300mg placebo tablets.',
-    requiredInventory: [
-      { chemicalName: 'Lactose Monohydrate Powder IP', quantity: 250, quantityUnit: 'g' },
-      { chemicalName: 'Maize Starch Powder IP', quantity: 50, quantityUnit: 'g' },
-      { chemicalName: 'Magnesium Stearate Lubricant', quantity: 3, quantityUnit: 'g' },
-      { chemicalName: 'Talc Powder IP Grade', quantity: 6, quantityUnit: 'g' },
-      { chemicalName: 'Purified Water', quantity: 50, quantityUnit: 'mL' }
-    ]
-  },
-  {
-    id: 'exp-11',
-    _id: 'exp-11',
-    experimentNumber: 'Exp 11: Determination of Partition Coefficient (Oil/Water) of Salicylic Acid',
-    experimentObject: 'To determine the partition coefficient (P) of Salicylic Acid between n-Octanol and Water at room temperature.',
-    requiredInventory: [
-      { chemicalName: 'Salicylic Acid AR Grade', quantity: 1, quantityUnit: 'g' },
-      { chemicalName: 'n-Octanol AR Grade', quantity: 50, quantityUnit: 'mL' },
-      { chemicalName: 'Sodium Hydroxide 0.05M', quantity: 50, quantityUnit: 'mL' },
-      { chemicalName: 'Phenolphthalein Indicator Solution', quantity: 1, quantityUnit: 'mL' },
-      { chemicalName: 'Deionized Water', quantity: 100, quantityUnit: 'mL' }
-    ]
-  },
-  {
-    id: 'exp-12',
-    _id: 'exp-12',
-    experimentNumber: 'Exp 12: Limit Test for Chloride in Pharmacopoeial Drugs',
-    experimentObject: 'To compare opalescence produced by test sample against standard Chloride solution using Silver Nitrate reagent.',
-    requiredInventory: [
-      { chemicalName: 'Silver Nitrate 0.1M Solution', quantity: 10, quantityUnit: 'mL' },
-      { chemicalName: 'Nitric Acid Dilute (10%)', quantity: 10, quantityUnit: 'mL' },
-      { chemicalName: 'Sodium Chloride Standard Solution (10ppm)', quantity: 10, quantityUnit: 'mL' },
-      { chemicalName: 'Sodium Bicarbonate Test Sample', quantity: 1, quantityUnit: 'g' },
-      { chemicalName: 'Purified Water', quantity: 50, quantityUnit: 'mL' }
-    ]
-  },
-  {
-    id: 'exp-13',
-    _id: 'exp-13',
-    experimentNumber: 'Exp 13: Limit Test for Heavy Metals (Lead) in Chemical Substances',
-    experimentObject: 'To determine trace Lead impurities using Hydrogen Sulfide / Thioacetamide reagent comparison method.',
-    requiredInventory: [
-      { chemicalName: 'Lead Standard Solution (20ppm)', quantity: 2, quantityUnit: 'mL' },
-      { chemicalName: 'Thioacetamide Reagent Solution', quantity: 2, quantityUnit: 'mL' },
-      { chemicalName: 'Ammonia Buffer Solution pH 3.5', quantity: 5, quantityUnit: 'mL' },
-      { chemicalName: 'Acetic Acid Dilute (6%)', quantity: 5, quantityUnit: 'mL' },
-      { chemicalName: 'Glycerol IP Grade', quantity: 2, quantityUnit: 'mL' }
-    ]
-  },
-  {
-    id: 'exp-14',
-    _id: 'exp-14',
-    experimentNumber: 'Exp 14: Determination of Saponification Value of Fixed Oils',
-    experimentObject: 'To determine mg of KOH required to saponify 1g of Sunflower Oil sample using alcoholic KOH back titration.',
-    requiredInventory: [
-      { chemicalName: 'Potassium Hydroxide Alcoholic 0.5M', quantity: 25, quantityUnit: 'mL' },
-      { chemicalName: 'Hydrochloric Acid 0.5M Standard', quantity: 50, quantityUnit: 'mL' },
-      { chemicalName: 'Phenolphthalein Indicator Solution', quantity: 1, quantityUnit: 'mL' },
-      { chemicalName: 'Ethanol 99.9% Absolute Grade', quantity: 25, quantityUnit: 'mL' },
-      { chemicalName: 'Fixed Oil Sample (Sunflower Oil)', quantity: 2, quantityUnit: 'g' }
-    ]
-  },
-  {
-    id: 'exp-15',
-    _id: 'exp-15',
-    experimentNumber: 'Exp 15: Preparation & Evaluation of Cold Cream W/O Ointment Base',
-    experimentObject: 'To formulate 50g of Cold Cream containing Beeswax, Liquid Paraffin, and Borax as a water-in-oil cosmetic emulsion base.',
-    requiredInventory: [
-      { chemicalName: 'White Beeswax IP Grade', quantity: 10, quantityUnit: 'g' },
-      { chemicalName: 'Liquid Paraffin Heavy IP', quantity: 25, quantityUnit: 'mL' },
-      { chemicalName: 'Borax (Sodium Tetraborate) Powder', quantity: 0.5, quantityUnit: 'g' },
-      { chemicalName: 'Rose Water Perfume Grade', quantity: 15, quantityUnit: 'mL' },
-      { chemicalName: 'Cetostearyl Alcohol Excipient', quantity: 2, quantityUnit: 'g' }
-    ]
-  }
-];
-
-const FALLBACK_INVENTORY = [
-  {
-    id: 'inv-01',
-    _id: 'inv-01',
-    name: 'Paracetamol IP/BP Standard',
-    chemicalName: 'Paracetamol API',
-    itemCode: 'PCM-101',
-    category: 'Analgesic / Active Pharmaceutical Ingredient',
-    quantity: 450,
-    quantityUnit: 'g',
-    storageLocation: 'Cabinet A - Shelf 2 (API Storage)',
-    manufacturingCompany: 'Cipla Quality Chemicals',
-    expiryDate: '2028-12-31',
-    displayAbstract: 'Paracetamol (Acetaminophen) API used for formulation studies, UV spectrophotometric assay, dissolution testing, and wet granulation demonstrations.',
-  },
-  {
-    id: 'inv-02',
-    _id: 'inv-02',
-    name: 'Hydrochloric Acid 37% AR',
-    chemicalName: 'Hydrochloric Acid',
-    itemCode: 'HCL-37',
-    category: 'Acid Reagent',
-    quantity: 2500,
-    quantityUnit: 'mL',
-    storageLocation: 'Acid Safety Vault - Room 102',
-    manufacturingCompany: 'Merck Life Science India',
-    expiryDate: '2029-06-30',
-    displayAbstract: 'Concentrated Hydrochloric Acid (37% Analytical Reagent) used for volumetric solution preparation, pH adjustment, and acid-base titration experiments.',
-  },
-  {
-    id: 'inv-03',
-    _id: 'inv-03',
-    name: 'Ethanol 99.9% Absolute Grade',
-    chemicalName: 'Ethanol Absolute',
-    itemCode: 'ETH-99',
-    category: 'Organic Solvent',
-    quantity: 5000,
-    quantityUnit: 'mL',
-    storageLocation: 'Flammables Storage Cabinet C',
-    manufacturingCompany: 'Thermo Fisher Scientific',
-    expiryDate: '2030-01-01',
-    displayAbstract: 'Absolute Ethanol (99.9%) used for extraction of phytochemicals, tincture preparation, elution solvent in TLC, and UV spectrophotometer sample dilution.',
-  },
-  {
-    id: 'inv-04',
-    _id: 'inv-04',
-    name: 'Sodium Hydroxide Pellets AR',
-    chemicalName: 'Sodium Hydroxide',
-    itemCode: 'NAOH-PEL',
-    category: 'Alkaline Base Reagent',
-    quantity: 1200,
-    quantityUnit: 'g',
-    storageLocation: 'Desiccator Cabinet D',
-    manufacturingCompany: 'Loba Chemie Laboratory Reagents',
-    expiryDate: '2028-11-15',
-    displayAbstract: 'Sodium Hydroxide Pellets (Analytical Reagent) used for volumetric solution standardization, saponification value determination, and neutralization reactions.',
-  },
-  {
-    id: 'inv-05',
-    _id: 'inv-05',
-    name: 'Sucrose IP Powder Grade',
-    chemicalName: 'Sucrose',
-    itemCode: 'SUC-100',
-    category: 'Excipient / Sweetening Agent',
-    quantity: 2000,
-    quantityUnit: 'g',
-    storageLocation: 'Raw Material Storage - Shelf 1',
-    manufacturingCompany: 'Tate & Lyle Pharma Grade',
-    expiryDate: '2027-10-20',
-    displayAbstract: 'Pure Pharmaceutical Grade Sucrose used for formulating syrups, coating tablets, and viscosity modification experiments.',
-  }
-];
-
-const TABS = [
-  { id: 'experiments', label: 'Experiments', icon: FlaskConical },
-  { id: 'inventory', label: 'Inventory', icon: Package },
-  { id: 'teams', label: 'My Teams', icon: Users },
-  { id: 'activity', label: 'My Activity', icon: Clock },
-];
-
-const getStockBadge = (chemName, inventory) => {
-  const item = inventory.find(i => i.name?.toLowerCase() === chemName?.toLowerCase() || i.itemName?.toLowerCase() === chemName?.toLowerCase());
-  if (!item) return { label: 'Not Found', cls: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400' };
-  const qty = Number(item.quantity || 0);
-  if (qty === 0) return { label: 'Out of Stock', cls: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' };
-  if (qty <= (item.minThreshold || 5)) return { label: `Low (${qty})`, cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' };
-  return { label: `In Stock (${qty})`, cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' };
-};
-
-const getInitials = (name) => {
-  if (!name) return '?';
-  const parts = name.split(' ');
-  return parts.length >= 2 ? (parts[0][0] + parts[1][0]).toUpperCase() : name.slice(0, 2).toUpperCase();
-};
-
-const AVATAR_COLORS = [
-  'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
-  'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-  'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-  'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300',
-  'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
-];
+import Button from '../components/ui/Button';
 
 export default function StudentLabDetail() {
-  const { id } = useParams();
+  const { id: routeLabId } = useParams();
   const navigate = useNavigate();
-  const {
-    labs, inventory, transactions, experiments, teams, eligibleTeamMembers, teamAllotments,
-    fetchLabs, fetchInventory, fetchTransactions, fetchExperiments, fetchTeams,
-    fetchEligibleTeamMembers, fetchTeamAllotments, createTeam, updateTeam,
-    createBorrowRequest, createExperimentRequest, setToast,
-  } = useAppStore();
-  const user = useAuthStore((state) => state.user);
-
-  const [activeTab, setActiveTab] = useState('experiments');
-  const [borrowOpen, setBorrowOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [inventorySearch, setInventorySearch] = useState('');
-  const [experimentSearch, setExperimentSearch] = useState('');
-  const [expandedAbstract, setExpandedAbstract] = useState(null);
-  const [requestOpen, setRequestOpen] = useState(false);
-  const [selectedExperiment, setSelectedExperiment] = useState(null);
-  const [requestingExperiment, setRequestingExperiment] = useState(false);
-  const [experimentRequestForm, setExperimentRequestForm] = useState({ purpose: '', preferredDate: '', notes: '', teamId: '' });
-  const [teamModalOpen, setTeamModalOpen] = useState(false);
-  const [editingTeamId, setEditingTeamId] = useState('');
-  const [savingTeam, setSavingTeam] = useState(false);
-  const [teamForm, setTeamForm] = useState({ name: '', memberIds: [] });
-  const [borrowForm, setBorrowForm] = useState({ quantity: '', purpose: '', neededUntil: '', notes: '' });
-  const [activityFilter, setActivityFilter] = useState('all');
-
-  // Data fetching
-  useEffect(() => {
-    fetchLabs();
-    fetchTransactions();
-    if (id) {
-      fetchInventory(id);
-      fetchExperiments({ labId: id });
-      fetchTeams(id);
-      fetchTeamAllotments({ labId: id });
-    }
-    fetchEligibleTeamMembers();
-  }, [fetchEligibleTeamMembers, fetchExperiments, fetchLabs, fetchTeamAllotments, fetchTeams, fetchTransactions, fetchInventory, id]);
-
-  // Reduced polling: 30s instead of 5s
-  useEffect(() => {
-    if (user?.isPreview) return;
-    const intervalId = setInterval(() => {
-      fetchTransactions();
-      if (id) {
-        fetchInventory(id);
-        fetchExperiments({ labId: id });
-        fetchTeams(id);
-        fetchTeamAllotments({ labId: id });
-      }
-    }, 30000);
-    return () => clearInterval(intervalId);
-  }, [fetchExperiments, fetchTeamAllotments, fetchTeams, fetchTransactions, fetchInventory, id, user?.isPreview]);
-
   const location = useLocation();
   const stateLab = location.state?.lab;
 
-  const lab = useMemo(() => {
+  const user = useAuthStore((state) => state.user);
+  const setToast = useAppStore((state) => state.setToast);
+
+  const [loading, setLoading] = useState(true);
+  const [structure, setStructure] = useState([]);
+  const [labInfo, setLabInfo] = useState(null);
+  const [requests, setRequests] = useState([]);
+
+  // Modal States
+  const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const [selectedExp, setSelectedExp] = useState(null);
+  const [notes, setNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  // Duplicate Warning Modal State
+  const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
+  const [duplicateInfo, setDuplicateInfo] = useState(null);
+
+  // Details Modal State (for Approved / Rejected / Pending view)
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [activeRequestDetails, setActiveRequestDetails] = useState(null);
+
+  const labId = routeLabId || stateLab?._id || stateLab?.id;
+
+  // Fetch Lab Details & Experiments
+  const fetchLabData = async () => {
+    if (!labId) return;
+    setLoading(true);
+    try {
+      const res = await api.get(`/lab/structure/student/${labId}`);
+      if (res.data.success) {
+        setStructure(res.data.data || []);
+        setLabInfo(res.data.lab || null);
+        setRequests(res.data.studentRequests || []);
+      }
+    } catch (err) {
+      console.error('Failed to load student lab structure:', err);
+      // Fallback request list load
+      try {
+        const reqRes = await api.get(`/student/requests/lab/${labId}`);
+        if (reqRes.data.success) {
+          setRequests(reqRes.data.data || []);
+        }
+      } catch (e) {
+        console.error('Failed to load lab requests:', e);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLabData();
+  }, [labId]);
+
+  // Derived display information for target lab
+  const currentLab = useMemo(() => {
+    if (labInfo) return labInfo;
     if (stateLab) return stateLab;
-    const found = labs.find((entry) => String(entry.id || entry._id) === String(id) || String(entry.labCode) === String(id) || String(entry.name || entry.labName).toLowerCase() === String(id).toLowerCase());
-    if (found) return found;
     return {
-      _id: id || 'preview-lab-1',
-      id: id || 'preview-lab-1',
-      name: id ? (id.length > 20 ? 'Pharmaceutics Practical Lab' : (id.charAt(0).toUpperCase() + id.slice(1))) : 'Pharmaceutics Lab - I',
-      labName: id ? (id.length > 20 ? 'Pharmaceutics Practical Lab' : (id.charAt(0).toUpperCase() + id.slice(1))) : 'Pharmaceutics Lab - I',
-      labCode: '1001',
-      location: 'Block A, Room 102',
-      admin: 'user10 (Faculty In-Charge)',
-      adminEmail: 'user10@gmail.com',
+      _id: labId,
+      id: labId,
+      name: 'HAP1',
+      labName: 'HAP1',
+      labCode: '0001',
       courseType: 'B.Pharm',
+      admin: 'user10',
+      adminEmail: 'user10@gmail.com',
       department: 'Pharmaceutics'
     };
-  }, [id, labs, stateLab]);
+  }, [labInfo, stateLab, labId]);
 
-  const rows = useMemo(() => {
-    const query = inventorySearch.trim().toLowerCase();
-    const labInventory = inventory.filter((item) => !item.labId || String(item.labId) === String(id) || String(item.labId?._id) === String(id));
-    const activeInventoryList = labInventory.length > 0 ? labInventory : FALLBACK_INVENTORY.map(i => ({ ...i, labId: id }));
-
-    const filtered = query
-      ? activeInventoryList.filter((item) => [item.name, item.chemicalName, item.itemCode, item.category, item.storageLocation].filter(Boolean).some((value) => value.toLowerCase().includes(query)))
-      : activeInventoryList;
-
-    return filtered.map((item) => {
-      const fallbackAbstract = buildAiFallbackAbstract(item);
-      return {
-        ...item,
-        id: item.id || item._id,
-        manufacturingCompanyDisplay: item.manufacturingCompany || 'Cipla Quality Chemicals',
-        quantityDisplay: `${item.quantity} ${item.quantityUnit || 'units'}`,
-        expiryDisplay: item.expiryDate ? new Date(item.expiryDate).toLocaleDateString() : '2028-12-31',
-        storageDisplay: item.storageLocation || 'Main Lab Storage Shelf A',
-        displayAbstract: item.displayAbstract || item.abstract || fallbackAbstract,
-        isAiGenerated: Boolean(item.isAiGenerated || (!item.displayAbstract && !item.abstract && fallbackAbstract)),
-      };
+  // Unique chemicals count
+  const uniqueChemicalsCount = useMemo(() => {
+    const set = new Set();
+    structure.forEach((exp) => {
+      (exp.chemicals || []).forEach((c) => {
+        if (c.chemicalName) set.add(c.chemicalName.toLowerCase().trim());
+      });
     });
-  }, [inventory, inventorySearch, id]);
+    return set.size;
+  }, [structure]);
 
-  const myRequests = useMemo(
-    () => transactions.filter((tx) => String(tx.labId) === String(id) || String(tx.labId?._id) === String(id)),
-    [id, transactions]
-  );
+  // Group experiments by subject
+  const groupedExperiments = useMemo(() => {
+    const groups = {};
+    structure.forEach((exp) => {
+      const subj = exp.subject || exp.labName || 'HAP - I (Human Anatomy & Physiology 1)';
+      if (!groups[subj]) groups[subj] = [];
+      groups[subj].push(exp);
+    });
+    return groups;
+  }, [structure]);
 
-  const myTeams = useMemo(() => teams.filter((team) => String(team.labId) === String(id)), [id, teams]);
-  const teamsICanLead = useMemo(() => myTeams.filter((team) => String(team.leaderId) === String(user?.id)), [myTeams, user]);
-
-  const myChemicalShares = useMemo(
-    () => teamAllotments
-      .map((allotment) => {
-        const myShare = allotment.allocations.find((allocation) => String(allocation.userId) === String(user?.id));
-        return myShare ? { ...allotment, myShareQuantity: myShare.quantity } : null;
-      })
-      .filter(Boolean),
-    [teamAllotments, user]
-  );
-
-  const selectableMembers = useMemo(
-    () => eligibleTeamMembers.filter((member) => String(member.id) !== String(user?.id)),
-    [eligibleTeamMembers, user]
-  );
-
-  const experimentRows = useMemo(() => {
-    const query = experimentSearch.trim().toLowerCase();
-    const labExperiments = experiments.filter((experiment) => !experiment.labId || String(experiment.labId) === String(id) || String(experiment.labId?._id) === String(id));
-    const activeExpList = labExperiments.length > 0 ? labExperiments : FALLBACK_EXPERIMENTS.map(e => ({ ...e, labId: id }));
-
-    if (!query) return activeExpList;
-    return activeExpList.filter((experiment) =>
-      [experiment.experimentNumber, experiment.experimentObject, ...(experiment.requiredInventory || []).map((entry) => entry.chemicalName)]
-        .filter(Boolean)
-        .some((value) => value.toLowerCase().includes(query))
+  // Find latest student request for a specific experiment
+  const getExperimentRequest = (exp) => {
+    return requests.find((r) => 
+      Number(r.experimentNo) === Number(exp.experimentNo) || 
+      (r.experimentName && exp.experimentName && r.experimentName.toLowerCase().trim() === exp.experimentName.toLowerCase().trim())
     );
-  }, [experimentSearch, experiments, id]);
-
-  const filteredActivity = useMemo(() => {
-    if (activityFilter === 'all') return myRequests;
-    return myRequests.filter(tx => tx.status === activityFilter);
-  }, [myRequests, activityFilter]);
-
-  // Handlers
-  const openBorrowModal = (item) => {
-    setSelectedItem(item);
-    setBorrowForm({ 
-      quantity: String(item?.quantity || 10), 
-      purpose: `Lab Practical Use (${lab?.name || 'Practical Subject'})`, 
-      neededUntil: new Date(Date.now() + 86400000).toISOString().split('T')[0], 
-      notes: '' 
-    });
-    setBorrowOpen(true);
   };
 
-  const openDirectChemicalRequest = (chemicalName, defaultQty, defaultUnit, experiment) => {
-    const matchedItem = rows.find(r => r.name?.toLowerCase().includes(chemicalName?.toLowerCase()) || r.chemicalName?.toLowerCase().includes(chemicalName?.toLowerCase())) || {
-      id: 'inv-item-' + Date.now(),
-      name: chemicalName,
-      chemicalName: chemicalName,
-      quantityUnit: defaultUnit || 'mL',
-      quantity: 500
-    };
-    setSelectedItem(matchedItem);
-    setBorrowForm({
-      quantity: String(defaultQty || 10),
-      purpose: experiment ? `For ${experiment.experimentNumber || 'Practical Experiment'}` : `Lab Practical - ${chemicalName}`,
-      neededUntil: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-      notes: `Requested from student dashboard for ${lab?.name || 'Practical Subject'}`
-    });
-    setBorrowOpen(true);
+  // Stat Card Counts
+  const pendingRequestsCount = useMemo(() => 
+    requests.filter((r) => r.overallStatus === 'Pending').length,
+  [requests]);
+
+  const approvedRequestsCount = useMemo(() => 
+    requests.filter((r) => r.overallStatus === 'Approved' || r.overallStatus === 'Partial').length,
+  [requests]);
+
+  // Open Request Modal
+  const handleOpenRequestModal = (exp) => {
+    // Check if there is already a PENDING request locally
+    const existingPending = requests.find((r) => 
+      (Number(r.experimentNo) === Number(exp.experimentNo) || r.experimentName === exp.experimentName) &&
+      r.overallStatus === 'Pending'
+    );
+
+    if (existingPending) {
+      const formattedDate = new Date(existingPending.requestedAt).toLocaleDateString('en-GB', { 
+        day: 'numeric', month: 'long', year: 'numeric' 
+      });
+      setDuplicateInfo({
+        requestId: existingPending.requestId || 'STU-REQ-123',
+        submittedAt: formattedDate
+      });
+      setDuplicateModalOpen(true);
+      return;
+    }
+
+    setSelectedExp(exp);
+    setNotes('');
+    setRequestModalOpen(true);
   };
 
-  const submitBorrowRequest = async () => {
-    if (!selectedItem || !borrowForm.quantity || !borrowForm.purpose.trim() || !borrowForm.neededUntil) return;
+  // Submit Chemical Request
+  const handleConfirmRequest = async () => {
+    if (!selectedExp) return;
     setSubmitting(true);
     try {
-      await createBorrowRequest({
-        itemId: selectedItem.id || selectedItem._id,
-        quantity: borrowForm.quantity,
-        purpose: borrowForm.purpose.trim(),
-        neededUntil: borrowForm.neededUntil,
-        notes: borrowForm.notes.trim(),
-      });
-      setToast({ type: 'success', message: 'Borrow request submitted for admin approval.' });
-      setBorrowOpen(false);
-    } catch (error) {
-      setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to submit borrow request.' });
+      const payload = {
+        labId: currentLab._id || currentLab.id || labId,
+        labName: currentLab.labName || currentLab.name || 'HAP1',
+        year: currentLab.year || user?.year || '1',
+        semester: currentLab.semester || user?.semester || '1',
+        subject: selectedExp.subject || 'HAP - I',
+        experimentNo: selectedExp.experimentNo,
+        experimentName: selectedExp.experimentName,
+        chemicalsRequested: (selectedExp.chemicals || []).map((c) => ({
+          chemicalName: c.chemicalName,
+          quantityRequested: Number(c.quantityPerStudent || c.quantity || 1),
+          unit: c.unit || 'mL'
+        })),
+        notes: notes.trim()
+      };
+
+      const res = await api.post('/student/requests', payload);
+
+      if (res.data.success) {
+        setToast({ 
+          type: 'success', 
+          message: '✅ Request submitted! Lab Admin will review shortly.' 
+        });
+        setRequestModalOpen(false);
+        // Immediately add/update request in local state without full page refresh
+        const newReq = res.data.data;
+        setRequests((prev) => [newReq, ...prev.filter((r) => r.requestId !== newReq.requestId)]);
+      }
+    } catch (err) {
+      if (err.response?.status === 409 || err.response?.data?.isDuplicate) {
+        setRequestModalOpen(false);
+        const dup = err.response?.data?.data;
+        const formattedDate = dup?.requestedAt 
+          ? new Date(dup.requestedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+          : '31 July 2026';
+
+        setDuplicateInfo({
+          requestId: dup?.requestId || 'STU-REQ-123',
+          submittedAt: formattedDate
+        });
+        setDuplicateModalOpen(true);
+      } else {
+        setToast({ 
+          type: 'error', 
+          message: err.response?.data?.message || 'Failed to submit request.' 
+        });
+      }
     } finally {
       setSubmitting(false);
     }
   };
 
-  const openExperimentRequest = (experiment) => {
-    setSelectedExperiment(experiment);
-    setExperimentRequestForm({ purpose: '', preferredDate: '', notes: '', teamId: '' });
-    setRequestOpen(true);
-  };
-
-  const openCreateTeamModal = () => {
-    setEditingTeamId('');
-    setTeamForm({ name: '', memberIds: [] });
-    setTeamModalOpen(true);
-  };
-
-  const openEditTeamModal = (team) => {
-    setEditingTeamId(team.id);
-    setTeamForm({ name: team.name, memberIds: team.members.map((member) => member.id) });
-    setTeamModalOpen(true);
-  };
-
-  const toggleTeamMember = (memberId) => {
-    setTeamForm((state) => ({
-      ...state,
-      memberIds: state.memberIds.includes(memberId)
-        ? state.memberIds.filter((idValue) => idValue !== memberId)
-        : [...state.memberIds, memberId],
-    }));
-  };
-
-  const handleSaveTeam = async () => {
-    if (!teamForm.name.trim()) { setToast({ type: 'error', message: 'Team name is required.' }); return; }
-    setSavingTeam(true);
-    try {
-      if (editingTeamId) {
-        await updateTeam(editingTeamId, { name: teamForm.name.trim(), memberIds: teamForm.memberIds });
-        setToast({ type: 'success', message: 'Team updated.' });
-      } else {
-        await createTeam({ name: teamForm.name.trim(), labId: id, memberIds: teamForm.memberIds });
-        setToast({ type: 'success', message: 'Team created.' });
-      }
-      await fetchTeams(id);
-      setTeamModalOpen(false);
-      setEditingTeamId('');
-      setTeamForm({ name: '', memberIds: [] });
-    } catch (error) {
-      setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to save team.' });
-    } finally {
-      setSavingTeam(false);
-    }
-  };
-
-  const submitExperimentRequest = async () => {
-    if (!selectedExperiment) return;
-    setRequestingExperiment(true);
-    try {
-      await createExperimentRequest({
-        experimentId: selectedExperiment.id,
-        teamId: experimentRequestForm.teamId || null,
-        purpose: experimentRequestForm.purpose.trim(),
-        preferredDate: experimentRequestForm.preferredDate || null,
-        notes: experimentRequestForm.notes.trim(),
-      });
-      setToast({ type: 'success', message: experimentRequestForm.teamId ? 'Team experiment request submitted.' : 'Experiment request submitted.' });
-      setRequestOpen(false);
-      await fetchTransactions();
-    } catch (error) {
-      setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to submit experiment request.' });
-    } finally {
-      setRequestingExperiment(false);
-    }
+  // View Details Modal
+  const handleViewDetails = (req) => {
+    setActiveRequestDetails(req);
+    setDetailsModalOpen(true);
   };
 
   return (
-    <div className='space-y-6 pb-10'>
-      {/* Breadcrumb + Lab Header */}
-      <div className="bg-[#fdfdf7] dark:bg-[#1f2419] p-6 rounded-2xl border border-[#d9e1ca] dark:border-[#414a33] shadow-sm">
-        <Button variant='outline' onClick={() => navigate('/')} className='mb-4 px-3 py-1.5 text-xs'>
-          <ArrowLeft size={14} className='mr-1.5' /> Dashboard
-        </Button>
-        <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#f4f6ee] text-[#5c6e46] dark:bg-[#2a3121] dark:text-[#c5d0b5]">
-            <Beaker className="h-7 w-7" />
+    <div className="min-h-screen pb-16">
+      {/* STICKY TOP BAR */}
+      <div className="sticky top-0 z-20 bg-[#fdfdf7]/95 dark:bg-[#1a1d16]/95 backdrop-blur-md pb-4 pt-2 border-b border-[#e8eadf] dark:border-[#3c452f] mb-6">
+        <div className="flex flex-col gap-1">
+          {/* Back Button */}
+          <button 
+            onClick={() => navigate(-1)} 
+            className="self-start inline-flex items-center gap-1.5 text-sm font-semibold text-[#556b2f] hover:text-[#3c4e23] dark:text-[#c8a030] dark:hover:text-[#e5ba45] hover:underline transition-all mb-1"
+          >
+            <ArrowLeft size={16} /> Back to My Labs
+          </button>
+          
+          {/* Lab Title Header */}
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div>
+              <h1 className="text-2xl font-bold text-[#3c4e23] dark:text-[#eef4e8] flex items-center gap-2">
+                <Beaker className="w-6 h-6 text-[#556b2f] dark:text-[#c8a030]" />
+                {currentLab.labName || currentLab.name || 'HAP1'}
+              </h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Lab Code: <span className="font-semibold text-gray-700 dark:text-gray-300">{currentLab.labCode || '0001'}</span> • Course: <span className="font-semibold text-gray-700 dark:text-gray-300">{currentLab.courseType || 'B.Pharm'}</span> • Admins: <span className="font-semibold text-gray-700 dark:text-gray-300">{currentLab.admin || 'user10'} ({currentLab.adminEmail || 'user10@gmail.com'})</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* STAT CARDS (4 CARDS) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {/* Total Experiments */}
+        <div className="bg-white dark:bg-[#1f2419] p-4 rounded-xl border border-[#e8eadf] dark:border-[#3c452f] shadow-sm flex items-center gap-3">
+          <div className="p-3 bg-[#556b2f]/10 dark:bg-[#c8a030]/10 rounded-xl text-[#556b2f] dark:text-[#c8a030]">
+            <FlaskConical className="w-5 h-5" />
           </div>
           <div>
-            <h2 className='text-2xl font-bold text-[#3c4e23] dark:text-[#eef4e8]'>{lab?.name || 'Lab'}</h2>
-            <p className='text-sm text-[#71805a] dark:text-[#c5d0b5]'>{lab?.location || 'Inventory and available items'} • Admin: {lab?.admin || 'Unassigned'}</p>
+            <p className="text-xs text-[#71805a] dark:text-[#a5b48b] font-medium">Total Experiments</p>
+            <p className="text-xl font-bold text-[#3c4e23] dark:text-[#eef4e8]">{structure.length}</p>
           </div>
         </div>
 
-        {/* Summary Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
-          <div className="bg-white dark:bg-[#1a1d16] rounded-xl p-3 border border-[#e8ece1] dark:border-[#3c452f]">
-            <p className="text-xs text-[#71805a] dark:text-[#a5b48b]">Items Available</p>
-            <p className="text-xl font-bold text-[#3c4e23] dark:text-[#eef4e8]">{inventory.length}</p>
+        {/* My Pending Requests */}
+        <div className="bg-white dark:bg-[#1f2419] p-4 rounded-xl border border-[#e8eadf] dark:border-[#3c452f] shadow-sm flex items-center gap-3">
+          <div className="p-3 bg-amber-500/10 rounded-xl text-amber-600 dark:text-amber-400">
+            <Clock className="w-5 h-5" />
           </div>
-          <div className="bg-white dark:bg-[#1a1d16] rounded-xl p-3 border border-[#e8ece1] dark:border-[#3c452f]">
-            <p className="text-xs text-[#71805a] dark:text-[#a5b48b]">Experiments</p>
-            <p className="text-xl font-bold text-[#3c4e23] dark:text-[#eef4e8]">{experimentRows.length}</p>
+          <div>
+            <p className="text-xs text-[#71805a] dark:text-[#a5b48b] font-medium">My Pending Requests</p>
+            <p className="text-xl font-bold text-amber-600 dark:text-amber-400">{pendingRequestsCount}</p>
           </div>
-          <div className="bg-white dark:bg-[#1a1d16] rounded-xl p-3 border border-[#e8ece1] dark:border-[#3c452f]">
-            <p className="text-xs text-[#71805a] dark:text-[#a5b48b]">My Teams</p>
-            <p className="text-xl font-bold text-[#3c4e23] dark:text-[#eef4e8]">{myTeams.length}</p>
+        </div>
+
+        {/* My Approved Requests */}
+        <div className="bg-white dark:bg-[#1f2419] p-4 rounded-xl border border-[#e8eadf] dark:border-[#3c452f] shadow-sm flex items-center gap-3">
+          <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2 className="w-5 h-5" />
           </div>
-          <div className="bg-white dark:bg-[#1a1d16] rounded-xl p-3 border border-[#e8ece1] dark:border-[#3c452f]">
-            <p className="text-xs text-[#71805a] dark:text-[#a5b48b]">Low Stock</p>
-            <p className="text-xl font-bold text-amber-600">{inventory.filter((item) => item.quantity <= (item.minThreshold || 0)).length}</p>
+          <div>
+            <p className="text-xs text-[#71805a] dark:text-[#a5b48b] font-medium">My Approved Requests</p>
+            <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{approvedRequestsCount}</p>
+          </div>
+        </div>
+
+        {/* Chemicals Available */}
+        <div className="bg-white dark:bg-[#1f2419] p-4 rounded-xl border border-[#e8eadf] dark:border-[#3c452f] shadow-sm flex items-center gap-3">
+          <div className="p-3 bg-[#556b2f]/10 dark:bg-[#c8a030]/10 rounded-xl text-[#556b2f] dark:text-[#c8a030]">
+            <Beaker className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs text-[#71805a] dark:text-[#a5b48b] font-medium">Chemicals Available</p>
+            <p className="text-xl font-bold text-[#3c4e23] dark:text-[#eef4e8]">{uniqueChemicalsCount}</p>
           </div>
         </div>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="grid grid-cols-4 gap-1 bg-[#f4f6ee] dark:bg-[#1c2117] p-1.5 rounded-xl border border-[#d9e1ca] dark:border-[#414a33]">
-        {TABS.map(tab => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-2.5 rounded-lg text-[11px] sm:text-sm font-semibold transition-all justify-center text-center ${
-                activeTab === tab.id
-                  ? 'bg-[#556b2f] text-white shadow-sm'
-                  : 'text-[#71805a] dark:text-[#c5d0b5] hover:bg-[#e8ece1] dark:hover:bg-[#28301f]'
-              }`}
-            >
-              <Icon size={16} className="shrink-0" />
-              <span className="truncate max-w-full">{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ========== EXPERIMENTS TAB ========== */}
-      {activeTab === 'experiments' && (
-        <div className="space-y-4">
-          <div className='flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'>
-            <div>
-              <h3 className='text-lg font-bold text-[#3c4e23] dark:text-[#eef4e8]'>Lab Experiments</h3>
-              <p className='text-sm text-[#71805a] dark:text-[#c5d0b5]'>Request experiments with all required chemicals pre-configured.</p>
-            </div>
-            <div className='w-full sm:max-w-sm'>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#87996c]" size={16} />
-                <input
-                  value={experimentSearch}
-                  onChange={(e) => setExperimentSearch(e.target.value)}
-                  placeholder='Search experiments...'
-                  className="w-full pl-9 pr-4 py-2 rounded-xl border border-[#cfd8bd] bg-white dark:bg-[#20251a] dark:border-[#4e5d35] text-[#3c4e23] dark:text-[#eef4e8] text-sm outline-none focus:ring-2 focus:ring-[#6f7d45]"
-                />
+      {/* SUBJECTS AND EXPERIMENTS SECTION */}
+      {loading ? (
+        <div className="py-16 text-center text-[#71805a] dark:text-[#c5d0b5]">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-[#556b2f] border-t-transparent mb-3" />
+          <p className="text-sm font-medium">Loading lab experiments...</p>
+        </div>
+      ) : structure.length === 0 ? (
+        /* IF NO EXPERIMENTS UPLOADED */
+        <div className="bg-white dark:bg-[#1f2419] border border-dashed border-[#d9e1ca] dark:border-[#414a33] rounded-2xl p-12 text-center my-6 max-w-xl mx-auto shadow-sm">
+          <div className="w-16 h-16 rounded-full bg-[#f4f6ee] dark:bg-[#2a3121] text-[#556b2f] dark:text-[#c8a030] flex items-center justify-center mx-auto mb-4">
+            <FlaskConical className="w-8 h-8" />
+          </div>
+          <h3 className="text-xl font-bold text-[#3c4e23] dark:text-[#eef4e8] mb-2">No Experiments Yet</h3>
+          <p className="text-sm text-[#71805a] dark:text-[#c5d0b5] max-w-md mx-auto">
+            Your Lab Admin hasn't uploaded any experiments for this lab yet. Please check back later or contact your Lab Admin.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-10">
+          {Object.entries(groupedExperiments).map(([subjectName, exps]) => (
+            <div key={subjectName} className="space-y-5">
+              {/* SUBJECT SECTION HEADER */}
+              <div className="border-b-2 border-[#e8f0dc] dark:border-[#3c452f] pb-2 mb-4 flex items-center gap-2">
+                <FlaskConical className="w-5 h-5 text-[#556b2f] dark:text-[#c8a030]" />
+                <h2 className="text-lg font-semibold text-[#556b2f] dark:text-[#c8a030]">
+                  Subject: {subjectName}
+                </h2>
               </div>
-            </div>
-          </div>
 
-          {experimentRows.length ? (
-            <div className='grid gap-4 md:grid-cols-2'>
-              {experimentRows.map((experiment) => (
-                <div key={experiment.id} className='rounded-2xl border border-[#d9e1ca] bg-white p-5 dark:border-[#414a33] dark:bg-[#1f2419] hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200'>
-                  <div className='flex items-start justify-between gap-3 mb-3'>
-                    <div>
-                      <span className="text-xs font-bold uppercase tracking-wider text-[#556b2f] dark:text-[#a5b48b] bg-[#f0f4e8] dark:bg-[#28301f] px-2.5 py-1 rounded-md">
-                        {experiment.experimentNumber}
-                      </span>
-                    </div>
-                  </div>
-                  <h4 className='text-base font-bold text-[#3c4e23] dark:text-[#eef4e8] mb-3'>{experiment.experimentObject}</h4>
-                  
-                  {/* Chemical Requirements with Stock Badges & Per-Chemical Request Button */}
-                  <div className="space-y-1.5 mb-4">
-                    <p className="text-xs font-semibold text-[#71805a] uppercase tracking-wider">Required Chemicals</p>
-                    {(experiment.requiredInventory || []).map((entry, i) => {
-                      const badge = getStockBadge(entry.chemicalName, inventory);
-                      return (
-                        <div key={i} className="flex items-center justify-between text-xs p-2.5 rounded-xl bg-[#fdfdf7] dark:bg-[#1a1d16] border border-[#e8ece1] dark:border-[#3c452f] hover:border-[#556b2f]/40 transition-colors">
-                          <div className="min-w-0 flex-1 pr-2">
-                            <span className="font-semibold text-[#3c4e23] dark:text-[#eef4e8] block truncate">
-                              {entry.chemicalName}
-                            </span>
-                            <span className="text-[11px] text-[#87996c]">Required: {entry.quantity} {entry.quantityUnit}</span>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${badge.cls}`}>{badge.label}</span>
-                            <button 
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openDirectChemicalRequest(entry.chemicalName, entry.quantity, entry.quantityUnit, experiment);
-                              }}
-                              className="px-2.5 py-1 text-[11px] font-bold bg-[#556b2f] text-white hover:bg-[#435525] rounded-lg transition-colors shadow-sm flex items-center gap-1"
-                            >
-                              <Beaker size={12} /> Request
-                            </button>
+              {/* EXPERIMENT CARDS GRID */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {exps.map((exp) => {
+                  const existingReq = getExperimentRequest(exp);
+                  const status = existingReq ? existingReq.overallStatus : 'NOT_REQUESTED';
+
+                  // Card border colors based on state
+                  let cardBorderClass = 'border-l-4 border-l-gray-300 dark:border-l-gray-600';
+                  if (status === 'Pending') cardBorderClass = 'border-l-4 border-l-[#f0c040]';
+                  else if (status === 'Approved' || status === 'Partial') cardBorderClass = 'border-l-4 border-l-[#4a9a4a]';
+                  else if (status === 'Rejected') cardBorderClass = 'border-l-4 border-l-[#c04040]';
+
+                  return (
+                    <div 
+                      key={exp._id || exp.id || exp.experimentNo}
+                      className={`bg-white dark:bg-[#1f2419] rounded-[14px] shadow-[0_2px_8px_rgba(0,0,0,0.06)] p-5 mb-4 border border-[#e8eadf] dark:border-[#3c452f] ${cardBorderClass} flex flex-col justify-between transition-all duration-200 hover:shadow-md`}
+                    >
+                      <div>
+                        {/* Exp No & Title */}
+                        <div className="flex justify-between items-start gap-2 mb-2">
+                          <span className="inline-block px-2.5 py-0.5 bg-[#f0f4e8] dark:bg-[#28301f] text-[#556b2f] dark:text-[#c8a030] text-xs font-bold rounded-md uppercase tracking-wider">
+                            Exp {String(exp.experimentNo).padStart(2, '0')}
+                          </span>
+                        </div>
+                        
+                        <h3 className="text-base font-bold text-[#3c4e23] dark:text-[#eef4e8] mb-4">
+                          {exp.experimentName}
+                        </h3>
+
+                        {/* Chemicals Required Table */}
+                        <div className="mb-5">
+                          <p className="text-xs font-semibold text-[#71805a] dark:text-[#a5b48b] mb-2 uppercase tracking-wider">
+                            Chemicals / Reagents Required:
+                          </p>
+                          <div className="overflow-hidden rounded-lg border border-[#f0ede6] dark:border-[#3c452f]">
+                            <table className="w-full text-xs text-left">
+                              <thead className="bg-[#f4f6ee] dark:bg-[#28301f] text-[#3c4e23] dark:text-[#eef4e8] font-bold">
+                                <tr>
+                                  <th className="px-3 py-2 border-b border-[#f0ede6] dark:border-[#3c452f]">Chemical Name</th>
+                                  <th className="px-3 py-2 border-b border-[#f0ede6] dark:border-[#3c452f] w-28">Quantity</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(exp.chemicals || []).map((chem, idx) => (
+                                  <tr 
+                                    key={idx} 
+                                    className={`${idx % 2 === 0 ? 'bg-white dark:bg-[#1a1d16]' : 'bg-[#fafdf7] dark:bg-[#20251a]'} border-b last:border-none border-[#f0ede6] dark:border-[#3c452f]`}
+                                  >
+                                    <td className="px-3 py-2 font-medium text-gray-800 dark:text-gray-200">
+                                      {chem.chemicalName}
+                                    </td>
+                                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400 font-semibold">
+                                      {chem.quantityPerStudent || chem.quantity || 1} {chem.unit || 'mL'}
+                                    </td>
+                                  </tr>
+                                ))}
+                                {(!exp.chemicals || exp.chemicals.length === 0) && (
+                                  <tr>
+                                    <td colSpan="2" className="px-3 py-2 text-gray-400 italic text-center">
+                                      No chemicals configured
+                                    </td>
+                                  </tr>
+                                )}
+                              </tbody>
+                            </table>
                           </div>
                         </div>
-                      );
-                    })}
-                    {(!experiment.requiredInventory || experiment.requiredInventory.length === 0) && (
-                      <p className="text-xs text-[#87996c] italic">No chemicals configured</p>
-                    )}
-                  </div>
+                      </div>
 
-                  <Button className='w-full bg-[#556b2f] hover:bg-[#435525] text-white' onClick={() => openExperimentRequest(experiment)}>
-                    <FlaskConical size={14} className="mr-2" /> Request This Experiment
-                  </Button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className='rounded-xl border border-dashed border-[#cfd8bd] px-5 py-12 text-center text-[#71805a] dark:border-[#4e5d35] dark:text-[#c5d0b5]'>
-              <FlaskConical size={32} className="mx-auto mb-3 text-[#87996c]" />
-              <p className="font-medium">No experiments configured for this lab yet.</p>
-            </div>
-          )}
-        </div>
-      )}
+                      {/* CARD FOOTER & ACTIONS BASED ON STATE */}
+                      <div className="pt-3 border-t border-[#f0f2eb] dark:border-[#3c452f]/60">
+                        {/* STATE 1: NOT REQUESTED */}
+                        {(!existingReq || status === 'NOT_REQUESTED') && (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-xs text-gray-500 font-medium">
+                              <span>Status: <strong className="text-gray-700 dark:text-gray-300">Not Requested</strong></span>
+                            </div>
+                            <Button 
+                              onClick={() => handleOpenRequestModal(exp)}
+                              className="w-full bg-[#556b2f] hover:bg-[#435525] text-white font-bold py-2.5 rounded-xl shadow-sm flex items-center justify-center gap-2"
+                            >
+                              📋 Request These Chemicals
+                            </Button>
+                          </div>
+                        )}
 
-      {/* ========== INVENTORY TAB ========== */}
-      {activeTab === 'inventory' && (
-        <div className="space-y-4">
-          <div className='flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'>
-            <div>
-              <h3 className='text-lg font-bold text-[#3c4e23] dark:text-[#eef4e8]'>Available Inventory</h3>
-              <p className='text-sm text-[#71805a] dark:text-[#c5d0b5]'>Browse chemicals and equipment in this lab.</p>
-            </div>
-            <div className='w-full sm:max-w-sm'>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#87996c]" size={16} />
-                <input
-                  value={inventorySearch}
-                  onChange={(e) => setInventorySearch(e.target.value)}
-                  placeholder='Search by name, code, category...'
-                  className="w-full pl-9 pr-4 py-2 rounded-xl border border-[#cfd8bd] bg-white dark:bg-[#20251a] dark:border-[#4e5d35] text-[#3c4e23] dark:text-[#eef4e8] text-sm outline-none focus:ring-2 focus:ring-[#6f7d45]"
-                />
-              </div>
-            </div>
-          </div>
+                        {/* STATE 2: PENDING */}
+                        {status === 'Pending' && (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-xs text-[#f0c040] font-bold">
+                              <span className="flex items-center gap-1">⏳ Request Pending</span>
+                              <span className="text-[11px] text-gray-400">ID: {existingReq.requestId}</span>
+                            </div>
+                            <button 
+                              onClick={() => handleViewDetails(existingReq)}
+                              className="w-full border-2 border-[#f0c040] text-[#b88c14] dark:text-[#f0c040] hover:bg-[#f0c040]/10 font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
+                            >
+                              View Request Status
+                            </button>
+                          </div>
+                        )}
 
-          <Table
-            headers={[
-              { key: 'name', label: 'Item' },
-              { key: 'category', label: 'Category' },
-              { key: 'manufacturingCompanyDisplay', label: 'Company' },
-              { key: 'quantityDisplay', label: 'Quantity' },
-              { key: 'storageDisplay', label: 'Storage' },
-              { key: 'expiryDisplay', label: 'Expiry' },
-              {
-                key: 'actions',
-                label: 'Actions',
-                render: (row) => (
-                  <div className='flex items-center gap-2'>
-                    <Button className='px-3 py-1.5 text-xs bg-[#556b2f] text-white hover:bg-[#435525] font-semibold' onClick={() => openBorrowModal(row)}>
-                      {row.category?.toLowerCase().includes('chemical') || row.category?.toLowerCase().includes('reagent') || row.category?.toLowerCase().includes('acid') ? 'Request Chemical' : 'Request Item'}
-                    </Button>
-                    {row.displayAbstract && (
-                      <button
-                        onClick={() => setExpandedAbstract(expandedAbstract === row.id ? null : row.id)}
-                        className='inline-flex items-center justify-center rounded-lg p-1.5 transition hover:bg-[#edf1e3] dark:hover:bg-[#28301f]'
-                        title='View chemical information'
-                      >
-                        <Info size={18} className='text-[#556b2f] dark:text-[#b8c5a0]' />
-                      </button>
-                    )}
-                  </div>
-                ),
-              },
-            ]}
-            rows={rows}
-            expandedRowId={expandedAbstract}
-            renderExpandedRow={(row) => (
-              <div className='rounded-lg border border-[#d9e1ca] bg-[#f9faef] p-4 dark:border-[#414a33] dark:bg-[#1f2419]'>
-                <div className='mb-3 flex items-start justify-between gap-3'>
-                  <div>
-                    <p className='text-sm font-semibold text-[#3c4e23] dark:text-[#eef4e8]'>{row.name}</p>
-                    <p className='mt-1 text-xs text-[#71805a] dark:text-[#c5d0b5]'>{row.isAiGenerated ? 'AI-generated chemical summary' : 'Chemical information'}</p>
-                  </div>
-                  <button onClick={() => setExpandedAbstract(null)} className='text-[#71805a] hover:text-[#3c4e23] dark:text-[#a8b8a0] dark:hover:text-[#eef4e8]'>✕</button>
-                </div>
-                <div className='border-t border-[#d9e1ca] pt-3 dark:border-[#414a33]'>
-                  <p className='mb-2 text-xs font-semibold uppercase text-[#556b2f] dark:text-[#b8c5a0]'>Abstract</p>
-                  <p className='text-sm leading-relaxed text-[#3c4e23] dark:text-[#d5ddbf]'>{row.displayAbstract}</p>
-                  {row.isAiGenerated && <p className='mt-2 text-xs font-medium text-amber-700 dark:text-amber-300'>Source: AI-generated fallback</p>}
-                  {row.pubmedId && (
-                    <a href={`https://pubmed.ncbi.nlm.nih.gov/${row.pubmedId}`} target='_blank' rel='noopener noreferrer'
-                      className='mt-3 inline-flex items-center gap-1 text-xs text-[#556b2f] transition hover:text-[#3c4e23] dark:text-[#b8c5a0] dark:hover:text-[#eef4e8]'>
-                      <ExternalLink size={14} /> Read full article on PubMed
-                    </a>
-                  )}
-                </div>
-              </div>
-            )}
-          />
-        </div>
-      )}
+                        {/* STATE 3: APPROVED */}
+                        {(status === 'Approved' || status === 'Partial') && (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-xs text-[#4a9a4a] font-bold">
+                              <span className="flex items-center gap-1">✅ Chemicals Approved</span>
+                              {existingReq.approvedAt && (
+                                <span className="text-[11px] text-gray-400 font-normal">
+                                  {new Date(existingReq.approvedAt).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+                            <button 
+                              onClick={() => handleViewDetails(existingReq)}
+                              className="w-full border-2 border-[#4a9a4a] text-[#4a9a4a] hover:bg-[#4a9a4a]/10 font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
+                            >
+                              View Details
+                            </button>
+                          </div>
+                        )}
 
-      {/* ========== TEAMS TAB ========== */}
-      {activeTab === 'teams' && (
-        <div className="space-y-4">
-          <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-            <div>
-              <h3 className='text-lg font-bold text-[#3c4e23] dark:text-[#eef4e8]'>My Teams</h3>
-              <p className='text-sm text-[#71805a] dark:text-[#c5d0b5]'>Create teams and request experiments as a group.</p>
-            </div>
-            <Button className="bg-[#556b2f] hover:bg-[#435525] text-white" onClick={openCreateTeamModal}>
-              <Users size={14} className="mr-2" /> Create Team
-            </Button>
-          </div>
-
-          {myTeams.length ? (
-            <div className='grid gap-4 md:grid-cols-2'>
-              {myTeams.map((team) => (
-                <div key={team.id} className='rounded-2xl border border-[#d9e1ca] bg-white p-5 dark:border-[#414a33] dark:bg-[#1f2419] hover:border-[#c8a030]/50 transition-colors'>
-                  <div className='flex justify-between items-start mb-3'>
-                    <div>
-                      <h4 className='text-lg font-bold text-[#3c4e23] dark:text-[#eef4e8]'>{team.name}</h4>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="bg-[#c8a030]/20 text-[#8b6f20] dark:text-[#e0c370] text-xs px-2 py-0.5 rounded-full font-medium border border-[#c8a030]/30">
-                          Leader: {team.leaderName || 'You'}
-                        </span>
-                        <span className="text-xs text-[#71805a]">{team.memberCount} members</span>
+                        {/* STATE 4: REJECTED */}
+                        {status === 'Rejected' && (
+                          <div className="space-y-2">
+                            <div className="text-xs text-[#c04040]">
+                              <div className="font-bold flex items-center gap-1">❌ Request Rejected</div>
+                              {existingReq.rejectionReason && (
+                                <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-0.5 line-clamp-1">
+                                  Reason: {existingReq.rejectionReason}
+                                </p>
+                              )}
+                            </div>
+                            <button 
+                              onClick={() => handleOpenRequestModal(exp)}
+                              className="w-full border-2 border-[#c04040] text-[#c04040] hover:bg-[#c04040]/10 font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
+                            >
+                              🔄 Request Again
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
-                    {String(team.leaderId) === String(user?.id) && (
-                      <Button variant='outline' onClick={() => openEditTeamModal(team)} className='px-3 py-1.5 text-xs'>
-                        Manage
-                      </Button>
-                    )}
-                  </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
-                  {/* Member Avatars */}
-                  <div className="flex items-center mt-3">
-                    {(team.members || []).slice(0, 5).map((m, i) => (
-                      <div key={m.id || i} className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-2 ring-white dark:ring-[#1f2419] ${i > 0 ? '-ml-2' : ''} ${AVATAR_COLORS[i % AVATAR_COLORS.length]}`} title={m.name || m.email}>
-                        {getInitials(m.name || m.email)}
-                      </div>
+      {/* REQUEST MODAL */}
+      <Modal 
+        open={requestModalOpen} 
+        onClose={() => setRequestModalOpen(false)} 
+        title="Request Chemicals"
+      >
+        {selectedExp && (
+          <div className="space-y-5 text-left">
+            <div>
+              <p className="text-sm font-bold text-[#556b2f] dark:text-[#c8a030]">
+                Exp {String(selectedExp.experimentNo).padStart(2, '0')} — {selectedExp.experimentName}
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Lab: {currentLab.labName || currentLab.name || 'HAP1'}
+              </p>
+            </div>
+
+            {/* Chemicals Table */}
+            <div>
+              <label className="text-xs font-bold text-[#3c4e23] dark:text-[#c8a030] uppercase tracking-wider mb-1.5 block">
+                Required Chemicals
+              </label>
+              <div className="overflow-hidden rounded-xl border border-[#cfd8bd] dark:border-[#4e5d35]">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-[#f4f6ee] dark:bg-[#28301f] text-[#3c4e23] dark:text-[#eef4e8] font-bold">
+                    <tr>
+                      <th className="px-3 py-2 border-b border-[#cfd8bd] dark:border-[#4e5d35]">Chemical Name</th>
+                      <th className="px-3 py-2 border-b border-[#cfd8bd] dark:border-[#4e5d35] w-16">Qty</th>
+                      <th className="px-3 py-2 border-b border-[#cfd8bd] dark:border-[#4e5d35] w-16">Unit</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(selectedExp.chemicals || []).map((c, i) => (
+                      <tr key={i} className="border-b last:border-none border-[#e8eadf] dark:border-[#3c452f] bg-white dark:bg-[#1a1d16]">
+                        <td className="px-3 py-2 font-medium text-gray-800 dark:text-gray-200">{c.chemicalName}</td>
+                        <td className="px-3 py-2 font-semibold text-gray-600 dark:text-gray-400">{c.quantityPerStudent || c.quantity || 1}</td>
+                        <td className="px-3 py-2 text-gray-500">{c.unit || 'mL'}</td>
+                      </tr>
                     ))}
-                    {(team.members || []).length > 5 && (
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-2 ring-white dark:ring-[#1f2419] -ml-2 bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                        +{team.members.length - 5}
-                      </div>
-                    )}
-                    {(team.members || []).length === 0 && <span className="text-sm text-[#87996c] italic">No members yet</span>}
-                  </div>
-                </div>
-              ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          ) : (
-            <div className='rounded-xl border border-dashed border-[#cfd8bd] px-5 py-12 text-center text-[#71805a] dark:border-[#4e5d35] dark:text-[#c5d0b5]'>
-              <Users size={32} className="mx-auto mb-3 text-[#87996c]" />
-              <p className="font-medium">No teams in this lab yet.</p>
-              <p className="text-sm mt-1">Create a team to request experiments as a group.</p>
-            </div>
-          )}
 
-          {/* Chemical Shares */}
-          {myChemicalShares.length > 0 && (
-            <div className="mt-6">
-              <h4 className='text-md font-bold text-[#3c4e23] dark:text-[#eef4e8] mb-3'>My Chemical Shares</h4>
-              <Table
-                headers={[
-                  { key: 'experimentTitle', label: 'Experiment' },
-                  { key: 'teamName', label: 'Team' },
-                  { key: 'chemicalName', label: 'Chemical' },
-                  { key: 'myShare', label: 'My Share', render: (row) => `${row.myShareQuantity} ${row.quantityUnit}` },
-                  { key: 'total', label: 'Total Used', render: (row) => `${row.totalQuantity} ${row.quantityUnit}` },
-                ]}
-                rows={myChemicalShares}
+            {/* Student Details Card */}
+            <div className="bg-[#fdfdf7] dark:bg-[#1f2419] p-3.5 rounded-xl border border-[#e8eadf] dark:border-[#3c452f] text-xs space-y-1">
+              <p className="font-bold text-[#3c4e23] dark:text-[#eef4e8]">Student Requisition Details:</p>
+              <div className="grid grid-cols-2 gap-2 pt-1 text-gray-600 dark:text-gray-300">
+                <p>Name: <strong className="text-gray-800 dark:text-gray-100">{user?.name || 'Harsh Parmar'}</strong></p>
+                <p>Roll No: <strong className="text-gray-800 dark:text-gray-100">{user?.rollNumber || 'RN-1001'}</strong></p>
+                <p>Group: <strong className="text-gray-800 dark:text-gray-100">{user?.group || 'Group A'}</strong></p>
+                <p>Lab: <strong className="text-gray-800 dark:text-gray-100">{currentLab.labName || currentLab.name || 'HAP1'}</strong></p>
+              </div>
+            </div>
+
+            {/* Notes Textarea */}
+            <div>
+              <label className="text-xs font-bold text-[#3c4e23] dark:text-[#c8a030] uppercase tracking-wider mb-1 block">
+                Additional Notes (Optional)
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Additional notes for Lab Admin..."
+                className="w-full rounded-xl border border-[#cfd8bd] bg-white px-3 py-2 text-xs text-[#3c4e23] outline-none focus:ring-2 focus:ring-[#6f7d45] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8] h-20 resize-none"
               />
             </div>
-          )}
-        </div>
-      )}
 
-      {/* ========== ACTIVITY TAB ========== */}
-      {activeTab === 'activity' && (
-        <div className="space-y-4">
-          <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-            <div>
-              <h3 className='text-lg font-bold text-[#3c4e23] dark:text-[#eef4e8]'>My Activity</h3>
-              <p className='text-sm text-[#71805a] dark:text-[#c5d0b5]'>Track all your borrow and experiment requests in this lab.</p>
-            </div>
-          </div>
-
-          {/* Status Filter */}
-          <div className="flex flex-wrap gap-2">
-            {['all', 'pending', 'approved', 'rejected', 'completed'].map(filter => (
-              <button
-                key={filter}
-                onClick={() => setActivityFilter(filter)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition ${
-                  activityFilter === filter
-                    ? 'bg-[#556b2f] text-white'
-                    : 'bg-[#f4f6ee] dark:bg-[#28301f] text-[#71805a] hover:bg-[#e8ece1]'
-                }`}
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setRequestModalOpen(false)}
+                className="flex-1 py-2.5"
               >
-                {filter === 'all' ? `All (${myRequests.length})` : filter}
-              </button>
-            ))}
-          </div>
-
-          <Table
-            headers={[
-              { key: 'itemName', label: 'Item/Experiment', render: (row) => <span className="font-medium text-[#3c4e23] dark:text-[#eef4e8]">{row.experimentTitle || row.itemName || 'N/A'}</span> },
-              { key: 'requestCategory', label: 'Type', render: (row) => (
-                <span className={`px-2 py-0.5 rounded text-xs font-medium ${row.requestCategory === 'experiment' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'}`}>
-                  {row.requestCategory === 'experiment' ? 'Experiment' : 'Borrow'}
-                </span>
-              )},
-              { key: 'teamName', label: 'Team', render: (row) => row.teamName || '—' },
-              { key: 'quantityDisplay', label: 'Qty' },
-              { key: 'purpose', label: 'Purpose' },
-              { key: 'neededUntilDisplay', label: 'Needed Until' },
-              {
-                key: 'status',
-                label: 'Status',
-                render: (row) => (
-                  <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                    row.status === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
-                    row.status === 'approved' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
-                    row.status === 'rejected' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' :
-                    'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                  }`}>
-                    {row.status === 'approved' && <CheckCircle2 size={12} />}
-                    {row.status === 'rejected' && <XCircle size={12} />}
-                    {row.status === 'pending' && <Clock size={12} />}
-                    {row.status}
-                  </span>
-                ),
-              },
-            ]}
-            rows={filteredActivity.map((tx) => ({
-              ...tx,
-              quantityDisplay: tx.requestCategory === 'experiment' ? `${tx.memberCount || 1} participant${Number(tx.memberCount || 1) > 1 ? 's' : ''}` : `${tx.quantity} ${tx.itemId?.quantityUnit || ''}`.trim(),
-              neededUntilDisplay: tx.neededUntil ? new Date(tx.neededUntil).toLocaleDateString() : 'N/A',
-            }))}
-          />
-        </div>
-      )}
-
-      {/* ========== MODALS ========== */}
-
-      {/* Chemical / Item Request Modal */}
-      <Modal open={borrowOpen} onClose={() => setBorrowOpen(false)} title={selectedItem ? `Request ${selectedItem.name}` : 'Request Chemical'}>
-        <div className='space-y-4'>
-          <div className='rounded-xl bg-[#f4f5eb] p-3 text-sm font-medium text-[#556b2f] dark:bg-[#28301f] dark:text-[#d5ddbf]'>
-            Available in {lab?.name || 'this lab'}: <span className="font-bold">{selectedItem?.quantity} {selectedItem?.quantityUnit || 'units'}</span>
-          </div>
-          {selectedItem?.displayAbstract && (
-            <div className='rounded-lg border border-[#d9e1ca] bg-[#f9faef] p-3 dark:border-[#414a33] dark:bg-[#1f2419]'>
-              <p className='text-xs font-semibold uppercase text-[#556b2f] dark:text-[#b8c5a0]'>About this chemical</p>
-              <p className='mt-2 text-xs leading-relaxed text-[#3c4e23] dark:text-[#d5ddbf]'>
-                {selectedItem.displayAbstract.length > 400 ? `${selectedItem.displayAbstract.substring(0, 400)}...` : selectedItem.displayAbstract}
-              </p>
-              {selectedItem.isAiGenerated && <p className='mt-2 text-xs font-medium text-amber-700 dark:text-amber-300'>Source: AI-generated fallback</p>}
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleConfirmRequest} 
+                disabled={submitting}
+                className="flex-1 bg-[#556b2f] hover:bg-[#435525] text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5"
+              >
+                {submitting ? 'Submitting...' : '✅ Confirm Request'}
+              </Button>
             </div>
-          )}
-          <div className='grid gap-4 sm:grid-cols-2'>
-            <Input label='Quantity requested' type='number' value={borrowForm.quantity} onChange={(e) => setBorrowForm((s) => ({ ...s, quantity: e.target.value }))} />
-            <Input label='Unit' value={selectedItem?.quantityUnit || 'units'} readOnly className='bg-[#f4f5eb] dark:bg-[#28301f]' />
           </div>
-          <Input label='Purpose / experiment use' value={borrowForm.purpose} onChange={(e) => setBorrowForm((s) => ({ ...s, purpose: e.target.value }))} placeholder='Practical class, titration, synthesis...' />
-          <Input label='Needed until' type='date' value={borrowForm.neededUntil} onChange={(e) => setBorrowForm((s) => ({ ...s, neededUntil: e.target.value }))} />
-          <Input label='Additional notes' value={borrowForm.notes} onChange={(e) => setBorrowForm((s) => ({ ...s, notes: e.target.value }))} placeholder='Batch, section, faculty name...' />
-          <Button onClick={submitBorrowRequest} className='w-full bg-[#556b2f] text-white hover:bg-[#435525] font-semibold py-2.5 rounded-xl' disabled={submitting}>
-            {submitting ? 'Submitting...' : 'Send Request to Lab Admin'}
+        )}
+      </Modal>
+
+      {/* DUPLICATE WARNING MODAL */}
+      <Modal
+        open={duplicateModalOpen}
+        onClose={() => setDuplicateModalOpen(false)}
+        title="Duplicate Request Warning"
+      >
+        <div className="space-y-4 text-center py-2">
+          <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <div className="space-y-1">
+            <h4 className="font-bold text-base text-gray-800 dark:text-gray-100">
+              You already have a pending request for this experiment!
+            </h4>
+            {duplicateInfo && (
+              <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 p-3 rounded-xl text-xs font-mono border border-amber-200 dark:border-amber-800/40 mt-3 text-left space-y-1">
+                <p><strong>Request ID:</strong> {duplicateInfo.requestId}</p>
+                <p><strong>Submitted:</strong> {duplicateInfo.submittedAt}</p>
+              </div>
+            )}
+          </div>
+          <Button 
+            onClick={() => setDuplicateModalOpen(false)}
+            className="w-full bg-[#556b2f] text-white font-bold py-2.5 rounded-xl mt-4"
+          >
+            OK
           </Button>
         </div>
       </Modal>
 
-      {/* Experiment Request Modal */}
-      <Modal open={requestOpen} onClose={() => setRequestOpen(false)} title={selectedExperiment ? `Request ${selectedExperiment.experimentNumber}` : 'Request Experiment'}>
-        <div className='space-y-4'>
-          <div className='rounded-lg border border-[#d9e1ca] bg-[#f9faef] p-3 dark:border-[#414a33] dark:bg-[#1f2419]'>
-            <p className='text-xs font-semibold uppercase text-[#556b2f] dark:text-[#b8c5a0]'>Experiment</p>
-            <p className='mt-2 text-sm font-medium text-[#3c4e23] dark:text-[#eef4e8]'>{selectedExperiment?.experimentObject || 'N/A'}</p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {selectedExperiment?.requiredInventory?.map((entry, i) => (
-                <span key={i} className="text-[11px] px-2 py-0.5 rounded-full bg-[#e8ece1] dark:bg-[#28301f] text-[#556b2f] dark:text-[#c5d0b5] font-medium">
-                  {entry.chemicalName} ({entry.quantity} {entry.quantityUnit})
-                </span>
-              ))}
+      {/* VIEW DETAILS MODAL */}
+      <Modal
+        open={detailsModalOpen}
+        onClose={() => setDetailsModalOpen(false)}
+        title="Request Details"
+      >
+        {activeRequestDetails && (
+          <div className="space-y-4 text-left text-xs">
+            <div className="flex justify-between items-center border-b border-[#e8eadf] pb-2">
+              <div>
+                <p className="font-bold text-sm text-[#3c4e23] dark:text-[#eef4e8]">{activeRequestDetails.experimentName}</p>
+                <p className="text-gray-500">Request ID: <span className="font-mono font-bold">{activeRequestDetails.requestId}</span></p>
+              </div>
+              <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                activeRequestDetails.overallStatus === 'Pending' ? 'bg-amber-100 text-amber-800' :
+                activeRequestDetails.overallStatus === 'Approved' ? 'bg-emerald-100 text-emerald-800' :
+                activeRequestDetails.overallStatus === 'Rejected' ? 'bg-rose-100 text-rose-800' : 'bg-gray-100'
+              }`}>
+                {activeRequestDetails.overallStatus}
+              </span>
             </div>
-          </div>
-          <label className='block text-sm text-[#4e5d35] dark:text-[#d5ddbf]'>
-            <span className='mb-1 block text-xs font-medium tracking-wide'>Request mode</span>
-            <select
-              value={experimentRequestForm.teamId}
-              onChange={(e) => setExperimentRequestForm((s) => ({ ...s, teamId: e.target.value }))}
-              className='w-full rounded-lg border border-[#cfd8bd] bg-white px-3 py-2 text-[#3c4e23] focus:outline-none focus:ring-2 focus:ring-[#6f7d45] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]'
-            >
-              <option value=''>Individual request</option>
-              {teamsICanLead.map((team) => (
-                <option key={team.id} value={team.id}>{team.name} ({team.memberCount} members)</option>
-              ))}
-            </select>
-          </label>
-          <Input label='Purpose' value={experimentRequestForm.purpose} onChange={(e) => setExperimentRequestForm((s) => ({ ...s, purpose: e.target.value }))} placeholder='Why do you need this experiment?' />
-          <Input label='Preferred date' type='date' value={experimentRequestForm.preferredDate} onChange={(e) => setExperimentRequestForm((s) => ({ ...s, preferredDate: e.target.value }))} />
-          <Input label='Additional notes' value={experimentRequestForm.notes} onChange={(e) => setExperimentRequestForm((s) => ({ ...s, notes: e.target.value }))} placeholder='Faculty, batch, safety notes...' />
-          <Button className='w-full bg-[#556b2f] text-white hover:bg-[#435525]' onClick={submitExperimentRequest} disabled={requestingExperiment}>
-            {requestingExperiment ? 'Submitting...' : 'Send Experiment Request'}
-          </Button>
-        </div>
-      </Modal>
 
-      {/* Team Modal */}
-      <Modal open={teamModalOpen} onClose={() => setTeamModalOpen(false)} title={editingTeamId ? 'Manage Team' : 'Create Team'}>
-        <div className='space-y-4'>
-          <Input label='Team name' value={teamForm.name} onChange={(e) => setTeamForm((s) => ({ ...s, name: e.target.value }))} placeholder='Analytical Chemistry Batch A' />
-          <div className='rounded-lg border border-[#d9e1ca] bg-[#f9faef] p-3 dark:border-[#414a33] dark:bg-[#1f2419]'>
-            <p className='text-xs font-semibold uppercase text-[#556b2f] dark:text-[#b8c5a0]'>Select Members</p>
-            <p className='mt-1 text-xs text-[#71805a] dark:text-[#c5d0b5]'>You are always included as team leader.</p>
-            <div className='mt-3 max-h-64 space-y-2 overflow-y-auto'>
-              {selectableMembers.length ? selectableMembers.map((member) => (
-                <label key={member.id} className='flex items-center gap-3 rounded-lg border border-[#d9e1ca] bg-white px-3 py-2 text-sm text-[#3c4e23] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#eef4e8] cursor-pointer hover:bg-[#f4f6ee] dark:hover:bg-[#28301f] transition'>
-                  <input type='checkbox' checked={teamForm.memberIds.includes(member.id)} onChange={() => toggleTeamMember(member.id)} className="rounded text-[#556b2f] focus:ring-[#556b2f]" />
-                  <span>{member.name || member.email} <span className='text-xs text-[#71805a] dark:text-[#c5d0b5]'>({member.email})</span></span>
-                </label>
-              )) : <p className='text-sm text-[#71805a] dark:text-[#c5d0b5]'>No eligible students found.</p>}
+            <div>
+              <p className="font-bold text-[#556b2f] mb-1">Requested Chemicals:</p>
+              <div className="space-y-1 bg-[#fdfdf7] dark:bg-[#1a1d16] p-3 rounded-xl border border-[#e8eadf]">
+                {(activeRequestDetails.chemicalsRequested || []).map((c, i) => (
+                  <div key={i} className="flex justify-between">
+                    <span>{c.chemicalName}</span>
+                    <strong className="font-semibold">{c.quantityRequested} {c.unit}</strong>
+                  </div>
+                ))}
+              </div>
             </div>
+
+            {activeRequestDetails.rejectionReason && (
+              <div className="p-3 bg-rose-50 text-rose-800 rounded-xl border border-rose-200">
+                <strong>Rejection Reason:</strong> {activeRequestDetails.rejectionReason}
+              </div>
+            )}
+
+            <Button onClick={() => setDetailsModalOpen(false)} className="w-full bg-[#556b2f] text-white font-bold py-2 mt-2">
+              Close
+            </Button>
           </div>
-          <Button className='w-full bg-[#556b2f] text-white hover:bg-[#435525]' onClick={handleSaveTeam} disabled={savingTeam}>
-            {savingTeam ? 'Saving...' : editingTeamId ? 'Save Team' : 'Create Team'}
-          </Button>
-        </div>
+        )}
       </Modal>
     </div>
   );
