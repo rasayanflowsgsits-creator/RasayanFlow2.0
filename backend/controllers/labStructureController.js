@@ -211,6 +211,32 @@ const uploadStructure = asyncHandler(async (req, res) => {
       });
       uploadedRecords.push(newStructure);
     }
+
+    // Dual Save: Also populate Experiment collection in MongoDB
+    try {
+      const expNoStr = `Exp ${String(experimentNo).padStart(2, '0')}`;
+      const reqInv = (chemicals || []).map(c => ({
+        chemicalName: c.chemicalName,
+        quantity: Number(c.quantityPerStudent || c.quantity || 1),
+        quantityUnit: c.unit || c.quantityUnit || 'g'
+      }));
+
+      await Experiment.findOneAndUpdate(
+        { labId: labObjectId, experimentNumber: expNoStr },
+        {
+          labId: labObjectId,
+          experimentNumber: expNoStr,
+          experimentObject: experimentName,
+          subject: subject,
+          department: subject,
+          requiredInventory: reqInv,
+          createdBy: req.user._id || req.user.id
+        },
+        { upsert: true, new: true }
+      );
+    } catch (e) {
+      console.log('Experiment model sync log:', e.message);
+    }
   }
 
   res.status(200).json({ success: true, count: uploadedRecords.length, data: uploadedRecords });
@@ -482,6 +508,32 @@ const addExperiment = asyncHandler(async (req, res) => {
     chemicals: formattedChemicals,
     uploadedBy: req.user._id || req.user.id
   });
+
+  // Dual Save: Also populate Experiment collection in MongoDB
+  try {
+    const expNoStr = `Exp ${String(expNum).padStart(2, '0')}`;
+    const reqInv = formattedChemicals.map(c => ({
+      chemicalName: c.chemicalName,
+      quantity: Number(c.quantityPerStudent || 1),
+      quantityUnit: c.unit || 'g'
+    }));
+
+    await Experiment.findOneAndUpdate(
+      { labId: labObjectId, experimentNumber: expNoStr },
+      {
+        labId: labObjectId,
+        experimentNumber: expNoStr,
+        experimentObject: experimentName,
+        subject: subject,
+        department: subject,
+        requiredInventory: reqInv,
+        createdBy: req.user._id || req.user.id
+      },
+      { upsert: true, new: true }
+    );
+  } catch (e) {
+    console.log('Experiment model sync log:', e.message);
+  }
 
   res.status(201).json({ success: true, data: experiment, message: 'Experiment created successfully' });
 });
