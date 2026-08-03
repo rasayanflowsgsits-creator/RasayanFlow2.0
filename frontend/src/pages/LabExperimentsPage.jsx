@@ -323,18 +323,6 @@ export default function LabExperimentsPage() {
           </p>
         </div>
         <div className='flex flex-wrap items-center gap-3'>
-          <select 
-            value={activeLabId} 
-            onChange={e => {
-              setActiveLabId(e.target.value);
-              localStorage.setItem('pharmlab-active-lab', e.target.value);
-            }}
-            className='rounded-lg border border-[#cfd8bd] bg-white px-3 py-2 text-sm text-[#3c4e23] outline-none focus:ring-2 focus:ring-[#6f7d45] dark:border-[#4e5d35] dark:bg-[#1a1d16] dark:text-[#eef4e8]'
-          >
-            {labs.map(l => (
-              <option key={l.id || l._id} value={l.id || l._id}>{l.name || l.labName}</option>
-            ))}
-          </select>
           <div className="flex bg-[#f4f5eb] dark:bg-[#1c2117] p-1 rounded-lg border border-[#d9e1ca] dark:border-[#4e5d35]">
             <button
               onClick={() => setViewMode('grid')}
