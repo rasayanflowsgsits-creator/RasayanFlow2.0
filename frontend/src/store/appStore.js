@@ -408,6 +408,32 @@ const useAppStore = create((set) => ({
       return [];
     }
   },
+  fetchLabStructure: async (labId) => {
+    set({ loading: true });
+    try {
+      const url = labId ? `/lab/structure?labId=${encodeURIComponent(labId)}` : '/lab/structure';
+      const { data } = await api.get(url);
+      const list = getPayload(data) || data?.data || data?.experiments || [];
+      set({ labStructure: Array.isArray(list) ? list : [], loading: false });
+      return list;
+    } catch (err) {
+      console.error('Failed to fetch lab structure:', err);
+      set({ labStructure: [], loading: false });
+      return [];
+    }
+  },
+  uploadLabStructure: async (structures, labId) => {
+    set({ loading: true });
+    try {
+      const { data } = await api.post('/lab/structure/upload', { structures, labId });
+      const uploaded = getPayload(data) || data?.data || [];
+      set({ loading: false, toast: { title: 'Success', message: 'Lab structure experiments uploaded successfully', type: 'success' } });
+      return uploaded;
+    } catch (err) {
+      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Upload failed', type: 'error' } });
+      throw err;
+    }
+  },
   createLab: async ({ name, code, courseType, department, year, semester }) => {
     const { data } = await api.post('/labs', {
       labName: name,

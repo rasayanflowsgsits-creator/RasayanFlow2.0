@@ -1,12 +1,14 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Upload, Download, Plus, AlertCircle, FileText, CheckCircle2, XCircle, Search, LayoutGrid, Table as TableIcon, Tag, FlaskConical } from 'lucide-react';
+import { Upload, Download, Plus, AlertCircle, FileText, CheckCircle2, XCircle, Search, LayoutGrid, Table as TableIcon, Tag, FlaskConical, Edit3, Trash2 } from 'lucide-react';
 import Papa from 'papaparse';
 import useAppStore from '../store/appStore';
+import useAuthStore from '../store/authStore';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Table from '../components/ui/Table';
 import Modal from '../components/ui/Modal';
 import Input from '../components/ui/Input';
+import api from '../services/api';
 
 export default function LabExperimentsPage() {
   const { 
@@ -15,10 +17,13 @@ export default function LabExperimentsPage() {
     inventory,
     fetchLabs, 
     fetchLabStructure, 
-    uploadLabStructure 
+    uploadLabStructure,
+    fetchInventory
   } = useAppStore();
 
-  const [activeLabId, setActiveLabId] = useState(() => localStorage.getItem('pharmlab-active-lab') || '');
+  const user = useAuthStore((state) => state.user);
+
+  const [activeLabId, setActiveLabId] = useState(() => localStorage.getItem('pharmlab-active-lab') || user?.labId || '');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'table'
   const [search, setSearch] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('All');
@@ -39,13 +44,15 @@ export default function LabExperimentsPage() {
   }, [fetchLabs]);
 
   useEffect(() => {
-    if (activeLabId) {
-      fetchLabStructure(activeLabId);
-    } else if (labs.length > 0) {
-      const firstId = labs[0].id || labs[0]._id;
-      if (firstId) setActiveLabId(firstId);
+    const targetLab = activeLabId || user?.labId || (labs.length > 0 ? (labs[0]._id || labs[0].id) : '');
+    if (targetLab) {
+      if (targetLab !== activeLabId) {
+        setActiveLabId(targetLab);
+      }
+      fetchLabStructure(targetLab);
+      if (fetchInventory) fetchInventory(targetLab);
     }
-  }, [activeLabId, labs, fetchLabStructure]);
+  }, [activeLabId, user?.labId, labs, fetchLabStructure, fetchInventory]);
 
   // Unique subjects for filter
   const subjects = useMemo(() => {
@@ -234,8 +241,11 @@ export default function LabExperimentsPage() {
     }));
   };
 
+  const [editingExpId, setEditingExpId] = useState(null);
+
   const handleOpenAddModal = () => {
     const defaultSubj = currentLab?.labName || currentLab?.name || 'HAP1';
+    setEditingExpId(null);
     setNewExp({
       subject: defaultSubj,
       experimentNo: String((labStructure?.length || 0) + 1),
@@ -245,6 +255,29 @@ export default function LabExperimentsPage() {
     setAddOpen(true);
   };
 
+  const handleOpenEditModal = (exp) => {
+    setEditingExpId(exp._id || exp.id);
+    setNewExp({
+      subject: exp.subject || 'HAP1',
+      experimentNo: String(exp.experimentNo || '1'),
+      experimentName: exp.experimentName || '',
+      chemicals: exp.chemicals?.length 
+        ? exp.chemicals.map(c => ({ chemicalName: c.chemicalName, quantityPerStudent: String(c.quantityPerStudent || 10), unit: c.unit || 'mL' }))
+        : [{ chemicalName: '', quantityPerStudent: '10', unit: 'mL' }]
+    });
+    setAddOpen(true);
+  };
+
+  const handleDeleteExperiment = async (expId, expName) => {
+    if (!window.confirm(`Are you sure you want to delete "${expName}"?`)) return;
+    try {
+      await api.delete(`/lab/structure/experiment/${expId}`);
+      if (activeLabId) fetchLabStructure(activeLabId);
+    } catch (err) {
+      alert(err?.response?.data?.message || 'Failed to delete experiment');
+    }
+  };
+
   const handleSaveManualExperiment = async () => {
     if (!newExp.subject || !newExp.experimentName) {
       alert('Please fill in the subject and experiment name');
@@ -252,12 +285,20 @@ export default function LabExperimentsPage() {
     }
     setAddingExp(true);
     try {
-      await api.post('/lab/structure/experiment', {
-        ...newExp,
-        labId: activeLabId
-      });
+      if (editingExpId) {
+        await api.put(`/lab/structure/experiment/${editingExpId}`, {
+          ...newExp,
+          labId: activeLabId
+        });
+      } else {
+        await api.post('/lab/structure/experiment', {
+          ...newExp,
+          labId: activeLabId
+        });
+      }
       setAddOpen(false);
-      fetchLabStructure(activeLabId);
+      setEditingExpId(null);
+      if (activeLabId) fetchLabStructure(activeLabId);
       setNewExp({
         subject: 'HAP1',
         experimentNo: '1',
@@ -402,8 +443,25 @@ export default function LabExperimentsPage() {
               </div>
 
               <div className="pt-3 border-t border-[#e8ece1] dark:border-[#3c452f] flex justify-between items-center text-xs text-[#87996c]">
-                <span>{exp.chemicals?.length || 0} Ingredients</span>
-                <span className="text-[#556b2f] dark:text-[#a5b48b] font-medium">Ready for allotment</span>
+                <span className="font-semibold">{exp.chemicals?.length || 0} Ingredients</span>
+                <div className="flex items-center gap-1.5">
+                  <button 
+                    type="button" 
+                    onClick={() => handleOpenEditModal(exp)}
+                    className="p-1 rounded hover:bg-[#e8efd9] text-[#556b2f] dark:hover:bg-[#28301f] transition"
+                    title="Edit Experiment"
+                  >
+                    <Edit3 size={14} />
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => handleDeleteExperiment(exp._id || exp.id, exp.experimentName)}
+                    className="p-1 rounded hover:bg-rose-100 text-rose-600 dark:hover:bg-rose-950/40 transition"
+                    title="Delete Experiment"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -434,6 +492,30 @@ export default function LabExperimentsPage() {
                         </div>
                       );
                     })}
+                  </div>
+                )
+              },
+              {
+                key: 'actions',
+                label: 'Actions',
+                render: (row) => (
+                  <div className="flex items-center gap-1.5">
+                    <button 
+                      type="button" 
+                      onClick={() => handleOpenEditModal(row)}
+                      className="p-1.5 rounded-lg hover:bg-[#e8efd9] text-[#556b2f] dark:hover:bg-[#28301f] transition"
+                      title="Edit Experiment"
+                    >
+                      <Edit3 size={16} />
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => handleDeleteExperiment(row._id || row.id, row.experimentName)}
+                      className="p-1.5 rounded-lg hover:bg-rose-100 text-rose-600 dark:hover:bg-rose-950/40 transition"
+                      title="Delete Experiment"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                 )
               }
@@ -556,7 +638,7 @@ export default function LabExperimentsPage() {
       </Modal>
 
       {/* Add Single Experiment Modal */}
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add Single Experiment">
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title={editingExpId ? "Edit Experiment" : "Add Single Experiment"}>
         <div className="space-y-4 text-left">
           <div className="grid grid-cols-2 gap-4">
             <Input 
@@ -646,7 +728,7 @@ export default function LabExperimentsPage() {
             disabled={addingExp} 
             className="w-full bg-[#556b2f] text-white font-bold py-2.5 rounded-xl mt-4"
           >
-            {addingExp ? 'Saving Experiment...' : 'Save Experiment to Lab Structure'}
+            {addingExp ? 'Saving...' : (editingExpId ? 'Save Changes' : 'Save Experiment to Lab Structure')}
           </Button>
         </div>
       </Modal>
