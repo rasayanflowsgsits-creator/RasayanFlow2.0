@@ -413,7 +413,7 @@ const getStudentStructure = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Add single experiment manually
+// @desc    Add single experiment manually (with upsert to prevent E11000 duplicate key error)
 // @route   POST /api/lab/structure/experiment
 // @access  Private (Lab Admin)
 const addExperiment = asyncHandler(async (req, res) => {
@@ -439,6 +439,36 @@ const addExperiment = asyncHandler(async (req, res) => {
   }
 
   const labObjectId = new mongoose.Types.ObjectId(lab._id);
+  const expNum = Number(experimentNo) || 1;
+
+  // Clean and parse chemicals array
+  const formattedChemicals = Array.isArray(chemicals) 
+    ? chemicals.map(c => ({
+        chemicalName: String(c.chemicalName || c.name || '').trim(),
+        quantityPerStudent: Number(c.quantityPerStudent || c.quantity || 1),
+        unit: String(c.unit || c.quantityUnit || 'mL').trim()
+      })).filter(c => c.chemicalName !== '')
+    : [];
+
+  // Upsert: check if an experiment with this labId, subject, and experimentNo already exists
+  let existing = await LabStructure.findOne({
+    $or: [
+      { labId: labObjectId },
+      { labId: labObjectId.toString() }
+    ],
+    subject,
+    experimentNo: expNum
+  });
+
+  if (existing) {
+    existing.labId = labObjectId;
+    existing.experimentName = experimentName;
+    existing.chemicals = formattedChemicals;
+    existing.updatedAt = Date.now();
+    existing.uploadedBy = req.user._id || req.user.id;
+    await existing.save();
+    return res.status(200).json({ success: true, data: existing, message: 'Experiment updated successfully' });
+  }
 
   const experiment = await LabStructure.create({
     labId: labObjectId,
@@ -447,13 +477,13 @@ const addExperiment = asyncHandler(async (req, res) => {
     year: lab.year || '1',
     semester: lab.semester || '1',
     subject,
-    experimentNo: Number(experimentNo) || 1,
+    experimentNo: expNum,
     experimentName,
-    chemicals: chemicals || [],
+    chemicals: formattedChemicals,
     uploadedBy: req.user._id || req.user.id
   });
 
-  res.status(201).json({ success: true, data: experiment });
+  res.status(201).json({ success: true, data: experiment, message: 'Experiment created successfully' });
 });
 
 // @desc    Update single experiment
