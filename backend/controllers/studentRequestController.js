@@ -18,16 +18,16 @@ const createRequest = asyncHandler(async (req, res) => {
     throw new Error('Experiment name and chemicals are required');
   }
 
-  const targetLabId = labId || req.user.labId;
+  const rawLabId = labId || req.user.labId;
+  const targetLabId = mongoose.Types.ObjectId.isValid(rawLabId)
+    ? new mongoose.Types.ObjectId(rawLabId)
+    : rawLabId;
 
   // Duplicate Check: Check if student already requested this experiment and status is STILL Pending
   const existingPending = await StudentRequest.findOne({
     studentId: req.user.id,
     labId: targetLabId,
-    $or: [
-      { experimentNo: experimentNo },
-      { experimentName: experimentName }
-    ],
+    experimentName: experimentName,
     overallStatus: 'Pending'
   });
 
