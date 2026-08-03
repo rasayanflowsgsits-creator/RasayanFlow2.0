@@ -247,6 +247,8 @@ function App() {
                     <Route path='activity' element={role === 'super-admin' ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='settings' element={role === 'super-admin' ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='labs/:id' element={role === 'student' ? <StudentLabDetail /> : <Navigate to='/' replace />} />
+                    <Route path='student/lab/:id' element={role === 'student' ? <StudentLabDetail /> : <Navigate to='/' replace />} />
+                    <Route path='student/subjects/:id' element={role === 'student' ? <StudentLabDetail /> : <Navigate to='/' replace />} />
                     <Route path='about' element={<AboutPage />} />
                     <Route path='*' element={<NotFound />} />
                   </Routes>

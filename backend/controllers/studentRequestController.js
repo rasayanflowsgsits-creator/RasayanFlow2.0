@@ -8,31 +8,36 @@ const { getIo } = require('../socket');
 const { v4: uuidv4 } = require('uuid');
 
 // @desc    Create a new student request for chemicals
-// @route   POST /api/student-requests
+// @route   POST /api/student/requests
 // @access  Private (Student)
 const createRequest = asyncHandler(async (req, res) => {
-  const { labId, labName, year, semester, subject, experimentNo, experimentName, chemicalsRequested } = req.body;
+  const { labId, labName, year, semester, subject, experimentNo, experimentName, chemicalsRequested, notes } = req.body;
 
   if (!experimentName || !chemicalsRequested || chemicalsRequested.length === 0) {
     res.status(400);
     throw new Error('Experiment name and chemicals are required');
   }
 
-  // Duplicate Check: Same experiment today
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const targetLabId = labId || req.user.labId;
 
-  const duplicateRequest = await StudentRequest.findOne({
+  // Duplicate Check: Check if student already requested this experiment and status is STILL Pending
+  const existingPending = await StudentRequest.findOne({
     studentId: req.user.id,
-    experimentNo: experimentNo,
-    requestedAt: { $gte: today }
+    labId: targetLabId,
+    $or: [
+      { experimentNo: experimentNo },
+      { experimentName: experimentName }
+    ],
+    overallStatus: 'Pending'
   });
 
-  if (duplicateRequest && !req.body.forceSubmit) {
+  if (existingPending && !req.body.forceSubmit) {
+    const formattedDate = new Date(existingPending.requestedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
     return res.status(409).json({
       success: false,
-      message: 'Duplicate request found today',
-      data: duplicateRequest
+      message: `You already have a pending request for this experiment!\nRequest ID: ${existingPending.requestId}\nSubmitted: ${formattedDate}`,
+      isDuplicate: true,
+      data: existingPending
     });
   }
 
@@ -42,20 +47,26 @@ const createRequest = asyncHandler(async (req, res) => {
     requestId,
     studentId: req.user.id,
     studentName: req.user.name,
-    rollNumber: req.user.rollNumber,
-    group: req.user.group,
-    labId: labId || req.user.labId,
-    labName: labName || req.user.labName,
-    year: year || req.user.year,
-    semester: semester || req.user.semester,
-    subject,
-    experimentNo,
-    experimentName,
-    chemicalsRequested: chemicalsRequested.map(c => ({ ...c, status: 'Pending' }))
+    rollNumber: req.user.rollNumber || 'RN-1001',
+    group: req.user.group || 'Group A',
+    labId: targetLabId,
+    labName: labName || 'HAP1',
+    year: year || req.user.year || '1',
+    semester: semester || req.user.semester || '1',
+    subject: subject || 'HAP - I',
+    experimentNo: Number(experimentNo) || 1,
+    experimentName: experimentName,
+    chemicalsRequested: chemicalsRequested.map(c => ({
+      chemicalName: c.chemicalName || c.name,
+      quantityRequested: Number(c.quantityRequested || c.quantity || c.quantityPerStudent || 1),
+      unit: c.unit || c.quantityUnit || 'mL',
+      status: 'Pending'
+    })),
+    rejectionReason: notes || ''
   });
 
   const io = getIo();
-  if (io) {
+  if (io && newRequest.labId) {
     io.to(newRequest.labId.toString()).emit('new-student-request', newRequest);
   }
 
@@ -63,15 +74,27 @@ const createRequest = asyncHandler(async (req, res) => {
 });
 
 // @desc    Get requests for logged-in student
-// @route   GET /api/student-requests/my
+// @route   GET /api/student/requests/my
 // @access  Private (Student)
 const getMyRequests = asyncHandler(async (req, res) => {
   const requests = await StudentRequest.find({ studentId: req.user.id }).sort({ requestedAt: -1 });
   res.status(200).json({ success: true, count: requests.length, data: requests });
 });
 
-// @desc    Get all requests for a specific lab
-// @route   GET /api/student-requests/lab
+// @desc    Get student requests for a specific labId
+// @route   GET /api/student/requests/lab/:labId
+// @access  Private (Student)
+const getStudentRequestsForLab = asyncHandler(async (req, res) => {
+  const labId = req.params.labId || req.query.labId || req.user.labId;
+  const requests = await StudentRequest.find({
+    studentId: req.user.id,
+    labId
+  }).sort({ requestedAt: -1 });
+  res.status(200).json({ success: true, count: requests.length, data: requests });
+});
+
+// @desc    Get all requests for a specific lab (Lab Admin)
+// @route   GET /api/student/requests/lab
 // @access  Private (Lab Admin)
 const getLabRequests = asyncHandler(async (req, res) => {
   const labId = req.query.labId || req.user.labId;
@@ -421,6 +444,7 @@ const getLabHistory = asyncHandler(async (req, res) => {
 module.exports = {
   createRequest,
   getMyRequests,
+  getStudentRequestsForLab,
   getLabRequests,
   approveBulk,
   approveRequest,
