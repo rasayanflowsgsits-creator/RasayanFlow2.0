@@ -451,7 +451,7 @@ const addExperiment = asyncHandler(async (req, res) => {
     lab = await Lab.findById(targetLabId);
   }
   if (!lab) {
-    lab = await resolveTargetLab(req);
+    lab = await Lab.findOne({ assignedLabAdmin: req.user._id });
   }
 
   if (!lab) {
@@ -512,12 +512,7 @@ const addExperiment = asyncHandler(async (req, res) => {
   // Dual Save: Also populate Experiment collection in MongoDB
   try {
     const expNoStr = `Exp ${String(expNum).padStart(2, '0')}`;
-    const reqInv = formattedChemicals.map(c => ({
-      chemicalName: c.chemicalName,
-      quantity: Number(c.quantityPerStudent || 1),
-      quantityUnit: c.unit || 'g'
-    }));
-
+    
     await Experiment.findOneAndUpdate(
       { labId: labObjectId, experimentNumber: expNoStr },
       {
@@ -526,7 +521,6 @@ const addExperiment = asyncHandler(async (req, res) => {
         experimentObject: experimentName,
         subject: subject,
         department: subject,
-        requiredInventory: reqInv,
         createdBy: req.user._id || req.user.id
       },
       { upsert: true, new: true }
