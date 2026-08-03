@@ -73,50 +73,70 @@ export default function LabExperimentsPage() {
     return { status: 'ok', label: `In Stock (${qty} ${item.unit || ''})`, color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' };
   };
 
+  const getCol = (row, ...aliases) => {
+    if (!row || typeof row !== 'object') return '';
+    const keys = Object.keys(row);
+    for (const alias of aliases) {
+      const cleanAlias = alias.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const match = keys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanAlias);
+      if (match && row[match] !== undefined && row[match] !== null && String(row[match]).trim() !== '') {
+        return String(row[match]).trim();
+      }
+    }
+    return '';
+  };
+
   const processParsedData = (data) => {
     const issues = [];
     const grouped = {};
+    let fallbackExpNo = 1;
 
     data.forEach((row, i) => {
-      if (!row.Subject && !row['Experiment Name'] && !row['Chemical Name']) return;
+      if (!row || typeof row !== 'object') return;
+      
+      const subject = getCol(row, 'subject', 'lab', 'course', 'department') || currentLab?.labName || currentLab?.name || 'General';
+      let expNo = parseInt(getCol(row, 'experimentnumber', 'experimentno', 'expno', 'expnum', 'exp', 'sno', 'no', 'number'), 10);
+      const expName = getCol(row, 'experimentname', 'experimenttitle', 'title', 'name', 'objective', 'experiment');
+      const chemName = getCol(row, 'chemicalname', 'chemical', 'reagent', 'item', 'ingredient', 'name');
+      const qtyStr = getCol(row, 'quantity', 'qty', 'amount', 'quantityperstudent');
+      const qty = parseFloat(qtyStr) || 1;
+      const unit = getCol(row, 'unit', 'units', 'uom') || 'g';
 
-      const subject = row.Subject?.trim();
-      const expNo = parseInt(row['Experiment Number'], 10);
-      const expName = row['Experiment Name']?.trim();
-      const chemName = row['Chemical Name']?.trim();
-      const qty = parseFloat(row.Quantity);
-      const unit = row.Unit?.trim();
-
-      if (!subject || isNaN(expNo) || !expName) {
-        issues.push(`Row ${i + 2}: Missing required subject/experiment details.`);
-        return;
+      if (isNaN(expNo)) {
+        expNo = fallbackExpNo;
       }
 
-      const key = `${subject}-${expNo}`;
+      if (!expName && !chemName) return;
+
+      const finalExpName = expName || `Experiment #${expNo}`;
+      const key = `${subject}-${expNo}-${finalExpName}`;
+      
       if (!grouped[key]) {
         grouped[key] = {
           subject,
           experimentNo: expNo,
-          experimentName: expName,
+          experimentName: finalExpName,
           chemicals: []
         };
+        fallbackExpNo += 1;
       }
 
-      if (chemName && !isNaN(qty) && unit) {
+      if (chemName) {
         grouped[key].chemicals.push({
           chemicalName: chemName,
           quantityPerStudent: qty,
-          unit
+          unit: unit
         });
-      } else if (chemName || !isNaN(qty) || unit) {
-        issues.push(`Row ${i + 2}: Incomplete chemical details for ${chemName}.`);
       }
     });
 
-    setImportData(Object.values(grouped));
+    const parsedList = Object.values(grouped);
+    setImportData(parsedList);
     setImportIssues(issues);
-    if (Object.keys(grouped).length > 0) {
+    if (parsedList.length > 0) {
       setImportStep(2);
+    } else {
+      setImportIssues(['No valid experiment rows found in CSV. Please check column headers.']);
     }
   };
 
