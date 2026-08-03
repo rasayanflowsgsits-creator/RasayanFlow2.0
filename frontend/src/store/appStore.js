@@ -1083,6 +1083,201 @@ const useAppStore = create((set) => ({
   fetchMyLabs: async (courseType, year, semester) => {
     const isPreview = useAuthStore.getState().user?.isPreview;
     if (isPreview) {
+    }
+  },
+  fetchUnreadNotificationCount: async () => {
+    try {
+      const { data } = await api.get('/notifications/unread-count');
+      set({ unreadNotificationCount: getPayload(data)?.count || 0 });
+    } catch {
+      set({ unreadNotificationCount: 0 });
+    }
+  },
+  markNotificationAsRead: async (id) => {
+    try {
+      await api.put(`/notifications/${id}/read`);
+      set((state) => {
+        const notifs = state.notifications.map(n => n._id === id ? { ...n, isRead: true } : n);
+        return { notifications: notifs, unreadNotificationCount: notifs.filter(n => !n.isRead).length };
+      });
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
+  },
+  markAllNotificationsAsRead: async () => {
+    try {
+      await api.put('/notifications/read-all');
+      set((state) => {
+        const notifs = state.notifications.map(n => ({ ...n, isRead: true }));
+        return { notifications: notifs, unreadNotificationCount: 0 };
+      });
+    } catch (error) {
+      console.error('Failed to mark all notifications as read:', error);
+    }
+  },
+  createLabRequest: async ({ labId, labName, chemicalName, quantityRequested, unit, purpose, groupName = '' }) => {
+    const response = await api.post('/lab/requests', {
+      labId,
+      labName,
+      chemicalName,
+      quantityRequested: Number(quantityRequested),
+      unit,
+      purpose,
+      groupName
+    });
+    const request = getPayload(response.data);
+    set((state) => ({ labRequests: [request, ...state.labRequests] }));
+    return request;
+  },
+  fetchMyLabRequests: async () => {
+    try {
+      const { data } = await api.get('/lab/requests/my');
+      set({ labRequests: getPayload(data) || [] });
+    } catch {
+      set({ labRequests: [] });
+    }
+  },
+  approveLabRequest: async (requestId) => {
+    const response = await api.put(`/lab/requests/${requestId}/approve`);
+    const updated = getPayload(response.data);
+    set((state) => ({
+      labRequests: state.labRequests.map((entry) => (entry._id === updated._id ? updated : entry))
+    }));
+    return updated;
+  },
+  rejectLabRequest: async (requestId, rejectionReason = '') => {
+    const response = await api.put(`/lab/requests/${requestId}/reject`, { rejectionReason });
+    const updated = getPayload(response.data);
+    set((state) => ({
+      labRequests: state.labRequests.map((entry) => (entry._id === updated._id ? updated : entry))
+    }));
+    return updated;
+  },
+  fetchActivityLogs: async (filters = {}) => {
+    set({ loading: true });
+    try {
+      const queryParams = new URLSearchParams();
+
+      if (filters.page) queryParams.set('page', String(filters.page));
+      if (filters.limit) queryParams.set('limit', String(filters.limit));
+      if (filters.userId) queryParams.set('userId', filters.userId);
+      if (filters.action) queryParams.set('action', filters.action);
+
+      const query = queryParams.toString() ? `/logs?${queryParams.toString()}` : '/logs';
+      const { data } = await api.get(query);
+      const activityLogs = (getPayload(data) || []).map(normalizeActivityLog);
+      set({ activityLogs, loading: false });
+      return activityLogs;
+    } catch {
+      set({ activityLogs: [], loading: false });
+      return [];
+    }
+  },
+  setFilters: (payload) => set((state) => ({ filters: { ...state.filters, ...payload } })),
+  setToast: (toast) => set({ toast }),
+  removeToast: () => set({ toast: null }),
+  // Lab Structure Methods
+  fetchLabStructure: async (labId) => {
+    set({ loading: true });
+    try {
+      const { data } = await api.get(labId ? `/lab/structure?labId=${labId}` : '/lab/structure');
+      set({ labStructure: getPayload(data) || [], loading: false });
+    } catch {
+      set({ labStructure: [], loading: false });
+    }
+  },
+  uploadLabStructure: async (structures) => {
+    set({ loading: true });
+    try {
+      await api.post('/lab/structure/upload', { structures });
+      set({ loading: false, toast: { title: 'Success', message: 'Lab structure uploaded successfully', type: 'success' } });
+    } catch (err) {
+      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Upload failed', type: 'error' } });
+      throw err;
+    }
+  },
+
+  // Student Request Methods
+  fetchStudentRequests: async (labId) => {
+    set({ loading: true });
+    try {
+      const { data } = await api.get(labId ? `/student/requests/lab?labId=${labId}` : '/student/requests/lab');
+      set({ studentRequests: getPayload(data) || [], loading: false });
+    } catch {
+      set({ studentRequests: [], loading: false });
+    }
+  },
+  fetchMyStudentRequests: async () => {
+    const isPreview = useAuthStore.getState().user?.isPreview;
+    if (isPreview) {
+      set({ loading: false });
+      return;
+    }
+    set({ loading: true });
+    try {
+      const { data } = await api.get('/student/requests/my');
+      set({ studentRequests: getPayload(data) || [], loading: false });
+    } catch {
+      set({ studentRequests: [], loading: false });
+    }
+  },
+  createStudentRequest: async (payload) => {
+    set({ loading: true });
+    try {
+      await api.post('/student/requests', payload);
+      set({ loading: false, toast: { title: 'Success', message: 'Request submitted successfully', type: 'success' } });
+    } catch (err) {
+      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Request failed', type: 'error' } });
+      throw err;
+    }
+  },
+  approveStudentRequest: async (id, approveType) => {
+    set({ loading: true });
+    try {
+      await api.put(`/student/requests/${id}/approve`, { approveType });
+      set({ loading: false, toast: { title: 'Success', message: 'Request approved', type: 'success' } });
+      useAppStore.getState().fetchStudentRequests();
+      useAppStore.getState().fetchInventory(); // Inventory reduced
+    } catch (err) {
+      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Approval failed', type: 'error' } });
+      throw err;
+    }
+  },
+  rejectStudentRequest: async (id, reason) => {
+    set({ loading: true });
+    try {
+      await api.put(`/student/requests/${id}/reject`, { reason });
+      set({ loading: false, toast: { title: 'Success', message: 'Request rejected', type: 'success' } });
+      useAppStore.getState().fetchStudentRequests();
+    } catch (err) {
+      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Rejection failed', type: 'error' } });
+      throw err;
+    }
+  },
+  setupStudentProfile: async (payload) => {
+    set({ loading: true });
+    try {
+      const { data } = await api.put('/student/profile/setup', payload);
+      set({ loading: false });
+      return getPayload(data);
+    } catch (err) {
+      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Setup failed', type: 'error' } });
+      throw err;
+    }
+  },
+  fetchMatchingLabs: async (courseType, year, semester) => {
+    try {
+      const { data } = await api.get(`/labs/matching?courseType=${courseType}&year=${year}&semester=${semester}`);
+      return getPayload(data) || [];
+    } catch (err) {
+      console.error('Failed to fetch matching labs', err);
+      return [];
+    }
+  },
+  myLabs: [],
+  fetchMyLabs: async (courseType, year, semester) => {
+    const isPreview = useAuthStore.getState().user?.isPreview;
+    if (isPreview) {
       set({ myLabs: PREVIEW_LABS, labs: PREVIEW_LABS, loading: false });
       return;
     }
@@ -1092,14 +1287,44 @@ const useAppStore = create((set) => ({
       const fetched = getPayload(data) || [];
       set({ myLabs: fetched.length ? fetched : PREVIEW_LABS, loading: false });
     } catch (err) {
-      console.error('Failed to fetch my labs', err);
+      console.error('Failed to fetch my labs:', err);
       set({ myLabs: PREVIEW_LABS, loading: false });
     }
   },
-  fetchStudentLabStructure: async () => {
+  labStructure: [],
+  fetchLabStructure: async (labId) => {
     set({ loading: true });
     try {
-      const { data } = await api.get('/lab/structure/student');
+      const url = labId ? `/lab/structure?labId=${labId}` : '/lab/structure';
+      const { data } = await api.get(url);
+      const list = getPayload(data) || [];
+      set({ labStructure: list, loading: false });
+      return list;
+    } catch (err) {
+      console.error('Failed to fetch lab structure:', err);
+      set({ labStructure: [], loading: false });
+      return [];
+    }
+  },
+  uploadLabStructure: async (structures, labId) => {
+    set({ loading: true });
+    try {
+      const response = await api.post('/lab/structure/upload', { structures, labId });
+      const result = getPayload(response.data);
+      set({ loading: false, toast: { title: 'Success', message: 'Experiments uploaded successfully', type: 'success' } });
+      return result;
+    } catch (err) {
+      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Upload failed', type: 'error' } });
+      throw err;
+    }
+  },
+  markNotificationAsRead: async (id) => {
+    try {
+      await api.put(`/notifications/${id}/read`);
+      set((state) => {
+        const notifs = state.notifications.map(n => n._id === id ? { ...n, isRead: true } : n);
+        return { notifications: notifs, unreadNotificationCount: notifs.filter(n => !n.isRead).length };
+      });
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
     }

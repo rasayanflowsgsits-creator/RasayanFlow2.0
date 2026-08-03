@@ -257,67 +257,56 @@ const getStructure = asyncHandler(async (req, res) => {
 // @access  Private (Student)
 const getStudentStructure = asyncHandler(async (req, res) => {
   const targetId = req.params?.labId || req.query?.labId || req.body?.labId || req.user?.labId;
-  console.log('Searching for labId:', targetId);
+  console.log('Student searching for labId:', targetId);
 
-  const lab = await resolveTargetLab(req);
-  
-  const actualLabId = lab ? lab._id : targetId;
-  const queryIds = [];
-
-  if (actualLabId) {
-    queryIds.push(...getLabIdQuery(actualLabId));
-  }
-  if (targetId && targetId !== actualLabId?.toString()) {
-    queryIds.push(...getLabIdQuery(targetId));
-  }
-
-  let structure = await LabStructure.find({ labId: { $in: queryIds } }).lean().sort({ subject: 1, experimentNo: 1 });
-
-  // If still 0, try searching by labName / courseType / year / semester
-  if (structure.length === 0 && lab) {
-    structure = await LabStructure.find({
-      $or: [
-        { labName: lab.labName || lab.name },
-        { courseType: lab.courseType, year: lab.year, semester: lab.semester }
-      ]
-    }).lean().sort({ subject: 1, experimentNo: 1 });
-  }
-
-  // Auto-seed default experiments if still 0
-  if (structure.length === 0 && lab) {
-    const seeded = [];
-    const subjName = lab.labName || lab.name || 'HAP1 (Human Anatomy & Physiology I)';
-    for (const exp of DEFAULT_HAP1_EXPERIMENTS) {
-      const createdExp = await LabStructure.create({
-        labId: lab._id,
-        labName: subjName,
-        courseType: lab.courseType || 'B.Pharm',
-        year: lab.year || '1',
-        semester: lab.semester || '1',
-        subject: subjName.includes('HAP') ? 'HAP - I' : subjName,
-        experimentNo: exp.experimentNo,
-        experimentName: exp.experimentName,
-        chemicals: exp.chemicals,
-        uploadedBy: req.user._id || req.user.id
-      });
-      seeded.push(createdExp.toObject());
+  let targetLab = null;
+  if (targetId && targetId !== 'undefined' && targetId !== 'null') {
+    if (mongoose.Types.ObjectId.isValid(targetId)) {
+      targetLab = await Lab.findById(targetId);
     }
-    structure = seeded;
+    if (!targetLab) {
+      targetLab = await Lab.findOne({ $or: [{ labCode: targetId }, { name: targetId }, { labName: targetId }] });
+    }
   }
 
-  console.log('Found experiments:', structure.length);
-
-  // Fetch student requests for this lab
-  let studentRequests = [];
-  if (req.user) {
-    studentRequests = await StudentRequest.find({
-      studentId: req.user.id,
-      labId: { $in: queryIds }
-    }).sort({ requestedAt: -1 }).lean();
+  // Fallback to Lab assigned to user or first available lab
+  if (!targetLab) {
+    targetLab = await resolveTargetLab(req);
   }
 
-  const inventory = lab ? await Inventory.find({ labId: { $in: queryIds } }).lean() : [];
-  
+  const queryOrConditions = [];
+  if (targetId) {
+    queryOrConditions.push({ labId: targetId });
+    queryOrConditions.push({ labId: targetId.toString() });
+    if (mongoose.Types.ObjectId.isValid(targetId)) {
+      queryOrConditions.push({ labId: new mongoose.Types.ObjectId(targetId) });
+    }
+  }
+  if (targetLab) {
+    queryOrConditions.push({ labId: targetLab._id });
+    queryOrConditions.push({ labId: targetLab._id.toString() });
+    if (targetLab.labName || targetLab.name) {
+      queryOrConditions.push({ labName: targetLab.labName || targetLab.name });
+    }
+  }
+
+  // 1. Primary Query: Search by labId or labName
+  let structure = await LabStructure.find(queryOrConditions.length > 0 ? { $or: queryOrConditions } : {}).lean().sort({ subject: 1, experimentNo: 1 });
+
+  // 2. Fallback Query: If structure is 0, fetch ALL LabStructures from MongoDB so no student is left with 0 data
+  if (structure.length === 0) {
+    structure = await LabStructure.find({}).lean().sort({ subject: 1, experimentNo: 1 });
+  }
+
+  console.log('Found experiments for student:', structure.length);
+
+  // Fetch inventory for stock status
+  const inventoryQueryOrs = [...queryOrConditions];
+  if (targetLab) {
+    inventoryQueryOrs.push({ labId: targetLab._id });
+  }
+  const inventory = await Inventory.find(inventoryQueryOrs.length > 0 ? { $or: inventoryQueryOrs } : {}).lean();
+
   const enrichedStructure = structure.map(exp => {
     let allAvailable = true;
     let anyAvailable = false;
@@ -353,34 +342,42 @@ const getStudentStructure = asyncHandler(async (req, res) => {
   // Group experiments by subject
   const subjectsGrouped = {};
   enrichedStructure.forEach(exp => {
-    const subjKey = exp.subject || exp.labName || 'HAP - I (Human Anatomy & Physiology 1)';
+    const subjKey = exp.subject || exp.labName || 'General';
     if (!subjectsGrouped[subjKey]) {
       subjectsGrouped[subjKey] = [];
     }
     subjectsGrouped[subjKey].push(exp);
   });
 
-  res.status(200).json({ 
-    success: true, 
+  // Fetch student requests
+  let studentRequests = [];
+  if (req.user) {
+    studentRequests = await StudentRequest.find({
+      studentId: req.user.id
+    }).sort({ requestedAt: -1 }).lean();
+  }
+
+  res.status(200).json({
+    success: true,
     labId: targetId,
     totalExperiments: enrichedStructure.length,
     subjects: subjectsGrouped,
     experiments: enrichedStructure,
-    lab: lab ? {
-      _id: lab._id,
-      id: lab._id,
-      name: lab.name || lab.labName,
-      labName: lab.labName || lab.name,
-      labCode: lab.labCode || '0001',
-      courseType: lab.courseType || 'B.Pharm',
-      year: lab.year || '1',
-      semester: lab.semester || '1',
-      admin: lab.admin || 'user10',
-      adminEmail: lab.adminEmail || 'user10@gmail.com',
-      admins: lab.admins || [],
-      department: lab.department || 'Pharmaceutics'
+    lab: targetLab ? {
+      _id: targetLab._id,
+      id: targetLab._id,
+      name: targetLab.name || targetLab.labName,
+      labName: targetLab.labName || targetLab.name,
+      labCode: targetLab.labCode || '0001',
+      courseType: targetLab.courseType || 'B.Pharm',
+      year: targetLab.year || '1',
+      semester: targetLab.semester || '1',
+      admin: targetLab.admin || 'user10',
+      adminEmail: targetLab.adminEmail || 'user10@gmail.com',
+      admins: targetLab.admins || [],
+      department: targetLab.department || 'Pharmaceutics'
     } : null,
-    count: enrichedStructure.length, 
+    count: enrichedStructure.length,
     data: enrichedStructure,
     studentRequests
   });
