@@ -43,41 +43,7 @@ export default function StudentLabDetail() {
   const [experimentsData, setExperimentsData] = useState([]);
   const [subjectsData, setSubjectsData] = useState({});
 
-  const DEFAULT_FALLBACK_EXPERIMENTS = useMemo(() => [
-    {
-      _id: 'exp-fallback-1',
-      subject: 'Organic Chemistry',
-      experimentNo: 1,
-      experimentName: 'Synthesis of Aspirin',
-      chemicals: [
-        { chemicalName: 'Salicylic Acid', quantityPerStudent: 3, unit: 'g', stockStatus: 'Not in Stock' },
-        { chemicalName: 'Acetic Anhydride', quantityPerStudent: 5, unit: 'mL', stockStatus: 'Not in Stock' },
-        { chemicalName: 'Sulfuric Acid', quantityPerStudent: 0.25, unit: 'mL', stockStatus: 'Not in Stock' }
-      ]
-    },
-    {
-      _id: 'exp-fallback-2',
-      subject: 'Pharmaceutical Analysis',
-      experimentNo: 1,
-      experimentName: 'Preparation of 0.1 N HCl',
-      chemicals: [
-        { chemicalName: 'Hydrochloric Acid', quantityPerStudent: 5, unit: 'mL', stockStatus: 'In Stock (2500)' },
-        { chemicalName: 'Distilled Water', quantityPerStudent: 100, unit: 'mL', stockStatus: 'Not in Stock' }
-      ]
-    },
-    {
-      _id: 'exp-fallback-3',
-      subject: 'Pharmaceutical Analysis',
-      experimentNo: 2,
-      experimentName: 'Standardization of NaOH',
-      chemicals: [
-        { chemicalName: 'Sodium Hydroxide', quantityPerStudent: 2, unit: 'g', stockStatus: 'In Stock (1000)' },
-        { chemicalName: 'Phenolphthalein', quantityPerStudent: 0.5, unit: 'mL', stockStatus: 'Not in Stock' }
-      ]
-    }
-  ], []);
-
-  // Fetch Lab Details & Experiments
+  // Fetch Lab Details & Experiments dynamically from API
   const fetchLabData = async () => {
     if (!labId) return;
     setLoading(true);
@@ -85,15 +51,12 @@ export default function StudentLabDetail() {
       const res = await api.get(`/lab/structure/student/${labId}`);
       console.log('Experiments data:', res.data);
       if (res.data.success) {
-        let exps = res.data.experiments || res.data.data || [];
-        if (exps.length === 0) {
-          exps = DEFAULT_FALLBACK_EXPERIMENTS;
-        }
+        const exps = res.data.experiments || res.data.data || [];
         setStructure(exps);
         setExperimentsData(exps);
         
         const subjMap = res.data.subjects && Object.keys(res.data.subjects).length > 0 ? { ...res.data.subjects } : {};
-        if (Object.keys(subjMap).length === 0) {
+        if (Object.keys(subjMap).length === 0 && exps.length > 0) {
           exps.forEach(e => {
             const k = e.subject || 'General';
             if (!subjMap[k]) subjMap[k] = [];
@@ -106,12 +69,6 @@ export default function StudentLabDetail() {
       }
     } catch (err) {
       console.error('Error fetching student lab structure:', err);
-      setStructure(DEFAULT_FALLBACK_EXPERIMENTS);
-      setExperimentsData(DEFAULT_FALLBACK_EXPERIMENTS);
-      setSubjectsData({
-        'Organic Chemistry': [DEFAULT_FALLBACK_EXPERIMENTS[0]],
-        'Pharmaceutical Analysis': [DEFAULT_FALLBACK_EXPERIMENTS[1], DEFAULT_FALLBACK_EXPERIMENTS[2]]
-      });
     } finally {
       setLoading(false);
     }

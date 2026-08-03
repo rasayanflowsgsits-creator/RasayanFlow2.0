@@ -258,7 +258,7 @@ const getStructure = asyncHandler(async (req, res) => {
 // @access  Private (Student)
 const getStudentStructure = asyncHandler(async (req, res) => {
   const targetId = req.params?.labId || req.query?.labId || req.body?.labId || req.user?.labId;
-  console.log('Student searching for labId:', targetId);
+  console.log('Student fetching experiments for labId:', targetId);
 
   let targetLab = null;
   if (targetId && targetId !== 'undefined' && targetId !== 'null') {
@@ -270,39 +270,58 @@ const getStudentStructure = asyncHandler(async (req, res) => {
     }
   }
 
-  // Fallback to Lab assigned to user or first available lab
   if (!targetLab) {
     targetLab = await resolveTargetLab(req);
   }
 
-  const queryOrConditions = [];
+  // Find linked Lab Admins for this lab
+  let adminUserIds = [];
+  if (targetLab) {
+    const admins = await User.find({
+      $or: [
+        { labId: targetLab._id },
+        { email: targetLab.adminEmail },
+        { _id: { $in: targetLab.admins || [] } }
+      ]
+    }).select('_id');
+    adminUserIds = admins.map(u => u._id);
+  }
+
+  // Construct dynamic $or search conditions
+  const searchOrs = [];
   if (targetId) {
-    queryOrConditions.push({ labId: targetId });
-    queryOrConditions.push({ labId: targetId.toString() });
+    searchOrs.push({ labId: targetId });
+    searchOrs.push({ labId: targetId.toString() });
     if (mongoose.Types.ObjectId.isValid(targetId)) {
-      queryOrConditions.push({ labId: new mongoose.Types.ObjectId(targetId) });
+      searchOrs.push({ labId: new mongoose.Types.ObjectId(targetId) });
     }
   }
   if (targetLab) {
-    queryOrConditions.push({ labId: targetLab._id });
-    queryOrConditions.push({ labId: targetLab._id.toString() });
+    searchOrs.push({ labId: targetLab._id });
+    searchOrs.push({ labId: targetLab._id.toString() });
     if (targetLab.labName || targetLab.name) {
-      queryOrConditions.push({ labName: targetLab.labName || targetLab.name });
+      searchOrs.push({ labName: { $regex: new RegExp(`^${targetLab.labName || targetLab.name}`, 'i') } });
     }
   }
+  if (adminUserIds.length > 0) {
+    searchOrs.push({ uploadedBy: { $in: adminUserIds } });
+    searchOrs.push({ createdBy: { $in: adminUserIds } });
+  }
 
-  // 1. Primary Query: Search by labId or labName in LabStructure
-  let structure = await LabStructure.find(queryOrConditions.length > 0 ? { $or: queryOrConditions } : {}).lean().sort({ subject: 1, experimentNo: 1 });
+  const queryFilter = searchOrs.length > 0 ? { $or: searchOrs } : {};
 
-  // 2. Also search in Experiment collection (where experiments created via Experiment Manager are stored)
-  const dbExperiments = await Experiment.find(queryOrConditions.length > 0 ? { $or: queryOrConditions } : {}).lean().sort({ experimentNumber: 1 });
+  // 1. Fetch from LabStructure collection
+  let structure = await LabStructure.find(queryFilter).lean().sort({ subject: 1, experimentNo: 1 });
+
+  // 2. Fetch from Experiment collection (created by Lab Admin Experiment Manager)
+  const dbExperiments = await Experiment.find(queryFilter).lean().sort({ experimentNumber: 1 });
   
   if (dbExperiments.length > 0) {
     const mappedDbExperiments = dbExperiments.map(exp => ({
       _id: exp._id,
       id: exp._id,
       labId: exp.labId,
-      subject: exp.subject || exp.department || 'Organic Chemistry',
+      subject: exp.subject || exp.department || targetLab?.labName || targetLab?.name || 'Lab Experiments',
       experimentNo: parseInt(exp.experimentNumber, 10) || 1,
       experimentName: exp.experimentObject || exp.experimentName || 'Experiment',
       chemicals: (exp.requiredInventory || []).map(r => ({
@@ -313,24 +332,30 @@ const getStudentStructure = asyncHandler(async (req, res) => {
     }));
 
     mappedDbExperiments.forEach(m => {
-      if (!structure.some(s => s.experimentName === m.experimentName && s.experimentNo === m.experimentNo)) {
+      if (!structure.some(s => s.experimentName === m.experimentName && Number(s.experimentNo) === Number(m.experimentNo))) {
         structure.push(m);
       }
     });
   }
 
-  // 3. Fallback Query: If structure is still 0, fetch ALL LabStructures & Experiments from MongoDB so no student is left with 0 data
-  if (structure.length === 0) {
-    const allLabStructures = await LabStructure.find({}).lean().sort({ subject: 1, experimentNo: 1 });
-    const allExperiments = await Experiment.find({}).lean().sort({ experimentNumber: 1 });
-    
-    structure = [...allLabStructures];
-    allExperiments.forEach(exp => {
+  // If still no experiments found specifically for this lab, query all experiments in database matching lab course/year/sem or created by any lab admin
+  if (structure.length === 0 && targetLab) {
+    const fallbackStructures = await LabStructure.find({
+      $or: [
+        { courseType: targetLab.courseType, year: targetLab.year, semester: targetLab.semester },
+        { courseType: targetLab.courseType }
+      ]
+    }).lean().sort({ subject: 1, experimentNo: 1 });
+
+    const fallbackExps = await Experiment.find({}).lean().sort({ experimentNumber: 1 });
+    structure = [...fallbackStructures];
+
+    fallbackExps.forEach(exp => {
       const m = {
         _id: exp._id,
         id: exp._id,
         labId: exp.labId,
-        subject: exp.subject || exp.department || 'Pharmaceutical Analysis',
+        subject: exp.subject || exp.department || targetLab?.labName || targetLab?.name || 'Lab Practical',
         experimentNo: parseInt(exp.experimentNumber, 10) || 1,
         experimentName: exp.experimentObject || exp.experimentName || 'Experiment',
         chemicals: (exp.requiredInventory || []).map(r => ({
@@ -345,48 +370,10 @@ const getStudentStructure = asyncHandler(async (req, res) => {
     });
   }
 
-  // 4. Ultimate Fallback: If structure is STILL 0, provide default preset experiments matching HAP1 and core lab subjects
-  if (structure.length === 0) {
-    structure = [
-      {
-        subject: 'Organic Chemistry',
-        experimentNo: 1,
-        experimentName: 'Synthesis of Aspirin',
-        chemicals: [
-          { chemicalName: 'Salicylic Acid', quantityPerStudent: 3, unit: 'g' },
-          { chemicalName: 'Acetic Anhydride', quantityPerStudent: 5, unit: 'mL' },
-          { chemicalName: 'Sulfuric Acid', quantityPerStudent: 0.25, unit: 'mL' }
-        ]
-      },
-      {
-        subject: 'Pharmaceutical Analysis',
-        experimentNo: 1,
-        experimentName: 'Preparation of 0.1 N HCl',
-        chemicals: [
-          { chemicalName: 'Hydrochloric Acid', quantityPerStudent: 5, unit: 'mL' },
-          { chemicalName: 'Distilled Water', quantityPerStudent: 100, unit: 'mL' }
-        ]
-      },
-      {
-        subject: 'Pharmaceutical Analysis',
-        experimentNo: 2,
-        experimentName: 'Standardization of NaOH',
-        chemicals: [
-          { chemicalName: 'Sodium Hydroxide', quantityPerStudent: 2, unit: 'g' },
-          { chemicalName: 'Phenolphthalein', quantityPerStudent: 0.5, unit: 'mL' }
-        ]
-      }
-    ];
-  }
+  console.log('Total dynamic experiments found for student:', structure.length);
 
-  console.log('Found experiments for student:', structure.length);
-
-  // Fetch inventory for stock status
-  const inventoryQueryOrs = [...queryOrConditions];
-  if (targetLab) {
-    inventoryQueryOrs.push({ labId: targetLab._id });
-  }
-  const inventory = await Inventory.find(inventoryQueryOrs.length > 0 ? { $or: inventoryQueryOrs } : {}).lean();
+  // Fetch Inventory for Stock Status calculation
+  const inventory = await Inventory.find(queryFilter).lean();
 
   const enrichedStructure = structure.map(exp => {
     let allAvailable = true;
@@ -420,10 +407,10 @@ const getStudentStructure = asyncHandler(async (req, res) => {
     return exp;
   });
 
-  // Group experiments by subject
+  // Group experiments dynamically by subject
   const subjectsGrouped = {};
   enrichedStructure.forEach(exp => {
-    const subjKey = exp.subject || exp.labName || 'General';
+    const subjKey = exp.subject || targetLab?.labName || targetLab?.name || 'General';
     if (!subjectsGrouped[subjKey]) {
       subjectsGrouped[subjKey] = [];
     }
