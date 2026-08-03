@@ -3,8 +3,13 @@ const mongoose = require('mongoose');
 const StudentRequest = require('../models/StudentRequest');
 const Inventory = require('../models/Inventory');
 const LabHistory = require('../models/LabHistory');
-const StoreRequest = require('../models/StoreRequest');
-const { getIo } = require('../socket');
+let getIo = () => null;
+try {
+  const socketModule = require('../socket');
+  if (socketModule && socketModule.getIo) getIo = socketModule.getIo;
+} catch (e) {
+  // Socket module optional
+}
 const { v4: uuidv4 } = require('uuid');
 
 // @desc    Create a new student request for chemicals
