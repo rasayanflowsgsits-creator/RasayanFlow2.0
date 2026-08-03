@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const mongoose = require('mongoose');
 const LabStructure = require('../models/LabStructure');
+const Experiment = require('../models/Experiment');
 const Lab = require('../models/Lab');
 const Inventory = require('../models/Inventory');
 const StudentRequest = require('../models/StudentRequest');
@@ -290,12 +291,58 @@ const getStudentStructure = asyncHandler(async (req, res) => {
     }
   }
 
-  // 1. Primary Query: Search by labId or labName
+  // 1. Primary Query: Search by labId or labName in LabStructure
   let structure = await LabStructure.find(queryOrConditions.length > 0 ? { $or: queryOrConditions } : {}).lean().sort({ subject: 1, experimentNo: 1 });
 
-  // 2. Fallback Query: If structure is 0, fetch ALL LabStructures from MongoDB so no student is left with 0 data
+  // 2. Also search in Experiment collection (where experiments created via Experiment Manager are stored)
+  const dbExperiments = await Experiment.find(queryOrConditions.length > 0 ? { $or: queryOrConditions } : {}).lean().sort({ experimentNumber: 1 });
+  
+  if (dbExperiments.length > 0) {
+    const mappedDbExperiments = dbExperiments.map(exp => ({
+      _id: exp._id,
+      id: exp._id,
+      labId: exp.labId,
+      subject: exp.subject || exp.department || 'Organic Chemistry',
+      experimentNo: parseInt(exp.experimentNumber, 10) || 1,
+      experimentName: exp.experimentObject || exp.experimentName || 'Experiment',
+      chemicals: (exp.requiredInventory || []).map(r => ({
+        chemicalName: r.chemicalName,
+        quantityPerStudent: r.quantity,
+        unit: r.quantityUnit || 'mL'
+      }))
+    }));
+
+    mappedDbExperiments.forEach(m => {
+      if (!structure.some(s => s.experimentName === m.experimentName && s.experimentNo === m.experimentNo)) {
+        structure.push(m);
+      }
+    });
+  }
+
+  // 3. Fallback Query: If structure is still 0, fetch ALL LabStructures & Experiments from MongoDB so no student is left with 0 data
   if (structure.length === 0) {
-    structure = await LabStructure.find({}).lean().sort({ subject: 1, experimentNo: 1 });
+    const allLabStructures = await LabStructure.find({}).lean().sort({ subject: 1, experimentNo: 1 });
+    const allExperiments = await Experiment.find({}).lean().sort({ experimentNumber: 1 });
+    
+    structure = [...allLabStructures];
+    allExperiments.forEach(exp => {
+      const m = {
+        _id: exp._id,
+        id: exp._id,
+        labId: exp.labId,
+        subject: exp.subject || exp.department || 'Pharmaceutical Analysis',
+        experimentNo: parseInt(exp.experimentNumber, 10) || 1,
+        experimentName: exp.experimentObject || exp.experimentName || 'Experiment',
+        chemicals: (exp.requiredInventory || []).map(r => ({
+          chemicalName: r.chemicalName,
+          quantityPerStudent: r.quantity,
+          unit: r.quantityUnit || 'mL'
+        }))
+      };
+      if (!structure.some(s => s.experimentName === m.experimentName)) {
+        structure.push(m);
+      }
+    });
   }
 
   console.log('Found experiments for student:', structure.length);
