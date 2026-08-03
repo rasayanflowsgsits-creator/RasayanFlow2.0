@@ -233,6 +233,17 @@ export default function LabExperimentsPage() {
     }));
   };
 
+  const handleOpenAddModal = () => {
+    const defaultSubj = currentLab?.labName || currentLab?.name || 'HAP1';
+    setNewExp({
+      subject: defaultSubj,
+      experimentNo: String((labStructure?.length || 0) + 1),
+      experimentName: '',
+      chemicals: [{ chemicalName: '', quantityPerStudent: '10', unit: 'mL' }]
+    });
+    setAddOpen(true);
+  };
+
   const handleSaveManualExperiment = async () => {
     if (!newExp.subject || !newExp.experimentName) {
       alert('Please fill in the subject and experiment name');
@@ -298,7 +309,7 @@ export default function LabExperimentsPage() {
               <TableIcon size={16} />
             </button>
           </div>
-          <Button onClick={() => setAddOpen(true)} className="bg-[#556b2f] text-white">
+          <Button onClick={handleOpenAddModal} className="bg-[#556b2f] text-white">
             <Plus size={16} className="mr-1" /> Add Experiment
           </Button>
           <Button variant='outline' onClick={() => { setImportStep(1); setImportOpen(true); }}>
