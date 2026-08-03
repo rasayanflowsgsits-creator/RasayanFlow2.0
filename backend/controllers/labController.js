@@ -224,20 +224,25 @@ const getMatchingLabs = asyncHandler(async (req, res) => {
       return false;
     }
 
-    // 2. Year match (only filter out if lab explicitly specifies a different year)
-    if (reqYr && lab.year && String(lab.year).trim() !== '') {
-      const labYrNum = String(lab.year).replace(/\D/g, '');
-      if (labYrNum && labYrNum !== reqYr) {
-        return false;
-      }
+    const labYr = lab.year ? String(lab.year).replace(/\D/g, '') : '';
+    const labSem = lab.semester ? String(lab.semester).replace(/\D/g, '') : '';
+
+    // If student specifies Year & Semester (e.g. Year 1 Sem 1):
+    // Require exact Year & Semester match, OR explicit user assignment to this lab.
+    if (reqYr && reqSem) {
+      const isExactMatch = (labYr === reqYr && labSem === reqSem);
+      const isUserAssigned = req.user?.labId && String(req.user.labId) === String(lab._id);
+      return isExactMatch || isUserAssigned;
     }
 
-    // 3. Semester match (only filter out if lab explicitly specifies a different semester)
-    if (reqSem && lab.semester && String(lab.semester).trim() !== '') {
-      const labSemNum = String(lab.semester).replace(/\D/g, '');
-      if (labSemNum && labSemNum !== reqSem) {
-        return false;
-      }
+    // 2. Fallback Year match
+    if (reqYr && labYr && labYr !== reqYr) {
+      return false;
+    }
+
+    // 3. Fallback Semester match
+    if (reqSem && labSem && labSem !== reqSem) {
+      return false;
     }
 
     return true;
