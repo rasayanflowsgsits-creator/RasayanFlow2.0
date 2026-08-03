@@ -148,8 +148,16 @@ const getLabIdQuery = (labId) => {
 // @route   POST /api/lab/structure/upload
 // @access  Private (Lab Admin)
 const uploadStructure = asyncHandler(async (req, res) => {
-  const { structures } = req.body;
-  const lab = await resolveTargetLab(req);
+  const { structures, labId } = req.body;
+  const targetLabId = labId || req.body?.labId || req.user?.labId;
+
+  let lab = null;
+  if (targetLabId && mongoose.Types.ObjectId.isValid(targetLabId)) {
+    lab = await Lab.findById(targetLabId);
+  }
+  if (!lab) {
+    lab = await resolveTargetLab(req);
+  }
 
   if (!lab) {
     res.status(404);
@@ -162,9 +170,7 @@ const uploadStructure = asyncHandler(async (req, res) => {
   }
 
   const uploadedRecords = [];
-  const labObjectId = mongoose.Types.ObjectId.isValid(lab._id)
-    ? new mongoose.Types.ObjectId(lab._id)
-    : lab._id;
+  const labObjectId = new mongoose.Types.ObjectId(lab._id);
 
   for (const exp of structures) {
     const { subject, experimentNo, experimentName, chemicals } = exp;
@@ -411,8 +417,16 @@ const getStudentStructure = asyncHandler(async (req, res) => {
 // @route   POST /api/lab/structure/experiment
 // @access  Private (Lab Admin)
 const addExperiment = asyncHandler(async (req, res) => {
-  const { subject, experimentNo, experimentName, chemicals } = req.body;
-  const lab = await resolveTargetLab(req);
+  const { subject, experimentNo, experimentName, chemicals, labId } = req.body;
+  const targetLabId = labId || req.body?.labId || req.user?.labId;
+
+  let lab = null;
+  if (targetLabId && mongoose.Types.ObjectId.isValid(targetLabId)) {
+    lab = await Lab.findById(targetLabId);
+  }
+  if (!lab) {
+    lab = await resolveTargetLab(req);
+  }
 
   if (!lab) {
     res.status(404);
@@ -424,8 +438,10 @@ const addExperiment = asyncHandler(async (req, res) => {
     throw new Error('Please provide subject, experiment number, and name');
   }
 
+  const labObjectId = new mongoose.Types.ObjectId(lab._id);
+
   const experiment = await LabStructure.create({
-    labId: lab._id,
+    labId: labObjectId,
     labName: lab.labName || lab.name,
     courseType: lab.courseType || 'B.Pharm',
     year: lab.year || '1',
