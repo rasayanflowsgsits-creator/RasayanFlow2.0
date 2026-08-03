@@ -297,13 +297,29 @@ const getStructure = asyncHandler(async (req, res) => {
 const getStudentStructure = asyncHandler(async (req, res) => {
   const labIdParam = req.params?.labId || req.query?.labId || req.body?.labId || req.user?.labId;
 
+  let lab = null;
+  if (labIdParam && mongoose.Types.ObjectId.isValid(labIdParam)) {
+    lab = await Lab.findById(labIdParam);
+  }
+  if (!lab && labIdParam && labIdParam !== 'undefined' && labIdParam !== 'null') {
+    lab = await Lab.findOne({ $or: [{ labCode: labIdParam }, { labName: labIdParam }, { name: labIdParam }] });
+  }
+  if (!lab) {
+    lab = await resolveTargetLab(req);
+  }
+
   const queryOr = [];
+  if (lab) {
+    const labObjectId = new mongoose.Types.ObjectId(lab._id);
+    queryOr.push({ labId: labObjectId });
+    queryOr.push({ labId: labObjectId.toString() });
+    queryOr.push({ labName: lab.labName || lab.name });
+  }
   if (labIdParam) {
     queryOr.push({ labId: labIdParam });
     if (mongoose.Types.ObjectId.isValid(labIdParam)) {
       queryOr.push({ labId: new mongoose.Types.ObjectId(labIdParam) });
     }
-    queryOr.push({ labId: String(labIdParam) });
   }
 
   let experiments = [];
