@@ -85,10 +85,15 @@ const getMyRequests = asyncHandler(async (req, res) => {
 // @route   GET /api/student/requests/lab/:labId
 // @access  Private (Student)
 const getStudentRequestsForLab = asyncHandler(async (req, res) => {
-  const labId = req.params.labId || req.query.labId || req.user.labId;
+  const rawLabId = req.params.labId || req.query.labId || req.user.labId;
+  const queryIds = [rawLabId, rawLabId?.toString()];
+  if (rawLabId && mongoose.Types.ObjectId.isValid(rawLabId)) {
+    queryIds.push(new mongoose.Types.ObjectId(rawLabId));
+  }
+
   const requests = await StudentRequest.find({
     studentId: req.user.id,
-    labId
+    labId: { $in: queryIds }
   }).sort({ requestedAt: -1 });
   res.status(200).json({ success: true, count: requests.length, data: requests });
 });
@@ -97,8 +102,13 @@ const getStudentRequestsForLab = asyncHandler(async (req, res) => {
 // @route   GET /api/student/requests/lab
 // @access  Private (Lab Admin)
 const getLabRequests = asyncHandler(async (req, res) => {
-  const labId = req.query.labId || req.user.labId;
-  const requests = await StudentRequest.find({ labId }).sort({ requestedAt: -1 });
+  const rawLabId = req.query.labId || req.user.labId;
+  const queryIds = [rawLabId, rawLabId?.toString()];
+  if (rawLabId && mongoose.Types.ObjectId.isValid(rawLabId)) {
+    queryIds.push(new mongoose.Types.ObjectId(rawLabId));
+  }
+
+  const requests = await StudentRequest.find({ labId: { $in: queryIds } }).sort({ requestedAt: -1 });
   res.status(200).json({ success: true, count: requests.length, data: requests });
 });
 
