@@ -43,7 +43,7 @@ export default function StudentLabDetail() {
   const [experimentsData, setExperimentsData] = useState([]);
   const [subjectsData, setSubjectsData] = useState({});
 
-  // Fetch Lab Details & Experiments
+  // Fetch Lab Details & Experiments dynamically from API
   const fetchLabData = async () => {
     if (!labId) return;
     setLoading(true);
@@ -54,20 +54,21 @@ export default function StudentLabDetail() {
         const exps = res.data.experiments || res.data.data || [];
         setStructure(exps);
         setExperimentsData(exps);
-        setSubjectsData(res.data.subjects || {});
+        
+        const subjMap = res.data.subjects && Object.keys(res.data.subjects).length > 0 ? { ...res.data.subjects } : {};
+        if (Object.keys(subjMap).length === 0 && exps.length > 0) {
+          exps.forEach(e => {
+            const k = e.subject || 'General';
+            if (!subjMap[k]) subjMap[k] = [];
+            subjMap[k].push(e);
+          });
+        }
+        setSubjectsData(subjMap);
         setLabInfo(res.data.lab || null);
         setRequests(res.data.studentRequests || []);
       }
     } catch (err) {
       console.error('Error fetching student lab structure:', err);
-      try {
-        const reqRes = await api.get(`/student/requests/lab/${labId}`);
-        if (reqRes.data.success) {
-          setRequests(reqRes.data.data || []);
-        }
-      } catch (e) {
-        console.error('Failed to load lab requests:', e);
-      }
     } finally {
       setLoading(false);
     }
