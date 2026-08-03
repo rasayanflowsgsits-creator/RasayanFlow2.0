@@ -171,7 +171,7 @@ export default function LabExperimentsPage() {
     if (importData.length === 0) return;
     setImporting(true);
     try {
-      await uploadLabStructure(importData);
+      await uploadLabStructure(importData, activeLabId);
       setImportStep(3);
       if (activeLabId) fetchLabStructure(activeLabId);
     } finally {

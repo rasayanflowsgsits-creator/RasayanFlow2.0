@@ -1703,10 +1703,10 @@ const useAppStore = create((set) => ({
       return [];
     }
   },
-  uploadLabStructure: async (structures) => {
+  uploadLabStructure: async (structures, labId) => {
     set({ loading: true });
     try {
-      const { data } = await api.post('/lab/structure/upload', { structures });
+      const { data } = await api.post('/lab/structure/upload', { structures, labId });
       set({ loading: false, toast: { title: 'Success', message: 'Lab structure uploaded successfully', type: 'success' } });
       return data;
     } catch (err) {
