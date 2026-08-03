@@ -156,18 +156,44 @@ const login = asyncHandler(async (req, res) => {
     throw new Error('Account not approved yet');
   }
 
+  let userLabName = user.labName || '-';
+  let userYear = user.year ? String(user.year) : '-';
+  let userSemester = user.semester ? String(user.semester) : '-';
+  let userCourse = user.course || '-';
+
+  if (user.labId) {
+    try {
+      const Lab = require('../models/Lab');
+      const linkedLab = await Lab.findById(user.labId);
+      if (linkedLab) {
+        userLabName = linkedLab.labName || userLabName;
+        if (!user.year || user.year === '-') userYear = linkedLab.year ? String(linkedLab.year) : '1';
+        if (!user.semester || user.semester === '-') userSemester = linkedLab.semester ? String(linkedLab.semester) : '1';
+        if (!user.course || user.course === '-') userCourse = linkedLab.courseType || 'B.Pharm';
+
+        user.labName = userLabName;
+        user.year = userYear;
+        user.semester = userSemester;
+        user.course = userCourse;
+        await user.save();
+      }
+    } catch (e) {
+      // ignore lookup error
+    }
+  }
+
   try {
     await ActivityLog.create({
       userId: user._id,
       action: 'login',
-      details: `User Logged In`,
+      details: `User Logged In (${user.email})`,
       role: user.role,
       userName: user.name,
       userEmail: user.email,
-      labName: user.labName || (user.role === 'storeAdmin' || user.role === 'store-admin' ? 'Central Store' : user.role === 'superAdmin' ? 'Governance Hub' : '-'),
-      courseType: user.course || (user.role === 'student' || user.role === 'labAdmin' ? 'B.Pharm' : '-'),
-      year: user.year ? String(user.year) : (user.role === 'student' ? '1' : '-'),
-      semester: user.semester ? String(user.semester) : (user.role === 'student' ? '1' : '-'),
+      labName: user.role === 'storeAdmin' || user.role === 'store-admin' ? 'Central Store' : user.role === 'superAdmin' ? 'Governance Hub' : userLabName,
+      courseType: userCourse !== '-' ? userCourse : (user.role === 'student' || user.role === 'labAdmin' ? 'B.Pharm' : '-'),
+      year: userYear !== '-' ? userYear : (user.role === 'student' || user.role === 'labAdmin' ? '1' : '-'),
+      semester: userSemester !== '-' ? userSemester : (user.role === 'student' || user.role === 'labAdmin' ? '1' : '-'),
       status: 'Success'
     });
   } catch (e) {

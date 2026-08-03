@@ -31,7 +31,19 @@ const createLab = asyncHandler(async (req, res) => {
     admins: [],
   });
 
-  await ActivityLog.create({ userId: req.user._id, action: 'create_lab', details: `Lab ${labName} (${labCode}) created — ${courseType || 'B.Pharm'} Year ${year || '?'} Sem ${semester || '?'}` });
+  await ActivityLog.create({
+    userId: req.user._id,
+    action: 'create_lab',
+    details: `Lab ${labName} (${labCode}) created — ${courseType || 'B.Pharm'} Year ${year || '1'} Sem ${semester || '1'}`,
+    role: req.user.role || 'superAdmin',
+    userName: req.user.name || 'Super Administrator',
+    userEmail: req.user.email,
+    labName: labName,
+    courseType: courseType || 'B.Pharm',
+    year: year ? String(year) : '1',
+    semester: semester ? String(semester) : '1',
+    status: 'Success'
+  });
 
   res.status(201).json({ success: true, data: lab });
 });
@@ -68,9 +80,10 @@ const assignAdmin = asyncHandler(async (req, res) => {
       isApproved: true,
       labId: lab._id,
       labName: lab.labName,
+      course: lab.courseType || 'B.Pharm',
+      courseType: lab.courseType || 'B.Pharm',
       year: lab.year || '1',
       semester: lab.semester || '1',
-      courseType: lab.courseType || 'B.Pharm'
     });
   }
 
@@ -82,9 +95,10 @@ const assignAdmin = asyncHandler(async (req, res) => {
   admin.role = 'labAdmin';
   admin.labId = lab._id;
   admin.labName = lab.labName;
+  admin.course = lab.courseType || 'B.Pharm';
+  admin.courseType = lab.courseType || 'B.Pharm';
   admin.year = lab.year || '1';
   admin.semester = lab.semester || '1';
-  admin.courseType = lab.courseType || 'B.Pharm';
   admin.isApproved = true;
   if (name) admin.name = name;
   if (password) admin.password = password;
@@ -97,7 +111,19 @@ const assignAdmin = asyncHandler(async (req, res) => {
 
   const updatedLab = await Lab.findById(lab._id).populate('admins', 'name email role isApproved');
 
-  await ActivityLog.create({ userId: req.user._id, action: 'assign_admin', details: `Assigned ${admin.email} as labAdmin to lab ${lab.labCode}` });
+  await ActivityLog.create({
+    userId: req.user._id,
+    action: 'assign_admin',
+    details: `Assigned ${admin.email} as labAdmin to lab ${lab.labCode} (${lab.labName})`,
+    role: req.user.role || 'superAdmin',
+    userName: req.user.name || 'Super Administrator',
+    userEmail: req.user.email,
+    labName: lab.labName,
+    courseType: lab.courseType || 'B.Pharm',
+    year: admin.year,
+    semester: admin.semester,
+    status: 'Success'
+  });
 
   res.json({ success: true, data: updatedLab });
 });

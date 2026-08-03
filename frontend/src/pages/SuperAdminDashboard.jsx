@@ -463,21 +463,46 @@ export default function SuperAdminDashboard() {
       else if (roleStr.includes('lab')) normRole = 'lab-admin';
       else if (roleStr.includes('student')) normRole = 'student';
 
+      const matchedUser = users.find(
+        (u) => u.email && log.userEmail && u.email.toLowerCase() === log.userEmail.toLowerCase()
+      );
+
+      const resolvedLabName =
+        log.labName && log.labName !== '-'
+          ? log.labName
+          : matchedUser?.assignedLabName && matchedUser.assignedLabName !== 'Unassigned'
+          ? matchedUser.assignedLabName
+          : matchedUser?.labName || (normRole === 'store-admin' ? 'Central Store' : normRole === 'super-admin' ? 'Governance Hub' : '-');
+
+      const resolvedYear =
+        log.year && log.year !== '-'
+          ? String(log.year)
+          : matchedUser?.year
+          ? String(matchedUser.year)
+          : (normRole === 'student' || normRole === 'lab-admin' ? '1' : '-');
+
+      const resolvedSemester =
+        log.semester && log.semester !== '-'
+          ? String(log.semester)
+          : matchedUser?.semester
+          ? String(matchedUser.semester)
+          : (normRole === 'student' || normRole === 'lab-admin' ? '1' : '-');
+
       return {
         id: log._id || log.id || `log-${index}`,
         timestamp: log.timestamp || log.createdAt || new Date().toISOString(),
-        userName: log.userName || log.actorName || log.user?.name || 'User',
-        userEmail: log.userEmail || log.actorEmail || log.user?.email || '',
+        userName: log.userName || log.actorName || log.user?.name || matchedUser?.name || 'User',
+        userEmail: log.userEmail || log.actorEmail || log.user?.email || matchedUser?.email || '',
         role: normRole,
-        labName: log.labName || log.lab?.name || (normRole === 'store-admin' ? 'Central Store' : normRole === 'super-admin' ? 'Governance Hub' : '-'),
-        courseType: log.courseType || (normRole === 'student' || normRole === 'lab-admin' ? 'B.Pharm' : '-'),
-        year: log.year && log.year !== '-' ? String(log.year) : (normRole === 'student' ? '1' : '-'),
-        semester: log.semester && log.semester !== '-' ? String(log.semester) : (normRole === 'student' ? '1' : '-'),
+        labName: resolvedLabName,
+        courseType: log.courseType || matchedUser?.course || (normRole === 'student' || normRole === 'lab-admin' ? 'B.Pharm' : '-'),
+        year: resolvedYear,
+        semester: resolvedSemester,
         actionDetails: log.actionDetails || log.details || log.action || 'User Action',
         status: log.status || (log.action === 'failed_login' ? 'Failed' : 'Success')
       };
     }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-  }, [activityLogs]);
+  }, [activityLogs, users]);
 
   // Available Years List (Scalable 30+ Years Future-Proofing from 2026 to 2056+)
   const availableAuditYears = useMemo(() => {
