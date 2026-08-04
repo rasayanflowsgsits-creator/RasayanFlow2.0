@@ -145,6 +145,119 @@ export default function LabAdminDashboard() {
 
   const smart = store.smartInventory || {};
 
+  const downloadInventoryImportTemplate = () => {
+    const headers = [
+      'itemCode',
+      'chemicalName',
+      'quantity',
+      'quantityUnit',
+      'minThreshold',
+      'costPerUnit',
+      'casNumber',
+      'chemicalFormula',
+      'manufacturingCompany',
+      'storageLocation',
+      'lotNumber',
+      'expiryDate',
+    ];
+    const sample = ['CHEM001', 'Acetone', '500', 'mL', '5', '0', '67-64-1', 'C3H6O', 'Generic', 'Shelf A1', 'LOT-123', '2030-12-31'];
+    const csv = `${headers.join(',')}\n${sample.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')}\n`;
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'inventory-import-template.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadExperimentsImportTemplate = () => {
+    const headers = ['experimentNumber', 'experimentObject', 'requirements'];
+    const sample = [
+      'EXP-001',
+      'Measure pH of sample',
+      'CHEM001:10:mL;CHEM002:5:g',
+    ];
+    const csv = `${headers.join(',')}\n${sample.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')}\n`;
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'experiments-import-template.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const parseRequirementsCell = (value) => {
+    const text = String(value || '').trim();
+    if (!text) return [];
+    return text
+      .split(';')
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+      .map((entry) => {
+        const [itemCode, quantity, quantityUnit] = entry.split(':').map((part) => String(part || '').trim());
+        return {
+          itemCode,
+          quantity: Number(quantity || 0),
+          quantityUnit: quantityUnit || '',
+        };
+      });
+  };
+
+  const handleExperimentImportFile = async (file) => {
+    if (!file) return;
+    const text = await file.text();
+    const { records } = parseCsv(text);
+    const issues = [];
+    const experiments = [];
+
+    records.forEach((record, index) => {
+      const experimentNumber = String(record.experimentNumber || '').trim();
+      const experimentObject = String(record.experimentObject || '').trim();
+      const requiredInventory = parseRequirementsCell(record.requirements);
+
+      if (!experimentNumber) issues.push({ index, message: 'Missing experimentNumber' });
+      if (!experimentObject) issues.push({ index, message: 'Missing experimentObject' });
+      if (!requiredInventory.length) issues.push({ index, message: 'Missing requirements (use ITEMCODE:QTY:UNIT;...)' });
+
+      requiredInventory.forEach((req, reqIndex) => {
+        if (!req.itemCode) issues.push({ index, message: `Requirement #${reqIndex + 1} missing itemCode` });
+        if (!Number.isFinite(req.quantity) || req.quantity <= 0) issues.push({ index, message: `Requirement #${reqIndex + 1} invalid quantity` });
+      });
+
+      experiments.push({
+        experimentNumber,
+        experimentObject,
+        requiredInventory,
+      });
+    });
+
+    setExperimentImportExperiments(experiments);
+    setExperimentImportIssues(issues.slice(0, 50));
+  };
+
+  const submitExperimentBulkImport = async () => {
+    if (!labId || experimentImporting || !experimentImportExperiments.length) return;
+    setExperimentImporting(true);
+    try {
+      const result = await store.bulkImportExperiments({ labId, experiments: experimentImportExperiments });
+      await store.fetchExperiments({ labId });
+      store.setToast({
+        type: result?.errorCount ? 'warning' : 'success',
+        message: `Experiment import done: ${result?.createdCount ?? 0} created, ${result?.skippedCount ?? 0} skipped, ${result?.errorCount ?? 0} errors.`,
+      });
+      setExperimentImportOpen(false);
+      setExperimentImportFileName('');
+      setExperimentImportExperiments([]);
+      setExperimentImportIssues([]);
+    } catch (error) {
+      store.setToast({ type: 'error', message: error?.response?.data?.message || 'Experiment import failed.' });
+    } finally {
+      setExperimentImporting(false);
+    }
+  };
+
   const handleSendStoreRequestSubmit = async () => {
     if (!storeModalData.chemicalName || !storeModalData.quantityRequested) return;
     setSubmittingStoreReq(true);
