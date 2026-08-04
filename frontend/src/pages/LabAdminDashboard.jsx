@@ -145,6 +145,120 @@ export default function LabAdminDashboard() {
 
   const smart = store.smartInventory || {};
 
+  const saveItem = async (payload, isEdit = false) => {
+    const action = isEdit ? store.updateInventoryItem(payload.id, payload) : store.createInventoryItem({ labId, ...payload });
+    return action;
+  };
+
+  const handleAddItem = async () => {
+    if (!labId || !newItem.chemicalName.trim() || !String(newItem.quantity).trim()) {
+      store.setToast({ type: 'error', message: 'Chemical name and quantity are required before saving.' });
+      return;
+    }
+    setSavingItem(true);
+    try {
+      const item = await saveItem({ ...newItem, chemicalName: newItem.chemicalName.trim(), category: newItem.category.trim(), quantity: Number(newItem.quantity), costPerUnit: Number(newItem.costPerUnit || 0), minThreshold: Number(newItem.minThreshold || 5) });
+      store.setToast({ type: 'success', message: `${item.chemicalName} added.` });
+      store.setHighlight(item.id);
+      setCreateOpen(false);
+      setNewItem(EMPTY_ITEM);
+    } catch (error) {
+      store.setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to add chemical.' });
+    } finally { setSavingItem(false); }
+  };
+
+  const handleEditItem = async () => {
+    if (!editItem.id || !editItem.chemicalName.trim()) return;
+    setSavingEdit(true);
+    try {
+      const item = await saveItem({ ...editItem, chemicalName: editItem.chemicalName.trim(), category: editItem.category.trim(), quantity: Number(editItem.quantity), costPerUnit: Number(editItem.costPerUnit || 0), minThreshold: Number(editItem.minThreshold || 5) }, true);
+      store.setToast({ type: 'success', message: `${item.chemicalName} updated.` });
+      store.setHighlight(item.id);
+      setEditOpen(false);
+    } catch (error) {
+      store.setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to update chemical.' });
+    } finally { setSavingEdit(false); }
+  };
+
+  const handleCreateExperiment = async () => {
+    const requiredInventory = experimentForm.requiredInventory.filter((entry) => entry.inventoryItemId && Number(entry.quantity) > 0).map((entry) => ({ ...entry, quantity: Number(entry.quantity) }));
+    if (!labId || !experimentForm.experimentNumber.trim() || !experimentForm.experimentObject.trim() || !requiredInventory.length) return;
+    setSavingExperiment(true);
+    try {
+      await store.createExperiment({ labId, experimentNumber: experimentForm.experimentNumber.trim(), experimentObject: experimentForm.experimentObject.trim(), requiredInventory });
+      store.setToast({ type: 'success', message: 'Experiment created.' });
+      setExperimentOpen(false);
+      setExperimentForm(EMPTY_EXPERIMENT);
+    } catch (error) {
+      store.setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to create experiment.' });
+    } finally { setSavingExperiment(false); }
+  };
+
+  const handleImportFile = async (file) => {
+    if (!file) return;
+    const text = await file.text();
+    const { records } = parseCsv(text);
+    const issues = [];
+    const items = [];
+
+    records.forEach((record, index) => {
+      const chemicalName = String(record.chemicalName || record.itemName || '').trim();
+      const quantityUnit = String(record.quantityUnit || '').trim();
+      const quantity = record.quantity === '' ? 0 : Number(record.quantity);
+      const minThreshold = record.minThreshold === '' ? 5 : Number(record.minThreshold);
+
+      if (!chemicalName) issues.push({ index, message: 'Missing chemicalName' });
+      if (!quantityUnit) issues.push({ index, message: 'Missing quantityUnit' });
+      if (!Number.isFinite(quantity) || quantity < 0) issues.push({ index, message: 'Invalid quantity' });
+      if (!Number.isFinite(minThreshold) || minThreshold < 0) issues.push({ index, message: 'Invalid minThreshold' });
+
+      items.push({
+        itemCode: String(record.itemCode || '').trim(),
+        chemicalName,
+        category: String(record.category || 'Chemical').trim() || 'Chemical',
+        quantity,
+        quantityUnit,
+        costPerUnit: record.costPerUnit === '' ? 0 : Number(record.costPerUnit),
+        minThreshold,
+        casNumber: String(record.casNumber || '').trim(),
+        smiles: String(record.smiles || '').trim(),
+        inchi: String(record.inchi || '').trim(),
+        chemicalFormula: String(record.chemicalFormula || '').trim(),
+        manufacturingCompany: String(record.manufacturingCompany || '').trim(),
+        entryDate: String(record.entryDate || '').trim(),
+        storageLocation: String(record.storageLocation || '').trim(),
+        lotNumber: String(record.lotNumber || '').trim(),
+        expiryDate: String(record.expiryDate || '').trim(),
+        abstract: String(record.abstract || '').trim(),
+        pubmedId: String(record.pubmedId || '').trim(),
+      });
+    });
+
+    setImportItems(items);
+    setImportIssues(issues.slice(0, 50));
+  };
+
+  const submitBulkImport = async () => {
+    if (!labId || importing || !importItems.length) return;
+    setImporting(true);
+    try {
+      const result = await store.bulkImportInventoryItems({ labId, items: importItems });
+      await store.fetchInventory(labId);
+      store.setToast({
+        type: result?.errorCount ? 'warning' : 'success',
+        message: `Import done: ${result?.createdCount ?? 0} created, ${result?.skippedCount ?? 0} skipped, ${result?.errorCount ?? 0} errors.`,
+      });
+      setImportOpen(false);
+      setImportFileName('');
+      setImportItems([]);
+      setImportIssues([]);
+    } catch (error) {
+      store.setToast({ type: 'error', message: error?.response?.data?.message || 'Bulk import failed.' });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const autofillFromCas = async (item, setItem, setLoading, setLastFetchedCas, setStatusMessage, setStatusType) => {
     const normalizedCas = item.casNumber.trim();
 
