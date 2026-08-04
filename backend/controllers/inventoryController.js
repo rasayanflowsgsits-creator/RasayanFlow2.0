@@ -575,6 +575,120 @@ const bulkImportInventory = asyncHandler(async (req, res) => {
   });
 });
 
+const getSmartInventory = asyncHandler(async (req, res) => {
+  const rawLabId = req.query.labId || req.user?.labId;
+  const queryIds = [];
+  if (rawLabId) {
+    queryIds.push(rawLabId, rawLabId.toString());
+    if (mongoose.Types.ObjectId.isValid(rawLabId)) {
+      queryIds.push(new mongoose.Types.ObjectId(rawLabId));
+    }
+  }
+
+  // 1. Fetch all experiments for this lab
+  const LabStructure = require('../models/LabStructure');
+  let experiments = [];
+  if (queryIds.length > 0) {
+    experiments = await LabStructure.find({ labId: { $in: queryIds } }).lean();
+  }
+
+  if (experiments.length === 0) {
+    const Lab = require('../models/Lab');
+    let lab = null;
+    if (rawLabId && mongoose.Types.ObjectId.isValid(rawLabId)) {
+      lab = await Lab.findById(rawLabId);
+    }
+    if (lab) {
+      experiments = await LabStructure.find({
+        $or: [
+          { labName: lab.labName || lab.name },
+          { courseType: lab.courseType, year: String(lab.year || '1'), semester: String(lab.semester || '1') }
+        ]
+      }).lean();
+    }
+  }
+
+  if (experiments.length === 0) {
+    experiments = await LabStructure.find({}).lean();
+  }
+
+  // 2. Aggregate unique chemicals across all experiments
+  const chemicalMap = {};
+  experiments.forEach(exp => {
+    (exp.chemicals || []).forEach(chem => {
+      if (!chem.chemicalName) return;
+      const key = chem.chemicalName.toLowerCase().trim();
+      if (!chemicalMap[key]) {
+        chemicalMap[key] = {
+          chemicalName: chem.chemicalName.trim(),
+          quantityPerStudent: Number(chem.quantityPerStudent || chem.quantity || 1),
+          unit: chem.unit || 'g',
+          usedInExperiments: [],
+          labStock: 0,
+          status: 'Not Available',
+          inInventory: false,
+          inventoryItemId: null
+        };
+      }
+      const expLabel = `Exp ${exp.experimentNo || 1} (${exp.subject || 'General'})`;
+      if (!chemicalMap[key].usedInExperiments.includes(expLabel)) {
+        chemicalMap[key].usedInExperiments.push(expLabel);
+      }
+    });
+  });
+
+  // 3. Query current lab inventory
+  const criteria = {};
+  if (req.user.role === 'labAdmin') {
+    criteria.labId = req.user.labId || rawLabId;
+  } else if (rawLabId) {
+    criteria.labId = rawLabId;
+  }
+  const labInventory = await Inventory.find(criteria).lean();
+
+  // 4. Match lab inventory stock to required chemicals
+  labInventory.forEach(item => {
+    const key = (item.chemicalName || item.itemName || '').toLowerCase().trim();
+    const stock = Number(item.quantityAvailable ?? item.quantity ?? 0);
+
+    if (chemicalMap[key]) {
+      chemicalMap[key].labStock = stock;
+      chemicalMap[key].unit = item.quantityUnit || chemicalMap[key].unit;
+      chemicalMap[key].inInventory = true;
+      chemicalMap[key].inventoryItemId = item._id;
+
+      const reqPerStudent = chemicalMap[key].quantityPerStudent || 1;
+      const tenStudentNeed = reqPerStudent * 10;
+
+      if (stock === 0) {
+        chemicalMap[key].status = 'Not Available';
+      } else if (stock < tenStudentNeed) {
+        chemicalMap[key].status = 'Low';
+      } else {
+        chemicalMap[key].status = 'Available';
+      }
+    }
+  });
+
+  const chemicalsList = Object.values(chemicalMap);
+  const totalNeeded = chemicalsList.length;
+  const availableCount = chemicalsList.filter(c => c.status === 'Available').length;
+  const lowCount = chemicalsList.filter(c => c.status === 'Low').length;
+  const notAvailableCount = chemicalsList.filter(c => c.status === 'Not Available').length;
+  const inStockCount = labInventory.length;
+
+  res.json({
+    success: true,
+    chemicals: chemicalsList,
+    totalNeeded,
+    available: availableCount,
+    low: lowCount,
+    notAvailable: notAvailableCount,
+    inStockCount,
+    inventory: labInventory
+  });
+});
+
 module.exports = {
   createInventory,
   updateInventory,
@@ -584,4 +698,5 @@ module.exports = {
   fetchChemicalAbstractForInventory,
   fetchChemicalDataForInventory,
   bulkImportInventory,
+  getSmartInventory,
 };

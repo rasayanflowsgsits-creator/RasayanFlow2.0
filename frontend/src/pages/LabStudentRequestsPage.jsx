@@ -22,7 +22,8 @@ export default function LabStudentRequestsPage() {
   const {
     labs, studentRequests, fetchLabs, fetchStudentRequests,
     approveStudentRequest, rejectStudentRequest, inventory,
-    fetchInventory, bulkApproveStudentRequests, loading
+    fetchInventory, bulkApproveStudentRequests, loading,
+    createLabStoreRequest, setToast
   } = useAppStore();
 
   const [activeLabId, setActiveLabId] = useState(
@@ -39,6 +40,10 @@ export default function LabStudentRequestsPage() {
   const [scheduleModal, setScheduleModal] = useState(false);
   const [scheduleDate, setScheduleDate] = useState('');
   const [schedulingGroupKey, setSchedulingGroupKey] = useState('');
+
+  const [storeModalOpen, setStoreModalOpen] = useState(false);
+  const [storeModalData, setStoreModalData] = useState({ chemicalName: '', quantityRequested: '', unit: '', reason: '' });
+  const [submittingStoreReq, setSubmittingStoreReq] = useState(false);
 
   const currentLab = labs.find((l) => (l.id || l._id) === activeLabId) || labs[0];
 
@@ -148,6 +153,27 @@ export default function LabStudentRequestsPage() {
     if (!selectedRequest) return;
     await rejectStudentRequest(selectedRequest._id, rejectReason || 'Not specified');
     setIsReviewModalOpen(false);
+  };
+
+  const handleStoreRequestSubmit = async () => {
+    setSubmittingStoreReq(true);
+    try {
+      if (createLabStoreRequest) {
+        await createLabStoreRequest({
+          chemicalName: storeModalData.chemicalName,
+          quantityRequested: storeModalData.quantityRequested,
+          unit: storeModalData.unit,
+          reason: storeModalData.reason,
+          labId: activeLabId
+        });
+      }
+      setStoreModalOpen(false);
+      if (setToast) setToast({ type: 'success', message: `Store request submitted for ${storeModalData.chemicalName}` });
+    } catch (e) {
+      if (setToast) setToast({ type: 'error', message: 'Failed to submit store request' });
+    } finally {
+      setSubmittingStoreReq(false);
+    }
   };
 
   // Batch operations
@@ -400,20 +426,41 @@ export default function LabStudentRequestsPage() {
                 {isExpanded && (
                   <div className="border-t border-[#e8efd9] dark:border-[#2e3d19]">
                     {/* Chemicals row */}
-                    <div className="px-4 py-2 bg-[#fafbf5] dark:bg-[#1c2117] flex flex-wrap gap-2">
-                      {stockChecked.map((c, i) => (
-                        <span
-                          key={i}
-                          className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                            c.ok
-                              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400'
-                              : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
-                          }`}
-                        >
-                          {c.chemicalName}: {c.totalQuantity} {c.unit}
-                          {!c.ok && ` (avail: ${c.available})`}
-                        </span>
-                      ))}
+                    <div className="px-4 py-3 bg-[#fafbf5] dark:bg-[#1c2117] flex flex-col gap-2">
+                      <div className="text-xs font-semibold text-[#556b2f] dark:text-[#c5d0b5]">Total Chemicals Required for this Group:</div>
+                      <div className="flex flex-wrap gap-2 items-center">
+                        {stockChecked.map((c, i) => (
+                          <div key={i} className="flex items-center gap-1">
+                            <span
+                              className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center ${
+                                c.ok
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800'
+                                  : 'bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-800'
+                              }`}
+                            >
+                              {c.chemicalName}: {c.totalQuantity} {c.unit}
+                              {!c.ok && ` (avail: ${c.available})`}
+                            </span>
+                            {!c.ok && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setStoreModalData({
+                                    chemicalName: c.chemicalName,
+                                    quantityRequested: String(Math.max(0, c.totalQuantity - c.available)),
+                                    unit: c.unit || 'g',
+                                    reason: `Required for ${group.subject} - Exp ${group.experimentNo} (Missing ${c.totalQuantity - c.available} ${c.unit})`
+                                  });
+                                  setStoreModalOpen(true);
+                                }}
+                                className="text-xs px-2 py-1 bg-[#556b2f] text-white rounded-md hover:bg-[#4a5f28] transition"
+                              >
+                                🏪 Request Missing
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
 
                     {/* Student rows */}
@@ -622,6 +669,70 @@ export default function LabStudentRequestsPage() {
             )}
           </div>
         )}
+      </Modal>
+
+      {/* Schedule Modal */}
+      <Modal open={scheduleModal} onClose={() => setScheduleModal(false)} title="Schedule Experiment">
+        <div className="space-y-4 pt-2">
+          <Input
+            label="Schedule Date"
+            type="date"
+            value={scheduleDate}
+            onChange={(e) => setScheduleDate(e.target.value)}
+          />
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={() => setScheduleModal(false)}>Cancel</Button>
+            <Button className="bg-[#556b2f] hover:bg-[#4a5f28] text-white" onClick={() => {
+              // handle schedule submit
+              setScheduleModal(false);
+            }}>Confirm Schedule</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Store Request Modal */}
+      <Modal open={storeModalOpen} onClose={() => setStoreModalOpen(false)} title="Request Chemical From Central Store">
+        <div className="space-y-4 text-left">
+          <Input
+            label="Chemical Name"
+            value={storeModalData.chemicalName}
+            onChange={(e) => setStoreModalData({ ...storeModalData, chemicalName: e.target.value })}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Quantity Requested"
+              type="number"
+              value={storeModalData.quantityRequested}
+              onChange={(e) => setStoreModalData({ ...storeModalData, quantityRequested: e.target.value })}
+            />
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-[#3c4e23] dark:text-[#eef4e8]">Unit</label>
+              <select
+                className="rounded-lg border border-[#cfd8bd] bg-white px-3 py-2 text-sm text-[#2e3d19] focus:border-[#556b2f] focus:outline-none focus:ring-1 focus:ring-[#556b2f] dark:border-[#414a33] dark:bg-[#131610] dark:text-[#eef4e8]"
+                value={storeModalData.unit}
+                onChange={(e) => setStoreModalData({ ...storeModalData, unit: e.target.value })}
+              >
+                <option value="g">g</option>
+                <option value="kg">kg</option>
+                <option value="mL">mL</option>
+                <option value="L">L</option>
+                <option value="units">units</option>
+                <option value="mg">mg</option>
+              </select>
+            </div>
+          </div>
+          <Input
+            label="Reason / Note"
+            value={storeModalData.reason}
+            onChange={(e) => setStoreModalData({ ...storeModalData, reason: e.target.value })}
+          />
+          <div className="flex justify-end gap-3 mt-6">
+            <Button variant="outline" onClick={() => setStoreModalOpen(false)}>Cancel</Button>
+            <Button className="bg-[#556b2f] text-white hover:bg-[#4a5f28]" onClick={handleStoreRequestSubmit} disabled={submittingStoreReq}>
+              {submittingStoreReq ? 'Submitting...' : 'Submit Store Request'}
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

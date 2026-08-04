@@ -3,11 +3,13 @@ const { body, param, query } = require('express-validator');
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
 const validateRequest = require('../middleware/validateMiddleware');
-const { createInventory, updateInventory, deleteInventory, getInventory, getInventoryById, fetchChemicalAbstractForInventory, fetchChemicalDataForInventory, bulkImportInventory } = require('../controllers/inventoryController');
+const { createInventory, updateInventory, deleteInventory, getInventory, getInventoryById, fetchChemicalAbstractForInventory, fetchChemicalDataForInventory, bulkImportInventory, getSmartInventory } = require('../controllers/inventoryController');
 
 const router = express.Router();
 
 router.use(authMiddleware);
+
+router.get('/smart', getSmartInventory);
 
 router.get(
   '/',
