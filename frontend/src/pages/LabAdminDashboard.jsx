@@ -145,6 +145,83 @@ export default function LabAdminDashboard() {
 
   const smart = store.smartInventory || {};
 
+  const autofillFromCas = async (item, setItem, setLoading, setLastFetchedCas, setStatusMessage, setStatusType) => {
+    const normalizedCas = item.casNumber.trim();
+
+    if (!normalizedCas) {
+      setStatusType('error');
+      setStatusMessage('Enter a CAS number first.');
+      return;
+    }
+
+    setStatusType('loading');
+    setStatusMessage(`Checking PubChem for CAS ${normalizedCas}...`);
+    setLoading(true);
+    try {
+      const result = await store.fetchChemicalDataByCasForInventory(normalizedCas);
+      if (!result?.found) {
+        setStatusType('error');
+        setStatusMessage(result?.message || 'No PubChem data found for this CAS number.');
+        return;
+      }
+
+      const pubchemData = result.data || {};
+      setItem((state) => ({
+        ...state,
+        category: 'Chemical',
+        chemicalName: pubchemData.chemicalName || state.chemicalName,
+        casNumber: pubchemData.casNumber || state.casNumber,
+        chemicalFormula: pubchemData.chemicalFormula || state.chemicalFormula,
+        smiles: pubchemData.smiles || state.smiles,
+        inchi: pubchemData.inchi || state.inchi,
+      }));
+      setLastFetchedCas(normalizedCas);
+      setStatusType('success');
+      setStatusMessage(`PubChem matched ${pubchemData.chemicalName || normalizedCas}. Review the fields below, then save the chemical.`);
+    } catch (error) {
+      setStatusType('error');
+      setStatusMessage(error?.response?.data?.message || 'Failed to fetch chemical details from PubChem.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const modalFields = (item, setItem, isLoadingCas, lastFetchedCas, setLoading, setLastFetchedCas, statusMessage, statusType, setStatusMessage, setStatusType) => <div className='space-y-4'>
+    <div className='rounded-xl border border-[#d9e1ca] bg-[#f7f8f1] p-4 dark:border-[#414a33] dark:bg-[#28301f]'>
+      <div className='flex flex-col gap-3 sm:flex-row sm:items-end'>
+        <div className='flex-1'>
+          <Input
+            label='CAS number'
+            value={item.casNumber}
+            onChange={(e) => {
+              const nextCas = e.target.value;
+              setItem((s) => ({ ...s, casNumber: nextCas, category: 'Chemical' }));
+              if (nextCas.trim() !== lastFetchedCas) {
+                setLastFetchedCas('');
+                setStatusMessage('');
+                setStatusType('');
+              }
+            }}
+            placeholder='50-78-2'
+          />
+        </div>
+        <Button type='button' variant='outline' className='sm:w-auto' onClick={() => autofillFromCas(item, setItem, setLoading, setLastFetchedCas, setStatusMessage, setStatusType)} disabled={isLoadingCas}>
+          {isLoadingCas ? 'Fetching...' : 'Auto Fetch'}
+        </Button>
+      </div>
+      <p className='mt-2 text-xs text-[#71805a] dark:text-[#c5d0b5]'>Enter the CAS number, then click Auto Fetch to pull available PubChem fields. This only fills the form. Use Save chemical to add it to inventory.</p>
+      {statusMessage ? <div className={`mt-3 rounded-lg px-3 py-2 text-xs ${statusType === 'success' ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-200' : statusType === 'error' ? 'bg-rose-50 text-rose-800 dark:bg-rose-900/20 dark:text-rose-200' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'}`}>{statusMessage}</div> : null}
+    </div>
+    <Input label='Chemical name' value={item.chemicalName} onChange={(e) => setItem((s) => ({ ...s, chemicalName: e.target.value }))} />
+    <div className='grid gap-4 sm:grid-cols-2'><Input label='Cost per unit' type='number' value={item.costPerUnit} onChange={(e) => setItem((s) => ({ ...s, costPerUnit: e.target.value }))} /><Input label='Category' value='Chemical' readOnly className='bg-[#f4f5eb] dark:bg-[#28301f]' /></div>
+    <div className='grid gap-4 sm:grid-cols-2'><Input label='PubChem matched CAS' value={item.casNumber} onChange={(e) => setItem((s) => ({ ...s, casNumber: e.target.value }))} /><Input label='Chemical formula' value={item.chemicalFormula} onChange={(e) => setItem((s) => ({ ...s, chemicalFormula: e.target.value }))} /></div>
+    <div className='grid gap-4 sm:grid-cols-2'><Input label='SMILES' value={item.smiles} onChange={(e) => setItem((s) => ({ ...s, smiles: e.target.value }))} /><Input label='InChI' value={item.inchi} onChange={(e) => setItem((s) => ({ ...s, inchi: e.target.value }))} /></div>
+    <div className='grid gap-4 sm:grid-cols-2'><Input label='Manufacturing company' value={item.manufacturingCompany} onChange={(e) => setItem((s) => ({ ...s, manufacturingCompany: e.target.value }))} /><Input label='Entry date' type='date' value={item.entryDate} onChange={(e) => setItem((s) => ({ ...s, entryDate: e.target.value }))} /></div>
+    <div className='grid gap-4 sm:grid-cols-2'><Input label='Quantity' type='number' value={item.quantity} onChange={(e) => setItem((s) => ({ ...s, quantity: e.target.value }))} /><SelectUnit value={item.quantityUnit} onChange={(e) => setItem((s) => ({ ...s, quantityUnit: e.target.value }))} /></div>
+    <div className='grid gap-4 sm:grid-cols-2'><Input label='Storage location' value={item.storageLocation} onChange={(e) => setItem((s) => ({ ...s, storageLocation: e.target.value }))} /><Input label='Lot / batch number' value={item.lotNumber} onChange={(e) => setItem((s) => ({ ...s, lotNumber: e.target.value }))} /></div>
+    <div className='grid gap-4 sm:grid-cols-2'><Input label='Low stock threshold' type='number' value={item.minThreshold} onChange={(e) => setItem((s) => ({ ...s, minThreshold: e.target.value }))} /><Input label='Expiry date' type='date' value={item.expiryDate} onChange={(e) => setItem((s) => ({ ...s, expiryDate: e.target.value }))} /></div>
+  </div>;
+
   const downloadInventoryImportTemplate = () => {
     const headers = [
       'itemCode',
