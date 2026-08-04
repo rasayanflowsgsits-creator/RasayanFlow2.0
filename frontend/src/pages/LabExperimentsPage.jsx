@@ -18,7 +18,9 @@ export default function LabExperimentsPage() {
     fetchLabs, 
     fetchLabStructure, 
     uploadLabStructure,
-    fetchInventory
+    fetchInventory,
+    createLabStoreRequest,
+    setToast
   } = useAppStore();
 
   const user = useAuthStore((state) => state.user);
@@ -37,6 +39,11 @@ export default function LabExperimentsPage() {
   const [sheetUrl, setSheetUrl] = useState('');
   const [fetchingSheet, setFetchingSheet] = useState(false);
   
+  // Store Request State
+  const [storeModalOpen, setStoreModalOpen] = useState(false);
+  const [storeModalData, setStoreModalData] = useState({ chemicalName: '', quantityRequested: '100', unit: 'g', reason: '' });
+  const [submittingStoreReq, setSubmittingStoreReq] = useState(false);
+
   const currentLab = labs.find(l => (l.id === activeLabId || l._id === activeLabId)) || labs[0];
 
   useEffect(() => {
@@ -77,6 +84,41 @@ export default function LabExperimentsPage() {
     if (qty === 0) return { status: 'out', label: 'Out of Stock', color: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' };
     if (qty <= min) return { status: 'low', label: `Low (${qty} ${item.unit || ''})`, color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' };
     return { status: 'ok', label: `In Stock (${qty} ${item.unit || ''})`, color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' };
+  };
+
+  const getExperimentReadiness = (chemicals) => {
+    if (!chemicals || chemicals.length === 0) return { status: 'Ready', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' };
+    let missingCount = 0;
+    let lowCount = 0;
+    chemicals.forEach(c => {
+      const stock = getStockStatus(c.chemicalName);
+      if (stock.status === 'missing' || stock.status === 'out') missingCount++;
+      else if (stock.status === 'low') lowCount++;
+    });
+    if (missingCount === chemicals.length) return { status: 'Not Ready', color: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' };
+    if (missingCount > 0 || lowCount > 0) return { status: 'Partial', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' };
+    return { status: 'Ready', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' };
+  };
+
+  const handleStoreRequestSubmit = async () => {
+    setSubmittingStoreReq(true);
+    try {
+      if (createLabStoreRequest) {
+        await createLabStoreRequest({
+          chemicalName: storeModalData.chemicalName,
+          quantityRequested: storeModalData.quantityRequested,
+          unit: storeModalData.unit,
+          reason: storeModalData.reason,
+          labId: activeLabId
+        });
+      }
+      setStoreModalOpen(false);
+      if (setToast) setToast({ type: 'success', message: `Store request submitted for ${storeModalData.chemicalName}` });
+    } catch (e) {
+      if (setToast) setToast({ type: 'error', message: 'Failed to submit store request' });
+    } finally {
+      setSubmittingStoreReq(false);
+    }
   };
 
   const getCol = (row, ...aliases) => {
@@ -399,11 +441,16 @@ export default function LabExperimentsPage() {
             >
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#556b2f] dark:text-[#a5b48b] bg-[#f0f4e8] dark:bg-[#28301f] px-2.5 py-1 rounded-md">
-                    {exp.subject}
-                  </span>
-                  <span className="text-xs font-semibold text-[#87996c]">
-                    Exp #{exp.experimentNo}
+                  <div className="flex gap-2 items-center">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#556b2f] dark:text-[#a5b48b] bg-[#f0f4e8] dark:bg-[#28301f] px-2.5 py-1 rounded-md">
+                      {exp.subject}
+                    </span>
+                    <span className="text-xs font-semibold text-[#87996c]">
+                      Exp #{exp.experimentNo}
+                    </span>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${getExperimentReadiness(exp.chemicals).color}`}>
+                    {getExperimentReadiness(exp.chemicals).status}
                   </span>
                 </div>
                 <h3 className="text-base font-bold text-[#3c4e23] dark:text-[#eef4e8] mb-4">
@@ -422,6 +469,22 @@ export default function LabExperimentsPage() {
                         <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${stock.color}`}>
                           {stock.label}
                         </span>
+                        {(stock.status === 'missing' || stock.status === 'out' || stock.status === 'low') && (
+                          <button
+                            onClick={() => {
+                              setStoreModalData({
+                                chemicalName: c.chemicalName,
+                                quantityRequested: String(c.quantityPerStudent * 10), // Example: for 10 students
+                                unit: c.unit || 'g',
+                                reason: `Required for ${exp.subject} - Exp ${exp.experimentNo}`
+                              });
+                              setStoreModalOpen(true);
+                            }}
+                            className="ml-2 text-[10px] font-semibold text-[#556b2f] hover:underline"
+                          >
+                            Request
+                          </button>
+                        )}
                       </div>
                     );
                   })}
@@ -718,6 +781,51 @@ export default function LabExperimentsPage() {
           </Button>
         </div>
       </Modal>
+      {/* Store Request Modal */}
+      <Modal open={storeModalOpen} onClose={() => setStoreModalOpen(false)} title="Request Chemical From Central Store">
+        <div className="space-y-4 text-left">
+          <Input
+            label="Chemical Name"
+            value={storeModalData.chemicalName}
+            onChange={(e) => setStoreModalData({ ...storeModalData, chemicalName: e.target.value })}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Quantity Requested"
+              type="number"
+              value={storeModalData.quantityRequested}
+              onChange={(e) => setStoreModalData({ ...storeModalData, quantityRequested: e.target.value })}
+            />
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-[#3c4e23] dark:text-[#eef4e8]">Unit</label>
+              <select
+                className="rounded-lg border border-[#cfd8bd] bg-white px-3 py-2 text-sm text-[#2e3d19] focus:border-[#556b2f] focus:outline-none focus:ring-1 focus:ring-[#556b2f] dark:border-[#414a33] dark:bg-[#131610] dark:text-[#eef4e8]"
+                value={storeModalData.unit}
+                onChange={(e) => setStoreModalData({ ...storeModalData, unit: e.target.value })}
+              >
+                <option value="g">g</option>
+                <option value="kg">kg</option>
+                <option value="mL">mL</option>
+                <option value="L">L</option>
+                <option value="units">units</option>
+                <option value="mg">mg</option>
+              </select>
+            </div>
+          </div>
+          <Input
+            label="Reason / Note"
+            value={storeModalData.reason}
+            onChange={(e) => setStoreModalData({ ...storeModalData, reason: e.target.value })}
+          />
+          <div className="flex justify-end gap-3 mt-6">
+            <Button variant="outline" onClick={() => setStoreModalOpen(false)}>Cancel</Button>
+            <Button className="bg-[#556b2f] text-white hover:bg-[#4a5f28]" onClick={handleStoreRequestSubmit} disabled={submittingStoreReq}>
+              {submittingStoreReq ? 'Submitting...' : 'Submit Store Request'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
     </div>
   );
 }

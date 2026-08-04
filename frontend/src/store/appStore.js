@@ -374,6 +374,7 @@ const useAppStore = create((set) => ({
   labStructure: [],
   studentRequests: [],
   researchRequests: [],
+  smartInventory: null,
   loading: false,
   filters: { search: '', lab: 'All' },
   toast: null,
@@ -431,6 +432,40 @@ const useAppStore = create((set) => ({
       return uploaded;
     } catch (err) {
       set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Upload failed', type: 'error' } });
+      throw err;
+    }
+  },
+  fetchSmartInventory: async (labId) => {
+    set({ loading: true });
+    try {
+      const url = labId ? `/inventory/smart?labId=${encodeURIComponent(labId)}` : '/inventory/smart';
+      const { data } = await api.get(url);
+      if (data.success) {
+        set({ smartInventory: data, loading: false });
+        return data;
+      }
+      set({ loading: false });
+      return null;
+    } catch (err) {
+      console.error('Failed to fetch smart inventory:', err);
+      set({ loading: false });
+      return null;
+    }
+  },
+  createLabStoreRequest: async ({ chemicalName, quantityRequested, unit, reason, labId }) => {
+    set({ loading: true });
+    try {
+      const { data } = await api.post('/store/requests', {
+        chemicalName,
+        quantityRequested: Number(quantityRequested),
+        unit: unit || 'mL',
+        reason: reason || 'Lab Inventory Shortage',
+        labId
+      });
+      set({ loading: false, toast: { title: 'Success', message: `Store request for ${chemicalName} submitted`, type: 'success' } });
+      return data;
+    } catch (err) {
+      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Failed to send store request', type: 'error' } });
       throw err;
     }
   },

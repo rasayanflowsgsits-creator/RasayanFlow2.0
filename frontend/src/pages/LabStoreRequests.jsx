@@ -9,10 +9,11 @@ export default function LabStoreRequests() {
   const user = useAuthStore((state) => state.user);
   const labName = user?.labName || 'harsh lab';
   
+  const [activeLabId] = useState(() => localStorage.getItem('pharmlab-active-lab') || '');
+  
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const setToast = useAppStore((state) => state.setToast);
-  const inventory = useAppStore((state) => state.inventory);
+  const { inventory, smartInventory, fetchSmartInventory, createLabStoreRequest, setToast } = useAppStore();
   
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
@@ -33,7 +34,10 @@ export default function LabStoreRequests() {
 
   useEffect(() => {
     fetchRequests();
-  }, []);
+    if (activeLabId) {
+      fetchSmartInventory(activeLabId);
+    }
+  }, [activeLabId]);
 
   // New Request Form State (with Priority and Needed By Date)
   const [formData, setFormData] = useState({
@@ -86,22 +90,64 @@ export default function LabStoreRequests() {
     if(!formData.chemicalName || !formData.quantity) return;
 
     try {
-      await api.post('/store/requests', {
-        chemicalName: formData.chemicalName,
-        casNumber: formData.casNumber,
-        quantityRequested: Number(formData.quantity),
-        unit: formData.unit,
-        priority: formData.priority,
-        neededBy: formData.neededBy || undefined,
-        reason: formData.reason,
-        labName: labName
-      });
+      if (createLabStoreRequest) {
+        await createLabStoreRequest({
+          chemicalName: formData.chemicalName,
+          casNumber: formData.casNumber,
+          quantityRequested: formData.quantity,
+          unit: formData.unit,
+          priority: formData.priority,
+          neededBy: formData.neededBy || undefined,
+          reason: formData.reason,
+          labId: activeLabId
+        });
+      } else {
+        await api.post('/store/requests', {
+          chemicalName: formData.chemicalName,
+          casNumber: formData.casNumber,
+          quantityRequested: Number(formData.quantity),
+          unit: formData.unit,
+          priority: formData.priority,
+          neededBy: formData.neededBy || undefined,
+          reason: formData.reason,
+          labName: labName
+        });
+      }
       setToast({ type: 'success', message: 'Request submitted successfully' });
       setIsModalOpen(false);
       setFormData({ chemicalName: '', casNumber: '', quantity: '', unit: 'ml', priority: 'Normal', neededBy: '', reason: '' });
       fetchRequests();
     } catch (err) {
       setToast({ type: 'error', message: 'Failed to submit request' });
+    }
+  };
+
+  const handleBatchRequestAllMissing = async () => {
+    if (!smartInventory || !smartInventory.chemicals) return;
+    const missing = smartInventory.chemicals.filter(c => c.status === 'Not Available' || c.status === 'Low');
+    if (!missing.length) return;
+
+    try {
+      if (createLabStoreRequest) {
+        const promises = missing.map(c => {
+          const shortage = Math.max(0, c.quantityPerStudent - (c.labStock || 0));
+          if (shortage <= 0) return null;
+          return createLabStoreRequest({
+            chemicalName: c.chemicalName,
+            quantityRequested: String(shortage),
+            unit: c.unit || 'g',
+            priority: 'Urgent',
+            reason: `Auto-batch: Missing for experiments (${(c.usedInExperiments || []).join(', ')})`,
+            labId: activeLabId
+          });
+        }).filter(Boolean);
+        
+        await Promise.all(promises);
+        setToast({ type: 'success', message: `Requested ${promises.length} missing chemicals` });
+        fetchRequests();
+      }
+    } catch (err) {
+      setToast({ type: 'error', message: 'Failed to batch request missing chemicals' });
     }
   };
 
@@ -120,6 +166,54 @@ export default function LabStoreRequests() {
         </button>
       </div>
 
+      {/* Missing for Experiments Banner */}
+      {smartInventory && smartInventory.chemicals && smartInventory.chemicals.some(c => c.status === 'Not Available' || c.status === 'Low') && (
+        <div className="bg-rose-50 dark:bg-rose-900/10 border border-rose-200 dark:border-rose-800/30 rounded-xl p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 text-rose-800 dark:text-rose-400 font-semibold text-sm mb-1">
+                <AlertCircle size={18} />
+                Missing Chemicals for Uploaded Experiments
+              </div>
+              <p className="text-xs text-rose-700 dark:text-rose-300">
+                Some chemicals required for your experiments are not available in lab inventory.
+              </p>
+            </div>
+            <button
+              onClick={handleBatchRequestAllMissing}
+              className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap"
+            >
+              Request All Missing
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2 mt-3">
+            {smartInventory.chemicals.filter(c => c.status === 'Not Available' || c.status === 'Low').map((item, i) => {
+              const shortage = Math.max(0, item.quantityPerStudent - (item.labStock || 0));
+              return (
+                <button
+                  key={i}
+                  onClick={() => {
+                    setFormData({
+                      chemicalName: item.chemicalName,
+                      casNumber: '',
+                      quantity: String(shortage),
+                      unit: item.unit || 'g',
+                      priority: 'Urgent',
+                      neededBy: '',
+                      reason: `Missing for experiments (${(item.usedInExperiments || []).join(', ')})`
+                    });
+                    setIsModalOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 hover:bg-rose-200 px-3 py-1 rounded-lg text-xs font-medium transition"
+                >
+                  + Request {item.chemicalName} ({shortage} {item.unit})
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Low Stock Smart Reorder Banner */}
       {lowStockItems.length > 0 && (
         <div className="bg-[#fffdf0] dark:bg-[#282415] border border-[#e6c875] dark:border-[#5e4f20] rounded-xl p-4">
@@ -128,9 +222,9 @@ export default function LabStoreRequests() {
             Smart Reorder Suggestions ({lowStockItems.length} Low Stock Chemicals)
           </div>
           <div className="flex flex-wrap gap-2">
-            {lowStockItems.map(item => (
+            {lowStockItems.map((item, i) => (
               <button
-                key={item.id || item._id}
+                key={item.id || item._id || i}
                 onClick={() => handleQuickReorder(item)}
                 className="flex items-center gap-1.5 bg-[#f5e6b3] dark:bg-[#423714] text-[#664700] dark:text-[#f2d98d] hover:bg-[#ebd38c] px-3 py-1 rounded-lg text-xs font-medium transition"
               >
