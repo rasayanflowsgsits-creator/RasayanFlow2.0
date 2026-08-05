@@ -106,8 +106,9 @@ export default function LabStudentRequestsPage() {
       groups[key].requests.push(req);
       // Merge chemicals
       (req.chemicalsRequested || []).forEach((c) => {
+        const chemName = c?.chemicalName || c?.name || '';
         const existing = groups[key].chemicals.find(
-          (x) => x.chemicalName.toLowerCase() === c.chemicalName.toLowerCase()
+          (x) => (x.chemicalName || x.name || '').toLowerCase() === chemName.toLowerCase()
         );
         if (existing) {
           existing.totalQuantity = (existing.totalQuantity || 0) + Number(c.quantityRequested || 0);
@@ -119,11 +120,11 @@ export default function LabStudentRequestsPage() {
     return Object.values(groups);
   }, [filteredRequests]);
 
-  // Stock check
   const checkGroupStock = (chemicals) => {
     return chemicals.map((c) => {
+      const chemName = c?.chemicalName || c?.name || '';
       const inv = inventory.find(
-        (i) => (i.chemicalName || i.itemName || '').toLowerCase() === c.chemicalName.toLowerCase()
+        (i) => (i.chemicalName || i.itemName || '').toLowerCase() === chemName.toLowerCase()
       );
       const avail = inv ? Number(inv.quantity || 0) : 0;
       return { ...c, available: avail, ok: avail >= (c.totalQuantity || c.quantityRequested) };
@@ -217,8 +218,9 @@ export default function LabStudentRequestsPage() {
     if (!selectedRequest) return { hasAll: false, chemicals: [] };
     let hasAll = true;
     const chemicals = (selectedRequest.chemicalsRequested || []).map((c) => {
+      const chemName = c?.chemicalName || c?.name || '';
       const inv = inventory.find(
-        (i) => (i.chemicalName || i.itemName || '').toLowerCase() === c.chemicalName.toLowerCase()
+        (i) => (i.chemicalName || i.itemName || '').toLowerCase() === chemName.toLowerCase()
       );
       const available = inv ? Number(inv.quantity || 0) : 0;
       const required = Number(c.quantityRequested || 0);

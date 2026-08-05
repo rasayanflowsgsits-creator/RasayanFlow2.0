@@ -319,9 +319,9 @@ const getStudentStructure = asyncHandler(async (req, res) => {
     }
   }
   if (labIdParam) {
-    queryOr.push({ labId: labIdParam });
     if (mongoose.Types.ObjectId.isValid(labIdParam)) {
       queryOr.push({ labId: new mongoose.Types.ObjectId(labIdParam) });
+      queryOr.push({ labId: labIdParam });
     }
   }
 

@@ -24,9 +24,15 @@ const createRequest = asyncHandler(async (req, res) => {
   }
 
   const rawLabId = labId || req.user.labId;
-  const targetLabId = mongoose.Types.ObjectId.isValid(rawLabId)
-    ? new mongoose.Types.ObjectId(rawLabId)
-    : rawLabId;
+  let targetLabId = null;
+  if (rawLabId && mongoose.Types.ObjectId.isValid(rawLabId)) {
+    targetLabId = new mongoose.Types.ObjectId(rawLabId);
+  } else if (rawLabId) {
+    const foundLab = await mongoose.model('Lab').findOne({ $or: [{ labCode: rawLabId }, { name: rawLabId }, { labName: rawLabId }] });
+    if (foundLab) {
+      targetLabId = new mongoose.Types.ObjectId(foundLab._id);
+    }
+  }
 
   // Duplicate Check: Check if student already requested this experiment and status is STILL Pending
   const existingPending = await StudentRequest.findOne({
@@ -54,7 +60,7 @@ const createRequest = asyncHandler(async (req, res) => {
     studentName: req.user.name,
     rollNumber: req.user.rollNumber || 'RN-1001',
     group: req.user.group || 'Group A',
-    labId: targetLabId,
+    ...(targetLabId && { labId: targetLabId }),
     labName: labName || 'HAP1',
     year: year || req.user.year || '1',
     semester: semester || req.user.semester || '1',
@@ -91,10 +97,14 @@ const getMyRequests = asyncHandler(async (req, res) => {
 // @access  Private (Student)
 const getStudentRequestsForLab = asyncHandler(async (req, res) => {
   const rawLabId = req.params.labId || req.query.labId || req.user.labId;
-  const queryIds = [rawLabId, rawLabId?.toString()];
+  const queryIds = [];
   if (rawLabId && mongoose.Types.ObjectId.isValid(rawLabId)) {
     queryIds.push(new mongoose.Types.ObjectId(rawLabId));
+  } else if (rawLabId) {
+    const lab = await mongoose.model('Lab').findOne({ $or: [{ labCode: rawLabId }, { name: rawLabId }, { labName: rawLabId }] });
+    if (lab) queryIds.push(new mongoose.Types.ObjectId(lab._id));
   }
+  if (queryIds.length === 0) queryIds.push(new mongoose.Types.ObjectId()); // prevent empty $in crash or unintended match
 
   const requests = await StudentRequest.find({
     studentId: req.user.id,
@@ -108,10 +118,14 @@ const getStudentRequestsForLab = asyncHandler(async (req, res) => {
 // @access  Private (Lab Admin)
 const getLabRequests = asyncHandler(async (req, res) => {
   const rawLabId = req.query.labId || req.user.labId;
-  const queryIds = [rawLabId, rawLabId?.toString()];
+  const queryIds = [];
   if (rawLabId && mongoose.Types.ObjectId.isValid(rawLabId)) {
     queryIds.push(new mongoose.Types.ObjectId(rawLabId));
+  } else if (rawLabId) {
+    const lab = await mongoose.model('Lab').findOne({ $or: [{ labCode: rawLabId }, { name: rawLabId }, { labName: rawLabId }] });
+    if (lab) queryIds.push(new mongoose.Types.ObjectId(lab._id));
   }
+  if (queryIds.length === 0) queryIds.push(new mongoose.Types.ObjectId());
 
   const requests = await StudentRequest.find({ labId: { $in: queryIds } }).sort({ requestedAt: -1 });
   res.status(200).json({ success: true, count: requests.length, data: requests });
