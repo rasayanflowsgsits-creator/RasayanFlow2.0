@@ -370,7 +370,10 @@ const BPharmDashboard = () => {
           </div>
           <button 
             onClick={() => {
-              if (myLabs && myLabs.length > 0) setActiveLabWindow(myLabs[0]);
+              if (myLabs && myLabs.length > 0) {
+                const targetId = myLabs[0]._id || myLabs[0].id || myLabs[0].labId;
+                navigate(`/student/lab/${targetId}`, { state: { lab: myLabs[0] } });
+              }
             }}
             className="flex items-center gap-2 bg-[#c8a030] hover:bg-[#b58f28] text-black px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all shrink-0"
           >
