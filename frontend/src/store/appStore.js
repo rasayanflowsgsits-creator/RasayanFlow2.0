@@ -386,7 +386,7 @@ const useAppStore = create((set) => ({
     try {
       const { data } = await api.get('/labs');
       const labs = (getPayload(data) || []).map(normalizeLab);
-      set({ labs: labs.length ? labs : PREVIEW_LABS, loading: false });
+      set({ labs: isPreview && !labs.length ? PREVIEW_LABS : labs, loading: false });
     } catch {
       set({ labs: isPreview ? PREVIEW_LABS : [], loading: false });
     }
@@ -958,9 +958,9 @@ const useAppStore = create((set) => ({
       const query = queryParams.toString() ? `/transactions?${queryParams.toString()}` : '/transactions';
       const { data } = await api.get(query);
       const fetched = (getPayload(data) || []).map(normalizeTransaction);
-      set({ transactions: fetched.length ? fetched : PREVIEW_TRANSACTIONS, loading: false });
+      set({ transactions: isPreview && !fetched.length ? PREVIEW_TRANSACTIONS : fetched, loading: false });
     } catch {
-      set({ transactions: PREVIEW_TRANSACTIONS, loading: false });
+      set({ transactions: isPreview ? PREVIEW_TRANSACTIONS : [], loading: false });
     }
   },
   fetchLabRequests: async () => {
@@ -1336,11 +1336,11 @@ const useAppStore = create((set) => ({
     set({ loading: true });
     try {
       const { data } = await api.get(`/labs/matching?courseType=${courseType}&year=${year}&semester=${semester}`);
-      const fetched = getPayload(data) || [];
-      set({ myLabs: fetched.length ? fetched : PREVIEW_LABS, loading: false });
+      const fetched = (getPayload(data) || []).map(normalizeLab);
+      set({ myLabs: fetched, loading: false });
     } catch (err) {
       console.error('Failed to fetch my labs:', err);
-      set({ myLabs: PREVIEW_LABS, loading: false });
+      set({ myLabs: [], loading: false });
     }
   },
   labStructure: [],
@@ -1507,9 +1507,9 @@ const useAppStore = create((set) => ({
     try {
       const { data } = await api.get('/student/requests/my');
       const fetched = getPayload(data) || [];
-      set({ studentRequests: fetched.length ? fetched : PREVIEW_STUDENT_REQUESTS, loading: false });
+      set({ studentRequests: fetched, loading: false });
     } catch {
-      set({ studentRequests: PREVIEW_STUDENT_REQUESTS, loading: false });
+      set({ studentRequests: [], loading: false });
     }
   },
   createStudentRequest: async (payload) => {
