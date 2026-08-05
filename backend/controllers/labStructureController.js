@@ -330,52 +330,6 @@ const getStudentStructure = asyncHandler(async (req, res) => {
     experiments = await LabStructure.find({ $or: queryOr }).lean().sort({ subject: 1, experimentNo: 1 });
   }
 
-  // Fallback 1: if 0 found for this labId, search all experiments in MongoDB
-  if (experiments.length === 0) {
-    experiments = await LabStructure.find({}).lean().sort({ subject: 1, experimentNo: 1 });
-  }
-
-  // Fallback 2: if still 0 found in MongoDB, auto-seed default experiments into MongoDB for this lab dynamically
-  if (experiments.length === 0) {
-    const seeded = [];
-    const targetLabId = (labIdParam && mongoose.Types.ObjectId.isValid(labIdParam))
-      ? new mongoose.Types.ObjectId(labIdParam)
-      : new mongoose.Types.ObjectId();
-
-    let labDoc = null;
-    if (labIdParam && mongoose.Types.ObjectId.isValid(labIdParam)) {
-      labDoc = await Lab.findById(labIdParam);
-    }
-    const dynamicLabName = labDoc?.labName || labDoc?.name || 'HAP1';
-    const dynamicSubject = labDoc?.department || dynamicLabName;
-    const dynamicCourse = labDoc?.courseType || 'B.Pharm';
-    const dynamicYear = labDoc?.year ? String(labDoc.year) : '1';
-    const dynamicSem = labDoc?.semester ? String(labDoc.semester) : '1';
-
-    for (const exp of DEFAULT_HAP1_EXPERIMENTS) {
-      try {
-        const created = await LabStructure.create({
-          labId: targetLabId,
-          labName: dynamicLabName,
-          courseType: dynamicCourse,
-          year: dynamicYear,
-          semester: dynamicSem,
-          subject: dynamicSubject,
-          experimentNo: exp.experimentNo,
-          experimentName: exp.experimentName,
-          chemicals: exp.chemicals,
-          uploadedBy: req.user?._id || req.user?.id
-        });
-        seeded.push(created.toObject());
-      } catch (e) {
-        console.log('Auto-seed duplicate notice:', e.message);
-      }
-    }
-    if (seeded.length > 0) {
-      experiments = seeded;
-    }
-  }
-
   // Debug log always
   console.log('labId searched:', labIdParam);
   console.log('experiments found:', experiments.length);
