@@ -470,7 +470,7 @@ const BPharmDashboard = () => {
             {myLabs.map(lab => {
               const adminName = lab.admin && lab.admin !== 'Unassigned' 
                 ? lab.admin 
-                : (Array.isArray(lab.admins) && lab.admins.length ? lab.admins.map(a => a.name || a.email).join(', ') : 'user10');
+                : (Array.isArray(lab.admins) && lab.admins.length ? lab.admins.map(a => (typeof a === 'object' ? (a.name || a.email) : a)).join(', ') : 'Unassigned');
 
               const targetId = lab._id || lab.id || lab.labId;
 
@@ -511,9 +511,11 @@ const BPharmDashboard = () => {
                         <p className="text-xs font-bold text-[#3c4e23] dark:text-[#eef4e8] truncate">
                           {adminName}
                         </p>
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
-                          {lab.adminEmail || 'user10@gmail.com'}
-                        </p>
+                        {lab.adminEmail ? (
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                            {lab.adminEmail}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                     
@@ -626,7 +628,7 @@ const BPharmDashboard = () => {
                   {activeLabWindow.labName || activeLabWindow.name || 'Pharmaceutics Lab - I'}
                 </h2>
                 <p className="text-xs text-white/80 font-medium">
-                  {activeLabWindow.labCode || '1001'} • Faculty In-Charge: {activeLabWindow.admin || 'user10'} ({activeLabWindow.adminEmail || 'user10@gmail.com'})
+                  {activeLabWindow.labCode || '1001'} • Faculty In-Charge: {activeLabWindow.admin || 'Unassigned'}{activeLabWindow.adminEmail ? ` (${activeLabWindow.adminEmail})` : ''}
                 </p>
               </div>
             </div>

@@ -99,8 +99,8 @@ export default function StudentLabDetail() {
       labName: 'HAP1',
       labCode: '0001',
       courseType: 'B.Pharm',
-      admin: 'user10',
-      adminEmail: 'user10@gmail.com',
+      admin: 'Unassigned',
+      adminEmail: '',
       department: 'Pharmaceutics'
     };
   }, [labInfo, stateLab, labId]);
@@ -253,7 +253,7 @@ export default function StudentLabDetail() {
                 {currentLab.labName || currentLab.name || 'HAP1'}
               </h1>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Lab Code: <span className="font-semibold text-gray-700 dark:text-gray-300">{currentLab.labCode || '0001'}</span> • Course: <span className="font-semibold text-gray-700 dark:text-gray-300">{currentLab.courseType || 'B.Pharm'}</span> • Admins: <span className="font-semibold text-gray-700 dark:text-gray-300">{currentLab.admin || 'user10'} ({currentLab.adminEmail || 'user10@gmail.com'})</span>
+                Lab Code: <span className="font-semibold text-gray-700 dark:text-gray-300">{currentLab.labCode || '0001'}</span> • Course: <span className="font-semibold text-gray-700 dark:text-gray-300">{currentLab.courseType || 'B.Pharm'}</span> • Admins: <span className="font-semibold text-gray-700 dark:text-gray-300">{currentLab.admin || 'Unassigned'}{currentLab.adminEmail ? ` (${currentLab.adminEmail})` : ''}</span>
               </p>
             </div>
           </div>
