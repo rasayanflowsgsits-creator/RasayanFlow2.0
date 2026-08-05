@@ -313,21 +313,59 @@ const getStudentStructure = asyncHandler(async (req, res) => {
     const labObjectId = new mongoose.Types.ObjectId(lab._id);
     queryOr.push({ labId: labObjectId });
     queryOr.push({ labId: labObjectId.toString() });
-    queryOr.push({ labName: lab.labName || lab.name });
+    if (lab.labName || lab.name) {
+      queryOr.push({ labName: new RegExp('^' + (lab.labName || lab.name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') });
+    }
+    if (lab.admins && Array.isArray(lab.admins) && lab.admins.length > 0) {
+      const adminIds = lab.admins.map(a => (typeof a === 'object' && a._id ? a._id : a));
+      queryOr.push({ uploadedBy: { $in: adminIds } });
+    }
     if (lab.courseType && lab.year && lab.semester) {
-      queryOr.push({ courseType: lab.courseType, year: String(lab.year), semester: String(lab.semester) });
+      const yStr = String(lab.year);
+      const yNum = Number(lab.year);
+      const sStr = String(lab.semester);
+      const sNum = Number(lab.semester);
+
+      queryOr.push({ courseType: lab.courseType, year: yStr, semester: sStr });
+      if (!isNaN(yNum) && !isNaN(sNum)) {
+        queryOr.push({ courseType: lab.courseType, year: yNum, semester: sNum });
+      }
     }
   }
-  if (labIdParam) {
-    if (mongoose.Types.ObjectId.isValid(labIdParam)) {
-      queryOr.push({ labId: new mongoose.Types.ObjectId(labIdParam) });
-      queryOr.push({ labId: labIdParam });
-    }
+  if (labIdParam && mongoose.Types.ObjectId.isValid(labIdParam)) {
+    const pObjectId = new mongoose.Types.ObjectId(labIdParam);
+    queryOr.push({ labId: pObjectId });
+    queryOr.push({ labId: labIdParam });
   }
 
   let experiments = [];
   if (queryOr.length > 0) {
     experiments = await LabStructure.find({ $or: queryOr }).lean().sort({ subject: 1, experimentNo: 1 });
+  }
+
+  // Fallback: Check Experiment collection if LabStructure gave 0
+  if (experiments.length === 0 && lab) {
+    const labObjectId = new mongoose.Types.ObjectId(lab._id);
+    const expOr = [{ labId: labObjectId }, { labId: lab._id.toString() }];
+    if (lab.admins && Array.isArray(lab.admins) && lab.admins.length > 0) {
+      const adminIds = lab.admins.map(a => (typeof a === 'object' && a._id ? a._id : a));
+      expOr.push({ createdBy: { $in: adminIds } });
+    }
+    const expDocs = await Experiment.find({ $or: expOr }).lean();
+    if (expDocs.length > 0) {
+      experiments = expDocs.map((e, idx) => ({
+        _id: e._id,
+        labId: e.labId,
+        subject: e.subject || e.department || lab.labName || 'General',
+        experimentNo: parseInt(String(e.experimentNumber).replace(/\D/g, ''), 10) || (idx + 1),
+        experimentName: e.experimentObject || e.experimentNumber,
+        chemicals: (e.requiredInventory || []).map(c => ({
+          chemicalName: c.chemicalName,
+          quantityPerStudent: c.quantity || 1,
+          unit: c.quantityUnit || 'mL'
+        }))
+      }));
+    }
   }
 
   // Debug log always
@@ -404,7 +442,13 @@ const addExperiment = asyncHandler(async (req, res) => {
     lab = await Lab.findById(targetLabId);
   }
   if (!lab) {
-    lab = await Lab.findOne({ assignedLabAdmin: req.user._id });
+    lab = await Lab.findOne({
+      $or: [
+        { admins: req.user._id },
+        { adminEmail: req.user.email },
+        { admin: req.user.name }
+      ]
+    });
   }
 
   if (!lab) {
