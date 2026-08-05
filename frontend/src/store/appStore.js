@@ -154,6 +154,7 @@ const PREVIEW_EXPERIMENTS = [
   }
 ];
 const PREVIEW_TRANSACTIONS = [];
+const PREVIEW_STUDENT_REQUESTS = [];
 
 const normalizeLab = (lab) => {
   const adminName = lab.admin || (Array.isArray(lab.admins) && lab.admins.length 
