@@ -7,7 +7,13 @@ const Transaction = require('../models/Transaction');
 const ActivityLog = require('../models/ActivityLog');
 
 const createLab = asyncHandler(async (req, res) => {
-  const { labName, labCode, courseType, department, year, semester } = req.body;
+  const {
+    labName, labCode, courseType, department, year, semester,
+    // Optional admin provisioning in one shot
+    adminMode,
+    adminEmail, adminName, adminPassword,
+    existingAdminId,
+  } = req.body;
 
   if (!labName || !labCode) {
     res.status(400);
@@ -31,10 +37,64 @@ const createLab = asyncHandler(async (req, res) => {
     admins: [],
   });
 
+  // — Atomic admin provisioning (create_new mode) —
+  let provisionedAdmin = null;
+  if (adminMode === 'create_new' && adminEmail) {
+    const normalizedEmail = adminEmail.toLowerCase().trim();
+
+    // Reject if email already taken
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      // Roll back the lab
+      await Lab.findByIdAndDelete(lab._id);
+      res.status(400);
+      throw new Error(`Email "${normalizedEmail}" is already registered. Please use a different email or use "Assign Existing Staff".`);
+    }
+
+    provisionedAdmin = await User.create({
+      name: adminName || normalizedEmail.split('@')[0],
+      email: normalizedEmail,
+      password: adminPassword || '123456',
+      role: 'labAdmin',
+      isApproved: true,
+      labId: lab._id,
+      labName: lab.labName,
+      labCode: lab.labCode,
+      course: lab.courseType || 'B.Pharm',
+      courseType: lab.courseType || 'B.Pharm',
+      year: lab.year || '1',
+      semester: lab.semester || '1',
+    });
+
+    lab.admins.push(provisionedAdmin._id);
+    await lab.save();
+  } else if (adminMode === 'existing' && existingAdminId) {
+    // Assign an existing user
+    const existingAdmin = await User.findById(existingAdminId);
+    if (existingAdmin) {
+      existingAdmin.role = 'labAdmin';
+      existingAdmin.labId = lab._id;
+      existingAdmin.labName = lab.labName;
+      existingAdmin.labCode = lab.labCode;
+      existingAdmin.course = lab.courseType || 'B.Pharm';
+      existingAdmin.courseType = lab.courseType || 'B.Pharm';
+      existingAdmin.year = lab.year || '1';
+      existingAdmin.semester = lab.semester || '1';
+      existingAdmin.isApproved = true;
+      await existingAdmin.save();
+      provisionedAdmin = existingAdmin;
+
+      if (!lab.admins.some((id) => id.toString() === existingAdmin._id.toString())) {
+        lab.admins.push(existingAdmin._id);
+        await lab.save();
+      }
+    }
+  }
+
   await ActivityLog.create({
     userId: req.user._id,
     action: 'create_lab',
-    details: `Lab ${labName} (${labCode}) created — ${courseType || 'B.Pharm'} Year ${year || '1'} Sem ${semester || '1'}`,
+    details: `Lab ${labName} (${labCode}) created — ${courseType || 'B.Pharm'} Year ${year || '1'} Sem ${semester || '1'}${provisionedAdmin ? ` — Admin: ${provisionedAdmin.email}` : ''}`,
     role: req.user.role || 'superAdmin',
     userName: req.user.name || 'Super Administrator',
     userEmail: req.user.email,
@@ -45,8 +105,10 @@ const createLab = asyncHandler(async (req, res) => {
     status: 'Success'
   });
 
-  res.status(201).json({ success: true, data: lab });
+  const populatedLab = await Lab.findById(lab._id).populate('admins', 'name email role isApproved');
+  res.status(201).json({ success: true, data: populatedLab });
 });
+
 
 const listLabs = asyncHandler(async (req, res) => {
   const labs = await Lab.find().populate('admins', 'name email role isApproved');
@@ -80,6 +142,7 @@ const assignAdmin = asyncHandler(async (req, res) => {
       isApproved: true,
       labId: lab._id,
       labName: lab.labName,
+      labCode: lab.labCode,
       course: lab.courseType || 'B.Pharm',
       courseType: lab.courseType || 'B.Pharm',
       year: lab.year || '1',
@@ -95,6 +158,7 @@ const assignAdmin = asyncHandler(async (req, res) => {
   admin.role = 'labAdmin';
   admin.labId = lab._id;
   admin.labName = lab.labName;
+  admin.labCode = lab.labCode;
   admin.course = lab.courseType || 'B.Pharm';
   admin.courseType = lab.courseType || 'B.Pharm';
   admin.year = lab.year || '1';

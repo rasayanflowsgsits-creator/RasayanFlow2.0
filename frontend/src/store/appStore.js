@@ -470,7 +470,7 @@ const useAppStore = create((set) => ({
       throw err;
     }
   },
-  createLab: async ({ name, code, courseType, department, year, semester }) => {
+  createLab: async ({ name, code, courseType, department, year, semester, adminMode, adminEmail, adminName, adminPassword, existingAdminId }) => {
     const { data } = await api.post('/labs', {
       labName: name,
       labCode: code,
@@ -478,11 +478,18 @@ const useAppStore = create((set) => ({
       department: department || '',
       year: year || '',
       semester: semester || '',
+      // Admin provisioning fields (optional)
+      adminMode: adminMode || 'skip',
+      adminEmail: adminEmail || undefined,
+      adminName: adminName || undefined,
+      adminPassword: adminPassword || undefined,
+      existingAdminId: existingAdminId || undefined,
     });
     const createdLab = normalizeLab(getPayload(data));
     set((state) => ({ labs: [createdLab, ...state.labs] }));
     return createdLab;
   },
+
   deleteLab: async (labId) => {
     set({ loading: true });
     try {

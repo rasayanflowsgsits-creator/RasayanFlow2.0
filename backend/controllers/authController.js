@@ -22,6 +22,8 @@ const serializeUser = (user) => ({
   role: user.role,
   labId: user.labId,
   labName: user.labName,
+  labCode: user.labCode || '',
+  courseType: user.courseType || user.course || '',
   rollNumber: user.rollNumber || '',
   course: user.course || (user.onboardingComplete ? 'B.Pharm' : ''),
   year: user.year || (user.onboardingComplete ? '1' : ''),
@@ -157,9 +159,11 @@ const login = asyncHandler(async (req, res) => {
   }
 
   let userLabName = user.labName || '-';
+  let userLabCode = user.labCode || '-';
   let userYear = user.year ? String(user.year) : '-';
   let userSemester = user.semester ? String(user.semester) : '-';
   let userCourse = user.course || '-';
+  let userCourseType = user.courseType || user.course || '-';
 
   if (user.labId) {
     try {
@@ -167,14 +171,18 @@ const login = asyncHandler(async (req, res) => {
       const linkedLab = await Lab.findById(user.labId);
       if (linkedLab) {
         userLabName = linkedLab.labName || userLabName;
+        userLabCode = linkedLab.labCode || userLabCode;
         if (!user.year || user.year === '-') userYear = linkedLab.year ? String(linkedLab.year) : '1';
         if (!user.semester || user.semester === '-') userSemester = linkedLab.semester ? String(linkedLab.semester) : '1';
         if (!user.course || user.course === '-') userCourse = linkedLab.courseType || 'B.Pharm';
+        if (!user.courseType || user.courseType === '-') userCourseType = linkedLab.courseType || 'B.Pharm';
 
         user.labName = userLabName;
+        user.labCode = userLabCode;
         user.year = userYear;
         user.semester = userSemester;
         user.course = userCourse;
+        user.courseType = userCourseType;
         await user.save();
       }
     } catch (e) {

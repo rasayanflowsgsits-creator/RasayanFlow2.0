@@ -1057,50 +1057,47 @@ export default function SuperAdminDashboard() {
 
     setCreating(true);
     try {
-      // 1. Create the Lab entity FIRST
+      // Single atomic call — creates lab + provisions admin in one request
+      let effectiveAdminMode = adminMode;
+      let adminEmailToAssign = null;
+      let adminNameToSend = '';
+      let adminPasswordToSend = '';
+      let existingAdminIdToSend = null;
+
+      if (adminMode === 'create_new' && newLabAdmin.email.trim()) {
+        adminEmailToAssign = newLabAdmin.email.trim().toLowerCase();
+        adminNameToSend = newLabAdmin.name.trim();
+        adminPasswordToSend = newLabAdmin.password;
+      } else if (adminMode === 'existing' && selectedExistingAdminId) {
+        existingAdminIdToSend = selectedExistingAdminId;
+      } else {
+        effectiveAdminMode = 'skip';
+      }
+
       const createdLab = await createLab({
         name: newLab.name.trim(),
         code: newLab.code.trim().toUpperCase(),
         courseType: newLab.courseType,
         department: newLab.department,
         year: newLab.year,
-        semester: newLab.semester
+        semester: newLab.semester,
+        adminMode: effectiveAdminMode,
+        adminEmail: adminEmailToAssign || undefined,
+        adminName: adminNameToSend || undefined,
+        adminPassword: adminPasswordToSend || undefined,
+        existingAdminId: existingAdminIdToSend || undefined,
       });
       const labId = createdLab?.id || createdLab?._id;
-
-      // 2. Assign / Provision Admin to Lab if email or existing admin selected
-      let adminEmailToAssign = null;
-      let adminName = '';
-      let adminPassword = '';
-
-      if (adminMode === 'create_new' && newLabAdmin.email.trim()) {
-        adminEmailToAssign = newLabAdmin.email.trim().toLowerCase();
-        adminName = newLabAdmin.name.trim();
-        adminPassword = newLabAdmin.password;
-      } else if (adminMode === 'existing' && selectedExistingAdminId) {
-        const foundUser = users.find(u => String(u.id || u._id) === String(selectedExistingAdminId));
-        if (foundUser) {
-          adminEmailToAssign = foundUser.email;
-        }
-      }
-
-      if (labId && (adminEmailToAssign || selectedExistingAdminId)) {
-        await assignAdminToLab({
-          labId,
-          email: adminEmailToAssign || undefined,
-          adminId: selectedExistingAdminId || undefined,
-          name: adminName,
-          password: adminPassword
-        });
-      }
 
       await Promise.all([fetchLabs(), fetchUsers(), fetchActivityLogs({ limit: 100 })]);
       
       setToast({
         type: 'success',
         message: adminEmailToAssign
-          ? `Created "${createdLab.name}" and assigned Lab Admin (${adminEmailToAssign})!`
-          : `Created "${createdLab.name}" successfully!`
+          ? `Created "${createdLab.name}" and provisioned Lab Admin (${adminEmailToAssign})!`
+          : existingAdminIdToSend
+            ? `Created "${createdLab.name}" and assigned existing staff as Lab Admin!`
+            : `Created "${createdLab.name}" successfully!`
       });
 
       setCreateOpen(false);
@@ -1115,6 +1112,7 @@ export default function SuperAdminDashboard() {
       setCreating(false);
     }
   };
+
 
   const handleAssignAdmin = async () => {
     if (!selectedLab || !selectedAdminId) return;
