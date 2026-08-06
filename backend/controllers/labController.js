@@ -37,39 +37,11 @@ const createLab = asyncHandler(async (req, res) => {
     admins: [],
   });
 
-  // — Atomic admin provisioning (create_new mode) —
+  // — Atomic admin provisioning —
   let provisionedAdmin = null;
-  if (adminMode === 'create_new' && adminEmail) {
-    const normalizedEmail = adminEmail.toLowerCase().trim();
 
-    // Reject if email already taken
-    const existingUser = await User.findOne({ email: normalizedEmail });
-    if (existingUser) {
-      // Roll back the lab
-      await Lab.findByIdAndDelete(lab._id);
-      res.status(400);
-      throw new Error(`Email "${normalizedEmail}" is already registered. Please use a different email or use "Assign Existing Staff".`);
-    }
-
-    provisionedAdmin = await User.create({
-      name: adminName || normalizedEmail.split('@')[0],
-      email: normalizedEmail,
-      password: adminPassword || '123456',
-      role: 'labAdmin',
-      isApproved: true,
-      labId: lab._id,
-      labName: lab.labName,
-      labCode: lab.labCode,
-      course: lab.courseType || 'B.Pharm',
-      courseType: lab.courseType || 'B.Pharm',
-      year: lab.year || '1',
-      semester: lab.semester || '1',
-    });
-
-    lab.admins.push(provisionedAdmin._id);
-    await lab.save();
-  } else if (adminMode === 'existing' && existingAdminId) {
-    // Assign an existing user
+  // 1. If explicit existingAdminId passed
+  if (adminMode === 'existing' && existingAdminId) {
     const existingAdmin = await User.findById(existingAdminId);
     if (existingAdmin) {
       existingAdmin.role = 'labAdmin';
@@ -81,14 +53,56 @@ const createLab = asyncHandler(async (req, res) => {
       existingAdmin.year = lab.year || '1';
       existingAdmin.semester = lab.semester || '1';
       existingAdmin.isApproved = true;
+      if (adminName && adminName.trim()) existingAdmin.name = adminName.trim();
+      if (adminPassword && adminPassword.trim()) existingAdmin.password = adminPassword.trim();
       await existingAdmin.save();
       provisionedAdmin = existingAdmin;
-
-      if (!lab.admins.some((id) => id.toString() === existingAdmin._id.toString())) {
-        lab.admins.push(existingAdmin._id);
-        await lab.save();
-      }
     }
+  }
+
+  // 2. If adminEmail is provided
+  if (!provisionedAdmin && adminEmail && adminEmail.trim()) {
+    const normalizedEmail = adminEmail.toLowerCase().trim();
+
+    let existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      // User exists -> Upgrade to labAdmin & assign to this lab
+      existingUser.role = 'labAdmin';
+      existingUser.labId = lab._id;
+      existingUser.labName = lab.labName;
+      existingUser.labCode = lab.labCode;
+      existingUser.course = lab.courseType || 'B.Pharm';
+      existingUser.courseType = lab.courseType || 'B.Pharm';
+      existingUser.year = lab.year || '1';
+      existingUser.semester = lab.semester || '1';
+      existingUser.isApproved = true;
+      if (adminName && adminName.trim()) existingUser.name = adminName.trim();
+      if (adminPassword && adminPassword.trim()) existingUser.password = adminPassword.trim();
+      await existingUser.save();
+      provisionedAdmin = existingUser;
+    } else {
+      // User does not exist -> Create new labAdmin user
+      provisionedAdmin = await User.create({
+        name: (adminName && adminName.trim()) || normalizedEmail.split('@')[0],
+        email: normalizedEmail,
+        password: (adminPassword && adminPassword.trim()) || '123456',
+        role: 'labAdmin',
+        isApproved: true,
+        labId: lab._id,
+        labName: lab.labName,
+        labCode: lab.labCode,
+        course: lab.courseType || 'B.Pharm',
+        courseType: lab.courseType || 'B.Pharm',
+        year: lab.year || '1',
+        semester: lab.semester || '1',
+      });
+    }
+  }
+
+  // Link admin to lab admins array
+  if (provisionedAdmin && !lab.admins.some((id) => id.toString() === provisionedAdmin._id.toString())) {
+    lab.admins.push(provisionedAdmin._id);
+    await lab.save();
   }
 
   await ActivityLog.create({
@@ -109,7 +123,6 @@ const createLab = asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, data: populatedLab });
 });
 
-
 const listLabs = asyncHandler(async (req, res) => {
   const labs = await Lab.find().populate('admins', 'name email role isApproved');
   res.json({ success: true, data: labs });
@@ -128,16 +141,18 @@ const assignAdmin = asyncHandler(async (req, res) => {
   if (adminId) {
     admin = await User.findById(adminId);
   }
-  
-  if (!admin && email) {
-    admin = await User.findOne({ email: email.toLowerCase() });
+
+  const normalizedEmail = email ? email.toLowerCase().trim() : null;
+
+  if (!admin && normalizedEmail) {
+    admin = await User.findOne({ email: normalizedEmail });
   }
 
-  if (!admin && email) {
+  if (!admin && normalizedEmail) {
     admin = await User.create({
-      name: name || email.split('@')[0],
-      email: email.toLowerCase(),
-      password: password || '123456',
+      name: (name && name.trim()) || normalizedEmail.split('@')[0],
+      email: normalizedEmail,
+      password: (password && password.trim()) || '123456',
       role: 'labAdmin',
       isApproved: true,
       labId: lab._id,
@@ -152,7 +167,7 @@ const assignAdmin = asyncHandler(async (req, res) => {
 
   if (!admin) {
     res.status(404);
-    throw new Error('Admin user not found');
+    throw new Error('Admin user not found or valid email not provided');
   }
 
   admin.role = 'labAdmin';
@@ -164,8 +179,8 @@ const assignAdmin = asyncHandler(async (req, res) => {
   admin.year = lab.year || '1';
   admin.semester = lab.semester || '1';
   admin.isApproved = true;
-  if (name) admin.name = name;
-  if (password) admin.password = password;
+  if (name && name.trim()) admin.name = name.trim();
+  if (password && password.trim()) admin.password = password.trim();
   await admin.save();
 
   if (!lab.admins.some((id) => id.toString() === admin._id.toString())) {
