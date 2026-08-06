@@ -5,7 +5,7 @@ import {
   Building2, LayoutDashboard, Clock, UserCheck, AlertCircle, RefreshCw,
   BookOpen, FileSpreadsheet, Megaphone, ToggleLeft, ToggleRight, Download,
   Ban, ShieldAlert, FileText, Check, X, AlertTriangle, Layers, Edit3, Trash2, Folder, FolderOpen, Grid, List,
-  ChevronRight, ChevronDown, Eye, Activity
+  ChevronRight, ChevronDown, Eye, Activity, IndianRupee
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import useDebounce from '../hooks/useDebounce';
@@ -209,6 +209,42 @@ export default function SuperAdminDashboard() {
 
     if (activeTab === 'master-chemicals') {
       loadOverviewData();
+    }
+  }, [activeTab]);
+
+  // Central Store Overview State & Fetching
+  const [storeOverview, setStoreOverview] = useState({
+    totalChemicals: 0,
+    totalValue: 0,
+    lowStockCount: 0,
+    outOfStockCount: 0,
+    topChemicals: []
+  });
+  const [loadingStoreOverview, setLoadingStoreOverview] = useState(false);
+
+  useEffect(() => {
+    const fetchStoreOverview = async () => {
+      setLoadingStoreOverview(true);
+      try {
+        const res = await api.get('/super-admin/store-overview');
+        if (res.data?.success || res.data?.totalChemicals !== undefined) {
+          setStoreOverview({
+            totalChemicals: res.data.totalChemicals || 0,
+            totalValue: res.data.totalValue || 0,
+            lowStockCount: res.data.lowStockCount || 0,
+            outOfStockCount: res.data.outOfStockCount || 0,
+            topChemicals: Array.isArray(res.data.topChemicals) ? res.data.topChemicals : []
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch store overview:', err);
+      } finally {
+        setLoadingStoreOverview(false);
+      }
+    };
+
+    if (activeTab === 'overview') {
+      fetchStoreOverview();
     }
   }, [activeTab]);
 
@@ -1653,6 +1689,161 @@ export default function SuperAdminDashboard() {
               )}
             </div>
           </Card>
+
+          {/* STORE OVERVIEW SECTION */}
+          <div className='space-y-6 pt-4 border-t border-[#d9e1ca] dark:border-[#3c452f]'>
+            {/* Section Header */}
+            <div className='flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between'>
+              <div>
+                <h2 className='text-xl font-bold text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2'>
+                  <span>🏪</span> Central Store Overview
+                </h2>
+                <p className='text-sm text-[#71805a] dark:text-[#a5b48b] mt-0.5'>
+                  Live snapshot of chemical store inventory
+                </p>
+              </div>
+            </div>
+
+            {/* Stat Cards (4 cards) */}
+            <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+              {/* Card 1: Total Chemicals */}
+              <Card className='border-l-4 border-l-[#5c6e46] bg-white dark:bg-[#20251a]'>
+                <div className='flex items-center justify-between'>
+                  <div>
+                    <p className='text-xs font-semibold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Total Chemicals</p>
+                    <p className='text-3xl font-extrabold text-[#37412a] dark:text-[#e4e9d8] mt-1'>
+                      {storeOverview.totalChemicals}
+                    </p>
+                  </div>
+                  <div className='flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f4f6ee] text-[#5c6e46] dark:bg-[#2a3121] dark:text-[#a5b48b]'>
+                    <FlaskConical size={24} />
+                  </div>
+                </div>
+              </Card>
+
+              {/* Card 2: Total Inventory Value (₹) */}
+              <Card className='border-l-4 border-l-[#5c6e46] bg-white dark:bg-[#20251a]'>
+                <div className='flex items-center justify-between'>
+                  <div>
+                    <p className='text-xs font-semibold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Total Inventory Value</p>
+                    <p className='text-2xl font-extrabold text-[#37412a] dark:text-[#e4e9d8] mt-1'>
+                      ₹{Number(storeOverview.totalValue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  <div className='flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f4f6ee] text-[#5c6e46] dark:bg-[#2a3121] dark:text-[#a5b48b]'>
+                    <IndianRupee size={24} />
+                  </div>
+                </div>
+              </Card>
+
+              {/* Card 3: Low Stock Chemicals */}
+              <Card className='border-l-4 border-l-amber-500 bg-white dark:bg-[#20251a]'>
+                <div className='flex items-center justify-between'>
+                  <div>
+                    <p className='text-xs font-semibold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Low Stock Chemicals</p>
+                    <p className='text-3xl font-extrabold text-[#37412a] dark:text-[#e4e9d8] mt-1'>
+                      {storeOverview.lowStockCount}
+                    </p>
+                  </div>
+                  <div className='flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400'>
+                    <AlertTriangle size={24} />
+                  </div>
+                </div>
+              </Card>
+
+              {/* Card 4: Out of Stock */}
+              <Card className='border-l-4 border-l-rose-500 bg-white dark:bg-[#20251a]'>
+                <div className='flex items-center justify-between'>
+                  <div>
+                    <p className='text-xs font-semibold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Out of Stock</p>
+                    <p className='text-3xl font-extrabold text-[#37412a] dark:text-[#e4e9d8] mt-1'>
+                      {storeOverview.outOfStockCount}
+                    </p>
+                  </div>
+                  <div className='flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400'>
+                    <AlertCircle size={24} />
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            {/* Simple Table Card */}
+            <Card title='Chemical Stock Summary' subtitle='Top chemicals by value'>
+              <div className='space-y-4 pt-2'>
+                {loadingStoreOverview ? (
+                  <div className='py-8 text-center text-sm text-[#71805a] dark:text-[#a5b48b]'>
+                    Loading chemical inventory summary...
+                  </div>
+                ) : storeOverview.topChemicals.length === 0 ? (
+                  <div className='py-8 text-center text-sm text-[#71805a] dark:text-[#a5b48b]'>
+                    No store chemical inventory data found.
+                  </div>
+                ) : (
+                  <div className='overflow-x-auto rounded-xl border border-[#d9e1ca] dark:border-[#414a33]'>
+                    <table className='w-full text-left border-collapse'>
+                      <thead className='bg-[#f4f6ee] dark:bg-[#242a1d] border-b border-[#d9e1ca] dark:border-[#414a33]'>
+                        <tr>
+                          <th className='px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Chemical Name</th>
+                          <th className='px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Grade</th>
+                          <th className='px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Available Qty</th>
+                          <th className='px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Unit Price (₹)</th>
+                          <th className='px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Total Value (₹)</th>
+                          <th className='px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className='divide-y divide-[#e8efd9] dark:divide-[#2a3121] bg-[#fffef8] dark:bg-[#20251a]'>
+                        {storeOverview.topChemicals.map((chem) => {
+                          const isOut = chem.status === 'Out of Stock';
+                          const isLow = chem.status === 'Low Stock';
+                          const badgeClass = isOut
+                            ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-900/40'
+                            : isLow
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-900/40'
+                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/40';
+
+                          return (
+                            <tr key={chem.id || chem._id} className='hover:bg-[#f4f6ee]/60 dark:hover:bg-[#2a3121]/60 transition-colors'>
+                              <td className='px-4 py-3 font-bold text-[#37412a] dark:text-[#e4e9d8] text-sm'>
+                                {chem.name}
+                              </td>
+                              <td className='px-4 py-3 text-sm text-[#5c6e46] dark:text-[#a5b48b] font-medium'>
+                                {chem.grade || 'N/A'}
+                              </td>
+                              <td className='px-4 py-3 text-sm font-semibold text-[#37412a] dark:text-[#e4e9d8]'>
+                                {chem.availableQty} {chem.unit}
+                              </td>
+                              <td className='px-4 py-3 text-sm text-[#37412a] dark:text-[#e4e9d8] font-mono'>
+                                ₹{Number(chem.unitPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                              <td className='px-4 py-3 text-sm font-bold text-[#37412a] dark:text-[#e4e9d8] font-mono'>
+                                ₹{Number(chem.totalValue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                              <td className='px-4 py-3 text-sm'>
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${badgeClass}`}>
+                                  {chem.status || 'In Stock'}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* View Full Store button at bottom right */}
+                <div className='flex justify-end pt-2'>
+                  <Button
+                    variant='primary'
+                    onClick={() => navigate('/store-oversight')}
+                    className='text-xs px-4 py-2 font-bold shadow-soft'
+                  >
+                    View Full Store <ChevronRight size={14} className='ml-1' />
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </div>
         </div>
       )}
 

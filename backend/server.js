@@ -160,6 +160,7 @@ const routePairs = [
   ["/student/requests", require("./routes/studentRequestRoutes")],
   ["/student/research-requests", require("./routes/researchRequestRoutes")],
   ["/student/profile", require("./routes/studentProfileRoutes")],
+  ["/super-admin", require("./routes/superAdminRoutes")],
 ];
 
 routePairs.forEach(([routePath, router]) => {
