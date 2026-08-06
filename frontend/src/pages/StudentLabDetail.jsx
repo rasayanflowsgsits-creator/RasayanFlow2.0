@@ -50,22 +50,52 @@ export default function StudentLabDetail() {
     if (!labId) return;
     setLoading(true);
     try {
-      const res = await api.get(`/lab/structure/student/${labId}`);
-      console.log('API response:', res.data);
-      if (res.data) {
-        console.log('Total experiments:', res.data.totalExperiments);
-        if (res.data.subjects) {
-          console.log('Subjects:', Object.keys(res.data.subjects));
-        }
-      }
-      if (res.data.success) {
+      // PRIMARY: new dedicated endpoint — handles String vs ObjectId correctly
+      let res = await api.get(`/experiments/lab/${labId}`);
+      console.log('[StudentLabDetail] experiments/lab response:', res.data);
+
+      if (res.data && res.data.success) {
         const exps = res.data.experiments || res.data.data || [];
+
+        // If primary returns 0, try old lab/structure/student as secondary
+        if (exps.length === 0) {
+          try {
+            const fallback = await api.get(`/lab/structure/student/${labId}`);
+            console.log('[StudentLabDetail] fallback lab/structure/student response:', fallback.data);
+            if (fallback.data && fallback.data.success) {
+              const fExps = fallback.data.experiments || fallback.data.data || [];
+              const fTotal = fallback.data.totalExperiments ?? fExps.length;
+              setStructure(fExps);
+              setExperimentsData(fExps);
+              setTotalExperimentsCount(fTotal);
+              const fSubjMap = fallback.data.subjects && Object.keys(fallback.data.subjects).length > 0
+                ? { ...fallback.data.subjects }
+                : {};
+              if (Object.keys(fSubjMap).length === 0 && fExps.length > 0) {
+                fExps.forEach(e => {
+                  const k = e.subject || 'General';
+                  if (!fSubjMap[k]) fSubjMap[k] = [];
+                  fSubjMap[k].push(e);
+                });
+              }
+              setSubjectsData(fSubjMap);
+              setLabInfo(fallback.data.lab || null);
+              setRequests(fallback.data.studentRequests || []);
+              return;
+            }
+          } catch (fbErr) {
+            console.warn('[StudentLabDetail] fallback also failed:', fbErr?.message);
+          }
+        }
+
         const total = res.data.totalExperiments ?? exps.length;
         setStructure(exps);
         setExperimentsData(exps);
         setTotalExperimentsCount(total);
-        
-        const subjMap = res.data.subjects && Object.keys(res.data.subjects).length > 0 ? { ...res.data.subjects } : {};
+
+        const subjMap = res.data.subjects && Object.keys(res.data.subjects).length > 0
+          ? { ...res.data.subjects }
+          : {};
         if (Object.keys(subjMap).length === 0 && exps.length > 0) {
           exps.forEach(e => {
             const k = e.subject || 'General';
@@ -78,7 +108,7 @@ export default function StudentLabDetail() {
         setRequests(res.data.studentRequests || []);
       }
     } catch (err) {
-      console.error('Error fetching student lab structure:', err);
+      console.error('[StudentLabDetail] Error fetching lab experiments:', err);
     } finally {
       setLoading(false);
     }

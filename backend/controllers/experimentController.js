@@ -1,6 +1,10 @@
 const asyncHandler = require('express-async-handler');
+const mongoose = require('mongoose');
 const Experiment = require('../models/Experiment');
+const LabStructure = require('../models/LabStructure');
+const Lab = require('../models/Lab');
 const Inventory = require('../models/Inventory');
+const StudentRequest = require('../models/StudentRequest');
 const ActivityLog = require('../models/ActivityLog');
 const { getIo } = require('../sockets');
 
@@ -302,9 +306,151 @@ const bulkImportExperiments = asyncHandler(async (req, res) => {
   });
 });
 
+const getExperimentsByLab = asyncHandler(async (req, res) => {
+  const { labId } = req.params;
+
+  if (!labId) {
+    res.status(400);
+    throw new Error('labId is required');
+  }
+
+  let lab = null;
+  if (mongoose.Types.ObjectId.isValid(labId)) {
+    lab = await Lab.findById(labId);
+  }
+  if (!lab && labId && labId !== 'undefined' && labId !== 'null') {
+    lab = await Lab.findOne({ $or: [{ labCode: labId }, { labName: labId }, { name: labId }] });
+  }
+
+  // 1. Query LabStructure handling both String and ObjectId match for labId
+  let labStructureDocs = [];
+  if (mongoose.Types.ObjectId.isValid(labId)) {
+    labStructureDocs = await LabStructure.find({
+      $or: [{ labId: String(labId) }, { labId: new mongoose.Types.ObjectId(labId) }]
+    }).lean();
+  } else {
+    labStructureDocs = await LabStructure.find({ labId: String(labId) }).lean();
+  }
+
+  // 2. Query Experiment handling both String and ObjectId match for labId
+  let experimentDocs = [];
+  if (mongoose.Types.ObjectId.isValid(labId)) {
+    experimentDocs = await Experiment.find({
+      $or: [{ labId: String(labId) }, { labId: new mongoose.Types.ObjectId(labId) }]
+    }).lean();
+  } else {
+    experimentDocs = await Experiment.find({ labId: String(labId) }).lean();
+  }
+
+  // If empty and target lab document exists, fallback match by lab._id or labName
+  if (lab && labStructureDocs.length === 0) {
+    labStructureDocs = await LabStructure.find({
+      $or: [
+        { labId: lab._id },
+        { labId: String(lab._id) },
+        { labName: new RegExp('^' + (lab.labName || lab.name || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') }
+      ]
+    }).lean();
+  }
+
+  if (lab && experimentDocs.length === 0) {
+    experimentDocs = await Experiment.find({
+      $or: [
+        { labId: lab._id },
+        { labId: String(lab._id) }
+      ]
+    }).lean();
+  }
+
+  // Convert to standard experiment list format
+  let experiments = [];
+
+  if (labStructureDocs.length > 0) {
+    experiments = labStructureDocs.map(doc => ({
+      _id: doc._id,
+      labId: doc.labId,
+      subject: doc.subject || doc.labName || 'General',
+      experimentNo: doc.experimentNo,
+      experimentName: doc.experimentName,
+      chemicals: (doc.chemicals || []).map(c => ({
+        chemicalName: c.chemicalName,
+        quantityPerStudent: c.quantityPerStudent || c.quantity || 1,
+        unit: c.unit || c.quantityUnit || 'mL'
+      }))
+    }));
+  } else if (experimentDocs.length > 0) {
+    experiments = experimentDocs.map((doc, idx) => ({
+      _id: doc._id,
+      labId: doc.labId,
+      subject: doc.subject || doc.department || lab?.labName || 'General',
+      experimentNo: parseInt(String(doc.experimentNumber).replace(/\D/g, ''), 10) || (idx + 1),
+      experimentName: doc.experimentObject || doc.experimentNumber,
+      chemicals: (doc.requiredInventory || []).map(c => ({
+        chemicalName: c.chemicalName,
+        quantityPerStudent: c.quantity || 1,
+        unit: c.quantityUnit || 'mL'
+      }))
+    }));
+  }
+
+  // Stock status enrichment from Inventory
+  const inventory = await Inventory.find({}).lean();
+  const enriched = experiments.map(exp => {
+    let allAvailable = true;
+    let anyAvailable = false;
+    const chems = (exp.chemicals || []).map(chem => {
+      const invItem = inventory.find(i => i.chemicalName?.toLowerCase() === chem.chemicalName?.toLowerCase());
+      const stock = invItem ? invItem.quantity : 0;
+      const reqQty = Number(chem.quantityPerStudent || 1);
+      let stockStatus = 'Not in Stock';
+      if (stock >= reqQty) {
+        stockStatus = `In Stock (${stock})`;
+        anyAvailable = true;
+      } else if (stock > 0) {
+        stockStatus = `Low Stock (${stock})`;
+        allAvailable = false;
+        anyAvailable = true;
+      } else {
+        allAvailable = false;
+      }
+      return { ...chem, stock, stockStatus };
+    });
+    const status = chems.length === 0 || allAvailable ? 'Available' : anyAvailable ? 'Low' : 'Out';
+    return { ...exp, chemicals: chems, status };
+  });
+
+  // Group by subject
+  const subjects = {};
+  enriched.forEach(exp => {
+    const subjKey = exp.subject || 'General';
+    if (!subjects[subjKey]) {
+      subjects[subjKey] = [];
+    }
+    subjects[subjKey].push(exp);
+  });
+
+  // Fetch student's existing requests for this lab
+  let studentRequests = [];
+  if (req.user) {
+    const studentId = req.user._id || req.user.id;
+    studentRequests = await StudentRequest.find({ studentId }).sort({ requestedAt: -1 }).lean();
+  }
+
+  res.json({
+    success: true,
+    lab,
+    experiments: enriched,
+    data: enriched,
+    subjects,
+    totalExperiments: enriched.length,
+    studentRequests
+  });
+});
+
 module.exports = {
   createExperiment,
   getExperiments,
+  getExperimentsByLab,
   deleteExperiment,
   bulkImportExperiments,
 };

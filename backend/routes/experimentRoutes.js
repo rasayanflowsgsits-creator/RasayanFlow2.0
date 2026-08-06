@@ -3,11 +3,13 @@ const { body, param, query } = require('express-validator');
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
 const validateRequest = require('../middleware/validateMiddleware');
-const { createExperiment, getExperiments, deleteExperiment, bulkImportExperiments } = require('../controllers/experimentController');
+const { createExperiment, getExperiments, getExperimentsByLab, deleteExperiment, bulkImportExperiments } = require('../controllers/experimentController');
 
 const router = express.Router();
 
 router.use(authMiddleware);
+
+router.get('/lab/:labId', getExperimentsByLab);
 
 router.get(
   '/',

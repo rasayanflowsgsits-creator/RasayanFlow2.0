@@ -304,8 +304,24 @@ const getStudentStructure = asyncHandler(async (req, res) => {
   if (!lab && labIdParam && labIdParam !== 'undefined' && labIdParam !== 'null') {
     lab = await Lab.findOne({ $or: [{ labCode: labIdParam }, { labName: labIdParam }, { name: labIdParam }] });
   }
-  if (!lab) {
+  // CRITICAL FIX: Only use resolveTargetLab when NO labId param was provided at all.
+  // If a specific labId was given but we couldn't find the lab, return empty instead of
+  // accidentally returning a different lab's experiments.
+  if (!lab && !labIdParam) {
     lab = await resolveTargetLab(req);
+  }
+
+  // If a labId was specified but no lab found, return empty cleanly
+  if (!lab) {
+    return res.json({
+      success: true,
+      lab: null,
+      totalExperiments: 0,
+      experiments: [],
+      data: [],
+      subjects: {},
+      studentRequests: []
+    });
   }
 
   const queryOr = [];
