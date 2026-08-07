@@ -150,10 +150,10 @@ const getLabIdQuery = (labId) => {
 // @access  Private (Lab Admin)
 const uploadStructure = asyncHandler(async (req, res) => {
   const { structures, labId } = req.body;
-  const targetLabId = labId || req.body?.labId || req.user?.labId;
+  const targetLabId = labId || req.user?.labId;
 
   let lab = null;
-  if (targetLabId && mongoose.Types.ObjectId.isValid(targetLabId)) {
+  if (targetLabId && mongoose.Types.ObjectId.isValid(String(targetLabId))) {
     lab = await Lab.findById(targetLabId);
   }
   if (!lab) {
@@ -170,81 +170,68 @@ const uploadStructure = asyncHandler(async (req, res) => {
     throw new Error('No structure data provided');
   }
 
-  const uploadedRecords = [];
   const labObjectId = new mongoose.Types.ObjectId(lab._id);
+
+  // CRITICAL FIX: Delete ALL existing records for this lab first (including
+  // auto-seeded defaults) so the real uploaded data is never blocked by
+  // the unique-index constraint (labId + subject + experimentNo).
+  await LabStructure.deleteMany({ labId: labObjectId });
+  // Also clean Experiment collection entries for this lab
+  try {
+    await Experiment.deleteMany({ labId: labObjectId });
+  } catch (e) { /* non-fatal */ }
+
+  const uploadedRecords = [];
+  const uploaderId = req.user._id || req.user.id;
 
   for (const exp of structures) {
     const { subject, experimentNo, experimentName, chemicals } = exp;
+    if (!subject || !experimentNo || !experimentName) continue;
 
-    if (!subject || !experimentNo || !experimentName) {
-      continue;
-    }
-
-    const existing = await LabStructure.findOne({ 
-      $or: [
-        { labId: labObjectId },
-        { labId: labObjectId.toString() }
-      ],
-      subject, 
-      experimentNo: Number(experimentNo) 
-    });
-
-    if (existing) {
-      existing.labId = labObjectId;
-      existing.experimentName = experimentName;
-      existing.chemicals = chemicals || [];
-      existing.updatedAt = Date.now();
-      existing.uploadedBy = req.user._id || req.user.id;
-      await existing.save();
-      uploadedRecords.push(existing);
-    } else {
+    try {
       const newStructure = await LabStructure.create({
         labId: labObjectId,
         labName: lab.labName || lab.name,
         courseType: lab.courseType || 'B.Pharm',
-        year: lab.year || '1',
-        semester: lab.semester || '1',
+        year: String(lab.year || '1'),
+        semester: String(lab.semester || '1'),
         subject,
         experimentNo: Number(experimentNo),
         experimentName,
         chemicals: chemicals || [],
-        uploadedBy: req.user._id || req.user.id
+        uploadedBy: uploaderId
       });
       uploadedRecords.push(newStructure);
-    }
 
-    // Dual Save: Also populate Experiment collection in MongoDB
-    try {
-      const expNoStr = `Exp ${String(experimentNo).padStart(2, '0')}`;
-      const reqInv = (chemicals || []).map(c => ({
-        chemicalName: c.chemicalName,
-        quantity: Number(c.quantityPerStudent || c.quantity || 1),
-        quantityUnit: c.unit || c.quantityUnit || 'g'
-      }));
-
-      await Experiment.findOneAndUpdate(
-        { labId: labObjectId, experimentNumber: expNoStr },
-        {
-          labId: labObjectId,
-          experimentNumber: expNoStr,
-          experimentObject: experimentName,
-          subject: subject,
-          department: subject,
-          createdBy: req.user._id || req.user.id
-        },
-        { upsert: true, new: true }
-      );
+      // Dual-save: also populate Experiment collection
+      try {
+        const expNoStr = `Exp ${String(experimentNo).padStart(2, '0')}`;
+        await Experiment.findOneAndUpdate(
+          { labId: labObjectId, experimentNumber: expNoStr },
+          {
+            labId: labObjectId,
+            experimentNumber: expNoStr,
+            experimentObject: experimentName,
+            subject,
+            department: subject,
+            createdBy: uploaderId
+          },
+          { upsert: true, new: true }
+        );
+      } catch (e) {
+        console.warn('Experiment dual-save warning:', e.message);
+      }
     } catch (e) {
-      console.log('Experiment model sync log:', e.message);
+      console.error('LabStructure insert error for exp:', experimentName, e.message);
     }
   }
 
   res.status(200).json({ success: true, count: uploadedRecords.length, data: uploadedRecords });
 });
 
-// @desc    Get lab structure with automatic HAP1 auto-seeding
+// @desc    Get lab structure for lab admin
 // @route   GET /api/lab/structure
-// @access  Private (Lab Admin & Student)
+// @access  Private (Lab Admin)
 const getStructure = asyncHandler(async (req, res) => {
   const lab = await resolveTargetLab(req);
 
@@ -255,38 +242,13 @@ const getStructure = asyncHandler(async (req, res) => {
   const queryIds = getLabIdQuery(lab._id);
   let structure = await LabStructure.find({ labId: { $in: queryIds } }).sort({ subject: 1, experimentNo: 1 });
 
-  // Fallback match by labName / course
-  if (structure.length === 0) {
-    structure = await LabStructure.find({
-      $or: [
-        { labName: lab.labName || lab.name },
-        { courseType: lab.courseType, year: lab.year, semester: lab.semester }
-      ]
-    }).sort({ subject: 1, experimentNo: 1 });
+  // Fallback: also search by labName
+  if (structure.length === 0 && (lab.labName || lab.name)) {
+    structure = await LabStructure.find({ labName: lab.labName || lab.name }).sort({ subject: 1, experimentNo: 1 });
   }
 
-  // Auto-seed default HAP1 experiments if 0 experiments exist for this lab
-  if (structure.length === 0) {
-    const seeded = [];
-    const subjName = lab.labName || lab.name || 'HAP1 (Human Anatomy & Physiology I)';
-    
-    for (const exp of DEFAULT_HAP1_EXPERIMENTS) {
-      const createdExp = await LabStructure.create({
-        labId: lab._id,
-        labName: subjName,
-        courseType: lab.courseType || 'B.Pharm',
-        year: lab.year || '1',
-        semester: lab.semester || '1',
-        subject: subjName.includes('HAP') ? 'HAP - I' : subjName,
-        experimentNo: exp.experimentNo,
-        experimentName: exp.experimentName,
-        chemicals: exp.chemicals,
-        uploadedBy: req.user._id || req.user.id
-      });
-      seeded.push(createdExp);
-    }
-    structure = seeded;
-  }
+  // NOTE: Auto-seeding removed. It was causing silent duplicate-key errors
+  // that blocked real uploaded experiments from saving.
 
   res.status(200).json({ success: true, count: structure.length, data: structure });
 });
