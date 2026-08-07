@@ -25,13 +25,21 @@ const serializeUser = (user) => ({
   labCode: user.labCode || '',
   courseType: user.courseType || user.course || '',
   rollNumber: user.rollNumber || '',
-  course: user.course || (user.onboardingComplete ? 'B.Pharm' : ''),
-  year: user.year || (user.onboardingComplete ? '1' : ''),
-  semester: user.semester || (user.onboardingComplete ? '1' : ''),
+  // Return actual stored values — never default year/semester to '1'.
+  // The onboarding modal handles the first-time default selection.
+  course: user.course || '',
+  year: user.year || '',
+  semester: user.semester || '',
   group: user.group || 'No Group',
   isApproved: user.isApproved,
   isBlocked: user.isBlocked,
-  onboardingComplete: Boolean(user.onboardingComplete || user.rollNumber || (user.role && user.role !== 'student')),
+  // onboardingComplete only when roll number is set AND year/semester are saved
+  onboardingComplete: Boolean(
+    user.onboardingComplete &&
+    user.rollNumber &&
+    user.year &&
+    user.semester
+  ) || Boolean(user.role && user.role !== 'student'),
 });
 
 const ensureConfiguredSuperAdmin = async (user) => {

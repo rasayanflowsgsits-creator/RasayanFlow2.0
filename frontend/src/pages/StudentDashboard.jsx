@@ -8,15 +8,16 @@ import StudentOnboardingModal from '../components/student/StudentOnboardingModal
 export default function StudentDashboard() {
   const user = useAuthStore((state) => state.user);
 
-  // Check if student profile setup is complete
+  // Profile is complete only when the student has saved their year, semester AND roll number
   const isProfileComplete = Boolean(
-    user?.onboardingComplete ||
-    user?.rollNumber ||
-    user?.course ||
-    user?.year ||
     user?.isPreview ||
-    (typeof localStorage !== 'undefined' && user?._id && localStorage.getItem(`pharmlab-onboarding-complete-${user._id}`) === 'true') ||
-    (typeof localStorage !== 'undefined' && localStorage.getItem('pharmlab-onboarding-complete') === 'true')
+    (user?.role && user.role !== 'student') ||
+    (
+      (user?.onboardingComplete || localStorage.getItem(`pharmlab-onboarding-complete-${user?._id}`) === 'true' || localStorage.getItem('pharmlab-onboarding-complete') === 'true') &&
+      user?.rollNumber &&
+      user?.year &&
+      user?.semester
+    )
   );
 
   return (

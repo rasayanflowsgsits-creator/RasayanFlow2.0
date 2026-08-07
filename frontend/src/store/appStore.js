@@ -1600,41 +1600,56 @@ const useAppStore = create((set) => ({
   setupStudentProfile: async (payload) => {
     set({ loading: true });
     try {
-      let response;
+      // Only call the two valid endpoints that actually exist
+      let response = null;
       const endpoints = [
-        '/auth/onboarding',
-        '/api/auth/onboarding',
-        '/auth/profile',
-        '/api/auth/profile',
         '/student/profile/setup',
-        '/api/student/profile/setup',
         '/student/profile',
-        '/api/student/profile'
       ];
-      let lastErr = null;
       for (const ep of endpoints) {
         try {
           response = await api.put(ep, payload);
-          if (response?.data) break;
+          if (response?.data?.success) break;
         } catch (e) {
-          lastErr = e;
           if (e?.response?.status === 404) {
             try {
               response = await api.post(ep, payload);
-              if (response?.data) break;
-            } catch (postE) {
-              lastErr = postE;
-            }
-          } else {
-            throw e;
+              if (response?.data?.success) break;
+            } catch { /* try next */ }
           }
         }
       }
 
+      const savedData = response?.data ? getPayload(response.data) : null;
+      const finalData = savedData || { ...payload, onboardingComplete: true };
+
+      // Critically: update authStore so user.year, user.semester, user.course are live
+      const useAuthStore = (await import('./authStore')).default;
+      useAuthStore.getState().updateUser({
+        rollNumber: finalData.rollNumber || payload.rollNumber,
+        course: finalData.course || payload.course || 'B.Pharm',
+        year: String(finalData.year || payload.year || '1'),
+        semester: String(finalData.semester || payload.semester || '1'),
+        group: finalData.group || payload.group || 'No Group',
+        onboardingComplete: true,
+      });
+
       set({ loading: false });
-      return response?.data ? getPayload(response.data) : { ...payload, onboardingComplete: true };
+      return finalData;
     } catch (err) {
       console.warn('Profile setup server sync warning:', err);
+      // Still update user locally so labs can load
+      try {
+        const useAuthStore = (await import('./authStore')).default;
+        useAuthStore.getState().updateUser({
+          rollNumber: payload.rollNumber,
+          course: payload.course || 'B.Pharm',
+          year: String(payload.year || '1'),
+          semester: String(payload.semester || '1'),
+          group: payload.group || 'No Group',
+          onboardingComplete: true,
+        });
+      } catch { /* ignore */ }
       set({ loading: false });
       return { ...payload, onboardingComplete: true };
     }

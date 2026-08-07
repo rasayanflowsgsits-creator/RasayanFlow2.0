@@ -29,13 +29,19 @@ const normalizeRole = (role) => {
 
 const normalizeUser = (user) => {
   if (!user) return null;
+  // onboardingComplete only when the student actually has all three fields saved
   const isComplete = Boolean(
-    user.onboardingComplete ||
-    user.rollNumber ||
-    user.course ||
-    user.year ||
     user.isPreview ||
-    (typeof localStorage !== 'undefined' && localStorage.getItem('pharmlab-onboarding-complete') === 'true')
+    (user.role && user.role !== 'student') ||
+    (
+      (user.onboardingComplete ||
+        (typeof localStorage !== 'undefined' && user._id && localStorage.getItem(`pharmlab-onboarding-complete-${user._id}`) === 'true') ||
+        (typeof localStorage !== 'undefined' && localStorage.getItem('pharmlab-onboarding-complete') === 'true')
+      ) &&
+      user.rollNumber &&
+      user.year &&
+      user.semester
+    )
   );
   return { 
     ...user, 

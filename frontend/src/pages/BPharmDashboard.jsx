@@ -242,9 +242,12 @@ const BPharmDashboard = () => {
 
   useEffect(() => {
     const c = user?.course || 'B.Pharm';
-    const y = user?.year || '1';
-    const s = user?.semester || '1';
-    fetchMyLabs(c, y, s);
+    const y = user?.year;
+    const s = user?.semester;
+    // Only fetch labs when the student has completed onboarding (year + semester saved)
+    if (y && s) {
+      fetchMyLabs(c, y, s);
+    }
     fetchMyStudentRequests();
   }, [user?.course, user?.year, user?.semester, fetchMyLabs, fetchMyStudentRequests]);
 

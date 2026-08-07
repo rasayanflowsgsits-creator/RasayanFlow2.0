@@ -71,9 +71,15 @@ export default function StudentOnboardingModal() {
     try {
       const updatedProfile = await setupStudentProfile(formData);
       markCompleteLocally(updatedProfile || {});
+
+      // Use formData values directly — don't rely on stale user state
+      const course = formData.course || 'B.Pharm';
+      const year = String(formData.year || '1');
+      const semester = String(formData.semester || '1');
+
       const fetchLabs = useAppStore.getState().fetchMyLabs;
       if (fetchLabs) {
-        await fetchLabs(formData.course, formData.year, formData.semester);
+        await fetchLabs(course, year, semester);
       }
     } catch {
       markCompleteLocally();
@@ -100,13 +106,17 @@ export default function StudentOnboardingModal() {
   };
 
   const isComplete = Boolean(
-    user?.onboardingComplete ||
-    user?.rollNumber ||
-    user?.course ||
-    user?.year ||
     user?.isPreview ||
-    (typeof localStorage !== 'undefined' && user?._id && localStorage.getItem(`pharmlab-onboarding-complete-${user._id}`) === 'true') ||
-    (typeof localStorage !== 'undefined' && localStorage.getItem('pharmlab-onboarding-complete') === 'true')
+    (user?.role && user.role !== 'student') ||
+    (
+      (user?.onboardingComplete ||
+        (typeof localStorage !== 'undefined' && user?._id && localStorage.getItem(`pharmlab-onboarding-complete-${user._id}`) === 'true') ||
+        (typeof localStorage !== 'undefined' && localStorage.getItem('pharmlab-onboarding-complete') === 'true')
+      ) &&
+      user?.rollNumber &&
+      user?.year &&
+      user?.semester
+    )
   );
 
   if (isComplete) return null;
