@@ -18,24 +18,6 @@ import Modal from '../components/ui/Modal';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 
-const MOCK_STORE_REQUESTS = [
-  { _id: 'sr-1', labName: 'Pharmaceutics Lab - I', chemicalName: 'Hydrochloric Acid 0.1M', quantityRequested: 500, unit: 'mL', estimatedCost: 1450, requestedAt: new Date(Date.now() - 86400000 * 2).toISOString(), status: 'Approved', approvedBy: { name: 'Dr. Store Admin' }, receiptNumber: 'REC-2026-001' },
-  { _id: 'sr-2', labName: 'Pharmaceutical Chemistry Lab', chemicalName: 'Ethanol 99.9% Absolute', quantityRequested: 1000, unit: 'mL', estimatedCost: 2850, requestedAt: new Date(Date.now() - 86400000 * 1).toISOString(), status: 'Pending', approvedBy: null, receiptNumber: null },
-  { _id: 'sr-3', labName: 'Pharmaceutical Analysis Lab', chemicalName: 'Paracetamol IP/BP', quantityRequested: 250, unit: 'g', estimatedCost: 3200, requestedAt: new Date(Date.now() - 86400000 * 4).toISOString(), status: 'Approved', approvedBy: { name: 'Dr. Store Admin' }, receiptNumber: 'REC-2026-002' },
-  { _id: 'sr-4', labName: 'Human Anatomy & Physiology Lab', chemicalName: 'Sodium Hydroxide Pellets', quantityRequested: 100, unit: 'g', estimatedCost: 980, requestedAt: new Date(Date.now() - 86400000 * 5).toISOString(), status: 'Rejected', approvedBy: { name: 'Dr. Store Admin' }, receiptNumber: null },
-  { _id: 'sr-5', labName: 'Pharmaceutics Lab - I', chemicalName: 'Sulphuric Acid 98% AR', quantityRequested: 500, unit: 'mL', estimatedCost: 1750, requestedAt: new Date(Date.now() - 86400000 * 35).toISOString(), status: 'Approved', approvedBy: { name: 'Dr. Store Admin' }, receiptNumber: 'REC-2026-000' },
-  { _id: 'sr-6', labName: 'Pharmaceutical Chemistry Lab', chemicalName: 'Methanol HPLC Grade', quantityRequested: 1000, unit: 'mL', estimatedCost: 3400, requestedAt: new Date(Date.now() - 86400000 * 40).toISOString(), status: 'Approved', approvedBy: { name: 'Dr. Store Admin' }, receiptNumber: 'REC-2026-00-1' },
-  { _id: 'sr-7', labName: 'Pharmacology Lab', chemicalName: 'Atropine Sulphate IP', quantityRequested: 50, unit: 'g', estimatedCost: 4200, requestedAt: new Date(Date.now() - 86400000 * 65).toISOString(), status: 'Approved', approvedBy: { name: 'Dr. Store Admin' }, receiptNumber: 'REC-2026-00-2' }
-];
-
-const MOCK_STORE_HISTORY = [
-  { _id: 'sh-1', labName: 'Pharmaceutics Lab - I', chemicalName: 'Hydrochloric Acid 0.1M', qtyRequestedBase: 500, unit: 'mL', valueReleased: 1450, action: 'Approved', approvedBy: 'Dr. Store Admin', timestamp: new Date(Date.now() - 86400000 * 2).toISOString(), receiptNumber: 'REC-2026-001' },
-  { _id: 'sh-2', labName: 'Pharmaceutical Analysis Lab', chemicalName: 'Paracetamol IP/BP', qtyRequestedBase: 250, unit: 'g', valueReleased: 3200, action: 'Approved', approvedBy: 'Dr. Store Admin', timestamp: new Date(Date.now() - 86400000 * 4).toISOString(), receiptNumber: 'REC-2026-002' },
-  { _id: 'sh-3', labName: 'Pharmaceutics Lab - I', chemicalName: 'Sulphuric Acid 98% AR', qtyRequestedBase: 500, unit: 'mL', valueReleased: 1750, action: 'Approved', approvedBy: 'Dr. Store Admin', timestamp: new Date(Date.now() - 86400000 * 35).toISOString(), receiptNumber: 'REC-2026-000' },
-  { _id: 'sh-4', labName: 'Pharmaceutical Chemistry Lab', chemicalName: 'Methanol HPLC Grade', qtyRequestedBase: 1000, unit: 'mL', valueReleased: 3400, action: 'Approved', approvedBy: 'Dr. Store Admin', timestamp: new Date(Date.now() - 86400000 * 40).toISOString(), receiptNumber: 'REC-2026-00-1' },
-  { _id: 'sh-5', labName: 'Pharmacology Lab', chemicalName: 'Atropine Sulphate IP', qtyRequestedBase: 50, unit: 'g', valueReleased: 4200, action: 'Approved', approvedBy: 'Dr. Store Admin', timestamp: new Date(Date.now() - 86400000 * 65).toISOString(), receiptNumber: 'REC-2026-00-2' }
-];
-
 export default function SuperAdminDashboard() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -184,8 +166,8 @@ export default function SuperAdminDashboard() {
     const loadOverviewData = async () => {
       try {
         const [reqRes, histRes] = await Promise.allSettled([
-          api.get('/store-requests'),
-          api.get('/store-history')
+          api.get('/store/requests'),
+          api.get('/store/history')
         ]);
 
         let reqs = [];
@@ -193,21 +175,21 @@ export default function SuperAdminDashboard() {
           const resData = reqRes.value.data;
           reqs = Array.isArray(resData) ? resData : (resData.requests || resData.data || []);
         }
-        setStoreRequestsList(reqs.length > 0 ? reqs : MOCK_STORE_REQUESTS);
+        setStoreRequestsList(reqs);
 
         let hists = [];
         if (histRes.status === 'fulfilled' && histRes.value?.data) {
           const resData = histRes.value.data;
           hists = Array.isArray(resData) ? resData : (resData.history || resData.data || []);
         }
-        setStoreHistoryList(hists.length > 0 ? hists : MOCK_STORE_HISTORY);
+        setStoreHistoryList(hists);
       } catch {
-        setStoreRequestsList(MOCK_STORE_REQUESTS);
-        setStoreHistoryList(MOCK_STORE_HISTORY);
+        setStoreRequestsList([]);
+        setStoreHistoryList([]);
       }
     };
 
-    if (activeTab === 'master-chemicals') {
+    if (activeTab === 'master-chemicals' || activeTab === 'store') {
       loadOverviewData();
     }
   }, [activeTab]);
