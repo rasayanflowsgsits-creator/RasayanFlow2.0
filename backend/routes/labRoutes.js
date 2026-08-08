@@ -48,8 +48,8 @@ router.put(
 router.post(
   '/assign',
   [
-    body('labId').isMongoId(),
-    body('adminId').optional({ checkFalsy: true }).isMongoId(),
+    body('labId').notEmpty(),
+    body('adminId').optional({ checkFalsy: true }).isString(),
     body('email').optional({ checkFalsy: true }).isEmail(),
     body('name').optional({ checkFalsy: true }).isString(),
     body('password').optional({ checkFalsy: true }).isString(),
@@ -60,7 +60,7 @@ router.post(
 
 router.post(
   '/remove',
-  [body('labId').isMongoId(), body('adminId').isMongoId()],
+  [body('labId').notEmpty(), body('adminId').isString()],
   validateRequest,
   removeAdmin,
 );

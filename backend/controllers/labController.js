@@ -170,7 +170,13 @@ const assignAdmin = asyncHandler(async (req, res) => {
     throw new Error('Lab ID is required');
   }
 
-  const lab = await Lab.findById(labId);
+  let lab = null;
+  if (mongoose.Types.ObjectId.isValid(labId)) {
+    lab = await Lab.findById(labId);
+  }
+  if (!lab) {
+    lab = await Lab.findOne({ $or: [{ labCode: String(labId) }, { labName: String(labId) }] });
+  }
   if (!lab) {
     res.status(404);
     throw new Error('Lab not found');

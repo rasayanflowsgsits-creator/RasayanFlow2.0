@@ -665,24 +665,80 @@ const useAppStore = create((set) => ({
     return getPayload(response.data);
   },
   assignAdminToLab: async ({ labId, adminId, email, name, password }) => {
-    const response = await api.post('/labs/assign', { labId, adminId: adminId || undefined, email: email || undefined, name: name || undefined, password: password || undefined });
-    const rawLab = getPayload(response.data);
-    const updated = normalizeLab(rawLab);
-    set((state) => ({
-      labs: state.labs.map((l) => (l._id === labId || l.id === labId ? updated : l)),
-      myLabs: state.myLabs.map((l) => (l._id === labId || l.id === labId ? updated : l)),
-    }));
-    return updated;
+    const isPreview = useAuthStore.getState().user?.isPreview || String(labId).startsWith('preview-');
+    if (isPreview) {
+      const adminName = name || (email ? email.split('@')[0] : 'Lab Admin');
+      const adminEmail = email || 'admin@rasayanflow.edu';
+      const mockAdminObj = { _id: 'admin-' + Date.now(), id: 'admin-' + Date.now(), name: adminName, email: adminEmail, role: 'labAdmin', isApproved: true };
+
+      let updatedLab = null;
+      set((state) => {
+        const nextLabs = state.labs.map((l) => {
+          if (l._id === labId || l.id === labId) {
+            const currentAdmins = Array.isArray(l.admins) ? l.admins : [];
+            const newAdmins = [...currentAdmins.filter(a => (a._id || a.id) !== mockAdminObj.id), mockAdminObj];
+            updatedLab = normalizeLab({ ...l, admin: adminName, adminEmail, admins: newAdmins });
+            return updatedLab;
+          }
+          return l;
+        });
+        return { labs: nextLabs, myLabs: nextLabs };
+      });
+      return updatedLab || { id: labId, _id: labId, admin: adminName, adminEmail, admins: [mockAdminObj] };
+    }
+
+    try {
+      const response = await api.post('/labs/assign', {
+        labId,
+        adminId: adminId || undefined,
+        email: email || undefined,
+        name: name || undefined,
+        password: password || undefined,
+      });
+      const rawLab = getPayload(response.data);
+      const updated = normalizeLab(rawLab);
+      set((state) => ({
+        labs: state.labs.map((l) => (l._id === labId || l.id === labId ? updated : l)),
+        myLabs: state.myLabs.map((l) => (l._id === labId || l.id === labId ? updated : l)),
+      }));
+      return updated;
+    } catch (err) {
+      console.error('assignAdminToLab API error:', err);
+      throw err;
+    }
   },
   removeAdminFromLab: async ({ labId, adminId }) => {
-    const response = await api.post('/labs/remove', { labId, adminId });
-    const rawLab = getPayload(response.data);
-    const updated = normalizeLab(rawLab);
-    set((state) => ({
-      labs: state.labs.map((l) => (l._id === labId || l.id === labId ? updated : l)),
-      myLabs: state.myLabs.map((l) => (l._id === labId || l.id === labId ? updated : l)),
-    }));
-    return updated;
+    const isPreview = useAuthStore.getState().user?.isPreview || String(labId).startsWith('preview-');
+    if (isPreview) {
+      let updatedLab = null;
+      set((state) => {
+        const nextLabs = state.labs.map((l) => {
+          if (l._id === labId || l.id === labId) {
+            const currentAdmins = Array.isArray(l.admins) ? l.admins : [];
+            const newAdmins = currentAdmins.filter((a) => (a._id || a.id || a) !== adminId);
+            updatedLab = normalizeLab({ ...l, admin: 'Unassigned', adminEmail: '', admins: newAdmins });
+            return updatedLab;
+          }
+          return l;
+        });
+        return { labs: nextLabs, myLabs: nextLabs };
+      });
+      return updatedLab || { id: labId, _id: labId, admin: 'Unassigned', adminEmail: '', admins: [] };
+    }
+
+    try {
+      const response = await api.post('/labs/remove', { labId, adminId });
+      const rawLab = getPayload(response.data);
+      const updated = normalizeLab(rawLab);
+      set((state) => ({
+        labs: state.labs.map((l) => (l._id === labId || l.id === labId ? updated : l)),
+        myLabs: state.myLabs.map((l) => (l._id === labId || l.id === labId ? updated : l)),
+      }));
+      return updated;
+    } catch (err) {
+      console.error('removeAdminFromLab API error:', err);
+      throw err;
+    }
   },
   createLabAdmin: async ({ name, email, password }) => {
     const response = await api.post('/users/lab-admins', { name, email, password });

@@ -1255,7 +1255,8 @@ export default function SuperAdminDashboard() {
       setToast({ type: 'success', message: `Lab Admin account (${newAdmin.email.trim()}) provisioned and assigned successfully!` });
       setNewAdmin({ name: '', email: '', password: '' });
     } catch (error) {
-      setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to provision admin account.' });
+      const errMsg = error?.response?.data?.message || error?.message || 'Failed to provision admin account.';
+      setToast({ type: 'error', message: errMsg });
     } finally {
       setSavingAdmin(false);
     }

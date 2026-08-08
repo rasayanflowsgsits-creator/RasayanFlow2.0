@@ -1,5 +1,7 @@
 const asyncHandler = require('express-async-handler');
 
+const normalizeRole = (r) => (r ? String(r).toLowerCase().replace(/[-_]/g, '') : '');
+
 const roleMiddleware = (allowedRoles) => {
   return asyncHandler(async (req, res, next) => {
     if (!req.user) {
@@ -7,9 +9,12 @@ const roleMiddleware = (allowedRoles) => {
       throw new Error('No user attached to request');
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    const userRoleNorm = normalizeRole(req.user.role);
+    const allowedNorm = (Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles]).map(normalizeRole);
+
+    if (!allowedNorm.includes(userRoleNorm)) {
       res.status(403);
-      throw new Error('Forbidden: insufficient permission');
+      throw new Error(`Forbidden: insufficient permission (role: ${req.user.role})`);
     }
 
     next();
