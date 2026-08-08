@@ -3655,7 +3655,7 @@ export default function SuperAdminDashboard() {
                 </h4>
 
                 {/* Mode Selector Tabs */}
-                <div className='mt-3 grid grid-cols-3 gap-1 rounded-xl bg-[#f4f6ee] p-1 dark:bg-[#20251a] border border-[#d9e1ca] dark:border-[#414a33]'>
+                <div className='mt-3 grid grid-cols-2 gap-1 rounded-xl bg-[#f4f6ee] p-1 dark:bg-[#20251a] border border-[#d9e1ca] dark:border-[#414a33]'>
                   <button
                     type='button'
                     onClick={() => setAdminMode('create_new')}
@@ -3663,16 +3663,7 @@ export default function SuperAdminDashboard() {
                       adminMode === 'create_new' ? 'bg-[#5c6e46] text-white shadow-sm' : 'text-[#71805a] hover:text-[#37412a] dark:text-[#a5b48b]'
                     }`}
                   >
-                    + New Admin
-                  </button>
-                  <button
-                    type='button'
-                    onClick={() => setAdminMode('existing')}
-                    className={`rounded-lg py-1.5 text-[11px] font-bold transition-all ${
-                      adminMode === 'existing' ? 'bg-[#5c6e46] text-white shadow-sm' : 'text-[#71805a] hover:text-[#37412a] dark:text-[#a5b48b]'
-                    }`}
-                  >
-                    Existing Staff
+                    + Provision New Admin
                   </button>
                   <button
                     type='button'
@@ -3681,7 +3672,7 @@ export default function SuperAdminDashboard() {
                       adminMode === 'unassigned' ? 'bg-[#5c6e46] text-white shadow-sm' : 'text-[#71805a] hover:text-[#37412a] dark:text-[#a5b48b]'
                     }`}
                   >
-                    Skip / Later
+                    Skip / Unassigned
                   </button>
                 </div>
 
@@ -3689,8 +3680,9 @@ export default function SuperAdminDashboard() {
                 {adminMode === 'create_new' && (
                   <div className='mt-4 space-y-3.5 animate-in fade-in'>
                     <div className='rounded-xl bg-emerald-50/70 p-3 border border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/40'>
-                      <p className='text-xs text-emerald-800 dark:text-emerald-300 font-medium leading-relaxed'>
-                        🔑 Provision credentials for the Lab Admin. When this admin logs in with this email and password, they will immediately land inside this lab dashboard!
+                      <p className='text-xs text-emerald-800 dark:text-emerald-300 font-medium leading-relaxed flex items-start gap-1.5'>
+                        <ShieldCheck size={16} className='shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400' />
+                        <span>Provision credentials for the Lab Admin. When this admin logs in with this email and password, they will immediately land inside this lab dashboard!</span>
                       </p>
                     </div>
 
@@ -3723,32 +3715,11 @@ export default function SuperAdminDashboard() {
                   </div>
                 )}
 
-                {/* Option B: Assign Existing Staff */}
-                {adminMode === 'existing' && (
-                  <div className='mt-4 space-y-3 animate-in fade-in'>
-                    <label className='block text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf]'>
-                      Select Registered User to Assign as Lab Admin
-                    </label>
-                    <select
-                      value={selectedExistingAdminId}
-                      onChange={(e) => setSelectedExistingAdminId(e.target.value)}
-                      className='w-full rounded-xl border border-[#cfd8bd] bg-white p-3 text-xs text-[#3c4e23] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]'
-                    >
-                      <option value=''>Select user account...</option>
-                      {users.filter(u => u.role !== 'super-admin').map((user) => (
-                        <option key={user.id} value={user.id}>
-                          {user.name} ({user.email}) — {user.role}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {/* Option C: Skip */}
+                {/* Option B: Skip */}
                 {adminMode === 'unassigned' && (
                   <div className='mt-6 rounded-xl bg-amber-50 p-4 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-900/40 text-center animate-in fade-in'>
                     <p className='text-xs text-amber-800 dark:text-amber-300 font-medium'>
-                      ⚠️ Lab will be created as <strong>Unassigned</strong>. You can assign or create a Lab Admin account later at any time from the Labs Hub dashboard.
+                      ⚠️ Lab will be created as <strong>Unassigned</strong>. You can provision a Lab Admin account later at any time from the Labs Hub dashboard.
                     </p>
                   </div>
                 )}
@@ -3767,80 +3738,153 @@ export default function SuperAdminDashboard() {
         </div>
       </Modal>
 
-      {/* Manage Lab Modal */}
-      <Modal open={manageOpen} onClose={() => setManageOpen(false)} title={selectedLab ? `Manage ${selectedLab.name}` : 'Manage Lab'}>
-        <div className='space-y-5'>
-          <div>
-            <p className='text-sm font-medium text-[#4e5d35] dark:text-[#d5ddbf]'>Assigned Lab Admins</p>
-            <div className='mt-3 space-y-2'>
+      {/* Modern & High-End Manage Lab Modal */}
+      <Modal open={manageOpen} onClose={() => setManageOpen(false)} title={selectedLab ? `Manage ${selectedLab.name || selectedLab.labName}` : 'Manage Lab'}>
+        <div className='space-y-6'>
+          {/* Lab Overview Header Banner */}
+          {selectedLab && (
+            <div className='rounded-2xl border border-[#d9e1ca] bg-[#f4f6ee]/60 p-4 dark:border-[#414a33] dark:bg-[#20251a]/60 flex items-center justify-between gap-3'>
+              <div className='space-y-1 min-w-0'>
+                <div className='flex items-center gap-2'>
+                  <span className='rounded-md bg-[#37412a] px-2 py-0.5 text-[10px] font-mono font-bold text-white dark:bg-[#e4e9d8] dark:text-[#20251a]'>
+                    {selectedLab.labCode || selectedLab.code || 'LAB'}
+                  </span>
+                  <span className='rounded-md bg-[#e8efd9] px-2 py-0.5 text-[10px] font-extrabold text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'>
+                    {selectedLab.courseType || 'B.Pharm'}
+                  </span>
+                </div>
+                <h4 className='text-base font-extrabold text-[#37412a] dark:text-[#e4e9d8] truncate'>
+                  {selectedLab.name || selectedLab.labName}
+                </h4>
+                <p className='text-xs text-[#71805a] dark:text-[#a5b48b] font-medium'>
+                  {selectedLab.department ? `${selectedLab.department} Dept • ` : ''}Yr {selectedLab.year || '1'} Sem {selectedLab.semester || '1'}
+                </p>
+              </div>
+
+              <div className='shrink-0 text-right'>
+                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${
+                  selectedLab?.admins?.length || (selectedLab?.admin && selectedLab?.admin !== 'Unassigned')
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
+                    : 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300'
+                }`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${
+                    selectedLab?.admins?.length || (selectedLab?.admin && selectedLab?.admin !== 'Unassigned') ? 'bg-emerald-500' : 'bg-amber-500'
+                  }`} />
+                  {selectedLab?.admins?.length || (selectedLab?.admin && selectedLab?.admin !== 'Unassigned') ? 'Admin Assigned' : 'Unassigned'}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Section 1: Current Assigned Lab Admins */}
+          <div className='space-y-3'>
+            <div className='flex items-center justify-between'>
+              <h5 className='text-xs font-extrabold text-[#5c6e46] dark:text-[#a5b48b] uppercase tracking-wider flex items-center gap-1.5'>
+                <UserCheck size={15} /> Active Lab Administrator
+              </h5>
+              {selectedLab?.admins?.length > 0 && (
+                <span className='text-[11px] font-bold text-[#71805a] dark:text-[#a5b48b]'>
+                  {selectedLab.admins.length} {selectedLab.admins.length === 1 ? 'Admin' : 'Admins'}
+                </span>
+              )}
+            </div>
+
+            <div className='space-y-2'>
               {selectedLab?.admins?.length ? (
                 selectedLab.admins.map((admin) => (
-                  <div key={admin._id || admin.id} className='flex items-center justify-between rounded-xl border border-[#d9e1ca] p-3 dark:border-[#414a33]'>
-                    <div>
-                      <p className='text-sm font-bold text-[#37412a] dark:text-[#e4e9d8]'>{admin.name}</p>
-                      <p className='text-xs text-[#71805a] dark:text-[#a5b48b]'>{admin.email}</p>
+                  <div key={admin._id || admin.id} className='flex items-center justify-between rounded-xl border border-[#d9e1ca] bg-white p-3.5 shadow-2xs dark:border-[#414a33] dark:bg-[#20251a]'>
+                    <div className='flex items-center gap-3 min-w-0 pr-2'>
+                      <div className='h-9 w-9 shrink-0 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 flex items-center justify-center font-black text-sm border border-emerald-300 dark:border-emerald-800'>
+                        {(admin.name || admin.email || 'A').charAt(0).toUpperCase()}
+                      </div>
+                      <div className='min-w-0 leading-tight'>
+                        <p className='text-sm font-extrabold text-[#37412a] dark:text-[#e4e9d8] truncate'>{admin.name || 'Lab Admin'}</p>
+                        <p className='text-xs text-[#5c6e46] dark:text-[#a8be8a] font-medium truncate mt-0.5'>{admin.email}</p>
+                      </div>
                     </div>
-                    <Button variant='outline' onClick={() => handleRemoveAdmin(admin._id || admin.id)} className='text-xs px-3 py-1' disabled={savingAdmin}>
-                      Remove
+                    <Button 
+                      variant='outline' 
+                      onClick={() => handleRemoveAdmin(admin._id || admin.id)} 
+                      className='text-xs px-3 py-1.5 h-8 border-red-200 text-red-600 hover:bg-red-50 font-bold shrink-0 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/30' 
+                      disabled={savingAdmin}
+                    >
+                      <Trash2 size={12} className='mr-1' /> Remove
                     </Button>
                   </div>
                 ))
               ) : (
-                <p className='rounded-xl border border-dashed border-[#cfd8bd] p-4 text-center text-xs text-[#71805a] dark:border-[#4e5d35] dark:text-[#a5b48b]'>
-                  No admin assigned yet.
-                </p>
+                <div className='rounded-xl border border-dashed border-[#cfd8bd] bg-[#fffef8] p-5 text-center dark:border-[#4e5d35] dark:bg-[#1a1d16]'>
+                  <UserX className='mx-auto h-8 w-8 text-amber-500 mb-1.5 opacity-80' />
+                  <p className='text-xs font-bold text-[#37412a] dark:text-[#e4e9d8]'>No Administrator Assigned Yet</p>
+                  <p className='text-[11px] text-[#71805a] dark:text-[#a5b48b] mt-0.5'>Use the form below to provision new credentials for this lab's admin.</p>
+                </div>
               )}
             </div>
           </div>
 
-          <div className='space-y-3 border-t border-[#d9e1ca] pt-4 dark:border-[#414a33]'>
-            <label className='block text-sm text-[#4e5d35] dark:text-[#d5ddbf]'>
-              <span className='mb-1 block text-xs font-medium tracking-wide'>Assign existing user as admin</span>
-              <select
-                value={selectedAdminId}
-                onChange={(e) => setSelectedAdminId(e.target.value)}
-                className='w-full rounded-xl border border-[#cfd8bd] bg-white p-3 text-sm text-[#3c4e23] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]'
-              >
-                <option value=''>Select user</option>
-                {eligibleAdmins.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.name} ({user.email})
-                  </option>
-                ))}
-              </select>
-            </label>
-            <Button onClick={handleAssignAdmin} className='w-full' disabled={savingAdmin || !selectedAdminId}>
-              {savingAdmin ? 'Assigning...' : 'Assign Admin'}
-            </Button>
-          </div>
+          {/* Section 2: Create & Provision New Lab Admin Account */}
+          <div className='rounded-2xl border border-[#d9e1ca] p-4.5 dark:border-[#414a33] bg-[#f9faef] dark:bg-[#1a1d16] space-y-3.5'>
+            <div className='flex items-center justify-between border-b border-[#d9e1ca] pb-2.5 dark:border-[#414a33]'>
+              <h5 className='text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8] uppercase tracking-wider flex items-center gap-1.5'>
+                <UserPlus size={15} className='text-[#5c6e46] dark:text-[#a8be8a]' /> Provision New Lab Admin Credentials
+              </h5>
+              <span className='text-[10px] font-bold text-[#5c6e46] dark:text-[#a8be8a] bg-[#e8efd9] dark:bg-[#2a3320] px-2 py-0.5 rounded-full'>
+                Instant Access
+              </span>
+            </div>
 
-          <div className='rounded-2xl border border-[#d9e1ca] p-4 dark:border-[#414a33] bg-[#f9faef] dark:bg-[#1a1d16]'>
-            <p className='text-sm font-bold text-[#37412a] dark:text-[#e4e9d8]'>Create New Lab Admin Account</p>
-            <div className='mt-3 space-y-3'>
-              <Input label='Name' value={newAdmin.name} onChange={(e) => setNewAdmin((s) => ({ ...s, name: e.target.value }))} placeholder='Dr. S. Sharma' />
-              <Input label='Email' type='email' value={newAdmin.email} onChange={(e) => setNewAdmin((s) => ({ ...s, email: e.target.value }))} placeholder='sharma@rasayanflow.edu' />
-              <Input label='Password' type='password' value={newAdmin.password} onChange={(e) => setNewAdmin((s) => ({ ...s, password: e.target.value }))} minLength={6} placeholder='••••••••' />
-              <Button onClick={handleCreateAdminForLab} className='w-full' disabled={savingAdmin}>
-                {savingAdmin ? 'Creating...' : 'Create & Assign Admin'}
+            <div className='space-y-3'>
+              <Input 
+                label='Admin Full Name *' 
+                value={newAdmin.name} 
+                onChange={(e) => setNewAdmin((s) => ({ ...s, name: e.target.value }))} 
+                placeholder='e.g. Dr. S. Sharma' 
+              />
+              <Input 
+                label='Admin Login Email *' 
+                type='email' 
+                value={newAdmin.email} 
+                onChange={(e) => setNewAdmin((s) => ({ ...s, email: e.target.value }))} 
+                placeholder='sharma@rasayanflow.edu' 
+              />
+              <Input 
+                label='Login Password *' 
+                type='password' 
+                value={newAdmin.password} 
+                onChange={(e) => setNewAdmin((s) => ({ ...s, password: e.target.value }))} 
+                minLength={6} 
+                placeholder='••••••••' 
+              />
+              <Button 
+                onClick={handleCreateAdminForLab} 
+                className='w-full py-3 text-xs font-extrabold shadow-sm bg-[#37412a] hover:bg-[#2a3220] text-white dark:bg-[#e4e9d8] dark:text-[#20251a]' 
+                disabled={savingAdmin || !newAdmin.email.trim()}
+              >
+                {savingAdmin ? 'Provisioning Admin...' : 'Create & Provision Lab Admin Account'}
               </Button>
             </div>
           </div>
 
-          <div className='rounded-2xl border border-red-200 p-4 dark:border-red-900/50 bg-red-50/40 dark:bg-red-950/20'>
-            <p className='text-sm font-bold text-red-700 dark:text-red-300'>Delete Lab</p>
+          {/* Section 3: Danger Zone - Delete Lab */}
+          <div className='rounded-2xl border border-red-200/80 p-3.5 dark:border-red-900/40 bg-red-50/30 dark:bg-red-950/20 flex items-center justify-between gap-3'>
+            <div>
+              <p className='text-xs font-extrabold text-red-700 dark:text-red-400'>Delete Department Lab</p>
+              <p className='text-[10px] text-red-600/80 dark:text-red-400/70 mt-0.5'>Permanently remove this lab and its data.</p>
+            </div>
             <Button
               variant='outline'
               onClick={() => {
                 if (selectedLab) openDeleteLabModal(selectedLab);
               }}
-              className='mt-3 w-full border-red-300 text-red-700 hover:bg-red-100 dark:border-red-900 dark:text-red-300 font-bold'
+              className='text-xs px-3 py-1.5 h-8 border-red-300 text-red-700 hover:bg-red-100 dark:border-red-900 dark:text-red-300 font-bold shrink-0'
               disabled={deletingLab}
             >
-              <Trash2 size={14} className='mr-1.5' /> Delete Lab...
+              <Trash2 size={13} className='mr-1' /> Delete...
             </Button>
           </div>
         </div>
       </Modal>
+
 
       {/* Two-Step Confirmation Delete Lab Modal */}
       <Modal
