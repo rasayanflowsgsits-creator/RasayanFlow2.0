@@ -164,8 +164,13 @@ const routePairs = [
 ];
 
 routePairs.forEach(([routePath, router]) => {
-  app.use(routePath, router);
   app.use(`/api${routePath}`, router);
+  app.use(routePath, (req, res, next) => {
+    if (req.headers.accept && req.headers.accept.includes('text/html') && req.method === 'GET') {
+      return next();
+    }
+    router(req, res, next);
+  });
 });
 
 // Serve frontend in production
