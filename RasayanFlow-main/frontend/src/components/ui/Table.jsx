@@ -1,0 +1,79 @@
+import clsx from 'clsx';
+
+export default function Table({ headers = [], rows = [], className, expandedRowId = null, renderExpandedRow = null, onRowClick = null }) {
+  if (!rows.length) {
+    return <div className='rounded-xl border border-dashed border-[#cfd8bd] p-6 text-left text-sm text-[#71805a] dark:border-[#4e5d35] dark:text-[#c5d0b5]'>No records found matching criteria.</div>;
+  }
+
+  const getCellValue = (row, header, index) => {
+    const value = header.render ? header.render(row, index) : row[header.key];
+    return value || '--';
+  };
+
+  return (
+    <div className='space-y-3'>
+      <div className='space-y-3 sm:hidden'>
+        {rows.map((row, rowIndex) => (
+          <div key={row.id} className='space-y-2'>
+            <div
+              className={clsx(
+                'rounded-xl border border-[#d9e1ca] bg-[#fffef8] p-4 shadow-soft dark:border-[#414a33] dark:bg-[#20251a]',
+                onRowClick && 'cursor-pointer',
+                row.highlight && 'bg-[#eef4e4] dark:bg-[#2b3421]'
+              )}
+              onClick={() => onRowClick?.(row)}
+            >
+              <div className='space-y-3'>
+                {headers.map((header) => (
+                  <div key={header.key} className='grid grid-cols-[minmax(0,88px)_1fr] items-start gap-3'>
+                    <p className='text-[11px] font-semibold uppercase tracking-wide text-[#71805a] dark:text-[#c5d0b5]'>{header.label}</p>
+                    <div className='min-w-0 break-words text-sm text-slate-700 dark:text-slate-100'>{getCellValue(row, header, rowIndex)}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {expandedRowId === row.id && renderExpandedRow ? renderExpandedRow(row) : null}
+          </div>
+        ))}
+      </div>
+
+      <div className='hidden overflow-x-auto rounded-xl border border-[#d9e1ca] shadow-soft dark:border-[#414a33] sm:block'>
+        <table className={clsx('min-w-full table-auto text-left', className)}>
+          <thead className='sticky top-0 bg-[#f4f5eb] dark:bg-[#242a1d]'>
+            <tr>
+              {headers.map((h) => (
+                <th key={h.key} className='px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#71805a] dark:text-[#c5d0b5]'>{h.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, rowIndex) => (
+              <>
+                <tr
+                  key={row.id}
+                  onClick={() => onRowClick?.(row)}
+                  className={clsx(
+                    'border-t border-[#e3e9d8] dark:border-[#343b2b] transition duration-200',
+                    onRowClick && 'cursor-pointer hover:bg-[#f9faef] dark:hover:bg-[#20251a]',
+                    row.highlight && 'bg-[#eef4e4] dark:bg-[#2b3421]'
+                  )}
+                >
+                  {headers.map((h) => (
+                    <td key={h.key} className='px-4 py-3 text-sm text-slate-700 dark:text-slate-100'>{getCellValue(row, h, rowIndex)}</td>
+                  ))}
+                </tr>
+                {expandedRowId === row.id && renderExpandedRow ? (
+                  <tr className='border-t border-[#e3e9d8] dark:border-[#343b2b]'>
+                    <td colSpan={headers.length} className='px-4 py-4'>
+                      {renderExpandedRow(row)}
+                    </td>
+                  </tr>
+                ) : null}
+              </>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
