@@ -392,21 +392,36 @@ const useAppStore = create((set) => ({
     }
   },
   fetchMyLabs: async (courseType, year, semester) => {
-    const isPreview = useAuthStore.getState().user?.isPreview;
+    const currentUser = useAuthStore.getState().user;
+    const isPreview = currentUser?.isPreview;
+
+    if (isPreview) {
+      set({ myLabs: PREVIEW_LABS, loading: false });
+      return PREVIEW_LABS;
+    }
+
+    // Strict: require all three filter values — never fall back to all labs
+    const cType = courseType || currentUser?.course || '';
+    const y = (year !== undefined && year !== null && year !== '') ? String(year) : (currentUser?.year || '');
+    const sem = (semester !== undefined && semester !== null && semester !== '') ? String(semester) : (currentUser?.semester || '');
+
+    if (!cType || !y || !sem) {
+      // Incomplete profile — show empty rather than leaking all labs
+      set({ myLabs: [], loading: false });
+      return [];
+    }
+
     set({ loading: true });
     try {
-      const user = useAuthStore.getState().user;
-      const c = courseType || user?.course || 'B.Pharm';
-      const y = year || user?.year || '1';
-      const s = semester || user?.semester || '1';
-
-      const res = await api.get(`/labs/matching?courseType=${encodeURIComponent(c)}&year=${encodeURIComponent(y)}&semester=${encodeURIComponent(s)}`);
-      const labs = (getPayload(res.data) || []).map(normalizeLab);
-      set({ myLabs: labs, loading: false });
-      return labs;
+      const response = await api.get(`/labs/matching?courseType=${encodeURIComponent(cType)}&year=${encodeURIComponent(y)}&semester=${encodeURIComponent(sem)}`);
+      const rawLabs = getPayload(response.data) || [];
+      const fetched = (Array.isArray(rawLabs) ? rawLabs : []).map(normalizeLab);
+      set({ myLabs: fetched, loading: false });
+      return fetched;
     } catch (err) {
-      console.error('Failed to fetch student labs:', err);
-      set({ myLabs: isPreview ? PREVIEW_LABS : [], loading: false });
+      console.error('Failed to fetch my labs:', err);
+      // On error, show empty — never fall back to all labs
+      set({ myLabs: [], loading: false });
       return [];
     }
   },
@@ -1160,8 +1175,30 @@ const useAppStore = create((set) => ({
   },
   myLabs: [],
   fetchMyLabs: async (courseType, year, semester) => {
-    const isPreview = useAuthStore.getState().user?.isPreview;
+    const currentUser = useAuthStore.getState().user;
+    const isPreview = currentUser?.isPreview;
     if (isPreview) {
+      set({ myLabs: PREVIEW_LABS, loading: false });
+      return PREVIEW_LABS;
+    }
+    const cType = courseType || currentUser?.course || '';
+    const y = (year !== undefined && year !== null && year !== '') ? String(year) : (currentUser?.year || '');
+    const sem = (semester !== undefined && semester !== null && semester !== '') ? String(semester) : (currentUser?.semester || '');
+    if (!cType || !y || !sem) {
+      set({ myLabs: [], loading: false });
+      return [];
+    }
+    set({ loading: true });
+    try {
+      const response = await api.get(`/labs/matching?courseType=${encodeURIComponent(cType)}&year=${encodeURIComponent(y)}&semester=${encodeURIComponent(sem)}`);
+      const rawLabs = getPayload(response.data) || [];
+      const fetched = (Array.isArray(rawLabs) ? rawLabs : []).map(normalizeLab);
+      set({ myLabs: fetched, loading: false });
+      return fetched;
+    } catch (err) {
+      console.error('Failed to fetch my labs:', err);
+      set({ myLabs: [], loading: false });
+      return [];
     }
   },
   fetchUnreadNotificationCount: async () => {
@@ -1665,55 +1702,45 @@ const useAppStore = create((set) => ({
   },
   myLabs: [],
   fetchMyLabs: async (courseType, year, semester) => {
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // STRICT STUDENT LAB FILTER — NO FALLBACKS TO ALL LABS
+    // Students ONLY see labs that exactly match their course + year + semester.
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     const currentUser = useAuthStore.getState().user;
     const isPreview = currentUser?.isPreview;
-    const cType = courseType || currentUser?.course || 'B.Pharm';
-    const y = year !== undefined && year !== null && year !== '' ? String(year) : (currentUser?.year || '1');
-    const sem = semester !== undefined && semester !== null && semester !== '' ? String(semester) : (currentUser?.semester || '1');
 
     if (isPreview) {
       set({ myLabs: PREVIEW_LABS, labs: PREVIEW_LABS, loading: false });
       return PREVIEW_LABS;
     }
+
+    // Resolve filter values from arguments or user profile
+    const cType = courseType || currentUser?.course || '';
+    const y = (year !== undefined && year !== null && year !== '') ? String(year) : (currentUser?.year || '');
+    const sem = (semester !== undefined && semester !== null && semester !== '') ? String(semester) : (currentUser?.semester || '');
+
+    // All three are required — if missing, profile is incomplete, show empty
+    if (!cType || !y || !sem) {
+      set({ myLabs: [], loading: false });
+      return [];
+    }
+
     set({ loading: true });
     try {
-      let response = await api.get(`/labs/matching?courseType=${encodeURIComponent(cType)}&year=${encodeURIComponent(y)}&semester=${encodeURIComponent(sem)}`);
-      let rawLabs = getPayload(response.data) || [];
-
-      // Fallback 1: Try course matching if exact year/sem query returned empty
-      if (!Array.isArray(rawLabs) || rawLabs.length === 0) {
-        try {
-          const courseRes = await api.get(`/labs/matching?courseType=${encodeURIComponent(cType)}`);
-          rawLabs = getPayload(courseRes.data) || [];
-        } catch (e) {
-          // ignore error
-        }
-      }
-
-      // Fallback 2: Fetch all labs if matching is still empty
-      if (!Array.isArray(rawLabs) || rawLabs.length === 0) {
-        try {
-          const allLabsRes = await api.get('/labs');
-          rawLabs = getPayload(allLabsRes.data) || [];
-        } catch (e) {
-          // ignore error
-        }
-      }
-
-      const fetched = (rawLabs || []).map(normalizeLab);
-      set({ myLabs: fetched, labs: fetched, loading: false });
+      // Single strict query — exact match on all three fields
+      const response = await api.get(
+        `/labs/matching?courseType=${encodeURIComponent(cType)}&year=${encodeURIComponent(y)}&semester=${encodeURIComponent(sem)}`
+      );
+      const rawLabs = getPayload(response.data) || [];
+      const fetched = (Array.isArray(rawLabs) ? rawLabs : []).map(normalizeLab);
+      // NOTE: Only update myLabs — do NOT overwrite labs (which is for admin views)
+      set({ myLabs: fetched, loading: false });
       return fetched;
     } catch (err) {
       console.error('Failed to fetch my labs:', err);
-      try {
-        const fallbackRes = await api.get('/labs');
-        const fallbackLabs = (getPayload(fallbackRes.data) || []).map(normalizeLab);
-        set({ myLabs: fallbackLabs, labs: fallbackLabs, loading: false });
-        return fallbackLabs;
-      } catch {
-        set({ myLabs: [], loading: false });
-        return [];
-      }
+      // On error, return empty — NEVER fall back to all labs
+      set({ myLabs: [], loading: false });
+      return [];
     }
   },
   fetchStudentLabStructure: async () => {

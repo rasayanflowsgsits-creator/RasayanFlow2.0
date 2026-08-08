@@ -291,49 +291,43 @@ const deleteLab = asyncHandler(async (req, res) => {
 
 const getMatchingLabs = asyncHandler(async (req, res) => {
   const { courseType, year, semester } = req.query;
-  const allLabs = await Lab.find({}).populate('admins', 'name email role isApproved');
 
+  // All three filters are required for student lab queries
+  // If none provided, return empty — never leak all labs to students
   if (!courseType && !year && !semester) {
-    return res.json({ success: true, count: allLabs.length, data: allLabs });
+    return res.json({ success: true, count: 0, data: [] });
   }
 
-  const reqCourse = (courseType || 'B.Pharm').toLowerCase().trim();
+  const allLabs = await Lab.find({}).populate('admins', 'name email role isApproved');
+
+  const reqCourse = (courseType || '').toLowerCase().trim();
   const reqYr = year ? String(year).replace(/\D/g, '') : '';
   const reqSem = semester ? String(semester).replace(/\D/g, '') : '';
 
-  let matchingLabs = allLabs.filter((lab) => {
-    // 1. Course type match
+  const matchingLabs = allLabs.filter((lab) => {
+    // 1. Course type must match exactly
     const labCourse = (lab.courseType || 'B.Pharm').toLowerCase().trim();
-    if (labCourse !== 'other' && labCourse !== reqCourse && !labCourse.includes(reqCourse) && !reqCourse.includes(labCourse)) {
-      return false;
+    if (reqCourse) {
+      if (labCourse !== reqCourse && !labCourse.includes(reqCourse) && !reqCourse.includes(labCourse)) {
+        return false;
+      }
     }
 
+    // 2. Year must match exactly (both must be present and equal)
     const labYr = lab.year ? String(lab.year).replace(/\D/g, '') : '';
+    if (reqYr && labYr && labYr !== reqYr) return false;
+    if (reqYr && !labYr) return false; // lab has no year set — exclude
+
+    // 3. Semester must match exactly (both must be present and equal)
     const labSem = lab.semester ? String(lab.semester).replace(/\D/g, '') : '';
-
-    // If student specifies Year & Semester (e.g. Year 1 Sem 1):
-    // Require exact Year & Semester match, OR explicit user assignment to this lab.
-    if (reqYr && reqSem) {
-      const isExactMatch = (labYr === reqYr && labSem === reqSem);
-      const isUserAssigned = req.user?.labId && String(req.user.labId) === String(lab._id);
-      return isExactMatch || isUserAssigned;
-    }
-
-    // 2. Fallback Year match
-    if (reqYr && labYr && labYr !== reqYr) {
-      return false;
-    }
-
-    // 3. Fallback Semester match
-    if (reqSem && labSem && labSem !== reqSem) {
-      return false;
-    }
+    if (reqSem && labSem && labSem !== reqSem) return false;
+    if (reqSem && !labSem) return false; // lab has no semester set — exclude
 
     return true;
   });
 
-  // Return exact matching labs for this student's course, year, and semester
   res.json({ success: true, count: matchingLabs.length, data: matchingLabs });
 });
+
 
 module.exports = { createLab, listLabs, assignAdmin, removeAdmin, approveAdmin, deleteLab, getMatchingLabs };

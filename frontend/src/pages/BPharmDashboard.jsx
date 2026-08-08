@@ -467,10 +467,16 @@ const BPharmDashboard = () => {
 
       {/* My Labs Grid */}
       <div>
-        <h2 className="text-xl font-bold text-[#3c4e23] dark:text-[#c8a030] mb-4 flex items-center gap-2">
-          <Beaker className="w-5 h-5" /> My Practical Subjects
-        </h2>
-        
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-[#3c4e23] dark:text-[#c8a030] flex items-center gap-2">
+            <Beaker className="w-5 h-5" /> My Practical Subjects
+          </h2>
+          {user?.course && user?.year && user?.semester && (
+            <p className="text-sm text-[#71805a] dark:text-[#a5b48b] mt-1 font-medium">
+              {user.course} &bull; Year {user.year} &bull; Semester {user.semester}
+            </p>
+          )}
+        </div>
         {myLabs && myLabs.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {myLabs.map(lab => {
@@ -544,9 +550,13 @@ const BPharmDashboard = () => {
                 <Beaker className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-[#3c4e23] dark:text-[#eef4e8]">No Labs Assigned Yet</h3>
+                <h3 className="text-lg font-bold text-[#3c4e23] dark:text-[#eef4e8]">
+                  No labs configured for your year and semester yet.
+                </h3>
                 <p className="text-sm text-[#71805a] dark:text-[#c5d0b5] mt-1 max-w-lg">
-                  No laboratories or subjects have been created for your semester yet. Your profile has been saved successfully! Once your faculty or lab administrator sets up labs, they will automatically appear here.
+                  {user?.course && user?.year && user?.semester
+                    ? `No labs have been assigned for ${user.course} · Year ${user.year} · Semester ${user.semester} yet. Please contact your administrator.`
+                    : 'Your profile has been saved. Once your faculty or lab administrator sets up labs for your year and semester, they will automatically appear here.'}
                 </p>
               </div>
             </div>
