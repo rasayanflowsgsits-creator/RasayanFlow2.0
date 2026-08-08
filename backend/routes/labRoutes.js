@@ -3,7 +3,7 @@ const { body, param } = require('express-validator');
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
 const validateRequest = require('../middleware/validateMiddleware');
-const { createLab, listLabs, assignAdmin, removeAdmin, approveAdmin, deleteLab, getMatchingLabs } = require('../controllers/labController');
+const { createLab, listLabs, assignAdmin, removeAdmin, approveAdmin, deleteLab, getMatchingLabs, updateLab } = require('../controllers/labController');
 
 const router = express.Router();
 
@@ -28,6 +28,21 @@ router.post(
   ],
   validateRequest,
   createLab,
+);
+
+router.put(
+  '/:labId',
+  [
+    param('labId').isMongoId(),
+    body('labName').optional().isString(),
+    body('labCode').optional().isString(),
+    body('courseType').optional().isString(),
+    body('department').optional().isString(),
+    body('year').optional().isString(),
+    body('semester').optional().isString(),
+  ],
+  validateRequest,
+  updateLab,
 );
 
 router.post(

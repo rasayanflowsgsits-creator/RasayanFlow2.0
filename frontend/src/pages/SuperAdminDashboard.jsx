@@ -27,6 +27,7 @@ export default function SuperAdminDashboard() {
     fetchLabs,
     fetchUsers,
     createLab,
+    updateLab,
     deleteLab,
     createLabAdmin,
     createStoreAdmin,
@@ -124,6 +125,12 @@ export default function SuperAdminDashboard() {
   const [editingExp, setEditingExp] = useState(null);
   const [detailExpModalOpen, setDetailExpModalOpen] = useState(false);
   const [selectedExpDetail, setSelectedExpDetail] = useState(null);
+
+  // Edit Lab State
+  const [editLabModalOpen, setEditLabModalOpen] = useState(false);
+  const [editingLabItem, setEditingLabItem] = useState(null);
+  const [editLabForm, setEditLabForm] = useState({ name: '', code: '', courseType: 'B.Pharm', department: '', year: '1', semester: '1' });
+  const [savingLabEdit, setSavingLabEdit] = useState(false);
   const [expandedSems, setExpandedSems] = useState(['1']);
   const [collapsedLabs, setCollapsedLabs] = useState([]);
   const [expandedChemsMap, setExpandedChemsMap] = useState({});
@@ -1061,6 +1068,46 @@ export default function SuperAdminDashboard() {
     setManageOpen(true);
   };
 
+  const openEditLabModal = (lab) => {
+    setEditingLabItem(lab);
+    setEditLabForm({
+      name: lab.name || lab.labName || '',
+      code: lab.labCode || lab.code || '',
+      courseType: lab.courseType || 'B.Pharm',
+      department: lab.department || '',
+      year: lab.year ? String(lab.year) : '1',
+      semester: lab.semester ? String(lab.semester) : '1',
+    });
+    setEditLabModalOpen(true);
+  };
+
+  const handleSaveLabEdit = async () => {
+    if (!editLabForm.name.trim() || !editLabForm.code.trim()) {
+      setToast({ type: 'error', message: 'Please enter Lab Name and Lab Code.' });
+      return;
+    }
+    setSavingLabEdit(true);
+    try {
+      const labId = editingLabItem._id || editingLabItem.id;
+      await updateLab(labId, {
+        labName: editLabForm.name.trim(),
+        labCode: editLabForm.code.trim().toUpperCase(),
+        courseType: editLabForm.courseType,
+        department: editLabForm.department.trim(),
+        year: editLabForm.year,
+        semester: editLabForm.semester,
+      });
+      await Promise.all([fetchLabs(), fetchUsers(), fetchActivityLogs({ limit: 100 })]);
+      setToast({ type: 'success', message: `Lab "${editLabForm.name}" updated successfully!` });
+      setEditLabModalOpen(false);
+      setEditingLabItem(null);
+    } catch (err) {
+      setToast({ type: 'error', message: err?.response?.data?.message || err?.message || 'Failed to update lab.' });
+    } finally {
+      setSavingLabEdit(false);
+    }
+  };
+
   const openDeleteLabModal = (lab) => {
     setDeletingLabItem(lab);
     setDeleteStep(1);
@@ -1367,9 +1414,22 @@ export default function SuperAdminDashboard() {
       key: 'actions',
       label: 'Actions',
       render: (row) => (
-        <Button variant='outline' onClick={() => openManageModal(row)} className='text-xs px-3 py-1'>
-          Manage Lab
-        </Button>
+        <div className='flex items-center gap-1.5'>
+          <Button variant='outline' onClick={() => openEditLabModal(row)} className='text-xs px-2.5 py-1 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] font-bold dark:border-[#a8be8a] dark:text-[#a8be8a]'>
+            <Edit3 size={12} className='mr-1' /> Edit
+          </Button>
+          <Button variant='outline' onClick={() => openManageModal(row)} className='text-xs px-2.5 py-1'>
+            Manage
+          </Button>
+          <button
+            type='button'
+            onClick={() => openDeleteLabModal(row)}
+            className='h-7 w-7 flex items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 transition-colors dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400'
+            title='Delete Lab'
+          >
+            <Trash2 size={13} />
+          </button>
+        </div>
       )
     }
   ];
@@ -2044,7 +2104,10 @@ export default function SuperAdminDashboard() {
                               </div>
 
                               <div className='flex items-center gap-1.5 shrink-0'>
-                                <Button variant='outline' onClick={() => openManageModal(lab)} className='text-xs px-2.5 py-1 h-7 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] font-bold dark:border-[#a8be8a] dark:text-[#a8be8a]'>
+                                <Button variant='outline' onClick={() => openEditLabModal(lab)} className='text-xs px-2 py-1 h-7 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] font-bold dark:border-[#a8be8a] dark:text-[#a8be8a]'>
+                                  <Edit3 size={12} className='mr-1' /> Edit
+                                </Button>
+                                <Button variant='outline' onClick={() => openManageModal(lab)} className='text-xs px-2 py-1 h-7 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] font-bold dark:border-[#a8be8a] dark:text-[#a8be8a]'>
                                   Manage
                                 </Button>
                                 <button
@@ -3882,6 +3945,115 @@ export default function SuperAdminDashboard() {
               <Trash2 size={13} className='mr-1' /> Delete...
             </Button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Edit Department Lab Modal */}
+      <Modal open={editLabModalOpen} onClose={() => setEditLabModalOpen(false)} title={editingLabItem ? `Edit ${editingLabItem.labCode || editingLabItem.code || 'Lab'} — ${editingLabItem.name || editingLabItem.labName}` : 'Edit Lab'}>
+        <div className='space-y-5'>
+          <div className='rounded-xl bg-[#f4f6ee] p-3 border border-[#d9e1ca] dark:bg-[#20251a] dark:border-[#414a33]'>
+            <p className='text-xs text-[#5c6e46] dark:text-[#a8be8a] font-medium leading-relaxed flex items-start gap-1.5'>
+              <Edit3 size={16} className='shrink-0 mt-0.5' />
+              <span>Modify the department lab name, lab code, course program, department name, and academic year/semester placement.</span>
+            </p>
+          </div>
+
+          <div className='space-y-4'>
+            <Input
+              label='Lab Name *'
+              value={editLabForm.name}
+              onChange={(e) => setEditLabForm({ ...editLabForm, name: e.target.value })}
+              placeholder='e.g. Human Anatomy & Physiology Lab 1'
+              required
+            />
+
+            <Input
+              label='Lab Code *'
+              value={editLabForm.code}
+              onChange={(e) => setEditLabForm({ ...editLabForm, code: e.target.value.toUpperCase() })}
+              placeholder='e.g. PH101L'
+              required
+            />
+
+            <div>
+              <label className='block text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf] mb-1.5'>Course Program</label>
+              <div className='flex gap-2'>
+                {['B.Pharm', 'M.Pharm', 'Pharm.D', 'PhD'].map((c) => (
+                  <button
+                    key={c}
+                    type='button'
+                    onClick={() => setEditLabForm({ ...editLabForm, courseType: c })}
+                    className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all border ${
+                      editLabForm.courseType === c
+                        ? 'bg-[#5c6e46] text-white border-[#5c6e46] shadow-sm'
+                        : 'border-[#d9e1ca] bg-white text-[#37412a] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <Input
+              label='Department Name'
+              value={editLabForm.department}
+              onChange={(e) => setEditLabForm({ ...editLabForm, department: e.target.value })}
+              placeholder='e.g. Pharmaceutics / Pharmacology'
+            />
+
+            {/* Visual Academic Year Selection */}
+            <div>
+              <label className='block text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf] mb-1.5'>Academic Year</label>
+              <div className='flex gap-2'>
+                {(editLabForm.courseType === 'B.Pharm' ? ['1', '2', '3', '4'] : editLabForm.courseType === 'M.Pharm' ? ['1', '2'] : ['1', '2', '3', '4', '5']).map((y) => (
+                  <button
+                    key={y}
+                    type='button'
+                    onClick={() => setEditLabForm({ ...editLabForm, year: y, semester: (parseInt(y) * 2 - 1).toString() })}
+                    className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all border ${
+                      editLabForm.year === y
+                        ? 'bg-[#5c6e46] text-white border-[#5c6e46] shadow-sm'
+                        : 'border-[#d9e1ca] bg-white text-[#37412a] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
+                    }`}
+                  >
+                    Year {y}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Visual Semester Selection */}
+            {editLabForm.year && (
+              <div>
+                <label className='block text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf] mb-1.5'>Academic Semester</label>
+                <div className='flex gap-2'>
+                  {[(parseInt(editLabForm.year) * 2 - 1).toString(), (parseInt(editLabForm.year) * 2).toString()].map((s) => (
+                    <button
+                      key={s}
+                      type='button'
+                      onClick={() => setEditLabForm({ ...editLabForm, semester: s })}
+                      className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all border ${
+                        editLabForm.semester === s
+                          ? 'bg-[#37412a] text-white border-[#37412a] shadow-sm dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                          : 'border-[#d9e1ca] bg-white text-[#37412a] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
+                      }`}
+                    >
+                      Semester {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <Button
+            onClick={handleSaveLabEdit}
+            className='w-full py-3.5 text-sm font-bold shadow-md bg-[#37412a] hover:bg-[#2a3220] text-white dark:bg-[#e4e9d8] dark:text-[#20251a]'
+            disabled={savingLabEdit}
+          >
+            {savingLabEdit ? 'Saving Lab Changes...' : 'Save & Update Lab Details'}
+          </Button>
         </div>
       </Modal>
 

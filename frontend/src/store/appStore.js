@@ -505,6 +505,24 @@ const useAppStore = create((set) => ({
     return createdLab;
   },
 
+  updateLab: async (labId, payload) => {
+    set({ loading: true });
+    try {
+      const { data } = await api.put(`/labs/${labId}`, payload);
+      const updated = normalizeLab(getPayload(data));
+      set((state) => ({
+        labs: state.labs.map((l) => ((l._id === labId || l.id === labId) ? updated : l)),
+        myLabs: state.myLabs.map((l) => ((l._id === labId || l.id === labId) ? updated : l)),
+        loading: false,
+        toast: { title: 'Success', message: 'Lab details updated successfully', type: 'success' },
+      }));
+      return updated;
+    } catch (err) {
+      set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Failed to update lab', type: 'error' } });
+      throw err;
+    }
+  },
+
   deleteLab: async (labId) => {
     set({ loading: true });
     try {

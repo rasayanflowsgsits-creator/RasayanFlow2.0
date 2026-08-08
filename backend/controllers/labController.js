@@ -363,5 +363,58 @@ const getMatchingLabs = asyncHandler(async (req, res) => {
   res.json({ success: true, count: matchingLabs.length, data: matchingLabs });
 });
 
+const updateLab = asyncHandler(async (req, res) => {
+  const { labId } = req.params;
+  const { labName, labCode, courseType, department, year, semester } = req.body;
 
-module.exports = { createLab, listLabs, assignAdmin, removeAdmin, approveAdmin, deleteLab, getMatchingLabs };
+  const lab = await Lab.findById(labId);
+  if (!lab) {
+    res.status(404);
+    throw new Error('Lab not found');
+  }
+
+  // Check code collision if code changed
+  if (labCode && labCode.toUpperCase() !== lab.labCode) {
+    const codeExists = await Lab.findOne({ labCode: labCode.toUpperCase(), _id: { $ne: lab._id } });
+    if (codeExists) {
+      res.status(400);
+      throw new Error('labCode already in use by another lab');
+    }
+    lab.labCode = labCode.toUpperCase();
+  }
+
+  if (labName) lab.labName = labName.trim();
+  if (courseType) lab.courseType = courseType.trim();
+  if (department !== undefined) lab.department = department.trim();
+  if (year !== undefined) lab.year = String(year).trim();
+  if (semester !== undefined) lab.semester = String(semester).trim();
+
+  await lab.save();
+
+  // Sync details across assigned lab admin users if labName or labCode or course/year/sem updated
+  await User.updateMany(
+    { labId: lab._id },
+    {
+      $set: {
+        labName: lab.labName,
+        labCode: lab.labCode,
+        course: lab.courseType,
+        courseType: lab.courseType,
+        year: lab.year,
+        semester: lab.semester,
+      }
+    }
+  );
+
+  await ActivityLog.create({
+    userId: req.user._id,
+    action: 'update_lab',
+    details: `Updated lab details: ${lab.labName} (${lab.labCode}) — ${lab.courseType} Yr ${lab.year} Sem ${lab.semester}`
+  });
+
+  const updatedLab = await Lab.findById(lab._id).populate('admins', 'name email role isApproved');
+  res.json({ success: true, data: updatedLab });
+});
+
+module.exports = { createLab, listLabs, assignAdmin, removeAdmin, approveAdmin, deleteLab, getMatchingLabs, updateLab };
+
