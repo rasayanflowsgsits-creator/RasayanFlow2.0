@@ -126,9 +126,8 @@ export default function SuperAdminDashboard() {
   const [detailExpModalOpen, setDetailExpModalOpen] = useState(false);
   const [selectedExpDetail, setSelectedExpDetail] = useState(null);
 
-  // Edit Lab State
-  const [editLabModalOpen, setEditLabModalOpen] = useState(false);
-  const [editingLabItem, setEditingLabItem] = useState(null);
+  // Unified Manage Lab Modal State
+  const [manageTab, setManageTab] = useState('admin'); // 'admin' | 'details'
   const [editLabForm, setEditLabForm] = useState({ name: '', code: '', courseType: 'B.Pharm', department: '', year: '1', semester: '1' });
   const [savingLabEdit, setSavingLabEdit] = useState(false);
   const [expandedSems, setExpandedSems] = useState(['1']);
@@ -1065,11 +1064,6 @@ export default function SuperAdminDashboard() {
     setSelectedLab(lab);
     setSelectedAdminId('');
     setNewAdmin({ name: '', email: '', password: '' });
-    setManageOpen(true);
-  };
-
-  const openEditLabModal = (lab) => {
-    setEditingLabItem(lab);
     setEditLabForm({
       name: lab.name || lab.labName || '',
       code: lab.labCode || lab.code || '',
@@ -1078,18 +1072,20 @@ export default function SuperAdminDashboard() {
       year: lab.year ? String(lab.year) : '1',
       semester: lab.semester ? String(lab.semester) : '1',
     });
-    setEditLabModalOpen(true);
+    setManageTab('admin');
+    setManageOpen(true);
   };
 
   const handleSaveLabEdit = async () => {
+    if (!selectedLab) return;
     if (!editLabForm.name.trim() || !editLabForm.code.trim()) {
       setToast({ type: 'error', message: 'Please enter Lab Name and Lab Code.' });
       return;
     }
     setSavingLabEdit(true);
     try {
-      const labId = editingLabItem._id || editingLabItem.id;
-      await updateLab(labId, {
+      const labId = selectedLab._id || selectedLab.id;
+      const updated = await updateLab(labId, {
         labName: editLabForm.name.trim(),
         labCode: editLabForm.code.trim().toUpperCase(),
         courseType: editLabForm.courseType,
@@ -1098,9 +1094,8 @@ export default function SuperAdminDashboard() {
         semester: editLabForm.semester,
       });
       await Promise.all([fetchLabs(), fetchUsers(), fetchActivityLogs({ limit: 100 })]);
-      setToast({ type: 'success', message: `Lab "${editLabForm.name}" updated successfully!` });
-      setEditLabModalOpen(false);
-      setEditingLabItem(null);
+      setToast({ type: 'success', message: `Lab "${editLabForm.name}" details updated successfully!` });
+      if (updated) setSelectedLab(updated);
     } catch (err) {
       setToast({ type: 'error', message: err?.response?.data?.message || err?.message || 'Failed to update lab.' });
     } finally {
@@ -1415,11 +1410,8 @@ export default function SuperAdminDashboard() {
       label: 'Actions',
       render: (row) => (
         <div className='flex items-center gap-1.5'>
-          <Button variant='outline' onClick={() => openEditLabModal(row)} className='text-xs px-2.5 py-1 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] font-bold dark:border-[#a8be8a] dark:text-[#a8be8a]'>
-            <Edit3 size={12} className='mr-1' /> Edit
-          </Button>
-          <Button variant='outline' onClick={() => openManageModal(row)} className='text-xs px-2.5 py-1'>
-            Manage
+          <Button variant='outline' onClick={() => openManageModal(row)} className='text-xs px-3 py-1 font-bold border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] dark:border-[#a8be8a] dark:text-[#a8be8a] flex items-center gap-1'>
+            <Edit3 size={12} /> Manage
           </Button>
           <button
             type='button'
@@ -2104,11 +2096,8 @@ export default function SuperAdminDashboard() {
                               </div>
 
                               <div className='flex items-center gap-1.5 shrink-0'>
-                                <Button variant='outline' onClick={() => openEditLabModal(lab)} className='text-xs px-2 py-1 h-7 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] font-bold dark:border-[#a8be8a] dark:text-[#a8be8a]'>
-                                  <Edit3 size={12} className='mr-1' /> Edit
-                                </Button>
-                                <Button variant='outline' onClick={() => openManageModal(lab)} className='text-xs px-2 py-1 h-7 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] font-bold dark:border-[#a8be8a] dark:text-[#a8be8a]'>
-                                  Manage
+                                <Button variant='outline' onClick={() => openManageModal(lab)} className='text-xs px-3 py-1 h-7 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] font-bold dark:border-[#a8be8a] dark:text-[#a8be8a] flex items-center gap-1'>
+                                  <Edit3 size={12} /> Manage
                                 </Button>
                                 <button
                                   type='button'
@@ -3801,9 +3790,9 @@ export default function SuperAdminDashboard() {
         </div>
       </Modal>
 
-      {/* Modern & High-End Manage Lab Modal */}
-      <Modal open={manageOpen} onClose={() => setManageOpen(false)} title={selectedLab ? `Manage ${selectedLab.name || selectedLab.labName}` : 'Manage Lab'}>
-        <div className='space-y-6'>
+      {/* Unified Manage & Edit Department Lab Modal */}
+      <Modal open={manageOpen} onClose={() => setManageOpen(false)} title={selectedLab ? `Manage & Edit — ${selectedLab.name || selectedLab.labName}` : 'Manage Lab'}>
+        <div className='space-y-5'>
           {/* Lab Overview Header Banner */}
           {selectedLab && (
             <div className='rounded-2xl border border-[#d9e1ca] bg-[#f4f6ee]/60 p-4 dark:border-[#414a33] dark:bg-[#20251a]/60 flex items-center justify-between gap-3'>
@@ -3839,97 +3828,231 @@ export default function SuperAdminDashboard() {
             </div>
           )}
 
-          {/* Section 1: Current Assigned Lab Admins */}
-          <div className='space-y-3'>
-            <div className='flex items-center justify-between'>
-              <h5 className='text-xs font-extrabold text-[#5c6e46] dark:text-[#a5b48b] uppercase tracking-wider flex items-center gap-1.5'>
-                <UserCheck size={15} /> Active Lab Administrator
-              </h5>
-              {selectedLab?.admins?.length > 0 && (
-                <span className='text-[11px] font-bold text-[#71805a] dark:text-[#a5b48b]'>
-                  {selectedLab.admins.length} {selectedLab.admins.length === 1 ? 'Admin' : 'Admins'}
-                </span>
-              )}
-            </div>
+          {/* Unified Sub-Tabs Switcher */}
+          <div className='grid grid-cols-2 gap-1 rounded-xl bg-[#f4f6ee] p-1 dark:bg-[#20251a] border border-[#d9e1ca] dark:border-[#414a33]'>
+            <button
+              type='button'
+              onClick={() => setManageTab('admin')}
+              className={`rounded-lg py-2 text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                manageTab === 'admin' ? 'bg-[#5c6e46] text-white shadow-sm' : 'text-[#71805a] hover:text-[#37412a] dark:text-[#a5b48b]'
+              }`}
+            >
+              <UserCheck size={14} /> 1. Admin Credentials
+            </button>
+            <button
+              type='button'
+              onClick={() => setManageTab('details')}
+              className={`rounded-lg py-2 text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                manageTab === 'details' ? 'bg-[#5c6e46] text-white shadow-sm' : 'text-[#71805a] hover:text-[#37412a] dark:text-[#a5b48b]'
+              }`}
+            >
+              <Edit3 size={14} /> 2. Edit Lab Info
+            </button>
+          </div>
 
-            <div className='space-y-2'>
-              {selectedLab?.admins?.length ? (
-                selectedLab.admins.map((admin) => (
-                  <div key={admin._id || admin.id} className='flex items-center justify-between rounded-xl border border-[#d9e1ca] bg-white p-3.5 shadow-2xs dark:border-[#414a33] dark:bg-[#20251a]'>
-                    <div className='flex items-center gap-3 min-w-0 pr-2'>
-                      <div className='h-9 w-9 shrink-0 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 flex items-center justify-center font-black text-sm border border-emerald-300 dark:border-emerald-800'>
-                        {(admin.name || admin.email || 'A').charAt(0).toUpperCase()}
+          {/* TAB 1: ADMIN CREDENTIALS & PROVISIONING */}
+          {manageTab === 'admin' && (
+            <div className='space-y-5 animate-in fade-in'>
+              {/* Active Assigned Lab Admin */}
+              <div className='space-y-3'>
+                <div className='flex items-center justify-between'>
+                  <h5 className='text-xs font-extrabold text-[#5c6e46] dark:text-[#a5b48b] uppercase tracking-wider flex items-center gap-1.5'>
+                    <UserCheck size={15} /> Active Lab Administrator
+                  </h5>
+                  {selectedLab?.admins?.length > 0 && (
+                    <span className='text-[11px] font-bold text-[#71805a] dark:text-[#a5b48b]'>
+                      {selectedLab.admins.length} {selectedLab.admins.length === 1 ? 'Admin' : 'Admins'}
+                    </span>
+                  )}
+                </div>
+
+                <div className='space-y-2'>
+                  {selectedLab?.admins?.length ? (
+                    selectedLab.admins.map((admin) => (
+                      <div key={admin._id || admin.id} className='flex items-center justify-between rounded-xl border border-[#d9e1ca] bg-white p-3.5 shadow-2xs dark:border-[#414a33] dark:bg-[#20251a]'>
+                        <div className='flex items-center gap-3 min-w-0 pr-2'>
+                          <div className='h-9 w-9 shrink-0 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 flex items-center justify-center font-black text-sm border border-emerald-300 dark:border-emerald-800'>
+                            {(admin.name || admin.email || 'A').charAt(0).toUpperCase()}
+                          </div>
+                          <div className='min-w-0 leading-tight'>
+                            <p className='text-sm font-extrabold text-[#37412a] dark:text-[#e4e9d8] truncate'>{admin.name || 'Lab Admin'}</p>
+                            <p className='text-xs text-[#5c6e46] dark:text-[#a8be8a] font-medium truncate mt-0.5'>{admin.email}</p>
+                          </div>
+                        </div>
+                        <Button 
+                          variant='outline' 
+                          onClick={() => handleRemoveAdmin(admin._id || admin.id)} 
+                          className='text-xs px-3 py-1.5 h-8 border-red-200 text-red-600 hover:bg-red-50 font-bold shrink-0 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/30' 
+                          disabled={savingAdmin}
+                        >
+                          <Trash2 size={12} className='mr-1' /> Remove
+                        </Button>
                       </div>
-                      <div className='min-w-0 leading-tight'>
-                        <p className='text-sm font-extrabold text-[#37412a] dark:text-[#e4e9d8] truncate'>{admin.name || 'Lab Admin'}</p>
-                        <p className='text-xs text-[#5c6e46] dark:text-[#a8be8a] font-medium truncate mt-0.5'>{admin.email}</p>
-                      </div>
+                    ))
+                  ) : (
+                    <div className='rounded-xl border border-dashed border-[#cfd8bd] bg-[#fffef8] p-5 text-center dark:border-[#4e5d35] dark:bg-[#1a1d16]'>
+                      <UserX className='mx-auto h-8 w-8 text-amber-500 mb-1.5 opacity-80' />
+                      <p className='text-xs font-bold text-[#37412a] dark:text-[#e4e9d8]'>No Administrator Assigned Yet</p>
+                      <p className='text-[11px] text-[#71805a] dark:text-[#a5b48b] mt-0.5'>Use the form below to provision new credentials for this lab's admin.</p>
                     </div>
-                    <Button 
-                      variant='outline' 
-                      onClick={() => handleRemoveAdmin(admin._id || admin.id)} 
-                      className='text-xs px-3 py-1.5 h-8 border-red-200 text-red-600 hover:bg-red-50 font-bold shrink-0 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/30' 
-                      disabled={savingAdmin}
+                  )}
+                </div>
+              </div>
+
+              {/* Create & Provision New Lab Admin Account */}
+              <div className='rounded-2xl border border-[#d9e1ca] p-4.5 dark:border-[#414a33] bg-[#f9faef] dark:bg-[#1a1d16] space-y-3.5'>
+                <div className='flex items-center justify-between border-b border-[#d9e1ca] pb-2.5 dark:border-[#414a33]'>
+                  <h5 className='text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8] uppercase tracking-wider flex items-center gap-1.5'>
+                    <UserPlus size={15} className='text-[#5c6e46] dark:text-[#a8be8a]' /> Provision New Lab Admin Credentials
+                  </h5>
+                  <span className='text-[10px] font-bold text-[#5c6e46] dark:text-[#a8be8a] bg-[#e8efd9] dark:bg-[#2a3320] px-2 py-0.5 rounded-full'>
+                    Instant Access
+                  </span>
+                </div>
+
+                <div className='space-y-3'>
+                  <Input 
+                    label='Admin Full Name *' 
+                    value={newAdmin.name} 
+                    onChange={(e) => setNewAdmin((s) => ({ ...s, name: e.target.value }))} 
+                    placeholder='e.g. Dr. S. Sharma' 
+                  />
+                  <Input 
+                    label='Admin Login Email *' 
+                    type='email' 
+                    value={newAdmin.email} 
+                    onChange={(e) => setNewAdmin((s) => ({ ...s, email: e.target.value }))} 
+                    placeholder='sharma@rasayanflow.edu' 
+                  />
+                  <Input 
+                    label='Login Password *' 
+                    type='password' 
+                    value={newAdmin.password} 
+                    onChange={(e) => setNewAdmin((s) => ({ ...s, password: e.target.value }))} 
+                    minLength={6} 
+                    placeholder='••••••••' 
+                  />
+                  <Button 
+                    onClick={handleCreateAdminForLab} 
+                    className='w-full py-3 text-xs font-extrabold shadow-sm bg-[#37412a] hover:bg-[#2a3220] text-white dark:bg-[#e4e9d8] dark:text-[#20251a]' 
+                    disabled={savingAdmin || !newAdmin.email.trim()}
+                  >
+                    {savingAdmin ? 'Provisioning Admin...' : 'Create & Provision Lab Admin Account'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: EDIT LAB DETAILS */}
+          {manageTab === 'details' && (
+            <div className='space-y-4 animate-in fade-in'>
+              <div className='rounded-xl bg-[#f4f6ee] p-3 border border-[#d9e1ca] dark:bg-[#20251a] dark:border-[#414a33]'>
+                <p className='text-xs text-[#5c6e46] dark:text-[#a8be8a] font-medium leading-relaxed flex items-start gap-1.5'>
+                  <Edit3 size={16} className='shrink-0 mt-0.5' />
+                  <span>Modify the department lab name, lab code, course program, department name, and academic year/semester placement.</span>
+                </p>
+              </div>
+
+              <Input
+                label='Lab Name *'
+                value={editLabForm.name}
+                onChange={(e) => setEditLabForm({ ...editLabForm, name: e.target.value })}
+                placeholder='e.g. Human Anatomy & Physiology Lab 1'
+                required
+              />
+
+              <Input
+                label='Lab Code *'
+                value={editLabForm.code}
+                onChange={(e) => setEditLabForm({ ...editLabForm, code: e.target.value.toUpperCase() })}
+                placeholder='e.g. PH101L'
+                required
+              />
+
+              <div>
+                <label className='block text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf] mb-1.5'>Course Program</label>
+                <div className='flex gap-2'>
+                  {['B.Pharm', 'M.Pharm', 'Pharm.D', 'PhD'].map((c) => (
+                    <button
+                      key={c}
+                      type='button'
+                      onClick={() => setEditLabForm({ ...editLabForm, courseType: c })}
+                      className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all border ${
+                        editLabForm.courseType === c
+                          ? 'bg-[#5c6e46] text-white border-[#5c6e46] shadow-sm'
+                          : 'border-[#d9e1ca] bg-white text-[#37412a] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
+                      }`}
                     >
-                      <Trash2 size={12} className='mr-1' /> Remove
-                    </Button>
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <Input
+                label='Department Name'
+                value={editLabForm.department}
+                onChange={(e) => setEditLabForm({ ...editLabForm, department: e.target.value })}
+                placeholder='e.g. Pharmaceutics / Pharmacology'
+              />
+
+              {/* Visual Academic Year Selection */}
+              <div>
+                <label className='block text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf] mb-1.5'>Academic Year</label>
+                <div className='flex gap-2'>
+                  {(editLabForm.courseType === 'B.Pharm' ? ['1', '2', '3', '4'] : editLabForm.courseType === 'M.Pharm' ? ['1', '2'] : ['1', '2', '3', '4', '5']).map((y) => (
+                    <button
+                      key={y}
+                      type='button'
+                      onClick={() => setEditLabForm({ ...editLabForm, year: y, semester: (parseInt(y) * 2 - 1).toString() })}
+                      className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all border ${
+                        editLabForm.year === y
+                          ? 'bg-[#5c6e46] text-white border-[#5c6e46] shadow-sm'
+                          : 'border-[#d9e1ca] bg-white text-[#37412a] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
+                      }`}
+                    >
+                      Year {y}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Visual Semester Selection */}
+              {editLabForm.year && (
+                <div>
+                  <label className='block text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf] mb-1.5'>Academic Semester</label>
+                  <div className='flex gap-2'>
+                    {[(parseInt(editLabForm.year) * 2 - 1).toString(), (parseInt(editLabForm.year) * 2).toString()].map((s) => (
+                      <button
+                        key={s}
+                        type='button'
+                        onClick={() => setEditLabForm({ ...editLabForm, semester: s })}
+                        className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all border ${
+                          editLabForm.semester === s
+                            ? 'bg-[#37412a] text-white border-[#37412a] shadow-sm dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                            : 'border-[#d9e1ca] bg-white text-[#37412a] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
+                        }`}
+                      >
+                        Semester {s}
+                      </button>
+                    ))}
                   </div>
-                ))
-              ) : (
-                <div className='rounded-xl border border-dashed border-[#cfd8bd] bg-[#fffef8] p-5 text-center dark:border-[#4e5d35] dark:bg-[#1a1d16]'>
-                  <UserX className='mx-auto h-8 w-8 text-amber-500 mb-1.5 opacity-80' />
-                  <p className='text-xs font-bold text-[#37412a] dark:text-[#e4e9d8]'>No Administrator Assigned Yet</p>
-                  <p className='text-[11px] text-[#71805a] dark:text-[#a5b48b] mt-0.5'>Use the form below to provision new credentials for this lab's admin.</p>
                 </div>
               )}
-            </div>
-          </div>
 
-          {/* Section 2: Create & Provision New Lab Admin Account */}
-          <div className='rounded-2xl border border-[#d9e1ca] p-4.5 dark:border-[#414a33] bg-[#f9faef] dark:bg-[#1a1d16] space-y-3.5'>
-            <div className='flex items-center justify-between border-b border-[#d9e1ca] pb-2.5 dark:border-[#414a33]'>
-              <h5 className='text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8] uppercase tracking-wider flex items-center gap-1.5'>
-                <UserPlus size={15} className='text-[#5c6e46] dark:text-[#a8be8a]' /> Provision New Lab Admin Credentials
-              </h5>
-              <span className='text-[10px] font-bold text-[#5c6e46] dark:text-[#a8be8a] bg-[#e8efd9] dark:bg-[#2a3320] px-2 py-0.5 rounded-full'>
-                Instant Access
-              </span>
-            </div>
-
-            <div className='space-y-3'>
-              <Input 
-                label='Admin Full Name *' 
-                value={newAdmin.name} 
-                onChange={(e) => setNewAdmin((s) => ({ ...s, name: e.target.value }))} 
-                placeholder='e.g. Dr. S. Sharma' 
-              />
-              <Input 
-                label='Admin Login Email *' 
-                type='email' 
-                value={newAdmin.email} 
-                onChange={(e) => setNewAdmin((s) => ({ ...s, email: e.target.value }))} 
-                placeholder='sharma@rasayanflow.edu' 
-              />
-              <Input 
-                label='Login Password *' 
-                type='password' 
-                value={newAdmin.password} 
-                onChange={(e) => setNewAdmin((s) => ({ ...s, password: e.target.value }))} 
-                minLength={6} 
-                placeholder='••••••••' 
-              />
-              <Button 
-                onClick={handleCreateAdminForLab} 
-                className='w-full py-3 text-xs font-extrabold shadow-sm bg-[#37412a] hover:bg-[#2a3220] text-white dark:bg-[#e4e9d8] dark:text-[#20251a]' 
-                disabled={savingAdmin || !newAdmin.email.trim()}
+              <Button
+                onClick={handleSaveLabEdit}
+                className='w-full py-3.5 text-sm font-bold shadow-md bg-[#37412a] hover:bg-[#2a3220] text-white dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                disabled={savingLabEdit}
               >
-                {savingAdmin ? 'Provisioning Admin...' : 'Create & Provision Lab Admin Account'}
+                {savingLabEdit ? 'Saving Lab Changes...' : 'Save & Update Lab Details'}
               </Button>
             </div>
-          </div>
+          )}
 
-          {/* Section 3: Danger Zone - Delete Lab */}
-          <div className='rounded-2xl border border-red-200/80 p-3.5 dark:border-red-900/40 bg-red-50/30 dark:bg-red-950/20 flex items-center justify-between gap-3'>
+          {/* Danger Zone - Delete Lab */}
+          <div className='rounded-2xl border border-red-200/80 p-3.5 dark:border-red-900/40 bg-red-50/30 dark:bg-red-950/20 flex items-center justify-between gap-3 pt-3'>
             <div>
               <p className='text-xs font-extrabold text-red-700 dark:text-red-400'>Delete Department Lab</p>
               <p className='text-[10px] text-red-600/80 dark:text-red-400/70 mt-0.5'>Permanently remove this lab and its data.</p>
@@ -3945,115 +4068,6 @@ export default function SuperAdminDashboard() {
               <Trash2 size={13} className='mr-1' /> Delete...
             </Button>
           </div>
-        </div>
-      </Modal>
-
-      {/* Edit Department Lab Modal */}
-      <Modal open={editLabModalOpen} onClose={() => setEditLabModalOpen(false)} title={editingLabItem ? `Edit ${editingLabItem.labCode || editingLabItem.code || 'Lab'} — ${editingLabItem.name || editingLabItem.labName}` : 'Edit Lab'}>
-        <div className='space-y-5'>
-          <div className='rounded-xl bg-[#f4f6ee] p-3 border border-[#d9e1ca] dark:bg-[#20251a] dark:border-[#414a33]'>
-            <p className='text-xs text-[#5c6e46] dark:text-[#a8be8a] font-medium leading-relaxed flex items-start gap-1.5'>
-              <Edit3 size={16} className='shrink-0 mt-0.5' />
-              <span>Modify the department lab name, lab code, course program, department name, and academic year/semester placement.</span>
-            </p>
-          </div>
-
-          <div className='space-y-4'>
-            <Input
-              label='Lab Name *'
-              value={editLabForm.name}
-              onChange={(e) => setEditLabForm({ ...editLabForm, name: e.target.value })}
-              placeholder='e.g. Human Anatomy & Physiology Lab 1'
-              required
-            />
-
-            <Input
-              label='Lab Code *'
-              value={editLabForm.code}
-              onChange={(e) => setEditLabForm({ ...editLabForm, code: e.target.value.toUpperCase() })}
-              placeholder='e.g. PH101L'
-              required
-            />
-
-            <div>
-              <label className='block text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf] mb-1.5'>Course Program</label>
-              <div className='flex gap-2'>
-                {['B.Pharm', 'M.Pharm', 'Pharm.D', 'PhD'].map((c) => (
-                  <button
-                    key={c}
-                    type='button'
-                    onClick={() => setEditLabForm({ ...editLabForm, courseType: c })}
-                    className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all border ${
-                      editLabForm.courseType === c
-                        ? 'bg-[#5c6e46] text-white border-[#5c6e46] shadow-sm'
-                        : 'border-[#d9e1ca] bg-white text-[#37412a] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
-                    }`}
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <Input
-              label='Department Name'
-              value={editLabForm.department}
-              onChange={(e) => setEditLabForm({ ...editLabForm, department: e.target.value })}
-              placeholder='e.g. Pharmaceutics / Pharmacology'
-            />
-
-            {/* Visual Academic Year Selection */}
-            <div>
-              <label className='block text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf] mb-1.5'>Academic Year</label>
-              <div className='flex gap-2'>
-                {(editLabForm.courseType === 'B.Pharm' ? ['1', '2', '3', '4'] : editLabForm.courseType === 'M.Pharm' ? ['1', '2'] : ['1', '2', '3', '4', '5']).map((y) => (
-                  <button
-                    key={y}
-                    type='button'
-                    onClick={() => setEditLabForm({ ...editLabForm, year: y, semester: (parseInt(y) * 2 - 1).toString() })}
-                    className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all border ${
-                      editLabForm.year === y
-                        ? 'bg-[#5c6e46] text-white border-[#5c6e46] shadow-sm'
-                        : 'border-[#d9e1ca] bg-white text-[#37412a] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
-                    }`}
-                  >
-                    Year {y}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Visual Semester Selection */}
-            {editLabForm.year && (
-              <div>
-                <label className='block text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf] mb-1.5'>Academic Semester</label>
-                <div className='flex gap-2'>
-                  {[(parseInt(editLabForm.year) * 2 - 1).toString(), (parseInt(editLabForm.year) * 2).toString()].map((s) => (
-                    <button
-                      key={s}
-                      type='button'
-                      onClick={() => setEditLabForm({ ...editLabForm, semester: s })}
-                      className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all border ${
-                        editLabForm.semester === s
-                          ? 'bg-[#37412a] text-white border-[#37412a] shadow-sm dark:bg-[#e4e9d8] dark:text-[#20251a]'
-                          : 'border-[#d9e1ca] bg-white text-[#37412a] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
-                      }`}
-                    >
-                      Semester {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <Button
-            onClick={handleSaveLabEdit}
-            className='w-full py-3.5 text-sm font-bold shadow-md bg-[#37412a] hover:bg-[#2a3220] text-white dark:bg-[#e4e9d8] dark:text-[#20251a]'
-            disabled={savingLabEdit}
-          >
-            {savingLabEdit ? 'Saving Lab Changes...' : 'Save & Update Lab Details'}
-          </Button>
         </div>
       </Modal>
 
