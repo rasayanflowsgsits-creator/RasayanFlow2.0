@@ -165,10 +165,19 @@ const listLabs = asyncHandler(async (req, res) => {
 const assignAdmin = asyncHandler(async (req, res) => {
   const { labId, adminId, email, name, password } = req.body;
 
+  if (!labId) {
+    res.status(400);
+    throw new Error('Lab ID is required');
+  }
+
   const lab = await Lab.findById(labId);
   if (!lab) {
     res.status(404);
     throw new Error('Lab not found');
+  }
+
+  if (!Array.isArray(lab.admins)) {
+    lab.admins = [];
   }
 
   let admin = null;
@@ -182,6 +191,7 @@ const assignAdmin = asyncHandler(async (req, res) => {
     admin = await User.findOne({ email: normalizedEmail });
   }
 
+  let isNewUser = false;
   if (!admin && normalizedEmail) {
     admin = await User.create({
       name: (name && name.trim()) || normalizedEmail.split('@')[0],
@@ -197,6 +207,7 @@ const assignAdmin = asyncHandler(async (req, res) => {
       year: lab.year || '1',
       semester: lab.semester || '1',
     });
+    isNewUser = true;
   }
 
   if (!admin) {
@@ -204,39 +215,46 @@ const assignAdmin = asyncHandler(async (req, res) => {
     throw new Error('Admin user not found or valid email not provided');
   }
 
-  admin.role = 'labAdmin';
-  admin.labId = lab._id;
-  admin.labName = lab.labName;
-  admin.labCode = lab.labCode;
-  admin.course = lab.courseType || 'B.Pharm';
-  admin.courseType = lab.courseType || 'B.Pharm';
-  admin.year = lab.year || '1';
-  admin.semester = lab.semester || '1';
-  admin.isApproved = true;
-  if (name && name.trim()) admin.name = name.trim();
-  if (password && password.trim()) admin.password = password.trim();
-  await admin.save();
+  if (!isNewUser) {
+    admin.role = 'labAdmin';
+    admin.labId = lab._id;
+    admin.labName = lab.labName;
+    admin.labCode = lab.labCode;
+    admin.course = lab.courseType || 'B.Pharm';
+    admin.courseType = lab.courseType || 'B.Pharm';
+    admin.year = lab.year || '1';
+    admin.semester = lab.semester || '1';
+    admin.isApproved = true;
+    if (name && name.trim()) admin.name = name.trim();
+    if (password && password.trim()) admin.password = password.trim();
+    await admin.save();
+  }
 
-  if (!lab.admins.some((id) => id.toString() === admin._id.toString())) {
+  const adminIdStr = admin._id.toString();
+  if (!lab.admins.some((id) => id && id.toString() === adminIdStr)) {
     lab.admins.push(admin._id);
     await lab.save();
   }
 
   const updatedLab = await Lab.findById(lab._id).populate('admins', 'name email role isApproved');
 
-  await ActivityLog.create({
-    userId: req.user._id,
-    action: 'assign_admin',
-    details: `Assigned ${admin.email} as labAdmin to lab ${lab.labCode} (${lab.labName})`,
-    role: req.user.role || 'superAdmin',
-    userName: req.user.name || 'Super Administrator',
-    userEmail: req.user.email,
-    labName: lab.labName,
-    courseType: lab.courseType || 'B.Pharm',
-    year: admin.year,
-    semester: admin.semester,
-    status: 'Success'
-  });
+  try {
+    await ActivityLog.create({
+      userId: req.user ? req.user._id : admin._id,
+      action: 'assign_admin',
+      details: `Assigned ${admin.email} as labAdmin to lab ${lab.labCode} (${lab.labName})`,
+      role: (req.user && req.user.role) || 'superAdmin',
+      userName: (req.user && req.user.name) || 'Super Administrator',
+      userEmail: req.user ? req.user.email : 'admin@rasayanflow.edu',
+      labName: lab.labName,
+      courseType: lab.courseType || 'B.Pharm',
+      year: admin.year,
+      semester: admin.semester,
+      status: 'Success'
+    });
+  } catch (logErr) {
+    console.error('Activity log error:', logErr);
+  }
 
   res.json({ success: true, data: updatedLab });
 });
@@ -250,20 +268,35 @@ const removeAdmin = asyncHandler(async (req, res) => {
     throw new Error('Lab not found');
   }
 
-  lab.admins = lab.admins.filter((id) => id.toString() !== adminId);
+  if (!Array.isArray(lab.admins)) {
+    lab.admins = [];
+  }
+
+  lab.admins = lab.admins.filter((id) => id && id.toString() !== String(adminId));
   await lab.save();
 
   const admin = await User.findById(adminId);
   if (admin) {
     admin.role = 'student';
     admin.labId = null;
+    admin.labName = '';
+    admin.labCode = '';
     admin.isApproved = false;
     await admin.save();
   }
 
-  await ActivityLog.create({ userId: req.user._id, action: 'remove_admin', details: `Removed ${admin?.email || adminId} from lab ${lab.labCode}` });
+  try {
+    await ActivityLog.create({
+      userId: req.user ? req.user._id : lab._id,
+      action: 'remove_admin',
+      details: `Removed ${admin?.email || adminId} from lab ${lab.labCode}`
+    });
+  } catch (logErr) {
+    console.error('Activity log error:', logErr);
+  }
 
-  res.json({ success: true, data: lab });
+  const updatedLab = await Lab.findById(lab._id).populate('admins', 'name email role isApproved');
+  res.json({ success: true, data: updatedLab });
 });
 
 const approveAdmin = asyncHandler(async (req, res) => {

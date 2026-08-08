@@ -47,7 +47,13 @@ router.put(
 
 router.post(
   '/assign',
-  [body('labId').isMongoId(), body('adminId').optional().isMongoId(), body('email').optional().isEmail()],
+  [
+    body('labId').isMongoId(),
+    body('adminId').optional({ checkFalsy: true }).isMongoId(),
+    body('email').optional({ checkFalsy: true }).isEmail(),
+    body('name').optional({ checkFalsy: true }).isString(),
+    body('password').optional({ checkFalsy: true }).isString(),
+  ],
   validateRequest,
   assignAdmin,
 );

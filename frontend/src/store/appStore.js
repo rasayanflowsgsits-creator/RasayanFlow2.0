@@ -665,12 +665,24 @@ const useAppStore = create((set) => ({
     return getPayload(response.data);
   },
   assignAdminToLab: async ({ labId, adminId, email, name, password }) => {
-    const response = await api.post('/labs/assign', { labId, adminId, email, name, password });
-    return getPayload(response.data);
+    const response = await api.post('/labs/assign', { labId, adminId: adminId || undefined, email: email || undefined, name: name || undefined, password: password || undefined });
+    const rawLab = getPayload(response.data);
+    const updated = normalizeLab(rawLab);
+    set((state) => ({
+      labs: state.labs.map((l) => (l._id === labId || l.id === labId ? updated : l)),
+      myLabs: state.myLabs.map((l) => (l._id === labId || l.id === labId ? updated : l)),
+    }));
+    return updated;
   },
   removeAdminFromLab: async ({ labId, adminId }) => {
     const response = await api.post('/labs/remove', { labId, adminId });
-    return getPayload(response.data);
+    const rawLab = getPayload(response.data);
+    const updated = normalizeLab(rawLab);
+    set((state) => ({
+      labs: state.labs.map((l) => (l._id === labId || l.id === labId ? updated : l)),
+      myLabs: state.myLabs.map((l) => (l._id === labId || l.id === labId ? updated : l)),
+    }));
+    return updated;
   },
   createLabAdmin: async ({ name, email, password }) => {
     const response = await api.post('/users/lab-admins', { name, email, password });

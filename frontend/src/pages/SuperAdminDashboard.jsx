@@ -1227,9 +1227,11 @@ export default function SuperAdminDashboard() {
     if (!selectedLab || !adminId) return;
     setSavingAdmin(true);
     try {
-      await removeAdminFromLab({ labId: selectedLab.id, adminId });
+      const targetLabId = selectedLab._id || selectedLab.id;
+      const updatedLab = await removeAdminFromLab({ labId: targetLabId, adminId });
       await Promise.all([fetchLabs(), fetchUsers(), fetchActivityLogs({ limit: 100 })]);
-      setToast({ type: 'success', message: 'Admin removed from lab.' });
+      if (updatedLab) setSelectedLab(updatedLab);
+      setToast({ type: 'success', message: 'Lab administrator removed successfully.' });
     } catch (error) {
       setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to remove admin.' });
     } finally {
@@ -1241,15 +1243,16 @@ export default function SuperAdminDashboard() {
     if (!selectedLab || !newAdmin.email.trim()) return;
     setSavingAdmin(true);
     try {
-      await assignAdminToLab({
-        labId: selectedLab.id || selectedLab._id,
+      const targetLabId = selectedLab._id || selectedLab.id;
+      const updatedLab = await assignAdminToLab({
+        labId: targetLabId,
         email: newAdmin.email.trim().toLowerCase(),
         name: newAdmin.name.trim(),
         password: newAdmin.password
       });
       await Promise.all([fetchLabs(), fetchUsers(), fetchActivityLogs({ limit: 100 })]);
-      setToast({ type: 'success', message: 'Lab admin account provisioned and assigned.' });
-      setManageOpen(false);
+      if (updatedLab) setSelectedLab(updatedLab);
+      setToast({ type: 'success', message: `Lab Admin account (${newAdmin.email.trim()}) provisioned and assigned successfully!` });
       setNewAdmin({ name: '', email: '', password: '' });
     } catch (error) {
       setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to provision admin account.' });
