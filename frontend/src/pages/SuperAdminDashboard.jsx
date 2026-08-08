@@ -1514,14 +1514,14 @@ export default function SuperAdminDashboard() {
             </Card>
           </div>
 
-          {/* Institutional Labs Performance & System Analytics Graphs */}
-          <div className='grid gap-6 lg:grid-cols-3'>
+          {/* Institutional Labs Performance & System Analytics - Vertical Stack */}
+          <div className='space-y-6'>
 
-            {/* Left Side: Department Labs Workload & Performance Bar Graph */}
+            {/* 1. Department Labs Performance Analytics (Full Width) */}
             <Card 
               title='Department Labs Performance Analytics' 
               subtitle='Real-time operational readiness, syllabus density & chemical requisition status across labs' 
-              className='lg:col-span-2'
+              className='w-full'
             >
               <div className='space-y-5 pt-3'>
                 {/* Top Metric Header Row */}
@@ -1601,11 +1601,11 @@ export default function SuperAdminDashboard() {
               </div>
             </Card>
 
-            {/* Right Side: Role Distribution & System Capacity Chart */}
+            {/* 2. System Role Distribution & Capacity (Full Width Below Lab Performance) */}
             <Card 
               title='System Role Distribution & Capacity' 
               subtitle='Institutional user volume & role allocation breakdown' 
-              className='lg:col-span-1'
+              className='w-full'
             >
               <div className='space-y-4 pt-3'>
                 {/* Role Breakdown Visual Cards */}
@@ -1648,184 +1648,176 @@ export default function SuperAdminDashboard() {
               </div>
             </Card>
 
+            {/* 3. Recent Activity Stream (Full Width Below Role Distribution) */}
+            <Card title='Recent Activity Stream' subtitle='Latest platform actions' className='w-full'>
+              <div className='space-y-3 pt-2'>
+                {recentActivity.length === 0 ? (
+                  <p className='py-6 text-center text-sm text-[#71805a] dark:text-[#a5b48b]'>No audit logs recorded yet.</p>
+                ) : (
+                  recentActivity.map((log) => (
+                    <div key={log.id} className='flex flex-col gap-1 rounded-2xl border border-[#d9e1ca] bg-[#fffef8] p-4 sm:flex-row sm:items-center sm:justify-between dark:border-[#414a33] dark:bg-[#20251a]'>
+                      <div>
+                        <p className='text-sm font-bold text-[#37412a] dark:text-[#e4e9d8]'>{log.details}</p>
+                        <p className='text-xs text-[#71805a] dark:text-[#a5b48b] mt-0.5'>
+                          Triggered by <span className='font-semibold'>{log.actorName || 'System'}</span> ({log.actorRole || 'admin'})
+                        </p>
+                      </div>
+                      <span className='text-xs font-medium text-[#87996c] dark:text-[#a5b48b] whitespace-nowrap'>
+                        {log.timestamp ? new Date(log.timestamp).toLocaleString() : 'Recent'}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </Card>
+
+          </div>
+        </div>
+      )}
+
+      {/* SECTION FOR STORE OVERSIGHT TAB */}
+      {activeTab === 'store' && (
+        <div className='rounded-3xl border border-[#d9e1ca] bg-[#fffef8] p-6 sm:p-8 shadow-sm dark:border-[#414a33] dark:bg-[#20251a] space-y-6 animate-in fade-in'>
+          {/* Central Store Overview Header & Cards */}
+          <div className='flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between border-b border-[#d9e1ca] pb-4 dark:border-[#414a33]'>
+            <div>
+              <h2 className='text-2xl font-black text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2.5'>
+                <span>🏪</span> Central Store Oversight
+              </h2>
+              <p className='text-xs font-medium text-[#71805a] dark:text-[#a5b48b] mt-0.5'>
+                Live snapshot of chemical store inventory, stock values, low stock warnings and top valued reagents
+              </p>
+            </div>
           </div>
 
-          <Card title='Recent Activity Stream' subtitle='Latest platform actions'>
-            <div className='space-y-3 pt-2'>
-              {recentActivity.length === 0 ? (
-                <p className='py-6 text-center text-sm text-[#71805a] dark:text-[#a5b48b]'>No audit logs recorded yet.</p>
-              ) : (
-                recentActivity.map((log) => (
-                  <div key={log.id} className='flex flex-col gap-1 rounded-2xl border border-[#d9e1ca] bg-[#fffef8] p-4 sm:flex-row sm:items-center sm:justify-between dark:border-[#414a33] dark:bg-[#20251a]'>
-                    <div>
-                      <p className='text-sm font-bold text-[#37412a] dark:text-[#e4e9d8]'>{log.details}</p>
-                      <p className='text-xs text-[#71805a] dark:text-[#a5b48b] mt-0.5'>
-                        Triggered by <span className='font-semibold'>{log.actorName || 'System'}</span> ({log.actorRole || 'admin'})
-                      </p>
-                    </div>
-                    <span className='text-xs font-medium text-[#87996c] dark:text-[#a5b48b] whitespace-nowrap'>
-                      {log.timestamp ? new Date(log.timestamp).toLocaleString() : 'Recent'}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          </Card>
-
-          {/* STORE OVERVIEW SECTION */}
-          <div className='space-y-6 pt-4 border-t border-[#d9e1ca] dark:border-[#3c452f]'>
-            {/* Section Header */}
-            <div className='flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between'>
-              <div>
-                <h2 className='text-xl font-bold text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2'>
-                  <span>🏪</span> Central Store Overview
-                </h2>
-                <p className='text-sm text-[#71805a] dark:text-[#a5b48b] mt-0.5'>
-                  Live snapshot of chemical store inventory
-                </p>
+          {/* Stat Cards (4 cards) */}
+          <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+            {/* Card 1: Total Chemicals */}
+            <Card className='border-l-4 border-l-[#5c6e46] bg-white dark:bg-[#20251a]'>
+              <div className='flex items-center justify-between'>
+                <div>
+                  <p className='text-xs font-semibold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Total Chemicals</p>
+                  <p className='text-3xl font-extrabold text-[#37412a] dark:text-[#e4e9d8] mt-1'>
+                    {storeOverview.totalChemicals}
+                  </p>
+                </div>
+                <div className='flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f4f6ee] text-[#5c6e46] dark:bg-[#2a3121] dark:text-[#a5b48b]'>
+                  <FlaskConical size={24} />
+                </div>
               </div>
-            </div>
+            </Card>
 
-            {/* Stat Cards (4 cards) */}
-            <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
-              {/* Card 1: Total Chemicals */}
-              <Card className='border-l-4 border-l-[#5c6e46] bg-white dark:bg-[#20251a]'>
-                <div className='flex items-center justify-between'>
-                  <div>
-                    <p className='text-xs font-semibold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Total Chemicals</p>
-                    <p className='text-3xl font-extrabold text-[#37412a] dark:text-[#e4e9d8] mt-1'>
-                      {storeOverview.totalChemicals}
-                    </p>
-                  </div>
-                  <div className='flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f4f6ee] text-[#5c6e46] dark:bg-[#2a3121] dark:text-[#a5b48b]'>
-                    <FlaskConical size={24} />
-                  </div>
+            {/* Card 2: Total Inventory Value (₹) */}
+            <Card className='border-l-4 border-l-[#5c6e46] bg-white dark:bg-[#20251a]'>
+              <div className='flex items-center justify-between'>
+                <div>
+                  <p className='text-xs font-semibold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Total Inventory Value</p>
+                  <p className='text-2xl font-extrabold text-[#37412a] dark:text-[#e4e9d8] mt-1'>
+                    ₹{Number(storeOverview.totalValue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
                 </div>
-              </Card>
-
-              {/* Card 2: Total Inventory Value (₹) */}
-              <Card className='border-l-4 border-l-[#5c6e46] bg-white dark:bg-[#20251a]'>
-                <div className='flex items-center justify-between'>
-                  <div>
-                    <p className='text-xs font-semibold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Total Inventory Value</p>
-                    <p className='text-2xl font-extrabold text-[#37412a] dark:text-[#e4e9d8] mt-1'>
-                      ₹{Number(storeOverview.totalValue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
-                  </div>
-                  <div className='flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f4f6ee] text-[#5c6e46] dark:bg-[#2a3121] dark:text-[#a5b48b]'>
-                    <IndianRupee size={24} />
-                  </div>
+                <div className='flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f4f6ee] text-[#5c6e46] dark:bg-[#2a3121] dark:text-[#a5b48b]'>
+                  <IndianRupee size={24} />
                 </div>
-              </Card>
+              </div>
+            </Card>
 
-              {/* Card 3: Low Stock Chemicals */}
-              <Card className='border-l-4 border-l-amber-500 bg-white dark:bg-[#20251a]'>
-                <div className='flex items-center justify-between'>
-                  <div>
-                    <p className='text-xs font-semibold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Low Stock Chemicals</p>
-                    <p className='text-3xl font-extrabold text-[#37412a] dark:text-[#e4e9d8] mt-1'>
-                      {storeOverview.lowStockCount}
-                    </p>
-                  </div>
-                  <div className='flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400'>
-                    <AlertTriangle size={24} />
-                  </div>
+            {/* Card 3: Low Stock Chemicals */}
+            <Card className='border-l-4 border-l-amber-500 bg-white dark:bg-[#20251a]'>
+              <div className='flex items-center justify-between'>
+                <div>
+                  <p className='text-xs font-semibold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Low Stock Chemicals</p>
+                  <p className='text-3xl font-extrabold text-[#37412a] dark:text-[#e4e9d8] mt-1'>
+                    {storeOverview.lowStockCount}
+                  </p>
                 </div>
-              </Card>
-
-              {/* Card 4: Out of Stock */}
-              <Card className='border-l-4 border-l-rose-500 bg-white dark:bg-[#20251a]'>
-                <div className='flex items-center justify-between'>
-                  <div>
-                    <p className='text-xs font-semibold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Out of Stock</p>
-                    <p className='text-3xl font-extrabold text-[#37412a] dark:text-[#e4e9d8] mt-1'>
-                      {storeOverview.outOfStockCount}
-                    </p>
-                  </div>
-                  <div className='flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400'>
-                    <AlertCircle size={24} />
-                  </div>
+                <div className='flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400'>
+                  <AlertTriangle size={24} />
                 </div>
-              </Card>
-            </div>
+              </div>
+            </Card>
 
-            {/* Simple Table Card */}
-            <Card title='Chemical Stock Summary' subtitle='Top chemicals by value'>
-              <div className='space-y-4 pt-2'>
-                {loadingStoreOverview ? (
-                  <div className='py-8 text-center text-sm text-[#71805a] dark:text-[#a5b48b]'>
-                    Loading chemical inventory summary...
-                  </div>
-                ) : storeOverview.topChemicals.length === 0 ? (
-                  <div className='py-8 text-center text-sm text-[#71805a] dark:text-[#a5b48b]'>
-                    No store chemical inventory data found.
-                  </div>
-                ) : (
-                  <div className='overflow-x-auto rounded-xl border border-[#d9e1ca] dark:border-[#414a33]'>
-                    <table className='w-full text-left border-collapse'>
-                      <thead className='bg-[#f4f6ee] dark:bg-[#242a1d] border-b border-[#d9e1ca] dark:border-[#414a33]'>
-                        <tr>
-                          <th className='px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Chemical Name</th>
-                          <th className='px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Grade</th>
-                          <th className='px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Available Qty</th>
-                          <th className='px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Unit Price (₹)</th>
-                          <th className='px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Total Value (₹)</th>
-                          <th className='px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className='divide-y divide-[#e8efd9] dark:divide-[#2a3121] bg-[#fffef8] dark:bg-[#20251a]'>
-                        {storeOverview.topChemicals.map((chem) => {
-                          const isOut = chem.status === 'Out of Stock';
-                          const isLow = chem.status === 'Low Stock';
-                          const badgeClass = isOut
-                            ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-900/40'
-                            : isLow
-                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-900/40'
-                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/40';
-
-                          return (
-                            <tr key={chem.id || chem._id} className='hover:bg-[#f4f6ee]/60 dark:hover:bg-[#2a3121]/60 transition-colors'>
-                              <td className='px-4 py-3 font-bold text-[#37412a] dark:text-[#e4e9d8] text-sm'>
-                                {chem.name}
-                              </td>
-                              <td className='px-4 py-3 text-sm text-[#5c6e46] dark:text-[#a5b48b] font-medium'>
-                                {chem.grade || 'N/A'}
-                              </td>
-                              <td className='px-4 py-3 text-sm font-semibold text-[#37412a] dark:text-[#e4e9d8]'>
-                                {chem.availableQty} {chem.unit}
-                              </td>
-                              <td className='px-4 py-3 text-sm text-[#37412a] dark:text-[#e4e9d8] font-mono'>
-                                ₹{Number(chem.unitPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </td>
-                              <td className='px-4 py-3 text-sm font-bold text-[#37412a] dark:text-[#e4e9d8] font-mono'>
-                                ₹{Number(chem.totalValue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </td>
-                              <td className='px-4 py-3 text-sm'>
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${badgeClass}`}>
-                                  {chem.status || 'In Stock'}
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {/* View Full Store button at bottom right */}
-                <div className='flex justify-end pt-2'>
-                  <Button
-                    variant='primary'
-                    onClick={() => navigate('/store-oversight')}
-                    className='text-xs px-4 py-2 font-bold shadow-soft'
-                  >
-                    View Full Store <ChevronRight size={14} className='ml-1' />
-                  </Button>
+            {/* Card 4: Out of Stock */}
+            <Card className='border-l-4 border-l-rose-500 bg-white dark:bg-[#20251a]'>
+              <div className='flex items-center justify-between'>
+                <div>
+                  <p className='text-xs font-semibold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Out of Stock</p>
+                  <p className='text-3xl font-extrabold text-[#37412a] dark:text-[#e4e9d8] mt-1'>
+                    {storeOverview.outOfStockCount}
+                  </p>
+                </div>
+                <div className='flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400'>
+                  <AlertCircle size={24} />
                 </div>
               </div>
             </Card>
           </div>
+
+          {/* Simple Table Card */}
+          <Card title='Chemical Stock Summary' subtitle='Top chemicals by value in Central Store'>
+            <div className='space-y-4 pt-2'>
+              {loadingStoreOverview ? (
+                <div className='py-8 text-center text-sm text-[#71805a] dark:text-[#a5b48b]'>
+                  Loading chemical inventory summary...
+                </div>
+              ) : storeOverview.topChemicals.length === 0 ? (
+                <div className='py-8 text-center text-sm text-[#71805a] dark:text-[#a5b48b]'>
+                  No store chemical inventory data found.
+                </div>
+              ) : (
+                <div className='overflow-x-auto rounded-xl border border-[#d9e1ca] dark:border-[#414a33]'>
+                  <table className='w-full text-left border-collapse'>
+                    <thead className='bg-[#f4f6ee] dark:bg-[#242a1d] border-b border-[#d9e1ca] dark:border-[#414a33]'>
+                      <tr>
+                        <th className='px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Chemical Name</th>
+                        <th className='px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Grade</th>
+                        <th className='px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Available Qty</th>
+                        <th className='px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Unit Price (₹)</th>
+                        <th className='px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Total Value (₹)</th>
+                        <th className='px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className='divide-y divide-[#e8efd9] dark:divide-[#2a3121] bg-[#fffef8] dark:bg-[#20251a]'>
+                      {storeOverview.topChemicals.map((chem) => {
+                        const isOut = chem.status === 'Out of Stock';
+                        const isLow = chem.status === 'Low Stock';
+                        const badgeClass = isOut
+                          ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-900/40'
+                          : isLow
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-900/40'
+                          : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/40';
+
+                        return (
+                          <tr key={chem.id || chem._id} className='hover:bg-[#f4f6ee]/60 dark:hover:bg-[#2a3121]/60 transition-colors'>
+                            <td className='px-4 py-3 font-bold text-[#37412a] dark:text-[#e4e9d8] text-sm'>
+                              {chem.name}
+                            </td>
+                            <td className='px-4 py-3 text-sm text-[#5c6e46] dark:text-[#a5b48b] font-medium'>
+                              {chem.grade || 'N/A'}
+                            </td>
+                            <td className='px-4 py-3 text-sm font-semibold text-[#37412a] dark:text-[#e4e9d8]'>
+                              {chem.availableQty} {chem.unit}
+                            </td>
+                            <td className='px-4 py-3 text-sm text-[#37412a] dark:text-[#e4e9d8] font-mono'>
+                              ₹{Number(chem.unitPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td className='px-4 py-3 text-sm font-bold text-[#37412a] dark:text-[#e4e9d8] font-mono'>
+                              ₹{Number(chem.totalValue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td className='px-4 py-3 text-sm'>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${badgeClass}`}>
+                                {chem.status || 'In Stock'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </Card>
         </div>
       )}
 
