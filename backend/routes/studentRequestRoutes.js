@@ -24,6 +24,7 @@ router.get('/lab/:labId', getStudentRequestsForLab);
 
 // Lab Admin routes
 router.get('/lab', getLabRequests);
+router.get('/student-requests', getLabRequests);
 router.get('/lab-history', getLabHistory);
 router.put('/approve-bulk', approveBulk);
 router.put('/:id/approve', approveRequest);

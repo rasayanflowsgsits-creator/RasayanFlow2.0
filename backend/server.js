@@ -158,6 +158,8 @@ const routePairs = [
   ["/lab/history", require("./routes/labHistoryRoutes")],
   ["/lab/structure", require("./routes/labStructureRoutes")],
   ["/student/requests", require("./routes/studentRequestRoutes")],
+  ["/lab/student-requests", require("./routes/studentRequestRoutes")],
+  ["/student/labs", require("./routes/labRoutes")],
   ["/student/research-requests", require("./routes/researchRequestRoutes")],
   ["/student/profile", require("./routes/studentProfileRoutes")],
   ["/super-admin", require("./routes/superAdminRoutes")],

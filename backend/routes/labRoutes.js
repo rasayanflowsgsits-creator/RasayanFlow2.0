@@ -7,8 +7,12 @@ const { createLab, listLabs, assignAdmin, removeAdmin, approveAdmin, deleteLab, 
 
 const router = express.Router();
 
+const { getExperimentsByLab } = require('../controllers/experimentController');
+
 router.get('/', authMiddleware, listLabs);
 router.get('/matching', authMiddleware, getMatchingLabs);
+router.get('/student/labs', authMiddleware, getMatchingLabs);
+router.get('/:labId/experiments', authMiddleware, getExperimentsByLab);
 
 router.use(authMiddleware, roleMiddleware(['superAdmin']));
 
