@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { 
   Plus, CheckCircle2, Users, Warehouse, Search, ShieldCheck, 
-  FlaskConical, ShoppingBag, History, KeyRound, UserPlus, 
+  FlaskConical, ShoppingBag, History, KeyRound, UserPlus, UserX,
   Building2, LayoutDashboard, Clock, UserCheck, AlertCircle, RefreshCw,
   BookOpen, FileSpreadsheet, Megaphone, ToggleLeft, ToggleRight, Download,
   Ban, ShieldAlert, FileText, Check, X, AlertTriangle, Layers, Edit3, Trash2, Folder, FolderOpen, Grid, List,
