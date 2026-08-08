@@ -1,34 +1,46 @@
-// Parse pack size to base unit value and unit
-export function parsePackSize(packSize) {
-  if (!packSize) return { value: 1, unit: 'UNT' };
-  
-  const str = packSize.toString()
-    .trim().toLowerCase()
-    .replace(/\s+/g, '');
-  
-  const num = parseFloat(str);
-  if (isNaN(num)) return { value: 1, unit: 'UNT' };
-  
-  if (str.includes('kg')) 
-    return { value: Math.round(num * 1000 * 100) / 100, unit: 'g' };
-  if (str.includes('gm'))
-    return { value: num, unit: 'g' };
-  if (str.includes('mg'))
-    return { value: num, unit: 'mg' };
-  if (str.includes('g'))
-    return { value: num, unit: 'g' };
-  if (str.includes('ml'))
-    return { value: num, unit: 'ml' };
-  if (str.includes('l'))
-    return { value: Math.round(num * 1000 * 100) / 100, unit: 'ml' };
-  
-  return { value: num, unit: 'UNT' };
-}
-
 // Round to 2 decimal places always
 export function safeRound(num) {
   if (isNaN(num) || num === null || num === undefined) return 0;
-  return Math.round(num * 100) / 100;
+  return Math.round((Number(num) + Number.EPSILON) * 100) / 100;
+}
+
+// Parse pack size to base unit value and unit
+export function parsePackSize(packStr) {
+  if (!packStr) return { baseValue: 1, baseUnit: 'UNT', value: 1, unit: 'UNT' };
+  
+  const s = packStr.toString().trim().toLowerCase();
+  const match = s.match(/^([\d.]+)\s*(.*)$/);
+  if (!match) {
+    return { baseValue: 1, baseUnit: 'UNT', value: 1, unit: 'UNT' };
+  }
+  
+  const num = parseFloat(match[1]) || 1;
+  const unitRaw = match[2].trim().replace(/\s+/g, '');
+  
+  let baseValue = num;
+  let baseUnit = 'UNT';
+
+  if (/^(kg|kgs|kilogram|kilograms)$/i.test(unitRaw)) {
+    baseValue = safeRound(num * 1000);
+    baseUnit = 'g';
+  } else if (/^(mg|mgs|milligram|milligrams)$/i.test(unitRaw)) {
+    baseValue = num;
+    baseUnit = 'mg';
+  } else if (/^(gm|gms|g|gram|grams)$/i.test(unitRaw)) {
+    baseValue = num;
+    baseUnit = 'g';
+  } else if (/^(ml|mls|milliliter|milliliters|millilitre|millilitres)$/i.test(unitRaw)) {
+    baseValue = num;
+    baseUnit = 'ml';
+  } else if (/^(l|ltr|ltrs|liter|liters|litre|litres)$/i.test(unitRaw)) {
+    baseValue = safeRound(num * 1000);
+    baseUnit = 'ml';
+  } else {
+    baseValue = num;
+    baseUnit = 'UNT';
+  }
+
+  return { baseValue, baseUnit, value: baseValue, unit: baseUnit };
 }
 
 // Calculate total stock in base unit
@@ -40,3 +52,4 @@ export function totalStock(availableQty, packSize) {
     unit: unit
   };
 }
+

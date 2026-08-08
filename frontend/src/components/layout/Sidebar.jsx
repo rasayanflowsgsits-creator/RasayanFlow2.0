@@ -23,8 +23,10 @@ import {
   Radio
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
+import { useState, useEffect } from "react";
 import useAuthStore from "../../store/authStore";
-import useStoreManagerMock, { parsePackSize } from "../../store/storeManagerMock";
+import useStoreManagerMock from "../../store/storeManagerMock";
+import { parsePackSize, safeRound, totalStock } from "../../utils/storeHelpers";
 
 const linksMap = {
   "super-admin": [
@@ -74,27 +76,38 @@ export default function Sidebar({ collapsed }) {
   const role = user?.role || "student";
   const navRole = role === "store-admin" ? "store_admin" : role;
   
-  const chemicals = useStoreManagerMock((state) => state.chemicals);
-  const requests = useStoreManagerMock((state) => state.requests);
-  const alertThreshold = useStoreManagerMock((state) => state.alertThreshold);
+  const [storeInventory, setStoreInventory] = useState([]);
+  const alertThreshold = 15;
+
+  useEffect(() => {
+    if (role === 'store-admin' || role === 'store_admin') {
+      import('../../services/api').then(({ default: api }) => {
+        import('../../utils/storeMapper').then(({ toFrontendChemical }) => {
+          api.get('/store/inventory')
+            .then(res => setStoreInventory((res.data || []).map(toFrontendChemical)))
+            .catch(() => {});
+        });
+      });
+    }
+  }, [role]);
 
   let lowStockCount = 0;
   if (role === 'store-admin' || role === 'store_admin') {
-    chemicals.forEach(chem => {
-      const received = Number(chem['Received Quantity'] || 0);
-      const available = Number(chem['Available Quantity'] || 0);
-      const packData = parsePackSize(chem['Pack Size']);
-      const totalBase = received * packData.value;
-      const availableBase = available * packData.value;
+    storeInventory.forEach(chem => {
+      const receivedStock = totalStock(chem['Received Quantity'], chem['Pack Size']);
+      const availableStock = totalStock(chem['Available Quantity'], chem['Pack Size']);
+      const totalBase = receivedStock.total;
+      const availableBase = availableStock.total;
       
       if (totalBase > 0) {
-        const percentage = (availableBase / totalBase) * 100;
+        const percentage = safeRound((availableBase / totalBase) * 100);
         if (percentage < alertThreshold) {
           lowStockCount++;
         }
       }
     });
   }
+
 
   let storeRequestsCount = 0;
   if (role === 'lab-admin') {

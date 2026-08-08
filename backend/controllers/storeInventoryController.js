@@ -61,7 +61,10 @@ const importChemicals = asyncHandler(async (req, res) => {
     try {
       const orConditions = [];
       if (chem.chemicalId) orConditions.push({ chemicalId: chem.chemicalId });
-      if (chem.name) orConditions.push({ name: chem.name });
+      if (chem.name) {
+        const cleanName = chem.name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        orConditions.push({ name: new RegExp('^' + cleanName + '$', 'i') });
+      }
 
       const existing = await StoreInventory.findOne({ $or: orConditions });
 
@@ -72,8 +75,9 @@ const importChemicals = asyncHandler(async (req, res) => {
         existing.packSize = chem.packSize || existing.packSize;
         existing.unitPrice = chem.unitPrice || existing.unitPrice;
         existing.purchasePrice = chem.purchasePrice || existing.purchasePrice;
+        existing.pricePerUnit = chem.pricePerUnit || existing.pricePerUnit;
         
-        const newReceived = Number(chem.receivedQty) || 0;
+        const newReceived = Number(chem.receivedQty !== undefined ? chem.receivedQty : chem.availableQty) || 0;
         
         // Handle Replace vs Merge logic
         if (importMode === 'replace') {
@@ -84,11 +88,15 @@ const importChemicals = asyncHandler(async (req, res) => {
           existing.availableQty = safeRound((existing.availableQty || 0) + newReceived);
         }
 
-        existing.reorderLevel = chem.reorderLevel !== undefined ? chem.reorderLevel : existing.reorderLevel;
+        existing.reorderLevel = chem.reorderLevel !== undefined ? chem.reorderLevel : (existing.reorderLevel || 2);
         existing.grade = chem.grade || existing.grade;
+        existing.cas = chem.cas || existing.cas;
+        existing.formula = chem.formula || existing.formula;
+        existing.smiles = chem.smiles || existing.smiles;
+        existing.supplier = chem.supplier || existing.supplier;
         
         existing.status = calculateStatus(existing.availableQty, existing.reorderLevel);
-        existing.totalValue = safeRound(existing.unitPrice * existing.availableQty);
+        existing.totalValue = safeRound((existing.unitPrice || 0) * existing.availableQty);
         existing.updatedAt = Date.now();
         
         const saved = await existing.save();
@@ -96,7 +104,8 @@ const importChemicals = asyncHandler(async (req, res) => {
 
         await createTrackingLog(saved, importMode === 'replace' ? 'Import (Replace)' : 'Import (Merge)', previousQty, previousPrice, saved.availableQty, saved.unitPrice);
       } else {
-        const availableQty = safeRound(Number(chem.receivedQty) || 0);
+        const newReceived = Number(chem.receivedQty !== undefined ? chem.receivedQty : chem.availableQty) || 0;
+        const availableQty = safeRound(newReceived);
         const reorderLevel = chem.reorderLevel !== undefined ? chem.reorderLevel : 2;
         const status = calculateStatus(availableQty, reorderLevel);
         const totalValue = safeRound((chem.unitPrice || 0) * availableQty);
@@ -104,6 +113,7 @@ const importChemicals = asyncHandler(async (req, res) => {
         const newChem = await StoreInventory.create({
           ...chem,
           chemicalId: chem.chemicalId || `chem-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          receivedQty: availableQty,
           availableQty,
           status,
           totalValue,
@@ -111,7 +121,7 @@ const importChemicals = asyncHandler(async (req, res) => {
         });
         added++;
 
-        await createTrackingLog(newChem, chem.receivedQty ? 'Bulk Upload' : 'Added New', 0, 0, newChem.availableQty, newChem.unitPrice);
+        await createTrackingLog(newChem, newReceived ? 'Bulk Upload' : 'Added New', 0, 0, newChem.availableQty, newChem.unitPrice);
       }
     } catch (err) {
       console.error(`Error importing chemical ${chem.name || chem.chemicalId}:`, err);
@@ -120,6 +130,7 @@ const importChemicals = asyncHandler(async (req, res) => {
 
   res.status(200).json({ added, updated });
 });
+
 
 const updateChemical = asyncHandler(async (req, res) => {
   const chemical = await StoreInventory.findById(req.params.id);

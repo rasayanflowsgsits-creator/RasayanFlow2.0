@@ -67,20 +67,40 @@ const getMyRequests = asyncHandler(async (req, res) => {
 const approveRequest = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const session = await mongoose.startSession();
-  session.startTransaction();
+  let inTransaction = false;
+  try {
+    session.startTransaction();
+    inTransaction = true;
+  } catch (e) {
+    inTransaction = false;
+  }
+
+  const sessionOption = inTransaction ? { session } : {};
 
   try {
-    const request = await StoreRequest.findById(id).session(session);
+    const request = inTransaction
+      ? await StoreRequest.findById(id).session(session)
+      : await StoreRequest.findById(id);
+
     if (!request) throw new Error("Request not found");
     if (request.status !== "Pending") throw new Error("Request is already processed");
 
-    const chemical = await StoreInventory.findOne({
-      $or: [
-        { chemicalId: request.chemicalId },
-        { name: request.chemicalName }
-      ]
-    }).session(session);
+    const cleanChemName = (request.chemicalName || '').trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const chemicalSearch = inTransaction
+      ? StoreInventory.findOne({
+          $or: [
+            { chemicalId: request.chemicalId },
+            { name: new RegExp('^' + cleanChemName + '$', 'i') }
+          ]
+        }).session(session)
+      : StoreInventory.findOne({
+          $or: [
+            { chemicalId: request.chemicalId },
+            { name: new RegExp('^' + cleanChemName + '$', 'i') }
+          ]
+        });
 
+    const chemical = await chemicalSearch;
     if (!chemical) throw new Error("Chemical not found in store inventory");
 
     // A & B: Parse pack size
@@ -91,13 +111,17 @@ const approveRequest = asyncHandler(async (req, res) => {
     const totalBase = safeRound(availableQtyUNT * packData.baseValue);
 
     // Convert requested unit to base unit if necessary
-    let requestedBase = request.quantityRequested;
-    const reqUnit = request.unit.toLowerCase().replace(/\s+/g, '');
-    if (reqUnit.includes('kg') && packData.baseUnit === 'g') requestedBase *= 1000;
-    else if (reqUnit.includes('l') && reqUnit !== 'ml' && packData.baseUnit === 'ml') requestedBase *= 1000;
+    let requestedBase = Number(request.quantityRequested) || 0;
+    const reqUnit = (request.unit || '').toLowerCase().replace(/\s+/g, '');
+
+    if ((reqUnit.includes('kg') || reqUnit === 'kilogram' || reqUnit === 'kilograms') && packData.baseUnit === 'g') {
+      requestedBase = safeRound(requestedBase * 1000);
+    } else if ((reqUnit.includes('l') && reqUnit !== 'ml' && reqUnit !== 'milliliter' && reqUnit !== 'milliliters') && packData.baseUnit === 'ml') {
+      requestedBase = safeRound(requestedBase * 1000);
+    }
     
     if (totalBase < requestedBase) {
-      throw new Error(`Insufficient stock. Total base available: ${totalBase}, Requested: ${requestedBase}`);
+      throw new Error(`Insufficient stock. Total base available: ${totalBase} ${packData.baseUnit}, Requested: ${requestedBase} ${packData.baseUnit}`);
     }
     
     // D: Subtract requested quantity
@@ -107,7 +131,7 @@ const approveRequest = asyncHandler(async (req, res) => {
     const newAvailableQtyUNT = safeRound(remainingBase / packData.baseValue);
     
     const qtyBeforeUNT = availableQtyUNT;
-    const valueBefore = chemical.totalValue;
+    const valueBefore = safeRound(availableQtyUNT * (chemical.unitPrice || 0));
     const unitPrice = chemical.unitPrice || 0;
 
     // F: Update storeInventory
@@ -119,7 +143,7 @@ const approveRequest = asyncHandler(async (req, res) => {
     
     chemical.totalValue = safeRound(chemical.availableQty * unitPrice);
     chemical.updatedAt = Date.now();
-    await chemical.save({ session });
+    await chemical.save(sessionOption);
 
     await StoreTracking.create([buildTrackingLog(
       chemical,
@@ -128,22 +152,26 @@ const approveRequest = asyncHandler(async (req, res) => {
       unitPrice,
       chemical.availableQty,
       unitPrice
-    )], { session });
+    )], sessionOption);
 
     // Calculate costPerBase
     const costPerBase = safeRound(unitPrice / packData.baseValue);
 
     // G: Add to labInventory
     if (request.labId) {
-      let labInventory = await Inventory.findOne({ labId: request.labId, chemicalName: chemical.name }).session(session);
+      const labInvQuery = inTransaction
+        ? Inventory.findOne({ labId: request.labId, chemicalName: chemical.name }).session(session)
+        : Inventory.findOne({ labId: request.labId, chemicalName: chemical.name });
+
+      let labInventory = await labInvQuery;
       
       if (labInventory) {
         labInventory.quantityAvailable = safeRound((labInventory.quantityAvailable || 0) + requestedBase);
         labInventory.quantityReceived = safeRound((labInventory.quantityReceived || 0) + requestedBase);
-        labInventory.costPerBase = costPerBase; // Update to latest store price
+        labInventory.costPerBase = costPerBase;
         labInventory.totalValue = safeRound(labInventory.quantityAvailable * costPerBase);
         labInventory.lastUpdated = Date.now();
-        await labInventory.save({ session });
+        await labInventory.save(sessionOption);
       } else {
         await Inventory.create([{
           labId: request.labId,
@@ -171,7 +199,7 @@ const approveRequest = asyncHandler(async (req, res) => {
           chemicalFormula: chemical.formula || '',
           manufacturingCompany: chemical.supplier || '',
           entryDate: Date.now()
-        }], { session });
+        }], sessionOption);
       }
     }
 
@@ -180,7 +208,7 @@ const approveRequest = asyncHandler(async (req, res) => {
     request.approvedBy = req.user._id;
     request.approvedAt = Date.now();
     request.receiptNumber = await getNextReceiptNumber();
-    await request.save({ session });
+    await request.save(sessionOption);
 
     // H: Save storeHistory
     const valueReleased = safeRound(valueBefore - chemical.totalValue);
@@ -189,7 +217,7 @@ const approveRequest = asyncHandler(async (req, res) => {
       type: "Store to Lab Transfer",
       requestId: request._id,
       chemicalName: chemical.name,
-      chemicalId: chemical.chemicalId,
+      chemicalId: chemical.chemicalId || '',
       labName: request.labName,
       labId: request.labId,
       
@@ -199,7 +227,7 @@ const approveRequest = asyncHandler(async (req, res) => {
       qtyRequestedBase: requestedBase,
       qtyAfterBase: remainingBase,
       baseUnit: packData.baseUnit,
-      unit: request.unit, // original requested unit
+      unit: request.unit,
       
       unitPrice: unitPrice,
       costPerBase: costPerBase,
@@ -209,13 +237,17 @@ const approveRequest = asyncHandler(async (req, res) => {
       
       receiptNumber: request.receiptNumber,
       action: "Approved",
-      approvedBy: req.user.name,
+      approvedBy: req.user.name || 'Store Manager',
       timestamp: Date.now()
-    }], { session });
+    }], sessionOption);
 
     // J: Create notification
     const User = require('../models/User');
-    const labAdmins = await User.find({ labId: request.labId, role: 'labAdmin' }).session(session);
+    const labAdminQuery = inTransaction
+      ? User.find({ labId: request.labId, role: 'labAdmin' }).session(session)
+      : User.find({ labId: request.labId, role: 'labAdmin' });
+
+    const labAdmins = await labAdminQuery;
     
     if (labAdmins.length > 0) {
       const notifications = labAdmins.map(admin => ({
@@ -229,11 +261,13 @@ const approveRequest = asyncHandler(async (req, res) => {
         requestId: request._id,
         receiptNumber: request.receiptNumber
       }));
-      await StoreNotification.create(notifications, { session });
+      await StoreNotification.create(notifications, sessionOption);
     }
 
-    // K: Commit Transaction
-    await session.commitTransaction();
+    // K: Commit Transaction if active
+    if (inTransaction) {
+      await session.commitTransaction();
+    }
     session.endSession();
 
     const io = getIo();
@@ -250,7 +284,9 @@ const approveRequest = asyncHandler(async (req, res) => {
 
     res.status(200).json(request);
   } catch (error) {
-    await session.abortTransaction();
+    if (inTransaction) {
+      await session.abortTransaction();
+    }
     session.endSession();
     res.status(400);
     throw new Error(error.message);

@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Calendar, Download, ArrowUpRight, ArrowDownRight, TrendingUp, Filter, Boxes, PackageX, AlertTriangle, Activity } from 'lucide-react';
 import StoreLayout from './StoreLayout';
 import Card from '../components/ui/Card';
-import { parsePackSize } from './storeManagerMock';
+import { parsePackSize, safeRound } from '../utils/storeHelpers';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import api from '../services/api';
@@ -80,15 +80,10 @@ export default function StoreReports() {
     fetchReportsData();
   }, []);
 
-  // Filter valid history: qtyBefore > 0 and totalValueBefore > 0 and Approved
+  // Filter valid history: Approved transfers
   const history = useMemo(() => {
-    return historyRaw.filter(h => h.status === 'Approved' && Number(h.qtyBefore) > 0 && Number(h.totalValueBefore) > 0);
+    return (historyRaw || []).map(toFrontendHistory).filter(h => h.status === 'Approved' || h.action === 'Approved');
   }, [historyRaw]);
-
-  // Filter valid requests: Approved
-  const requests = useMemo(() => {
-    return requestsRaw.filter(r => r.status === 'Approved');
-  }, [requestsRaw]);
 
   // Current Inventory Computations
   const inventoryStats = useMemo(() => {
@@ -103,8 +98,8 @@ export default function StoreReports() {
       const rec = Number(chem['Received Quantity'] || 0);
       const price = Number(chem['Unit Price (INR)'] || 0);
       
-      totalAvailableValue += avail * price;
-      totalReceivedValue += rec * price;
+      totalAvailableValue = safeRound(totalAvailableValue + avail * price);
+      totalReceivedValue = safeRound(totalReceivedValue + rec * price);
 
       const packData = parsePackSize(chem['Pack Size']);
       const totalBase = rec * packData.value;
@@ -124,40 +119,55 @@ export default function StoreReports() {
   }, [chemicalsRaw, alertThreshold]);
 
   // Period filtering
-  const { cReqs, pReqs, yReqs, pyReqs, cHist, pHist, yHist, pyHist } = useMemo(() => {
+  const { cHist, pHist, yHist, pyHist } = useMemo(() => {
     return {
-      cReqs: requests.filter(r => new Date(r.date).getMonth() === month && new Date(r.date).getFullYear() === year),
-      pReqs: requests.filter(r => new Date(r.date).getMonth() === (month === 0 ? 11 : month - 1) && new Date(r.date).getFullYear() === (month === 0 ? year - 1 : year)),
-      yReqs: requests.filter(r => new Date(r.date).getFullYear() === year),
-      pyReqs: requests.filter(r => new Date(r.date).getFullYear() === year - 1),
-      cHist: history.filter(h => new Date(h.date).getMonth() === month && new Date(h.date).getFullYear() === year),
-      pHist: history.filter(h => new Date(h.date).getMonth() === (month === 0 ? 11 : month - 1) && new Date(h.date).getFullYear() === (month === 0 ? year - 1 : year)),
-      yHist: history.filter(h => new Date(h.date).getFullYear() === year),
-      pyHist: history.filter(h => new Date(h.date).getFullYear() === year - 1),
+      cHist: history.filter(h => {
+        const d = new Date(h.date || h.timestamp);
+        return d.getMonth() === month && d.getFullYear() === year;
+      }),
+      pHist: history.filter(h => {
+        const d = new Date(h.date || h.timestamp);
+        return d.getMonth() === (month === 0 ? 11 : month - 1) && d.getFullYear() === (month === 0 ? year - 1 : year);
+      }),
+      yHist: history.filter(h => {
+        const d = new Date(h.date || h.timestamp);
+        return d.getFullYear() === year;
+      }),
+      pyHist: history.filter(h => {
+        const d = new Date(h.date || h.timestamp);
+        return d.getFullYear() === year - 1;
+      }),
     };
-  }, [requests, history, month, year]);
+  }, [history, month, year]);
 
-  const formatQtyMap = (qtyMap) => Object.entries(qtyMap).map(([u, q]) => `${q.toLocaleString()} ${u}`).join(', ');
+  const formatQtyMap = (qtyMap) => Object.entries(qtyMap || {}).map(([u, q]) => `${(q || 0).toLocaleString()} ${u}`).join(', ') || '0 ml';
 
-  const aggregateData = (reqs, hist) => {
-    let approvals = reqs.length;
+  const aggregateHistoryData = (histList) => {
+    let approvals = histList.length;
     let qtyReleased = {};
+    let valueReleased = 0;
     
     const chemMap = {};
     const labMap = {};
     const uniqueChems = new Set();
 
-    reqs.forEach(r => {
-      const qty = Number(r.quantity || 0);
-      const unit = r.unit || 'ml';
-      
-      qtyReleased[unit] = (qtyReleased[unit] || 0) + qty;
-      uniqueChems.add(r.chemicalId);
+    histList.forEach(h => {
+      const chemId = h.chemicalId || h.chemicalName || 'unknown';
+      const chemName = h.chemicalName || 'Unknown Chemical';
+      const labName = h.lab || h.labName || 'Unknown Lab';
+      const qty = safeRound(Number(h.qtyRequestedBase || h.qtyRequested || 0));
+      const unit = h.baseUnit || h.unit || 'ml';
+      const valConsumed = safeRound(Number(h.valueReleased || (h.totalValueBefore - h.totalValueAfter) || 0));
+      const hDate = new Date(h.date || h.timestamp || Date.now());
 
-      if (!chemMap[r.chemicalId]) {
-        chemMap[r.chemicalId] = {
-          name: r.chemicalName,
-          id: r.chemicalId,
+      qtyReleased[unit] = safeRound((qtyReleased[unit] || 0) + qty);
+      valueReleased = safeRound(valueReleased + valConsumed);
+      uniqueChems.add(chemId);
+
+      if (!chemMap[chemId]) {
+        chemMap[chemId] = {
+          name: chemName,
+          id: chemId,
           qty: 0,
           unit: unit,
           value: 0,
@@ -166,14 +176,17 @@ export default function StoreReports() {
           months: Array(12).fill(0)
         };
       }
-      chemMap[r.chemicalId].qty += qty;
-      chemMap[r.chemicalId].approvals += 1;
-      chemMap[r.chemicalId].labs.add(r.lab);
-      chemMap[r.chemicalId].months[new Date(r.date).getMonth()] += qty;
+      chemMap[chemId].qty = safeRound(chemMap[chemId].qty + qty);
+      chemMap[chemId].value = safeRound(chemMap[chemId].value + valConsumed);
+      chemMap[chemId].approvals += 1;
+      chemMap[chemId].labs.add(labName);
+      if (!isNaN(hDate.getMonth())) {
+        chemMap[chemId].months[hDate.getMonth()] = safeRound(chemMap[chemId].months[hDate.getMonth()] + qty);
+      }
 
-      if (!labMap[r.lab]) {
-        labMap[r.lab] = {
-          name: r.lab,
+      if (!labMap[labName]) {
+        labMap[labName] = {
+          name: labName,
           approvals: 0,
           qtyByUnit: {},
           value: 0,
@@ -181,24 +194,12 @@ export default function StoreReports() {
           months: Array(12).fill(0)
         };
       }
-      labMap[r.lab].approvals += 1;
-      labMap[r.lab].qtyByUnit[unit] = (labMap[r.lab].qtyByUnit[unit] || 0) + qty;
-      labMap[r.lab].chems.add(r.chemicalName);
-      labMap[r.lab].months[new Date(r.date).getMonth()] += qty;
-    });
-
-    let valueReleased = 0;
-    hist.forEach(h => {
-      const valBefore = Number(h.totalValueBefore || 0);
-      const valAfter = Number(h.totalValueAfter || 0);
-      const valConsumed = valBefore - valAfter;
-      valueReleased += valConsumed;
-
-      if (chemMap[h.chemicalId]) {
-        chemMap[h.chemicalId].value += valConsumed;
-      }
-      if (labMap[h.lab]) {
-        labMap[h.lab].value += valConsumed;
+      labMap[labName].approvals += 1;
+      labMap[labName].qtyByUnit[unit] = safeRound((labMap[labName].qtyByUnit[unit] || 0) + qty);
+      labMap[labName].value = safeRound(labMap[labName].value + valConsumed);
+      labMap[labName].chems.add(chemName);
+      if (!isNaN(hDate.getMonth())) {
+        labMap[labName].months[hDate.getMonth()] = safeRound(labMap[labName].months[hDate.getMonth()] + qty);
       }
     });
 
@@ -224,19 +225,19 @@ export default function StoreReports() {
     };
   };
 
-  const mCurrent = useMemo(() => aggregateData(cReqs, cHist), [cReqs, cHist]);
-  const mPrev = useMemo(() => aggregateData(pReqs, pHist), [pReqs, pHist]);
-  const yCurrent = useMemo(() => aggregateData(yReqs, yHist), [yReqs, yHist]);
-  const yPrev = useMemo(() => aggregateData(pyReqs, pyHist), [pyReqs, pyHist]);
+  const mCurrent = useMemo(() => aggregateHistoryData(cHist), [cHist]);
+  const mPrev = useMemo(() => aggregateHistoryData(pHist), [pHist]);
+  const yCurrent = useMemo(() => aggregateHistoryData(yHist), [yHist]);
+  const yPrev = useMemo(() => aggregateHistoryData(pyHist), [pyHist]);
 
   const monthWiseYearData = useMemo(() => {
     return MONTHS.map((m, idx) => {
-      const monthReqs = yReqs.filter(r => new Date(r.date).getMonth() === idx);
-      const monthHist = yHist.filter(h => new Date(h.date).getMonth() === idx);
-      const agg = aggregateData(monthReqs, monthHist);
+      const monthHist = yHist.filter(h => new Date(h.date || h.timestamp).getMonth() === idx);
+      const agg = aggregateHistoryData(monthHist);
       return { month: m, ...agg };
     });
-  }, [yReqs, yHist]);
+  }, [yHist]);
+
 
   const handleExportExcel = () => {
     const wb = XLSX.utils.book_new();

@@ -1,39 +1,46 @@
+// Round to 2 decimal places always
+function safeRound(num) {
+  if (isNaN(num) || num === null || num === undefined) return 0;
+  return Math.round((Number(num) + Number.EPSILON) * 100) / 100;
+}
+
 // Parse pack size to base unit value and unit
 function parsePackSize(packStr) {
   if (!packStr) return { baseValue: 1, baseUnit: 'UNT', value: 1, unit: 'UNT' };
   
-  const s = packStr.toString()
-    .trim().toLowerCase()
-    .replace(/\s+/g, '');
+  const s = packStr.toString().trim().toLowerCase();
+  const match = s.match(/^([\d.]+)\s*(.*)$/);
+  if (!match) {
+    return { baseValue: 1, baseUnit: 'UNT', value: 1, unit: 'UNT' };
+  }
   
-  const num = parseFloat(s) || 1;
+  const num = parseFloat(match[1]) || 1;
+  const unitRaw = match[2].trim().replace(/\s+/g, '');
+  
   let baseValue = num;
   let baseUnit = 'UNT';
 
-  if (s.includes('kg')) {
+  if (/^(kg|kgs|kilogram|kilograms)$/i.test(unitRaw)) {
     baseValue = safeRound(num * 1000);
     baseUnit = 'g';
-  } else if (s.includes('mg')) {
+  } else if (/^(mg|mgs|milligram|milligrams)$/i.test(unitRaw)) {
     baseValue = num;
     baseUnit = 'mg';
-  } else if (s.includes('gm') || s.includes('g')) {
+  } else if (/^(gm|gms|g|gram|grams)$/i.test(unitRaw)) {
     baseValue = num;
     baseUnit = 'g';
-  } else if (s.includes('ml')) {
+  } else if (/^(ml|mls|milliliter|milliliters|millilitre|millilitres)$/i.test(unitRaw)) {
     baseValue = num;
     baseUnit = 'ml';
-  } else if (s.includes('l')) {
+  } else if (/^(l|ltr|ltrs|liter|liters|litre|litres)$/i.test(unitRaw)) {
     baseValue = safeRound(num * 1000);
     baseUnit = 'ml';
+  } else {
+    baseValue = num;
+    baseUnit = 'UNT';
   }
 
   return { baseValue, baseUnit, value: baseValue, unit: baseUnit };
-}
-
-// Round to 2 decimal places always
-function safeRound(num) {
-  if (isNaN(num) || num === null || num === undefined) return 0;
-  return Math.round(num * 100) / 100;
 }
 
 // Calculate total stock in base unit
@@ -51,3 +58,4 @@ module.exports = {
   safeRound,
   totalStock
 };
+
