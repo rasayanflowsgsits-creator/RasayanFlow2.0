@@ -125,7 +125,41 @@ const createLab = asyncHandler(async (req, res) => {
 
 const listLabs = asyncHandler(async (req, res) => {
   const labs = await Lab.find().populate('admins', 'name email role isApproved');
-  res.json({ success: true, data: labs });
+  const allLabAdmins = await User.find({ role: { $in: ['labAdmin', 'lab-admin'] } }).select('_id name email role labId labName labCode');
+
+  const enrichedLabs = await Promise.all(
+    labs.map(async (labDoc) => {
+      const labObj = labDoc.toObject();
+      const currentAdmins = Array.isArray(labObj.admins) ? labObj.admins : [];
+
+      const matchedAdmins = allLabAdmins.filter(
+        (u) => u.labId && String(u.labId) === String(labDoc._id)
+      );
+
+      let needsSave = false;
+      matchedAdmins.forEach((u) => {
+        const alreadyInAdmins = currentAdmins.some((a) => String(a._id || a) === String(u._id));
+        if (!alreadyInAdmins) {
+          currentAdmins.push({ _id: u._id, name: u.name, email: u.email, role: u.role, isApproved: true });
+          if (!labDoc.admins.some((id) => String(id) === String(u._id))) {
+            labDoc.admins.push(u._id);
+            needsSave = true;
+          }
+        }
+      });
+
+      if (needsSave) {
+        await labDoc.save();
+      }
+
+      return {
+        ...labObj,
+        admins: currentAdmins,
+      };
+    })
+  );
+
+  res.json({ success: true, data: enrichedLabs });
 });
 
 const assignAdmin = asyncHandler(async (req, res) => {

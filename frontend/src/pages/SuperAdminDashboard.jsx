@@ -874,7 +874,7 @@ export default function SuperAdminDashboard() {
   const filteredLabs = useMemo(() => {
     let result = labs;
     if (labCourseFilter === 'unassigned') {
-      result = result.filter((l) => !l.admin || l.admin === 'Unassigned');
+      result = result.filter((l) => !l.admin || l.admin === 'Unassigned' || !l.adminEmail);
     } else if (labCourseFilter !== 'all') {
       result = result.filter((l) => (l.courseType || 'B.Pharm') === labCourseFilter);
     }
@@ -886,17 +886,37 @@ export default function SuperAdminDashboard() {
 
     return result.map((l) => {
       const labIdStr = String(l._id || l.id);
-      const matchedAdminUser = users.find((u) => 
-        (u.role === 'lab-admin' || u.role === 'store-admin' || u.role === 'store_admin') && (
-          String(u.labId) === labIdStr || 
-          String(u.labId?._id) === labIdStr ||
-          (u.assignedLabName && l.name && u.assignedLabName.toLowerCase() === l.name.toLowerCase()) ||
-          (u.name && l.admin && u.name.toLowerCase() === l.admin.toLowerCase())
-        )
-      );
+      
+      // Robust admin user matching from users state
+      const matchedAdminUser = users.find((u) => {
+        const r = (u.role || '').toLowerCase();
+        const isLabAdminRole = r.includes('lab') || r.includes('store') || r === 'labadmin';
+        if (!isLabAdminRole) return false;
 
-      const adminName = matchedAdminUser ? matchedAdminUser.name : (l.admin && l.admin !== 'Unassigned' ? l.admin : 'Unassigned');
-      const adminEmail = matchedAdminUser ? matchedAdminUser.email : (l.adminEmail || l.email || '');
+        const uLabId = String(u.labId?._id || u.labId || '');
+        const matchesLabId = uLabId && uLabId === labIdStr;
+        const matchesLabName = u.assignedLabName && l.name && u.assignedLabName.toLowerCase() === l.name.toLowerCase();
+        const matchesLabCode = u.labCode && l.code && u.labCode.toLowerCase() === l.code.toLowerCase();
+        const matchesAdminName = u.name && l.admin && u.name.toLowerCase() === l.admin.toLowerCase();
+        const isListedInAdmins = Array.isArray(l.admins) && l.admins.some((a) => String(a._id || a) === String(u._id || u.id));
+
+        return matchesLabId || matchesLabName || matchesLabCode || matchesAdminName || isListedInAdmins;
+      });
+
+      // Populated admin array element fallback
+      const populatedAdmin = Array.isArray(l.admins) && l.admins.length > 0 && typeof l.admins[0] === 'object' ? l.admins[0] : null;
+
+      const adminName = matchedAdminUser 
+        ? matchedAdminUser.name 
+        : populatedAdmin 
+        ? (populatedAdmin.name || populatedAdmin.email) 
+        : (l.admin && l.admin !== 'Unassigned' ? l.admin : 'Unassigned');
+
+      const adminEmail = matchedAdminUser 
+        ? matchedAdminUser.email 
+        : populatedAdmin 
+        ? populatedAdmin.email 
+        : (l.adminEmail || l.email || '');
 
       return { 
         ...l, 
@@ -907,26 +927,39 @@ export default function SuperAdminDashboard() {
     });
   }, [labs, users, labCourseFilter, debouncedLabSearch]);
 
-  // Group labs by Year & Semester for structured academic layout
+  // Group labs by Year & Semester in ascending chronological order (1st Year Sem 1 -> 4th Year Sem 8)
   const groupedLabs = useMemo(() => {
-    const groups = {};
+    const map = new Map();
 
     filteredLabs.forEach((lab) => {
-      let key = 'General & Unassigned Batch Labs';
+      let yrNum = parseInt(String(lab.year || '').replace(/\D/g, ''), 10) || 99;
+      let semNum = parseInt(String(lab.semester || '').replace(/\D/g, ''), 10) || 99;
+
+      let groupTitle = 'General & Unassigned Batch Labs';
       if (lab.year && lab.semester) {
-        const yearSuffix = Number(lab.year) === 1 ? '1st' : Number(lab.year) === 2 ? '2nd' : Number(lab.year) === 3 ? '3rd' : `${lab.year}th`;
-        key = `${yearSuffix} Year • Semester ${lab.semester}`;
+        const yearSuffix = yrNum === 1 ? '1st' : yrNum === 2 ? '2nd' : yrNum === 3 ? '3rd' : `${yrNum}th`;
+        groupTitle = `${yearSuffix} Year • Semester ${lab.semester}`;
       } else if (lab.semester) {
-        key = `Semester ${lab.semester}`;
+        groupTitle = `Semester ${lab.semester}`;
       }
 
-      if (!groups[key]) {
-        groups[key] = [];
+      const sortOrder = yrNum * 100 + semNum;
+
+      if (!map.has(groupTitle)) {
+        map.set(groupTitle, { title: groupTitle, sortOrder, labs: [] });
       }
-      groups[key].push(lab);
+      map.get(groupTitle).labs.push(lab);
     });
 
-    return groups;
+    // Sort groups in ascending order (1st Year Sem 1 -> 4th Year Sem 8)
+    const sortedGroups = Array.from(map.values()).sort((a, b) => a.sortOrder - b.sortOrder);
+
+    const sortedObject = {};
+    sortedGroups.forEach((g) => {
+      sortedObject[g.title] = g.labs;
+    });
+
+    return sortedObject;
   }, [filteredLabs]);
 
   // Filtered Users Directory with resolved assigned lab
