@@ -1743,13 +1743,17 @@ const useAppStore = create((set) => ({
       return [];
     }
   },
-  fetchStudentLabStructure: async () => {
+  fetchStudentLabStructure: async (labId) => {
     set({ loading: true });
     try {
-      const { data } = await api.get('/lab/structure/student');
-      set({ labStructure: getPayload(data) || [], loading: false });
+      const url = labId ? `/lab/structure/student/${encodeURIComponent(labId)}` : '/lab/structure/student';
+      const { data } = await api.get(url);
+      const payload = getPayload(data) || data?.experiments || data?.data || [];
+      set({ labStructure: Array.isArray(payload) ? payload : [], loading: false });
+      return payload;
     } catch {
       set({ labStructure: [], loading: false });
+      return [];
     }
   },
   bulkApproveStudentRequests: async ({ group, experimentNo, forceApproveAvailable }) => {
