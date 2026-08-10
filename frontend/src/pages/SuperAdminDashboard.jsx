@@ -113,6 +113,8 @@ export default function SuperAdminDashboard() {
   const [labViewMode, setLabViewMode] = useState('grid');
   const [userSearch, setUserSearch] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState('all');
+  const [studentCourseFilter, setStudentCourseFilter] = useState('all');
+  const [studentSemFilter, setStudentSemFilter] = useState('all');
   const [matrixSearch, setMatrixSearch] = useState('');
 
   // Curriculum State & Navigation
@@ -981,25 +983,51 @@ export default function SuperAdminDashboard() {
       });
     }
 
+    if (userRoleFilter === 'student') {
+      if (studentCourseFilter !== 'all') {
+        result = result.filter((u) => (u.course || u.courseType || 'B.Pharm') === studentCourseFilter);
+      }
+      if (studentSemFilter !== 'all') {
+        result = result.filter((u) => String(u.semester || '1') === String(studentSemFilter));
+      }
+    }
+
     const query = debouncedUserSearch.trim().toLowerCase();
     if (query) {
-      result = result.filter((u) => [u.name, u.email, u.rollNumber, u.course].filter(Boolean).some((val) => val.toLowerCase().includes(query)));
+      result = result.filter((u) =>
+        [u.name, u.email, u.rollNumber, u.course, u.courseType, u.year, u.semester, u.group].filter(Boolean).some((val) => val.toLowerCase().includes(query))
+      );
     }
 
     return result.map((u) => {
-      // Resolve assigned lab
-      const matchedLab = labs.find(l => String(l.id || l._id) === String(u.labId || u.labId?._id));
-      const adminLab = matchedLab || labs.find(l => Array.isArray(l.admins) && l.admins.some(a => String(a._id || a.id || a) === String(u._id || u.id)));
+      const userCourse = u.course || u.courseType || 'B.Pharm';
+      const userYear = u.year ? String(u.year) : '1';
+      const userSem = u.semester ? String(u.semester) : '1';
+
+      // Resolve assigned lab by direct ObjectId, Admin reference, or matching academic course/year/semester
+      const matchedLabById = labs.find((l) => String(l.id || l._id) === String(u.labId || u.labId?._id));
+      const matchedLabByAdmin = labs.find((l) => Array.isArray(l.admins) && l.admins.some((a) => String(a._id || a.id || a) === String(u._id || u.id)));
+      const matchingAcademicLab = labs.find((l) => (l.courseType || 'B.Pharm') === userCourse && String(l.year || '1') === userYear && String(l.semester || '1') === userSem);
+
+      const resolvedLab = matchedLabById || matchedLabByAdmin || matchingAcademicLab;
 
       return {
         ...u,
         id: u._id || u.id,
-        roleDisplay: u.role === 'super-admin' ? 'Super Admin' : u.role === 'lab-admin' ? 'Lab Admin' : (u.role === 'store-admin' || u.role === 'store_admin') ? 'Store Manager' : 'Student',
-        assignedLabName: adminLab ? (adminLab.name || adminLab.labName) : 'Unassigned',
-        assignedLabCode: adminLab ? (adminLab.labCode || adminLab.code) : '',
+        roleDisplay:
+          u.role === 'super-admin'
+            ? 'Super Admin'
+            : u.role === 'lab-admin'
+            ? 'Lab Admin'
+            : u.role === 'store-admin' || u.role === 'store_admin'
+            ? 'Store Manager'
+            : 'Student',
+        assignedLabName: resolvedLab ? (resolvedLab.name || resolvedLab.labName) : 'Unassigned Lab',
+        assignedLabCode: resolvedLab ? (resolvedLab.labCode || resolvedLab.code) : '',
+        academicLabel: `${userCourse} • Year ${userYear} (Sem ${userSem})${u.group ? ` • ${u.group}` : ''}`,
       };
     });
-  }, [users, labs, userRoleFilter, debouncedUserSearch]);
+  }, [users, labs, userRoleFilter, studentCourseFilter, studentSemFilter, debouncedUserSearch]);
 
   // Stock Matrix Data
   const filteredMasterChemicals = useMemo(() => {
@@ -1430,102 +1458,284 @@ export default function SuperAdminDashboard() {
     }
   ];
 
-  const userDirectoryHeaders = [
-    {
-      key: 'name',
-      label: 'User Name & Profile',
-      render: (row) => (
-        <div>
-          <p className='text-sm font-bold text-[#37412a] dark:text-[#e4e9d8]'>{row.name}</p>
-          {row.rollNumber && <p className='text-[11px] font-mono text-[#71805a] dark:text-[#a5b48b]'>ID: {row.rollNumber}</p>}
-        </div>
-      )
-    },
-    {
-      key: 'email',
-      label: 'Email Address',
-      render: (row) => <span className='text-sm font-medium text-[#4e5d35] dark:text-[#d5ddbf]'>{row.email}</span>
-    },
-    {
-      key: 'roleDisplay',
-      label: 'System Role',
-      render: (row) => (
-        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
-          row.role === 'super-admin' ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300' :
-          row.role === 'lab-admin' ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300' :
-          (row.role === 'store-admin' || row.role === 'store_admin') ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300' :
-          'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-        }`}>
-          {row.roleDisplay}
-        </span>
-      )
-    },
-    {
-      key: 'assignedLab',
-      label: 'Assigned Lab & Code',
-      render: (row) => {
-        if (row.role === 'super-admin' || row.role === 'store-admin' || row.role === 'store_admin') {
-          return <span className='text-xs text-[#87996c] dark:text-[#a5b48b] italic'>Global Access</span>;
-        }
-        const hasLab = row.assignedLabName && row.assignedLabName !== 'Unassigned';
-        return (
-          <span className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold ${
-            hasLab ? 'bg-[#f4f6ee] text-[#3c4e23] border border-[#d9e1ca] dark:bg-[#20251a] dark:text-[#eef4e8] dark:border-[#414a33]' : 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
-          }`}>
-            <Warehouse size={13} /> {hasLab ? `${row.assignedLabName} ${row.assignedLabCode ? `(${row.assignedLabCode})` : ''}` : 'Unassigned Lab'}
-          </span>
-        );
-      }
-    },
-    {
-      key: 'isApproved',
-      label: 'Account Status',
-      render: (row) => (
-        <div className='flex items-center gap-1.5'>
-          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
-            row.isApproved ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
-          }`}>
-            {row.isApproved ? <><CheckCircle2 size={12} /> Approved</> : <><Clock size={12} /> Pending</>}
-          </span>
-          {row.isSuspended && (
-            <span className='inline-flex items-center gap-1 rounded-full bg-rose-100 text-rose-800 px-2 py-0.5 text-[10px] font-bold dark:bg-rose-950/60 dark:text-rose-300'>
-              <Ban size={10} /> Suspended
+  const userDirectoryHeaders = useMemo(() => {
+    if (userRoleFilter === 'student') {
+      return [
+        {
+          key: 'studentProfile',
+          label: 'Student Name & Roll No',
+          render: (row) => (
+            <div className='flex items-center gap-3'>
+              <div className='flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#5c6e46] text-white font-black text-xs shadow-2xs'>
+                {row.name ? row.name.charAt(0).toUpperCase() : 'S'}
+              </div>
+              <div className='leading-tight'>
+                <p className='text-sm font-extrabold text-[#37412a] dark:text-[#e4e9d8]'>{row.name}</p>
+                <div className='flex items-center gap-1.5 mt-0.5'>
+                  {row.rollNumber ? (
+                    <span className='inline-flex items-center rounded-md bg-[#f4f6ee] px-2 py-0.5 font-mono text-[11px] font-bold text-[#5c6e46] border border-[#d9e1ca] dark:bg-[#20251a] dark:text-[#a8be8a] dark:border-[#414a33]'>
+                      Roll No: {row.rollNumber}
+                    </span>
+                  ) : (
+                    <span className='text-[10px] text-amber-700 dark:text-amber-400 font-semibold italic'>Roll No Pending</span>
+                  )}
+                  {row.group && (
+                    <span className='inline-flex items-center rounded-md bg-[#e8efd9] px-1.5 py-0.5 text-[10px] font-black text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'>
+                      {row.group}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )
+        },
+        {
+          key: 'academicBatch',
+          label: 'Academic Level & Course',
+          render: (row) => (
+            <div className='space-y-0.5'>
+              <span className='inline-flex items-center gap-1.5 rounded-lg bg-[#e8efd9] px-2.5 py-1 text-xs font-black text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a] border border-[#c5d6aa] dark:border-[#3c4a28]'>
+                <BookOpen size={13} /> {row.academicLabel}
+              </span>
+            </div>
+          )
+        },
+        {
+          key: 'email',
+          label: 'Email Address',
+          render: (row) => <span className='text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf] font-mono'>{row.email}</span>
+        },
+        {
+          key: 'assignedLab',
+          label: 'Enrolled Lab & Code',
+          render: (row) => (
+            <span className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold ${
+              row.assignedLabName !== 'Unassigned Lab'
+                ? 'bg-[#f4f6ee] text-[#3c4e23] border border-[#d9e1ca] dark:bg-[#20251a] dark:text-[#eef4e8] dark:border-[#414a33]'
+                : 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/50'
+            }`}>
+              <Warehouse size={13} /> {row.assignedLabName} {row.assignedLabCode ? `(${row.assignedLabCode})` : ''}
             </span>
-          )}
-        </div>
-      )
-    },
-    {
-      key: 'actions',
-      label: 'Actions',
-      render: (row) => (
-        <div className='flex items-center gap-2'>
-          {!row.isApproved && (
-            <Button
-              variant='outline'
-              onClick={() => handleApproveUser(row.id)}
-              className='text-xs px-2.5 py-1 border-emerald-500 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 font-bold'
-              disabled={approvingUserId === row.id}
-            >
-              {approvingUserId === row.id ? 'Approving...' : 'Approve'}
-            </Button>
-          )}
-          {row.role !== 'super-admin' && (
-            <Button
-              variant='outline'
-              onClick={() => {
-                toggleUserStatus(row.id);
-                setToast({ type: 'info', message: `${row.name} account status updated.` });
-              }}
-              className={`text-xs px-2.5 py-1 font-semibold ${row.isSuspended ? 'border-emerald-500 text-emerald-700 hover:bg-emerald-50' : 'border-rose-300 text-rose-700 hover:bg-rose-50'}`}
-            >
-              {row.isSuspended ? 'Reactivate' : 'Suspend'}
-            </Button>
-          )}
-        </div>
-      )
+          )
+        },
+        {
+          key: 'isApproved',
+          label: 'Account Status',
+          render: (row) => (
+            <div className='flex items-center gap-1.5'>
+              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-extrabold ${
+                row.isApproved ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800' : 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
+              }`}>
+                {row.isApproved ? <><CheckCircle2 size={12} /> Approved</> : <><Clock size={12} /> Pending</>}
+              </span>
+              {row.isSuspended && (
+                <span className='inline-flex items-center gap-1 rounded-full bg-rose-100 text-rose-800 px-2 py-0.5 text-[10px] font-bold dark:bg-rose-950/60 dark:text-rose-300'>
+                  <Ban size={10} /> Suspended
+                </span>
+              )}
+            </div>
+          )
+        },
+        {
+          key: 'actions',
+          label: 'Actions',
+          render: (row) => (
+            <div className='flex items-center gap-2'>
+              {!row.isApproved && (
+                <Button
+                  variant='outline'
+                  onClick={() => handleApproveUser(row.id)}
+                  className='text-xs px-2.5 py-1 border-emerald-500 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 font-bold rounded-lg'
+                  disabled={approvingUserId === row.id}
+                >
+                  {approvingUserId === row.id ? 'Approving...' : 'Approve'}
+                </Button>
+              )}
+              <Button
+                variant='outline'
+                onClick={() => {
+                  toggleUserStatus(row.id);
+                  setToast({ type: 'info', message: `${row.name} account status updated.` });
+                }}
+                className={`text-xs px-2.5 py-1 font-semibold rounded-lg ${row.isSuspended ? 'border-emerald-500 text-emerald-700 hover:bg-emerald-50' : 'border-rose-300 text-rose-700 hover:bg-rose-50'}`}
+              >
+                {row.isSuspended ? 'Reactivate' : 'Suspend'}
+              </Button>
+            </div>
+          )
+        }
+      ];
     }
-  ];
+
+    if (userRoleFilter === 'lab-admin') {
+      return [
+        {
+          key: 'adminProfile',
+          label: 'Lab Admin Name & Email',
+          render: (row) => (
+            <div className='flex items-center gap-3'>
+              <div className='flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#5c6e46] text-white font-black text-xs shadow-2xs'>
+                {row.name ? row.name.charAt(0).toUpperCase() : 'A'}
+              </div>
+              <div className='leading-tight'>
+                <p className='text-sm font-extrabold text-[#37412a] dark:text-[#e4e9d8]'>{row.name}</p>
+                <p className='text-xs font-mono font-semibold text-[#5c6e46] dark:text-[#a8be8a] mt-0.5'>{row.email}</p>
+              </div>
+            </div>
+          )
+        },
+        {
+          key: 'assignedLab',
+          label: 'Assigned Lab & Lab Code',
+          render: (row) => (
+            <span className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-black ${
+              row.assignedLabName !== 'Unassigned'
+                ? 'bg-[#f4f6ee] text-[#3c4e23] border border-[#d9e1ca] dark:bg-[#20251a] dark:text-[#eef4e8] dark:border-[#414a33]'
+                : 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300'
+            }`}>
+              <Warehouse size={14} className='text-[#5c6e46]' />
+              {row.assignedLabName} {row.assignedLabCode ? `(${row.assignedLabCode})` : ''}
+            </span>
+          )
+        },
+        {
+          key: 'academicScope',
+          label: 'Academic Scope & Dept',
+          render: (row) => (
+            <span className='inline-flex items-center gap-1.5 rounded-lg bg-[#e8efd9] px-2.5 py-1 text-xs font-bold text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a] border border-[#c5d6aa] dark:border-[#3c4a28]'>
+              <BookOpen size={13} /> {row.academicLabel}
+            </span>
+          )
+        },
+        {
+          key: 'isApproved',
+          label: 'Status',
+          render: (row) => (
+            <span className='inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'>
+              <CheckCircle2 size={12} /> Active Admin
+            </span>
+          )
+        },
+        {
+          key: 'actions',
+          label: 'Actions',
+          render: (row) => (
+            <div className='flex items-center gap-2'>
+              <Button
+                variant='outline'
+                onClick={() => {
+                  const targetLab = labs.find(l => String(l.id || l._id) === String(row.labId));
+                  if (targetLab) openManageModal(targetLab);
+                  else setToast({ type: 'info', message: `Managing admin credentials for ${row.name}` });
+                }}
+                className='text-xs px-3 py-1 font-bold border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] dark:border-[#a8be8a] dark:text-[#a8be8a] rounded-lg'
+              >
+                <Edit3 size={12} className='mr-1' /> Manage Lab
+              </Button>
+            </div>
+          )
+        }
+      ];
+    }
+
+    // Default for All Accounts / Super Admin / Store Admin / Pending
+    return [
+      {
+        key: 'name',
+        label: 'User Name & Profile',
+        render: (row) => (
+          <div>
+            <p className='text-sm font-bold text-[#37412a] dark:text-[#e4e9d8]'>{row.name}</p>
+            {row.rollNumber && <p className='text-[11px] font-mono text-[#71805a] dark:text-[#a5b48b]'>ID: {row.rollNumber}</p>}
+          </div>
+        )
+      },
+      {
+        key: 'email',
+        label: 'Email Address',
+        render: (row) => <span className='text-sm font-medium text-[#4e5d35] dark:text-[#d5ddbf] font-mono'>{row.email}</span>
+      },
+      {
+        key: 'roleDisplay',
+        label: 'System Role',
+        render: (row) => (
+          <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
+            row.role === 'super-admin' ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300' :
+            row.role === 'lab-admin' ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300' :
+            (row.role === 'store-admin' || row.role === 'store_admin') ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300' :
+            'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+          }`}>
+            {row.roleDisplay}
+          </span>
+        )
+      },
+      {
+        key: 'assignedLab',
+        label: 'Assigned Lab & Code',
+        render: (row) => {
+          if (row.role === 'super-admin' || row.role === 'store-admin' || row.role === 'store_admin') {
+            return <span className='text-xs text-[#87996c] dark:text-[#a5b48b] italic'>Global Access</span>;
+          }
+          const hasLab = row.assignedLabName && row.assignedLabName !== 'Unassigned' && row.assignedLabName !== 'Unassigned Lab';
+          return (
+            <span className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold ${
+              hasLab ? 'bg-[#f4f6ee] text-[#3c4e23] border border-[#d9e1ca] dark:bg-[#20251a] dark:text-[#eef4e8] dark:border-[#414a33]' : 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
+            }`}>
+              <Warehouse size={13} /> {hasLab ? `${row.assignedLabName} ${row.assignedLabCode ? `(${row.assignedLabCode})` : ''}` : 'Unassigned Lab'}
+            </span>
+          );
+        }
+      },
+      {
+        key: 'isApproved',
+        label: 'Account Status',
+        render: (row) => (
+          <div className='flex items-center gap-1.5'>
+            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
+              row.isApproved ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+            }`}>
+              {row.isApproved ? <><CheckCircle2 size={12} /> Approved</> : <><Clock size={12} /> Pending</>}
+            </span>
+            {row.isSuspended && (
+              <span className='inline-flex items-center gap-1 rounded-full bg-rose-100 text-rose-800 px-2 py-0.5 text-[10px] font-bold dark:bg-rose-950/60 dark:text-rose-300'>
+                <Ban size={10} /> Suspended
+              </span>
+            )}
+          </div>
+        )
+      },
+      {
+        key: 'actions',
+        label: 'Actions',
+        render: (row) => (
+          <div className='flex items-center gap-2'>
+            {!row.isApproved && (
+              <Button
+                variant='outline'
+                onClick={() => handleApproveUser(row.id)}
+                className='text-xs px-2.5 py-1 border-emerald-500 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 font-bold'
+                disabled={approvingUserId === row.id}
+              >
+                {approvingUserId === row.id ? 'Approving...' : 'Approve'}
+              </Button>
+            )}
+            {row.role !== 'super-admin' && (
+              <Button
+                variant='outline'
+                onClick={() => {
+                  toggleUserStatus(row.id);
+                  setToast({ type: 'info', message: `${row.name} account status updated.` });
+                }}
+                className={`text-xs px-2.5 py-1 font-semibold ${row.isSuspended ? 'border-emerald-500 text-emerald-700 hover:bg-emerald-50' : 'border-rose-300 text-rose-700 hover:bg-rose-50'}`}
+              >
+                {row.isSuspended ? 'Reactivate' : 'Suspend'}
+              </Button>
+            )}
+          </div>
+        )
+      }
+    ];
+  }, [userRoleFilter, labs, approvingUserId]);
 
   return (
     <div className='space-y-6 pb-12 animate-in fade-in'>
@@ -2245,6 +2455,108 @@ export default function SuperAdminDashboard() {
               )}
             </div>
           </div>
+
+          {/* STUDENT ACADEMIC CATEGORIZATION BAR */}
+          {userRoleFilter === 'student' && (
+            <div className='space-y-3 bg-[#f8faee] dark:bg-[#20251a] p-4 rounded-2xl border border-[#d9e1ca] dark:border-[#414a33]'>
+              {/* LEVEL 1: COURSE FILTER TABS */}
+              <div className='flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none'>
+                <span className='text-xs font-extrabold text-[#5c6e46] dark:text-[#a8be8a] shrink-0 mr-1 flex items-center gap-1'>
+                  <BookOpen size={14} /> Course Program:
+                </span>
+                {['all', 'B.Pharm', 'M.Pharm', 'Ph.D.', 'D.Pharm'].map((c) => {
+                  const isActive = studentCourseFilter === c;
+                  const count = c === 'all' 
+                    ? students.length 
+                    : students.filter(s => (s.course || s.courseType || 'B.Pharm') === c).length;
+                  return (
+                    <button
+                      key={c}
+                      type='button'
+                      onClick={() => {
+                        setStudentCourseFilter(c);
+                        setStudentSemFilter('all');
+                      }}
+                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-extrabold shrink-0 transition-all border ${
+                        isActive
+                          ? 'bg-[#5c6e46] text-white border-[#5c6e46] shadow-sm dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                          : 'bg-white text-[#37412a] border-[#d9e1ca] hover:bg-[#edf1e4] dark:bg-[#1a1d16] dark:text-[#e4e9d8] dark:border-[#414a33]'
+                      }`}
+                    >
+                      <span>{c === 'all' ? 'All Courses' : c}</span>
+                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                        isActive ? 'bg-white/30 text-white dark:bg-[#20251a]/30 dark:text-[#20251a]' : 'bg-[#e8efd9] text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'
+                      }`}>
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* LEVEL 2: SEMESTER SUB-FILTERS */}
+              <div className='flex items-center gap-1.5 overflow-x-auto pt-1 scrollbar-none border-t border-[#e4eed3] dark:border-[#2a3121]'>
+                <span className='text-[11px] font-bold text-[#71805a] dark:text-[#a5b48b] shrink-0 mr-1.5'>
+                  Academic Year &amp; Sem:
+                </span>
+                {(() => {
+                  const isAllActive = studentSemFilter === 'all';
+                  const totalMatchingCourse = studentCourseFilter === 'all'
+                    ? students.length
+                    : students.filter(s => (s.course || s.courseType || 'B.Pharm') === studentCourseFilter).length;
+                  return (
+                    <button
+                      type='button'
+                      onClick={() => setStudentSemFilter('all')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold shrink-0 transition-all border ${
+                        isAllActive
+                          ? 'bg-[#c8a030] text-white border-[#c8a030] shadow-2xs'
+                          : 'bg-white text-[#5c6e46] border-[#d9e1ca] hover:bg-[#edf1e4] dark:bg-[#1a1d16] dark:text-[#a5b48b] dark:border-[#414a33]'
+                      }`}
+                    >
+                      All Semesters ({totalMatchingCourse})
+                    </button>
+                  );
+                })()}
+
+                {(studentCourseFilter === 'B.Pharm' || studentCourseFilter === 'all'
+                  ? ['1', '2', '3', '4', '5', '6', '7', '8']
+                  : studentCourseFilter === 'M.Pharm'
+                  ? ['1', '2', '3', '4']
+                  : ['1']
+                ).map((sem) => {
+                  const isSemActive = studentSemFilter === sem;
+                  const semCount = students.filter(s => {
+                    const matchesCourse = studentCourseFilter === 'all' || (s.course || s.courseType || 'B.Pharm') === studentCourseFilter;
+                    const matchesSem = String(s.semester || '1') === String(sem);
+                    return matchesCourse && matchesSem;
+                  }).length;
+
+                  const yearNum = Math.ceil(Number(sem) / 2);
+
+                  return (
+                    <button
+                      key={sem}
+                      type='button'
+                      onClick={() => setStudentSemFilter(sem)}
+                      className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-extrabold shrink-0 transition-all border ${
+                        isSemActive
+                          ? 'bg-[#5c6e46] text-white border-[#5c6e46] shadow-2xs dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                          : 'bg-white text-[#5c6e46] border-[#d9e1ca] hover:bg-[#edf1e4] dark:bg-[#1a1d16] dark:text-[#a5b48b] dark:border-[#414a33]'
+                      }`}
+                    >
+                      <span>Yr {yearNum} (Sem {sem})</span>
+                      <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-black ${
+                        isSemActive ? 'bg-white text-[#5c6e46] dark:bg-[#20251a] dark:text-[#e4e9d8]' : 'bg-[#e8efd9] text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'
+                      }`}>
+                        {semCount}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* User Directory Data Table */}
           <div className='rounded-2xl border border-[#d9e1ca] bg-white overflow-hidden shadow-sm dark:border-[#414a33] dark:bg-[#20251a]'>

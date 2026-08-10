@@ -14,12 +14,12 @@ const serializeUser = (user) => ({
 });
 
 const getUsers = asyncHandler(async (req, res) => {
-  const { role, labId, page = 1, limit = 20 } = req.query;
+  const { role, labId, page = 1, limit = 1000 } = req.query;
   const filter = {};
 
   if (req.user.role === 'labAdmin') {
     filter.role = 'student';
-    filter.labId = req.user.labId || null;
+    if (req.user.labId) filter.labId = req.user.labId;
   } else if (req.user.role === 'storeAdmin') {
     filter.role = 'student';
     if (labId) filter.labId = labId;
@@ -31,6 +31,8 @@ const getUsers = asyncHandler(async (req, res) => {
   const total = await User.countDocuments(filter);
   const users = await User.find(filter)
     .select('-password')
+    .populate('labId', 'labName labCode courseType year semester department')
+    .sort({ createdAt: -1 })
     .skip((Number(page) - 1) * Number(limit))
     .limit(Number(limit));
 
