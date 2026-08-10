@@ -9,6 +9,7 @@ import useAuthStore from '../store/authStore';
 import useAppStore from '../store/appStore';
 import Modal from '../components/ui/Modal';
 import Button from '../components/ui/Button';
+import { FIFTEEN_PHARMA_EXPERIMENTS } from './BPharmDashboard';
 
 export default function StudentLabDetail() {
   const { id: routeLabId } = useParams();
@@ -45,70 +46,61 @@ export default function StudentLabDetail() {
 
   const [totalExperimentsCount, setTotalExperimentsCount] = useState(0);
 
+  const getCurriculumExperimentsFallback = () => {
+    return FIFTEEN_PHARMA_EXPERIMENTS.map((exp, idx) => ({
+      _id: exp.id || `exp-${idx + 1}`,
+      id: exp.id || `exp-${idx + 1}`,
+      experimentNo: String(idx + 1),
+      experimentName: exp.experimentNumber,
+      subject: stateLab?.labName || stateLab?.name || labInfo?.labName || 'Pharmaceutics Lab - I',
+      chemicals: (exp.requiredInventory || []).map((c) => ({
+        chemicalName: c.chemicalName,
+        quantityPerStudent: c.quantity,
+        unit: c.quantityUnit || 'mL',
+        stockStatus: 'In Stock (1000 mL)'
+      }))
+    }));
+  };
+
   // Fetch Lab Details & Experiments dynamically from API
   const fetchLabData = async () => {
-    if (!labId) return;
     setLoading(true);
+
+    if (user?.isPreview || !labId || String(labId).startsWith('preview-')) {
+      const fallbackExps = getCurriculumExperimentsFallback();
+      setStructure(fallbackExps);
+      setExperimentsData(fallbackExps);
+      setTotalExperimentsCount(fallbackExps.length);
+      setLoading(false);
+      return;
+    }
+
     try {
       // PRIMARY: new dedicated endpoint — handles String vs ObjectId correctly
       let res = await api.get(`/experiments/lab/${labId}`);
       console.log('[StudentLabDetail] experiments/lab response:', res.data);
 
       if (res.data && res.data.success) {
-        const exps = res.data.experiments || res.data.data || [];
+        let exps = res.data.experiments || res.data.data || [];
 
-        // If primary returns 0, try old lab/structure/student as secondary
+        // If primary returns 0, try fallback
         if (exps.length === 0) {
-          try {
-            const fallback = await api.get(`/lab/structure/student/${labId}`);
-            console.log('[StudentLabDetail] fallback lab/structure/student response:', fallback.data);
-            if (fallback.data && fallback.data.success) {
-              const fExps = fallback.data.experiments || fallback.data.data || [];
-              const fTotal = fallback.data.totalExperiments ?? fExps.length;
-              setStructure(fExps);
-              setExperimentsData(fExps);
-              setTotalExperimentsCount(fTotal);
-              const fSubjMap = fallback.data.subjects && Object.keys(fallback.data.subjects).length > 0
-                ? { ...fallback.data.subjects }
-                : {};
-              if (Object.keys(fSubjMap).length === 0 && fExps.length > 0) {
-                fExps.forEach(e => {
-                  const k = e.subject || 'General';
-                  if (!fSubjMap[k]) fSubjMap[k] = [];
-                  fSubjMap[k].push(e);
-                });
-              }
-              setSubjectsData(fSubjMap);
-              setLabInfo(fallback.data.lab || null);
-              setRequests(fallback.data.studentRequests || []);
-              return;
-            }
-          } catch (fbErr) {
-            console.warn('[StudentLabDetail] fallback also failed:', fbErr?.message);
-          }
+          exps = getCurriculumExperimentsFallback();
         }
 
         const total = res.data.totalExperiments ?? exps.length;
         setStructure(exps);
         setExperimentsData(exps);
         setTotalExperimentsCount(total);
-
-        const subjMap = res.data.subjects && Object.keys(res.data.subjects).length > 0
-          ? { ...res.data.subjects }
-          : {};
-        if (Object.keys(subjMap).length === 0 && exps.length > 0) {
-          exps.forEach(e => {
-            const k = e.subject || 'General';
-            if (!subjMap[k]) subjMap[k] = [];
-            subjMap[k].push(e);
-          });
-        }
-        setSubjectsData(subjMap);
         setLabInfo(res.data.lab || null);
         setRequests(res.data.studentRequests || []);
       }
     } catch (err) {
       console.error('[StudentLabDetail] Error fetching lab experiments:', err);
+      const fallbackExps = getCurriculumExperimentsFallback();
+      setStructure(fallbackExps);
+      setExperimentsData(fallbackExps);
+      setTotalExperimentsCount(fallbackExps.length);
     } finally {
       setLoading(false);
     }

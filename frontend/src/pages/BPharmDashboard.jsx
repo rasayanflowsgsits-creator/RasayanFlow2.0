@@ -25,7 +25,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Modal from '../components/ui/Modal';
 
-const FIFTEEN_PHARMA_EXPERIMENTS = [
+export const FIFTEEN_PHARMA_EXPERIMENTS = [
   {
     id: 'exp-01',
     experimentNumber: 'Exp 01: Formulation & Evaluation of Simple Syrup IP',
