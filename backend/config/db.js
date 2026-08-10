@@ -2,15 +2,19 @@ const mongoose = require('mongoose');
 const logger = require('../utils/logger');
 
 const connectDB = async () => {
-  const uri = process.env.MONGO_URI;
+  const uri = process.env.MONGO_URI || process.env.MONGODB_URI;
 
   if (!uri) {
-    throw new Error('MONGO_URI is required. Set it in Backend/.env');
+    logger.error('MONGO_URI or MONGODB_URI environment variable is missing. Set it in Render settings.');
+    return;
   }
 
-  await mongoose.connect(uri);
-
-  logger.info('MongoDB connected');
+  try {
+    await mongoose.connect(uri);
+    logger.info('MongoDB connected successfully');
+  } catch (err) {
+    logger.error('MongoDB connection error:', err.message);
+  }
 };
 
 module.exports = connectDB;
