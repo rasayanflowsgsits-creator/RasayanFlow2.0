@@ -239,8 +239,10 @@ const assignAdmin = asyncHandler(async (req, res) => {
   const adminIdStr = admin._id.toString();
   if (!lab.admins.some((id) => id && id.toString() === adminIdStr)) {
     lab.admins.push(admin._id);
-    await lab.save();
   }
+  lab.admin = admin.name || admin.email;
+  lab.adminEmail = admin.email;
+  await lab.save();
 
   const updatedLab = await Lab.findById(lab._id).populate('admins', 'name email role isApproved');
 

@@ -48,11 +48,11 @@ router.put(
 router.post(
   '/assign',
   [
-    body('labId').notEmpty(),
-    body('adminId').optional({ checkFalsy: true }).isString(),
-    body('email').optional({ checkFalsy: true }).isEmail(),
-    body('name').optional({ checkFalsy: true }).isString(),
-    body('password').optional({ checkFalsy: true }).isString(),
+    body('labId').notEmpty().withMessage('Lab ID is required'),
+    body('adminId').optional({ nullable: true, checkFalsy: true }),
+    body('email').optional({ nullable: true, checkFalsy: true }),
+    body('name').optional({ nullable: true, checkFalsy: true }),
+    body('password').optional({ nullable: true, checkFalsy: true }),
   ],
   validateRequest,
   assignAdmin,
