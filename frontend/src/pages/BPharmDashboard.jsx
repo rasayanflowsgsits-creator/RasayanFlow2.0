@@ -349,88 +349,113 @@ const BPharmDashboard = () => {
   });
 
   return (
-    <div className="min-h-screen bg-[#fdfdf7] dark:bg-[#1a1d16] text-[#2c3320] dark:text-[#eef4e8] p-4 md:p-8 space-y-8 font-sans pb-24 transition-colors duration-300">
+    <div className="min-h-screen bg-[#f7f9f2] dark:bg-[#141711] text-[#2c3320] dark:text-[#eef4e8] p-4 md:p-8 space-y-8 font-sans pb-24 transition-colors duration-300">
       
-      {/* Welcome Hero Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#556b2f] to-[#3c4e23] text-white p-5 sm:p-8 shadow-lg">
-        <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none hidden sm:block">
-          <FlaskConical className="w-48 h-48" />
+      {/* Premium Glassmorphic Hero Banner */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#273418] via-[#3d4f23] to-[#556b2f] text-white p-6 sm:p-9 shadow-2xl border border-emerald-900/30">
+        <div className="absolute -right-12 -top-12 opacity-15 pointer-events-none hidden sm:block">
+          <FlaskConical className="w-64 h-64 text-emerald-300" />
         </div>
-        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">Welcome back, {user?.name}!</h1>
-            <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm font-medium">
-              <span className="bg-[#c8a030] text-black px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-bold uppercase tracking-wider">
+        <div className="absolute left-1/3 -bottom-20 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-500/30 backdrop-blur-md text-xs font-semibold text-emerald-200">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+              </span>
+              <span>{user?.isPreview ? 'Live Student Preview Mode' : 'Student Portal Dashboard'}</span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight">
+              Welcome back, <span className="bg-gradient-to-r from-white via-[#f0f7e6] to-[#d4e6b5] bg-clip-text text-transparent">{user?.name || 'Student'}</span>!
+            </h1>
+            <div className="flex flex-wrap items-center gap-2.5 text-xs sm:text-sm font-medium pt-1">
+              <span className="bg-[#c8a030] text-black px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm">
                 B.Pharm Y{user?.year || 1} • Sem {user?.semester || 1}
               </span>
               {user?.group && user?.group !== 'No Group' && (
-                <span className="bg-black/30 text-white px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-medium">
+                <span className="bg-black/40 backdrop-blur-sm text-emerald-100 border border-emerald-500/20 px-3 py-1 rounded-full text-xs font-medium">
                   {user.group.startsWith('Group') ? user.group : `Group ${user.group}`}
                 </span>
               )}
-              <span className="text-white/80">{currentDate}</span>
+              <span className="text-emerald-100/90 font-mono text-xs">{currentDate}</span>
             </div>
           </div>
+
           <button 
             onClick={() => {
               if (myLabs && myLabs.length > 0) {
-                const targetId = myLabs[0]._id || myLabs[0].id || myLabs[0].labId;
-                navigate(`/student/lab/${targetId}`, { state: { lab: myLabs[0] } });
+                const targetLab = myLabs[0];
+                setActiveLabWindow(targetLab);
+              } else {
+                setActiveLabWindow({
+                  labName: 'Pharmaceutics Lab - I',
+                  labCode: 'PH101L',
+                  department: 'Pharmaceutics',
+                  admin: 'Dr. R. K. Sharma',
+                  adminEmail: 'sharma.pharmaceutics@rasayanflow.edu'
+                });
               }
             }}
-            className="flex items-center gap-2 bg-[#c8a030] hover:bg-[#b58f28] text-black px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all shrink-0"
+            className="group flex items-center gap-2.5 bg-gradient-to-r from-[#d9b238] to-[#c8a030] hover:from-[#e5bd42] hover:to-[#d6ad34] text-black px-5 py-3 rounded-2xl font-bold text-xs sm:text-sm shadow-xl shadow-amber-950/20 hover:scale-[1.02] active:scale-[0.98] transition-all shrink-0 border border-amber-300/40"
           >
-            <FlaskConical className="w-4 h-4" /> Open Subject Lab Window
+            <FlaskConical className="w-4 h-4 group-hover:rotate-12 transition-transform" /> 
+            <span>Open Subject Lab Window</span>
           </button>
         </div>
       </div>
 
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="p-4 bg-white dark:bg-[#1f2419] border-[#e8eadf] dark:border-[#3c452f] text-left">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-[#556b2f]/10 dark:bg-[#c8a030]/10 rounded-xl text-[#556b2f] dark:text-[#c8a030]">
-              <BookOpen className="w-5 h-5" />
+      {/* Modern Metrics Grid with Gradient Top Borders */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-5">
+        <Card className="relative overflow-hidden p-5 bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all text-left group">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#556b2f] to-emerald-400"></div>
+          <div className="flex items-center gap-3.5">
+            <div className="p-3 bg-[#556b2f]/10 dark:bg-[#c8a030]/15 rounded-2xl text-[#556b2f] dark:text-[#c8a030] group-hover:scale-110 transition-transform">
+              <BookOpen className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Enrolled Subjects</p>
-              <p className="text-2xl font-bold text-[#3c4e23] dark:text-[#eef4e8]">{stats.subjectsCount}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider">Enrolled Subjects</p>
+              <p className="text-2xl sm:text-3xl font-extrabold text-[#3c4e23] dark:text-[#eef4e8]">{stats.subjectsCount}</p>
             </div>
           </div>
         </Card>
 
-        <Card className="p-4 bg-white dark:bg-[#1f2419] border-[#e8eadf] dark:border-[#3c452f] text-left">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-amber-100 dark:bg-amber-900/30 rounded-xl text-amber-700 dark:text-amber-400">
-              <Clock className="w-5 h-5" />
+        <Card className="relative overflow-hidden p-5 bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all text-left group">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 to-amber-500"></div>
+          <div className="flex items-center gap-3.5">
+            <div className="p-3 bg-amber-100 dark:bg-amber-900/30 rounded-2xl text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
+              <Clock className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Pending Requests</p>
-              <p className="text-2xl font-bold text-[#3c4e23] dark:text-[#eef4e8]">{stats.pending}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider">Pending Requests</p>
+              <p className="text-2xl sm:text-3xl font-extrabold text-amber-600 dark:text-amber-400">{stats.pending}</p>
             </div>
           </div>
         </Card>
 
-        <Card className="p-4 bg-white dark:bg-[#1f2419] border-[#e8eadf] dark:border-[#3c452f] text-left">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl text-emerald-700 dark:text-emerald-400">
-              <CheckCircle2 className="w-5 h-5" />
+        <Card className="relative overflow-hidden p-5 bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all text-left group">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-400"></div>
+          <div className="flex items-center gap-3.5">
+            <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
+              <CheckCircle2 className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Approved Requisitions</p>
-              <p className="text-2xl font-bold text-[#3c4e23] dark:text-[#eef4e8]">{stats.approved}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider">Approved Requisitions</p>
+              <p className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">{stats.approved}</p>
             </div>
           </div>
         </Card>
 
-        <Card className="p-4 bg-white dark:bg-[#1f2419] border-[#e8eadf] dark:border-[#3c452f] text-left">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-blue-100 dark:bg-blue-900/30 rounded-xl text-blue-700 dark:text-blue-400">
-              <Activity className="w-5 h-5" />
+        <Card className="relative overflow-hidden p-5 bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all text-left group">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-blue-500"></div>
+          <div className="flex items-center gap-3.5">
+            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-2xl text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
+              <Activity className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Activity</p>
-              <p className="text-2xl font-bold text-[#3c4e23] dark:text-[#eef4e8]">{stats.totalRequests}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider">Total Activity</p>
+              <p className="text-2xl sm:text-3xl font-extrabold text-blue-600 dark:text-blue-400">{stats.totalRequests}</p>
             </div>
           </div>
         </Card>
@@ -440,43 +465,55 @@ const BPharmDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <button 
           onClick={() => navigate('/my-borrowings')}
-          className="flex items-center justify-between p-4 rounded-xl bg-white dark:bg-[#1f2419] border border-[#e8eadf] dark:border-[#3c452f] hover:border-[#556b2f] dark:hover:border-[#c8a030] hover:shadow-md transition-all group"
+          className="flex items-center justify-between p-5 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] hover:border-[#556b2f] dark:hover:border-[#c8a030] hover:shadow-lg hover:-translate-y-0.5 transition-all group"
         >
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-[#556b2f]/10 dark:bg-[#c8a030]/10 rounded-lg text-[#556b2f] dark:text-[#c8a030]">
+          <div className="flex items-center gap-3.5">
+            <div className="p-3 bg-[#556b2f]/10 dark:bg-[#c8a030]/15 rounded-xl text-[#556b2f] dark:text-[#c8a030]">
               <Store className="w-5 h-5" />
             </div>
-            <span className="font-semibold text-left">My Active Chemical Requisitions</span>
+            <div className="text-left">
+              <span className="font-bold text-sm block text-[#3c4e23] dark:text-[#eef4e8]">My Active Chemical Requisitions</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Track assigned chemical quantities & status</span>
+            </div>
           </div>
-          <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#556b2f] dark:group-hover:text-[#c8a030] transition-colors" />
+          <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#556b2f] dark:group-hover:text-[#c8a030] group-hover:translate-x-1 transition-all" />
         </button>
         
         <button 
           onClick={() => navigate('/about')}
-          className="flex items-center justify-between p-4 rounded-xl bg-white dark:bg-[#1f2419] border border-[#e8eadf] dark:border-[#3c452f] hover:border-[#556b2f] dark:hover:border-[#c8a030] hover:shadow-md transition-all group"
+          className="flex items-center justify-between p-5 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] hover:border-[#556b2f] dark:hover:border-[#c8a030] hover:shadow-lg hover:-translate-y-0.5 transition-all group"
         >
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-[#556b2f]/10 dark:bg-[#c8a030]/10 rounded-lg text-[#556b2f] dark:text-[#c8a030]">
+          <div className="flex items-center gap-3.5">
+            <div className="p-3 bg-[#556b2f]/10 dark:bg-[#c8a030]/15 rounded-xl text-[#556b2f] dark:text-[#c8a030]">
               <Info className="w-5 h-5" />
             </div>
-            <span className="font-semibold text-left">About RasayanFlow</span>
+            <div className="text-left">
+              <span className="font-bold text-sm block text-[#3c4e23] dark:text-[#eef4e8]">About RasayanFlow</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Lab Management & IP Pharmacopoeia System</span>
+            </div>
           </div>
-          <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#556b2f] dark:group-hover:text-[#c8a030] transition-colors" />
+          <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#556b2f] dark:group-hover:text-[#c8a030] group-hover:translate-x-1 transition-all" />
         </button>
       </div>
 
-      {/* My Labs Grid */}
-      <div>
-        <div className="mb-4">
-          <h2 className="text-xl font-bold text-[#3c4e23] dark:text-[#c8a030] flex items-center gap-2">
-            <Beaker className="w-5 h-5" /> My Practical Subjects
-          </h2>
-          {user?.course && user?.year && user?.semester && (
-            <p className="text-sm text-[#71805a] dark:text-[#a5b48b] mt-1 font-medium">
-              {user.course} &bull; Year {user.year} &bull; Semester {user.semester}
-            </p>
-          )}
+      {/* My Practical Subjects Grid */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#e4ebda] dark:border-[#38432a] pb-3">
+          <div>
+            <h2 className="text-2xl font-extrabold text-[#3c4e23] dark:text-[#c8a030] flex items-center gap-2.5">
+              <Beaker className="w-6 h-6 text-[#556b2f] dark:text-[#c8a030]" /> My Practical Subjects
+            </h2>
+            {user?.course && user?.year && user?.semester && (
+              <p className="text-xs text-[#71805a] dark:text-[#a5b48b] mt-0.5 font-semibold">
+                {user.course} &bull; Year {user.year} &bull; Semester {user.semester}
+              </p>
+            )}
+          </div>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 text-xs font-bold self-start sm:self-auto border border-emerald-200 dark:border-emerald-800/40">
+            <CheckCircle2 className="w-3.5 h-3.5" /> 15 IP Practical Experiments Ready
+          </span>
         </div>
+
         {myLabs && myLabs.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {myLabs.map(lab => {
@@ -488,9 +525,12 @@ const BPharmDashboard = () => {
 
               const handleNavigateToLab = (e) => {
                 if (e) e.stopPropagation();
-                console.log('Navigating to lab detail for lab object:', lab, 'Target ID:', targetId);
-                if (targetId) {
+                if (user?.isPreview) {
+                  setActiveLabWindow(lab);
+                } else if (targetId) {
                   navigate(`/student/lab/${targetId}`, { state: { lab } });
+                } else {
+                  setActiveLabWindow(lab);
                 }
               };
 
@@ -498,33 +538,41 @@ const BPharmDashboard = () => {
                 <Card 
                   key={targetId || lab.labCode || lab.name}
                   onClick={handleNavigateToLab}
-                  className="cursor-pointer group relative overflow-hidden bg-white dark:bg-[#1f2419] border-[#e8eadf] dark:border-[#3c452f] hover:border-[#556b2f] dark:hover:border-[#c8a030] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-6 flex flex-col justify-between"
+                  className="cursor-pointer group relative overflow-hidden bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] hover:border-[#556b2f] dark:hover:border-[#c8a030] hover:shadow-2xl hover:shadow-[#556b2f]/10 hover:-translate-y-1.5 transition-all duration-300 p-6 flex flex-col justify-between rounded-2xl"
                 >
-                  <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity dark:opacity-[0.05] dark:group-hover:opacity-[0.1]">
-                    <Beaker className="w-32 h-32 text-[#556b2f] dark:text-[#c8a030]" />
+                  <div className="absolute -right-4 -bottom-4 opacity-[0.04] group-hover:opacity-[0.12] transition-opacity dark:opacity-[0.06] dark:group-hover:opacity-[0.15]">
+                    <Beaker className="w-36 h-36 text-[#556b2f] dark:text-[#c8a030]" />
                   </div>
                   
-                  <div className="relative z-10 flex flex-col h-full">
-                    <div className="flex justify-between items-start mb-3">
-                      <span className="inline-block px-2.5 py-1 bg-[#556b2f]/10 dark:bg-[#c8a030]/10 text-[#556b2f] dark:text-[#c8a030] text-xs font-bold rounded-lg uppercase tracking-wide">
+                  <div className="relative z-10 flex flex-col h-full space-y-4">
+                    <div className="flex justify-between items-start">
+                      <span className="inline-block px-3 py-1 bg-[#556b2f]/10 dark:bg-[#c8a030]/15 text-[#556b2f] dark:text-[#c8a030] text-xs font-extrabold rounded-lg uppercase tracking-wider border border-[#556b2f]/20 dark:border-[#c8a030]/20">
                         {lab.labCode || '1001'}
                       </span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400 font-medium px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md">
+                      <span className="text-[11px] text-gray-600 dark:text-gray-300 font-bold px-2.5 py-1 bg-gray-100 dark:bg-gray-800 rounded-md">
                         {lab.department || lab.courseType || 'Pharmacy'}
                       </span>
                     </div>
                     
-                    <h3 className="text-lg font-bold mb-2 text-[#3c4e23] dark:text-[#eef4e8] group-hover:text-[#556b2f] dark:group-hover:text-[#c8a030] transition-colors line-clamp-2">
-                      {lab.labName || lab.name}
-                    </h3>
+                    <div>
+                      <h3 className="text-xl font-extrabold text-[#3c4e23] dark:text-[#eef4e8] group-hover:text-[#556b2f] dark:group-hover:text-[#c8a030] transition-colors line-clamp-2 leading-snug">
+                        {lab.labName || lab.name}
+                      </h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">
+                        Practical Experiments & Chemical Requisitions
+                      </p>
+                    </div>
 
-                    <div className="mt-3 pt-3 border-t border-[#e8eadf] dark:border-[#3c452f]/60 flex items-center gap-2.5">
+                    <div className="pt-3 border-t border-[#e4ebda] dark:border-[#38432a] flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-[#556b2f]/10 dark:bg-[#c8a030]/15 flex items-center justify-center text-xs font-bold text-[#556b2f] dark:text-[#c8a030] shrink-0">
+                        {adminName ? adminName.charAt(0).toUpperCase() : 'F'}
+                      </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-bold text-[#3c4e23] dark:text-[#eef4e8] truncate">
                           {adminName}
                         </p>
                         {lab.adminEmail ? (
-                          <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate font-mono">
                             {lab.adminEmail}
                           </p>
                         ) : null}
@@ -533,9 +581,9 @@ const BPharmDashboard = () => {
                     
                     <div 
                       onClick={handleNavigateToLab}
-                      className="mt-4 pt-3 border-t border-[#f0f2eb] dark:border-[#2a3121] flex items-center justify-between text-xs font-semibold text-[#556b2f] dark:text-[#c8a030] group-hover:translate-x-1 transition-transform cursor-pointer"
+                      className="pt-3 border-t border-[#f0f2eb] dark:border-[#28301f] flex items-center justify-between text-xs font-bold text-[#556b2f] dark:text-[#c8a030] group-hover:translate-x-1 transition-transform cursor-pointer"
                     >
-                      <span>Enter Subject & Experiments →</span>
+                      <span>Enter Subject & Experiments &rarr;</span>
                       <ChevronRight className="w-4 h-4" />
                     </div>
                   </div>
@@ -544,10 +592,10 @@ const BPharmDashboard = () => {
             })}
           </div>
         ) : (
-          <Card className="p-6 sm:p-8 text-left bg-white dark:bg-[#1f2419] border border-dashed border-[#d9e1ca] dark:border-[#414a33] rounded-2xl">
+          <Card className="p-8 text-left bg-white dark:bg-[#1c2117] border border-dashed border-[#d9e1ca] dark:border-[#414a33] rounded-2xl">
             <div className="flex flex-col items-start gap-3">
-              <div className="p-3 bg-[#f4f6ee] dark:bg-[#28301f] rounded-2xl text-[#556b2f] dark:text-[#c8a030]">
-                <Beaker className="w-6 h-6" />
+              <div className="p-3.5 bg-[#f4f6ee] dark:bg-[#28301f] rounded-2xl text-[#556b2f] dark:text-[#c8a030]">
+                <Beaker className="w-7 h-7" />
               </div>
               <div>
                 <h3 className="text-lg font-bold text-[#3c4e23] dark:text-[#eef4e8]">
@@ -565,20 +613,25 @@ const BPharmDashboard = () => {
       </div>
 
       {/* Requisition History Section */}
-      <Card className="bg-white dark:bg-[#1f2419] border-[#e8eadf] dark:border-[#3c452f] overflow-hidden text-left">
-        <div className="p-4 sm:p-6 border-b border-[#e8eadf] dark:border-[#3c452f] space-y-4 text-left">
-          <h2 className="text-xl font-bold text-[#3c4e23] dark:text-[#c8a030] flex items-center gap-2 text-left">
-            <Activity className="w-5 h-5" /> Requisition History
-          </h2>
+      <Card className="bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] rounded-2xl overflow-hidden shadow-sm text-left">
+        <div className="p-5 sm:p-6 border-b border-[#e4ebda] dark:border-[#38432a] space-y-4 text-left bg-gradient-to-r from-gray-50/50 to-emerald-50/30 dark:from-[#191e14] dark:to-[#1c2117]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h2 className="text-xl font-extrabold text-[#3c4e23] dark:text-[#c8a030] flex items-center gap-2.5">
+              <Activity className="w-5 h-5 text-[#556b2f] dark:text-[#c8a030]" /> Requisition History & Logs
+            </h2>
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 font-mono">
+              Showing {filteredRequests.length} activity records
+            </span>
+          </div>
           
           <div className="flex flex-col md:flex-row md:items-center justify-start gap-3 text-left">
             <div className="relative w-full md:w-80">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 placeholder="Search by lab or experiment..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 w-full bg-gray-50 dark:bg-[#1a1d16] border-[#e8eadf] dark:border-[#3c452f] focus:border-[#556b2f] dark:focus:border-[#c8a030] text-sm"
+                className="pl-10 w-full bg-white dark:bg-[#141711] border-[#cfd8bd] dark:border-[#4e5d35] focus:ring-2 focus:ring-[#556b2f] text-xs py-2 rounded-xl"
               />
             </div>
             
@@ -587,10 +640,10 @@ const BPharmDashboard = () => {
                 <button
                   key={status}
                   onClick={() => setStatusFilter(status)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+                  className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                     statusFilter === status 
-                      ? 'bg-[#556b2f] text-white dark:bg-[#c8a030] dark:text-black' 
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                      ? 'bg-gradient-to-r from-[#556b2f] to-[#435525] text-white shadow-md dark:from-[#c8a030] dark:to-[#b58f28] dark:text-black' 
+                      : 'bg-gray-100/80 text-gray-600 hover:bg-gray-200 dark:bg-gray-800/80 dark:text-gray-300 dark:hover:bg-gray-700'
                   }`}
                 >
                   {status}
@@ -600,19 +653,21 @@ const BPharmDashboard = () => {
           </div>
         </div>
 
-        <div className="p-4 text-left">
+        <div className="p-4 sm:p-6 text-left">
           <Table
             headers={[
-              { key: 'date', label: 'Date', render: (row) => new Date(row.requestedAt).toLocaleDateString('en-GB') },
+              { key: 'date', label: 'Date', render: (row) => <span className="font-mono text-xs text-gray-600 dark:text-gray-300 font-semibold">{new Date(row.requestedAt).toLocaleDateString('en-GB')}</span> },
               { key: 'subject', label: 'Subject / Lab', render: (row) => (
                 <div className="text-left">
-                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{row.labName}</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">{row.subject}</div>
+                  <div className="text-sm font-bold text-[#3c4e23] dark:text-[#eef4e8]">{row.labName}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">{row.subject}</div>
                 </div>
               )},
               { key: 'experiment', label: 'Experiment', render: (row) => (
-                <div className="text-sm text-gray-900 dark:text-gray-100 text-left">
-                  <span className="font-medium mr-1 text-[#556b2f] dark:text-[#c8a030]">Exp {row.experimentNo}:</span> 
+                <div className="text-xs text-gray-900 dark:text-gray-100 text-left font-medium">
+                  <span className="font-bold mr-1.5 text-[#556b2f] dark:text-[#c8a030] px-2 py-0.5 rounded bg-[#556b2f]/10 dark:bg-[#c8a030]/15">
+                    Exp {row.experimentNo}
+                  </span> 
                   {row.experimentName}
                 </div>
               )},
