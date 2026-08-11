@@ -190,8 +190,11 @@ function App() {
     );
   }
 
-  const role = user?.role || 'student';
-  const isStoreAdmin = role === 'store-admin' || role === 'store_admin';
+  const rawRole = user?.role || 'student';
+  const isSuperAdmin = rawRole === 'super-admin' || rawRole === 'superAdmin' || rawRole === 'super_admin';
+  const isLabAdmin = rawRole === 'lab-admin' || rawRole === 'labAdmin' || rawRole === 'lab_admin';
+  const isStoreAdmin = rawRole === 'store-admin' || rawRole === 'store_admin' || rawRole === 'storeAdmin';
+  const isStudent = !isSuperAdmin && !isLabAdmin && !isStoreAdmin;
 
   function AppRoutes() {
     const location = useLocation();
@@ -217,18 +220,18 @@ function App() {
                 <Navbar onToggleSidebar={() => setSidebarCollapsed((value) => !value)} isDark={darkMode} toggleTheme={() => setDarkMode((value) => !value)} />
                 <main className='mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8'>
                   <Routes>
-                    <Route index element={role === 'super-admin' ? <SuperAdminDashboard /> : role === 'lab-admin' ? <LabAdminDashboard /> : isStoreAdmin ? <StoreManagerDashboard /> : <StudentDashboard />} />
-                    <Route path='labs' element={role === 'super-admin' ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
-                    <Route path='inventory' element={role === 'lab-admin' ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
-                    <Route path='analytics' element={role === 'lab-admin' ? <LabAnalyticsPage /> : <Navigate to='/' replace />} />
-                    <Route path='transactions' element={role === 'lab-admin' ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
-                    <Route path='lab/experiments' element={role === 'lab-admin' ? <LabExperimentsPage /> : <Navigate to='/' replace />} />
-                    <Route path='lab/student-requests' element={role === 'lab-admin' ? <LabStudentRequestsPage /> : <Navigate to='/' replace />} />
-                    <Route path='lab/groups' element={role === 'lab-admin' ? <LabGroupsPage /> : <Navigate to='/' replace />} />
-                    <Route path='lab/live' element={role === 'lab-admin' ? <LabLiveMonitorPage /> : <Navigate to='/' replace />} />
-                    <Route path='lab/store-requests' element={role === 'lab-admin' ? <LabStoreRequests /> : <Navigate to='/' replace />} />
-                    <Route path='lab/history' element={role === 'lab-admin' ? <LabHistory /> : <Navigate to='/' replace />} />
-                    <Route path='lab/notifications' element={role === 'lab-admin' ? <LabNotifications /> : <Navigate to='/' replace />} />
+                    <Route index element={isSuperAdmin ? <SuperAdminDashboard /> : isLabAdmin ? <LabAdminDashboard /> : isStoreAdmin ? <StoreManagerDashboard /> : <StudentDashboard />} />
+                    <Route path='labs' element={isSuperAdmin ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
+                    <Route path='inventory' element={isLabAdmin ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
+                    <Route path='analytics' element={isLabAdmin ? <LabAnalyticsPage /> : <Navigate to='/' replace />} />
+                    <Route path='transactions' element={isLabAdmin ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
+                    <Route path='lab/experiments' element={isLabAdmin ? <LabExperimentsPage /> : <Navigate to='/' replace />} />
+                    <Route path='lab/student-requests' element={isLabAdmin ? <LabStudentRequestsPage /> : <Navigate to='/' replace />} />
+                    <Route path='lab/groups' element={isLabAdmin ? <LabGroupsPage /> : <Navigate to='/' replace />} />
+                    <Route path='lab/live' element={isLabAdmin ? <LabLiveMonitorPage /> : <Navigate to='/' replace />} />
+                    <Route path='lab/store-requests' element={isLabAdmin ? <LabStoreRequests /> : <Navigate to='/' replace />} />
+                    <Route path='lab/history' element={isLabAdmin ? <LabHistory /> : <Navigate to='/' replace />} />
+                    <Route path='lab/notifications' element={isLabAdmin ? <LabNotifications /> : <Navigate to='/' replace />} />
                     <Route path='store-dashboard' element={isStoreAdmin ? <StoreDashboard /> : <Navigate to='/' replace />} />
                     <Route path='store/dashboard' element={isStoreAdmin ? <StoreManagerDashboard /> : <Navigate to='/' replace />} />
                     <Route path='store/inventory' element={isStoreAdmin ? <StoreInventory /> : <Navigate to='/' replace />} />
@@ -239,16 +242,16 @@ function App() {
                     <Route path='store/history' element={isStoreAdmin ? <StoreHistory /> : <Navigate to='/' replace />} />
                     <Route path='store/reports' element={isStoreAdmin ? <StoreReports /> : <Navigate to='/' replace />} />
                     <Route path='store' element={<Navigate to='/' replace />} />
-                    <Route path='my-borrowings' element={role === 'student' ? <StudentBorrowingsPage /> : <Navigate to='/' replace />} />
-                    <Route path='approval' element={role === 'super-admin' ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
-                    <Route path='master-chemicals' element={role === 'super-admin' ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
-                    <Route path='curriculum' element={role === 'super-admin' ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
-                    <Route path='store-oversight' element={role === 'super-admin' ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
-                    <Route path='activity' element={role === 'super-admin' ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
-                    <Route path='settings' element={role === 'super-admin' ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
-                    <Route path='labs/:id' element={role === 'student' ? <StudentLabDetail /> : <Navigate to='/' replace />} />
-                    <Route path='student/lab/:id' element={role === 'student' ? <StudentLabDetail /> : <Navigate to='/' replace />} />
-                    <Route path='student/subjects/:id' element={role === 'student' ? <StudentLabDetail /> : <Navigate to='/' replace />} />
+                    <Route path='my-borrowings' element={isStudent ? <StudentBorrowingsPage /> : <Navigate to='/' replace />} />
+                    <Route path='approval' element={isSuperAdmin ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
+                    <Route path='master-chemicals' element={isSuperAdmin ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
+                    <Route path='curriculum' element={isSuperAdmin ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
+                    <Route path='store-oversight' element={isSuperAdmin ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
+                    <Route path='activity' element={isSuperAdmin ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
+                    <Route path='settings' element={isSuperAdmin ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
+                    <Route path='labs/:id' element={isStudent ? <StudentLabDetail /> : <Navigate to='/' replace />} />
+                    <Route path='student/lab/:id' element={isStudent ? <StudentLabDetail /> : <Navigate to='/' replace />} />
+                    <Route path='student/subjects/:id' element={isStudent ? <StudentLabDetail /> : <Navigate to='/' replace />} />
                     <Route path='about' element={<AboutPage />} />
                     <Route path='*' element={<NotFound />} />
                   </Routes>

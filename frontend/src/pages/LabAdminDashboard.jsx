@@ -108,6 +108,18 @@ export default function LabAdminDashboard() {
   const [storeModalData, setStoreModalData] = useState({ chemicalName: '', quantityRequested: '100', unit: 'mL', reason: '' });
   const [submittingStoreReq, setSubmittingStoreReq] = useState(false);
 
+  const openEditModal = (item) => {
+    setEditItem({
+      ...EMPTY_ITEM,
+      ...item,
+      id: item.id || item._id,
+      quantity: item.quantity !== undefined ? String(item.quantity) : '',
+      costPerUnit: item.costPerUnit !== undefined ? String(item.costPerUnit) : '',
+      minThreshold: item.minThreshold !== undefined ? String(item.minThreshold) : '5',
+    });
+    setEditOpen(true);
+  };
+
   useEffect(() => { fetchLabs(); fetchUsers(); }, [fetchLabs, fetchUsers]);
   useEffect(() => {
     if (!assignedLabs.length) return;

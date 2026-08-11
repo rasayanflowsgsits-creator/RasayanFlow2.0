@@ -74,13 +74,19 @@ const linksMap = {
 export default function Sidebar({ collapsed }) {
   const user = useAuthStore((state) => state.user);
   const role = user?.role || "student";
-  const navRole = role === "store-admin" ? "store_admin" : role;
+  const navRole = (role === "store-admin" || role === "store_admin" || role === "storeAdmin") 
+    ? "store_admin" 
+    : (role === "lab-admin" || role === "labAdmin" || role === "lab_admin") 
+    ? "lab-admin" 
+    : (role === "super-admin" || role === "superAdmin") 
+    ? "super-admin" 
+    : role;
   
   const [storeInventory, setStoreInventory] = useState([]);
   const alertThreshold = 15;
 
   useEffect(() => {
-    if (role === 'store-admin' || role === 'store_admin') {
+    if (role === 'store-admin' || role === 'store_admin' || role === 'storeAdmin') {
       import('../../services/api').then(({ default: api }) => {
         import('../../utils/storeMapper').then(({ toFrontendChemical }) => {
           api.get('/store/inventory')
@@ -92,7 +98,7 @@ export default function Sidebar({ collapsed }) {
   }, [role]);
 
   let lowStockCount = 0;
-  if (role === 'store-admin' || role === 'store_admin') {
+  if (role === 'store-admin' || role === 'store_admin' || role === 'storeAdmin') {
     storeInventory.forEach(chem => {
       const receivedStock = totalStock(chem['Received Quantity'], chem['Pack Size']);
       const availableStock = totalStock(chem['Available Quantity'], chem['Pack Size']);
@@ -108,11 +114,11 @@ export default function Sidebar({ collapsed }) {
     });
   }
 
-
   let storeRequestsCount = 0;
-  if (role === 'lab-admin') {
-    const labName = user?.labName || 'harsh lab';
-    storeRequestsCount = requests.filter(r => r.lab === labName && r.status === 'Pending').length;
+  if (role === 'lab-admin' || role === 'labAdmin' || role === 'lab_admin') {
+    const labName = user?.labName || '';
+    const mockRequests = useStoreManagerMock.getState()?.requests || [];
+    storeRequestsCount = mockRequests.filter(r => labName && r.lab === labName && r.status === 'Pending').length;
   }
 
   return (
