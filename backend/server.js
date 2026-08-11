@@ -82,14 +82,29 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    // Check if origin is in allowlist
-    if (allowedOrigins.includes(origin)) {
+    // Check if origin is in explicit allowlist or wildcard
+    if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
       return callback(null, true);
+    }
+
+    // Automatically allow Vercel and Render deployment domains
+    try {
+      const hostname = new URL(origin).hostname;
+      if (
+        hostname.endsWith('.vercel.app') || 
+        hostname.endsWith('.onrender.com') || 
+        hostname === 'localhost' || 
+        hostname === '127.0.0.1'
+      ) {
+        return callback(null, true);
+      }
+    } catch (e) {
+      // Ignore URL parsing errors
     }
 
     // Log rejected origins for debugging
     logger.warn(`CORS request rejected from origin: ${origin}`);
-    return callback(new Error("CORS origin not allowed"));
+    return callback(null, false);
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
@@ -137,6 +152,17 @@ app.use(morgan("combined", { stream: logger.stream }));
 // Rate limiting (applied after CORS so preflight isn't rate limited)
 app.use(limiter);
 
+// Health check endpoint for Render / Uptime monitors
+const fs = require('fs');
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'online',
+    message: 'PharmLab API Backend Service is running',
+    version: '1.0.0',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Routes & API endpoints
 const routePairs = [
   ["/auth", require("./routes/authRoutes")],
@@ -176,11 +202,13 @@ routePairs.forEach(([routePath, router]) => {
   });
 });
 
-// Serve frontend in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../frontend/dist')));
+// Serve frontend in production ONLY if static dist directory exists
+const frontendDistPath = path.resolve(__dirname, '../frontend/dist');
+const frontendIndexFile = path.join(frontendDistPath, 'index.html');
+if (process.env.NODE_ENV === 'production' && fs.existsSync(frontendIndexFile)) {
+  app.use(express.static(frontendDistPath));
   app.get('*', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '../frontend', 'dist', 'index.html'));
+    res.sendFile(frontendIndexFile);
   });
 }
 
