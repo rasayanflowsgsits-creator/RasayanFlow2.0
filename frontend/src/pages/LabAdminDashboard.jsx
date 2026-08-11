@@ -568,6 +568,39 @@ export default function LabAdminDashboard() {
       </Card>
     </div>
 
+    {/* Live Practical Batch Requisition Widget */}
+    <div className="rounded-2xl border border-[#d9e1ca] bg-gradient-to-r from-[#f4f6ee] to-[#ebf1e1] p-4 shadow-sm dark:border-[#3c452f] dark:from-[#1f2519] dark:to-[#171b12]">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="flex h-3 w-3 rounded-full bg-[#556b2f] animate-pulse"></span>
+            <h3 className="text-base font-bold text-[#2e3d19] dark:text-[#eef4e8]">
+              Batch Student Demand Aggregator
+            </h3>
+          </div>
+          <p className="text-xs text-[#627443] dark:text-[#b8c9a0]">
+            Sum of chemical demand for 50+ students in {currentLab?.name || 'this lab'}. If stock is low, review deficits and send requisition to Central Store.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            className="bg-[#556b2f] text-white hover:bg-[#455724] font-semibold text-xs py-2 px-3 shadow-sm"
+            onClick={() => {
+              setStoreModalData({
+                chemicalName: smart.chemicals?.[0]?.chemicalName || 'Acetone',
+                quantityRequested: String(smart.chemicals?.[0]?.deficit || '500'),
+                unit: smart.chemicals?.[0]?.unit || 'mL',
+                reason: `Practical Batch Requisition for ${currentLab?.name || 'Lab'}`
+              });
+              setStoreModalOpen(true);
+            }}
+          >
+            📤 Send Requisition to Central Store
+          </Button>
+        </div>
+      </div>
+    </div>
+
     {!isTransactionsPage && !isAnalyticsPage ? <>
       {/* SECTION 1 — Required for Experiments */}
       <div className="space-y-3">

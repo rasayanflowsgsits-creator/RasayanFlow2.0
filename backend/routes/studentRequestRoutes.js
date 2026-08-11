@@ -4,6 +4,7 @@ const {
   getMyRequests,
   getStudentRequestsForLab,
   getLabRequests,
+  getAggregatedLabDemand,
   approveBulk,
   approveRequest,
   rejectRequest,
@@ -23,6 +24,7 @@ router.get('/history', getStudentHistory);
 router.get('/lab/:labId', getStudentRequestsForLab);
 
 // Lab Admin routes
+router.get('/aggregated', getAggregatedLabDemand);
 router.get('/lab', getLabRequests);
 router.get('/student-requests', getLabRequests);
 router.get('/lab-history', getLabHistory);

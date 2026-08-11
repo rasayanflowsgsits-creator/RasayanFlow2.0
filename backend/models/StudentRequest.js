@@ -26,9 +26,15 @@ const studentRequestSchema = new mongoose.Schema({
   chemicalsRequested: { type: [requestedChemicalSchema], default: [] },
   overallStatus: { 
     type: String, 
-    enum: ['Pending', 'Approved', 'Rejected', 'Partial'], 
+    enum: ['Pending', 'Approved', 'Rejected', 'Partial', 'Waiting Store Approval', 'Stock In Lab'], 
     default: 'Pending' 
   },
+  storeStatus: {
+    type: String,
+    enum: ['Not Required', 'Draft', 'Pending Store Approval', 'Approved In Lab', 'Rejected By Store'],
+    default: 'Not Required'
+  },
+  storeRequestId: { type: mongoose.Schema.Types.ObjectId, ref: 'LabRequest' },
   requestedAt: { type: Date, default: Date.now },
   approvedAt: { type: Date },
   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

@@ -477,11 +477,97 @@ const getLabHistory = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, count: history.length, data: history });
 });
 
+// @desc    Get aggregated lab chemical demand & deficit calculation across pending student requests
+// @route   GET /api/student/requests/aggregated
+// @access  Private (Lab Admin)
+const getAggregatedLabDemand = asyncHandler(async (req, res) => {
+  const rawLabId = req.query.labId || req.user.labId;
+  const queryIds = [];
+  if (rawLabId && mongoose.Types.ObjectId.isValid(rawLabId)) {
+    queryIds.push(new mongoose.Types.ObjectId(rawLabId));
+  } else if (rawLabId) {
+    const lab = await mongoose.model('Lab').findOne({ $or: [{ labCode: rawLabId }, { name: rawLabId }, { labName: rawLabId }] });
+    if (lab) queryIds.push(new mongoose.Types.ObjectId(lab._id));
+  }
+  if (queryIds.length === 0) queryIds.push(new mongoose.Types.ObjectId());
+
+  const pendingRequests = await StudentRequest.find({
+    labId: { $in: queryIds },
+    overallStatus: { $in: ['Pending', 'Waiting Store Approval', 'Stock In Lab'] }
+  });
+
+  const demandMap = {};
+
+  pendingRequests.forEach(reqObj => {
+    reqObj.chemicalsRequested.forEach(chem => {
+      const nameKey = (chem.chemicalName || '').trim().toLowerCase();
+      if (!nameKey) return;
+
+      if (!demandMap[nameKey]) {
+        demandMap[nameKey] = {
+          chemicalName: chem.chemicalName,
+          totalRequested: 0,
+          unit: chem.unit || 'mL',
+          studentCount: 0
+        };
+      }
+      demandMap[nameKey].totalRequested += Number(chem.quantityRequested || 0);
+      demandMap[nameKey].studentCount += 1;
+    });
+  });
+
+  const targetLabId = queryIds[0];
+  const labInventoryItems = await Inventory.find({ labId: targetLabId });
+
+  const aggregatedList = [];
+  let hasDeficit = false;
+  const suggestedRequisition = [];
+
+  for (const key of Object.keys(demandMap)) {
+    const demand = demandMap[key];
+    const invItem = labInventoryItems.find(i => 
+      (i.chemicalName || i.itemName || '').trim().toLowerCase() === key
+    );
+
+    const availableStock = invItem ? Number(invItem.quantityAvailable !== undefined ? invItem.quantityAvailable : invItem.quantity || 0) : 0;
+    const deficit = Math.max(0, demand.totalRequested - availableStock);
+
+    if (deficit > 0) {
+      hasDeficit = true;
+      suggestedRequisition.push({
+        chemicalName: demand.chemicalName,
+        quantityRequested: deficit,
+        unit: demand.unit,
+        reason: `Deficit for ${demand.studentCount} student requests`
+      });
+    }
+
+    aggregatedList.push({
+      chemicalName: demand.chemicalName,
+      totalRequested: demand.totalRequested,
+      unit: demand.unit,
+      availableInLab: availableStock,
+      deficit: deficit,
+      status: deficit === 0 ? 'Sufficient' : 'Deficit',
+      studentCount: demand.studentCount
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    pendingStudentCount: pendingRequests.length,
+    hasDeficit,
+    chemicals: aggregatedList,
+    suggestedRequisition
+  });
+});
+
 module.exports = {
   createRequest,
   getMyRequests,
   getStudentRequestsForLab,
   getLabRequests,
+  getAggregatedLabDemand,
   approveBulk,
   approveRequest,
   rejectRequest,
