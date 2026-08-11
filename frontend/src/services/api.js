@@ -2,12 +2,21 @@ import axios from 'axios';
 import { getToken, getRefreshToken, saveToken, saveRefreshToken, clearAuthSession, getUser } from '../utils/auth';
 import { navigate } from '../utils/navigate';
 
-// Support both VITE_API_BASE and VITE_API_BASE_URL for compatibility
-const API_BASE = 
-  import.meta.env.VITE_API_BASE_URL || 
-  import.meta.env.VITE_API_BASE || 
-  (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? window.location.origin : 'http://localhost:5000');
+const getApiBase = () => {
+  let raw = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || '';
+  if (!raw) {
+    return typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
+      ? '/api' 
+      : 'http://localhost:5000/api';
+  }
+  let cleaned = raw.trim().replace(/\/+$/, '');
+  if (!cleaned.endsWith('/api')) {
+    cleaned += '/api';
+  }
+  return cleaned;
+};
 
+const API_BASE = getApiBase();
 const TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT || '30000', 10);
 let refreshPromise = null;
 
