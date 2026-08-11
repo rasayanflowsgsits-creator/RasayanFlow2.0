@@ -80,16 +80,14 @@ export default function StoreDashboard() {
 
     const avgChemValue = chemicals.length > 0 ? safeRound(totalInventoryValue / chemicals.length) : 0;
 
-    const mostExpensiveChem = chemicals.reduce(
-      (max, chem) => ((chem['Unit Price (INR)'] || 0) > (max['Unit Price (INR)'] || 0) ? chem : max),
-      chemicals[0] || {}
-    );
+    const mostExpensiveChem = chemicals.length > 0
+      ? chemicals.reduce((max, chem) => ((chem?.['Unit Price (INR)'] || 0) > (max?.['Unit Price (INR)'] || 0) ? chem : max), chemicals[0] || {})
+      : {};
 
-    const inStockChems = chemicals.filter(chem => (chem['Total Current Value (INR)'] || 0) > 0);
-    const lowestStockChem = inStockChems.reduce(
-      (min, chem) => ((chem['Total Current Value (INR)'] || 0) < (min['Total Current Value (INR)'] || Infinity) ? chem : min),
-      inStockChems[0] || {}
-    );
+    const inStockChems = chemicals.filter(chem => (chem?.['Total Current Value (INR)'] || 0) > 0);
+    const lowestStockChem = inStockChems.length > 0
+      ? inStockChems.reduce((min, chem) => ((chem?.['Total Current Value (INR)'] || 0) < (min?.['Total Current Value (INR)'] || Infinity) ? chem : min), inStockChems[0] || {})
+      : {};
 
     return {
       totalInventoryValue,
@@ -100,6 +98,22 @@ export default function StoreDashboard() {
       lowestStockChem
     };
   }, [chemicals, history]);
+
+  // Stock Health Stats for segmented progress bar
+  const stockHealthStats = useMemo(() => {
+    const inStock = chemicals.filter(c => c?.status === 'In Stock').length;
+    const lowStock = chemicals.filter(c => c?.status === 'Low Stock').length;
+    const outOfStock = chemicals.filter(c => c?.status === 'Out of Stock').length;
+    const total = chemicals.length || 1;
+    return {
+      inStock,
+      lowStock,
+      outOfStock,
+      inStockPct: safeRound((inStock / total) * 100),
+      lowStockPct: safeRound((lowStock / total) * 100),
+      outOfStockPct: safeRound((outOfStock / total) * 100)
+    };
+  }, [chemicals]);
 
   // Low stock alerts percentage
   const alertThreshold = 15;
@@ -253,15 +267,15 @@ export default function StoreDashboard() {
               <p className="text-[11px] font-bold uppercase tracking-wider text-[#71805a] dark:text-[#c5d0b5]">
                 Highest Price Chemical
               </p>
-              <p className="text-sm font-semibold text-[#2e3d19] dark:text-[#eef4e8] truncate max-w-[220px]" title={financialMetrics.mostExpensiveChem['Chemical Name']}>
-                {financialMetrics.mostExpensiveChem['Chemical Name'] || 'N/A'}
+              <p className="text-sm font-semibold text-[#2e3d19] dark:text-[#eef4e8] truncate max-w-[220px]" title={financialMetrics.mostExpensiveChem?.['Chemical Name'] || ''}>
+                {financialMetrics.mostExpensiveChem?.['Chemical Name'] || 'N/A'}
               </p>
             </div>
             <div className="text-right">
               <span className="text-sm font-bold text-[#556b2f] dark:text-[#a8be8a]">
-                ₹ {(financialMetrics.mostExpensiveChem['Unit Price (INR)'] || 0).toLocaleString('en-IN')}
+                ₹ {(financialMetrics.mostExpensiveChem?.['Unit Price (INR)'] || 0).toLocaleString('en-IN')}
               </span>
-              <p className="text-[10px] text-[#87996c]">per {financialMetrics.mostExpensiveChem['Standard Unit'] || 'Unit'}</p>
+              <p className="text-[10px] text-[#87996c]">per {financialMetrics.mostExpensiveChem?.['Standard Unit'] || 'Unit'}</p>
             </div>
           </div>
 
@@ -270,13 +284,13 @@ export default function StoreDashboard() {
               <p className="text-[11px] font-bold uppercase tracking-wider text-[#71805a] dark:text-[#c5d0b5]">
                 Lowest In-Stock Valuation
               </p>
-              <p className="text-sm font-semibold text-[#2e3d19] dark:text-[#eef4e8] truncate max-w-[220px]" title={financialMetrics.lowestStockChem['Chemical Name']}>
-                {financialMetrics.lowestStockChem['Chemical Name'] || 'N/A'}
+              <p className="text-sm font-semibold text-[#2e3d19] dark:text-[#eef4e8] truncate max-w-[220px]" title={financialMetrics.lowestStockChem?.['Chemical Name'] || ''}>
+                {financialMetrics.lowestStockChem?.['Chemical Name'] || 'N/A'}
               </p>
             </div>
             <div className="text-right">
               <span className="text-sm font-bold text-amber-600 dark:text-amber-400">
-                ₹ {(financialMetrics.lowestStockChem['Total Current Value (INR)'] || 0).toLocaleString('en-IN')}
+                ₹ {(financialMetrics.lowestStockChem?.['Total Current Value (INR)'] || 0).toLocaleString('en-IN')}
               </span>
               <p className="text-[10px] text-[#87996c]">remaining stock value</p>
             </div>
