@@ -216,7 +216,7 @@ function App() {
             <div className='min-h-screen bg-[#fdfdf7] text-[#3c4e23] dark:bg-[#1a1d16] dark:text-[#eef4e8]'>
               <Sidebar collapsed={sidebarCollapsed} />
               {!sidebarCollapsed ? <div className='fixed inset-0 z-10 bg-[#23281d]/20 md:hidden' onClick={() => setSidebarCollapsed(true)} /> : null}
-              <div className={sidebarCollapsed ? 'ml-0 md:ml-20' : 'ml-0 md:ml-72'}>
+              <div className={sidebarCollapsed ? 'ml-0 md:ml-20' : 'ml-0 md:ml-64'}>
                 <Navbar onToggleSidebar={() => setSidebarCollapsed((value) => !value)} isDark={darkMode} toggleTheme={() => setDarkMode((value) => !value)} />
                 <main className='mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8'>
                   <Routes>
