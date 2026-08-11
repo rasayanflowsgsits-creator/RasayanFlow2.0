@@ -116,9 +116,8 @@ export default function Sidebar({ collapsed }) {
 
   let storeRequestsCount = 0;
   if (role === 'lab-admin' || role === 'labAdmin' || role === 'lab_admin') {
-    const labName = user?.labName || '';
-    const mockRequests = useStoreManagerMock.getState()?.requests || [];
-    storeRequestsCount = mockRequests.filter(r => labName && r.lab === labName && r.status === 'Pending').length;
+    const studentRequests = useAppStore.getState()?.studentRequests || [];
+    storeRequestsCount = studentRequests.filter(r => r.overallStatus === 'Pending').length;
   }
 
   return (
