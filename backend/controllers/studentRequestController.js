@@ -10,7 +10,14 @@ try {
 } catch (e) {
   // Socket module optional
 }
-const { v4: uuidv4 } = require('uuid');
+
+const crypto = require('crypto');
+let uuidv4;
+try {
+  uuidv4 = require('uuid').v4;
+} catch (e) {
+  uuidv4 = () => crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 10);
+}
 
 // @desc    Create a new student request for chemicals
 // @route   POST /api/student/requests
