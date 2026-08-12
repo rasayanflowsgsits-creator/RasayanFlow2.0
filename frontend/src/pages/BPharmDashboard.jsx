@@ -457,31 +457,34 @@ const BPharmDashboard = () => {
         </button>
       </div>
 
-      {/* My Practical Subjects Grid */}
-      <div className="space-y-5 pt-2">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-[#e4ebda] dark:border-[#38432a] pb-4">
-          <div>
-            <h2 className="text-3xl sm:text-4xl font-black text-[#3c4e23] dark:text-[#c8a030] flex items-center gap-3 tracking-tight">
-              <Beaker className="w-8 h-8 text-[#556b2f] dark:text-[#c8a030] shrink-0" /> My Practical Subjects
-            </h2>
-            {user?.course && user?.year && user?.semester ? (
-              <p className="text-sm sm:text-base text-[#556b2f] dark:text-[#a5b48b] mt-1.5 font-extrabold flex items-center gap-2">
-                <span className="inline-block w-2 h-2 rounded-full bg-[#556b2f] dark:bg-[#c8a030]"></span>
-                {user.course} &bull; Year {user.year} &bull; Semester {user.semester}
-              </p>
-            ) : (
-              <p className="text-sm text-[#556b2f] dark:text-[#a5b48b] mt-1 font-bold">
-                B.Pharm &bull; Year 1 &bull; Semester 1
-              </p>
-            )}
+      {/* My Practical Subjects Section */}
+      <div className="space-y-4 pt-1">
+        {/* Header Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-[#e4ebda] dark:border-[#38432a] pb-3.5">
+          <div className="space-y-1 text-left">
+            <div className="flex items-center gap-2">
+              <Beaker className="w-5 h-5 sm:w-6 sm:h-6 text-[#556b2f] dark:text-[#c8a030] shrink-0" />
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-[#3c4e23] dark:text-[#c8a030] tracking-tight">
+                My Practical Subjects
+              </h2>
+            </div>
+            <p className="text-xs sm:text-sm text-[#556b2f] dark:text-[#a5b48b] font-bold flex items-center gap-1.5">
+              <span className="inline-block w-2 h-2 rounded-full bg-[#556b2f] dark:bg-[#c8a030]"></span>
+              {user?.course || 'B.Pharm'} &bull; Year {user?.year || 1} &bull; Semester {user?.semester || 1}
+            </p>
           </div>
-          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 text-xs font-bold self-start sm:self-auto border border-emerald-200 dark:border-emerald-800/40 shadow-sm">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> 15 IP Practical Experiments Ready
-          </span>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 text-xs font-bold border border-emerald-200/80 dark:border-emerald-800/40">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>15 IP Experiments Ready</span>
+            </span>
+          </div>
         </div>
 
+        {/* Subjects Grid */}
         {myLabs && myLabs.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
             {myLabs.map(lab => {
               const adminName = lab.admin && lab.admin !== 'Unassigned' 
                 ? lab.admin 
@@ -501,55 +504,52 @@ const BPharmDashboard = () => {
               };
 
               return (
-                <Card 
+                <div 
                   key={targetId || lab.labCode || lab.name}
                   onClick={handleNavigateToLab}
-                  className="cursor-pointer group relative overflow-hidden bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] hover:border-[#556b2f] dark:hover:border-[#c8a030] hover:shadow-2xl hover:shadow-[#556b2f]/10 hover:-translate-y-1.5 transition-all duration-300 p-6 flex flex-col justify-between rounded-2xl"
+                  className="cursor-pointer group relative overflow-hidden bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] hover:border-[#556b2f] dark:hover:border-[#c8a030] hover:shadow-xl hover:-translate-y-1 transition-all duration-200 p-5 rounded-2xl flex flex-col justify-between space-y-4 text-left"
                 >
-                  <div className="absolute -right-4 -bottom-4 opacity-[0.04] group-hover:opacity-[0.12] transition-opacity dark:opacity-[0.06] dark:group-hover:opacity-[0.15]">
-                    <Beaker className="w-36 h-36 text-[#556b2f] dark:text-[#c8a030]" />
+                  <div className="absolute -right-3 -bottom-3 opacity-[0.03] group-hover:opacity-[0.1] transition-opacity dark:opacity-[0.05] dark:group-hover:opacity-[0.12]">
+                    <Beaker className="w-32 h-32 text-[#556b2f] dark:text-[#c8a030]" />
                   </div>
-                  
-                  <div className="relative z-10 flex flex-col h-full space-y-4">
-                    <div className="flex justify-between items-start">
-                      <span className="inline-block px-3 py-1 bg-[#556b2f]/10 dark:bg-[#c8a030]/15 text-[#556b2f] dark:text-[#c8a030] text-xs font-extrabold rounded-lg uppercase tracking-wider border border-[#556b2f]/20 dark:border-[#c8a030]/20">
+
+                  <div className="relative z-10 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="inline-block px-2.5 py-1 bg-[#556b2f]/10 dark:bg-[#c8a030]/15 text-[#556b2f] dark:text-[#c8a030] text-xs font-extrabold rounded-lg border border-[#556b2f]/20 dark:border-[#c8a030]/20 uppercase tracking-wider">
                         {lab.labCode || '1001'}
                       </span>
-                      <span className="text-[11px] text-gray-600 dark:text-gray-300 font-bold px-2.5 py-1 bg-gray-100 dark:bg-gray-800 rounded-md">
-                        {lab.department || lab.courseType || 'Pharmacy'}
+                      <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40">
+                        15 IP Experiments
                       </span>
                     </div>
-                    
+
                     <div>
-                      <h3 className="text-xl font-extrabold text-[#3c4e23] dark:text-[#eef4e8] group-hover:text-[#556b2f] dark:group-hover:text-[#c8a030] transition-colors line-clamp-2 leading-snug">
+                      <h3 className="text-lg font-extrabold text-[#3c4e23] dark:text-[#eef4e8] group-hover:text-[#556b2f] dark:group-hover:text-[#c8a030] transition-colors leading-snug">
                         {lab.labName || lab.name}
                       </h3>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">
-                        Practical Experiments & Chemical Requisitions
+                        {lab.department || lab.courseType || 'Pharmaceutics Department'}
                       </p>
                     </div>
 
-                    <div className="pt-3 border-t border-[#e4ebda] dark:border-[#38432a] flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-[#556b2f]/10 dark:bg-[#c8a030]/15 flex items-center justify-center text-xs font-bold text-[#556b2f] dark:text-[#c8a030] shrink-0">
+                    <div className="pt-3 border-t border-[#f0f2eb] dark:border-[#28301f] flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-full bg-[#556b2f]/10 dark:bg-[#c8a030]/15 flex items-center justify-center text-xs font-extrabold text-[#556b2f] dark:text-[#c8a030] shrink-0">
                         {adminName ? adminName.charAt(0).toUpperCase() : 'F'}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400">Assigned Faculty</p>
+                        <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Faculty Instructor</p>
                         <p className="text-xs font-bold text-[#3c4e23] dark:text-[#eef4e8] truncate">
                           {adminName}
                         </p>
                       </div>
                     </div>
-                    
-                    <div 
-                      onClick={handleNavigateToLab}
-                      className="pt-3 border-t border-[#f0f2eb] dark:border-[#28301f] flex items-center justify-between text-xs font-bold text-[#556b2f] dark:text-[#c8a030] group-hover:translate-x-1 transition-transform cursor-pointer"
-                    >
-                      <span>Enter Subject & Experiments &rarr;</span>
-                      <ChevronRight className="w-4 h-4" />
-                    </div>
                   </div>
-                </Card>
+
+                  <div className="relative z-10 pt-2 flex items-center justify-between text-xs font-extrabold text-[#556b2f] dark:text-[#c8a030] group-hover:translate-x-1 transition-transform">
+                    <span>Enter Subject & Experiments &rarr;</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
+                </div>
               );
             })}
           </div>
