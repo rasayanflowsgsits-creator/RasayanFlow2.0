@@ -380,11 +380,11 @@ const BPharmDashboard = () => {
             <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           <div className="flex-1 flex flex-col items-center justify-center text-center px-1">
-            <p className="text-xl sm:text-2xl font-black text-[#3c4e23] dark:text-[#eef4e8] leading-none mb-0.5">
-              {stats.subjectsCount}
-            </p>
-            <p className="text-[11px] sm:text-xs font-bold text-gray-600 dark:text-gray-300 leading-tight">
+            <p className="text-[11px] sm:text-xs font-bold text-gray-600 dark:text-gray-300 leading-tight mb-1">
               Enrolled Labs
+            </p>
+            <p className="text-xl sm:text-2xl font-black text-[#3c4e23] dark:text-[#eef4e8] leading-none">
+              {stats.subjectsCount}
             </p>
           </div>
         </div>
@@ -396,11 +396,11 @@ const BPharmDashboard = () => {
             <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           <div className="flex-1 flex flex-col items-center justify-center text-center px-1">
-            <p className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 leading-none mb-0.5">
-              {stats.pending}
-            </p>
-            <p className="text-[11px] sm:text-xs font-bold text-gray-600 dark:text-gray-300 leading-tight">
+            <p className="text-[11px] sm:text-xs font-bold text-gray-600 dark:text-gray-300 leading-tight mb-1">
               Pending Requests
+            </p>
+            <p className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 leading-none">
+              {stats.pending}
             </p>
           </div>
         </div>
@@ -412,11 +412,11 @@ const BPharmDashboard = () => {
             <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           <div className="flex-1 flex flex-col items-center justify-center text-center px-1">
-            <p className="text-xl sm:text-2xl font-black text-teal-600 dark:text-teal-400 leading-none mb-0.5">
-              {stats.approved}
-            </p>
-            <p className="text-[11px] sm:text-xs font-bold text-gray-600 dark:text-gray-300 leading-tight">
+            <p className="text-[11px] sm:text-xs font-bold text-gray-600 dark:text-gray-300 leading-tight mb-1">
               Approved Requests
+            </p>
+            <p className="text-xl sm:text-2xl font-black text-teal-600 dark:text-teal-400 leading-none">
+              {stats.approved}
             </p>
           </div>
         </div>
@@ -428,11 +428,11 @@ const BPharmDashboard = () => {
             <Activity className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           <div className="flex-1 flex flex-col items-center justify-center text-center px-1">
-            <p className="text-xl sm:text-2xl font-black text-indigo-600 dark:text-indigo-400 leading-none mb-0.5">
-              {stats.totalRequests}
-            </p>
-            <p className="text-[11px] sm:text-xs font-bold text-gray-600 dark:text-gray-300 leading-tight">
+            <p className="text-[11px] sm:text-xs font-bold text-gray-600 dark:text-gray-300 leading-tight mb-1">
               Total Activity
+            </p>
+            <p className="text-xl sm:text-2xl font-black text-indigo-600 dark:text-indigo-400 leading-none">
+              {stats.totalRequests}
             </p>
           </div>
         </div>
