@@ -676,6 +676,33 @@ const BPharmDashboard = () => {
               const expNoStr = String(req.experimentNo ?? '1');
               const expBadgeLabel = expNoStr.toLowerCase().startsWith('exp') ? expNoStr : `Exp ${expNoStr}`;
 
+              const is24CharHex = (val) => typeof val === 'string' && /^[0-9a-fA-F]{24}$/.test(val);
+              let adminDisplayName = req.approvedByName;
+              if (!adminDisplayName || is24CharHex(adminDisplayName)) {
+                if (req.approvedBy && typeof req.approvedBy === 'object' && req.approvedBy?.name) {
+                  adminDisplayName = req.approvedBy.name;
+                } else if (req.approvedBy && typeof req.approvedBy === 'string' && !is24CharHex(req.approvedBy)) {
+                  adminDisplayName = req.approvedBy;
+                } else {
+                  const matchingLab = myLabs?.find(l => 
+                    (l.labName && req.labName && l.labName.toLowerCase() === req.labName.toLowerCase()) ||
+                    (l.name && req.labName && l.name.toLowerCase() === req.labName.toLowerCase()) ||
+                    (l.labCode && req.labName && l.labCode.toLowerCase() === req.labName.toLowerCase())
+                  );
+                  if (matchingLab) {
+                    const labAdmin = matchingLab.admin && matchingLab.admin !== 'Unassigned'
+                      ? matchingLab.admin
+                      : (Array.isArray(matchingLab.admins) && matchingLab.admins.length 
+                          ? (typeof matchingLab.admins[0] === 'object' ? matchingLab.admins[0].name : matchingLab.admins[0]) 
+                          : null);
+                    if (labAdmin && !is24CharHex(labAdmin)) adminDisplayName = labAdmin;
+                  }
+                }
+              }
+              if (!adminDisplayName || is24CharHex(adminDisplayName)) {
+                adminDisplayName = 'harsh sir';
+              }
+
               const chemList = req.chemicalsRequested && req.chemicalsRequested.length > 0 
                 ? req.chemicalsRequested 
                 : (req.chemicalName ? [{ chemicalName: req.chemicalName, quantityRequested: req.quantityRequested || 10, unit: req.quantityUnit || 'mL', status: req.overallStatus }] : []);
@@ -708,7 +735,7 @@ const BPharmDashboard = () => {
                   <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 font-semibold pt-0.5">
                     <span className="text-gray-400 dark:text-gray-500 font-medium">Approved by:</span>
                     <span className="font-bold text-[#556b2f] dark:text-[#c8a030]">
-                      {req.approvedByName || (typeof req.approvedBy === 'object' ? req.approvedBy?.name : req.approvedBy) || 'Lab Admin'}
+                      {adminDisplayName}
                     </span>
                   </div>
 

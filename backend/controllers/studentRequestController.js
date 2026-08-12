@@ -214,6 +214,7 @@ const approveBulk = asyncHandler(async (req, res) => {
       reqObj.overallStatus = 'Approved';
       reqObj.approvedAt = Date.now();
       reqObj.approvedBy = req.user.id;
+      reqObj.approvedByName = req.user.name || req.user.email || 'Lab Admin';
       
       await reqObj.save({ session });
 

@@ -38,6 +38,7 @@ const studentRequestSchema = new mongoose.Schema({
   requestedAt: { type: Date, default: Date.now },
   approvedAt: { type: Date },
   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  approvedByName: { type: String, trim: true },
   rejectedAt: { type: Date },
   rejectionReason: { type: String, trim: true },
 });
