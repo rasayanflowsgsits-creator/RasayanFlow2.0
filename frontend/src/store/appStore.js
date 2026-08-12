@@ -376,6 +376,7 @@ const useAppStore = create((set) => ({
   studentRequests: [],
   researchRequests: [],
   smartInventory: null,
+  aggregatedDemand: null,
   loading: false,
   filters: { search: '', lab: 'All' },
   toast: null,
@@ -482,6 +483,97 @@ const useAppStore = create((set) => ({
       return data;
     } catch (err) {
       set({ loading: false, toast: { title: 'Error', message: err?.response?.data?.message || 'Failed to send store request', type: 'error' } });
+      throw err;
+    }
+  },
+  fetchStudentRequests: async (labId) => {
+    set({ loading: true });
+    try {
+      const url = labId ? `/student-requests/lab?labId=${encodeURIComponent(labId)}` : '/student-requests/lab';
+      const { data } = await api.get(url);
+      const list = data?.data || data?.requests || (Array.isArray(data) ? data : []);
+      set({ studentRequests: Array.isArray(list) ? list : [], loading: false });
+      return list;
+    } catch (err) {
+      console.error('Failed to fetch student requests:', err);
+      set({ studentRequests: [], loading: false });
+      return [];
+    }
+  },
+  fetchAggregatedLabDemand: async (labId) => {
+    try {
+      const url = labId ? `/student-requests/aggregated?labId=${encodeURIComponent(labId)}` : '/student-requests/aggregated';
+      const { data } = await api.get(url);
+      set({ aggregatedDemand: data });
+      return data;
+    } catch (err) {
+      console.error('Failed to fetch aggregated lab demand:', err);
+      return null;
+    }
+  },
+  approveStudentRequest: async (requestId, approveType = 'available', labId = null) => {
+    set({ loading: true });
+    try {
+      const { data } = await api.put(`/student-requests/${requestId}/approve`, { approveType });
+      set({
+        loading: false,
+        toast: { title: 'Success', message: 'Student request approved & chemical deducted from lab inventory!', type: 'success' }
+      });
+      if (labId) {
+        useAppStore.getState().fetchInventory(labId);
+        useAppStore.getState().fetchStudentRequests(labId);
+        useAppStore.getState().fetchAggregatedLabDemand(labId);
+      }
+      return data;
+    } catch (err) {
+      set({
+        loading: false,
+        toast: { title: 'Error', message: err?.response?.data?.message || 'Failed to approve request', type: 'error' }
+      });
+      throw err;
+    }
+  },
+  rejectStudentRequest: async (requestId, reason = 'Not specified', labId = null) => {
+    set({ loading: true });
+    try {
+      const { data } = await api.put(`/student-requests/${requestId}/reject`, { reason });
+      set({
+        loading: false,
+        toast: { title: 'Success', message: 'Student request rejected', type: 'info' }
+      });
+      if (labId) {
+        useAppStore.getState().fetchStudentRequests(labId);
+        useAppStore.getState().fetchAggregatedLabDemand(labId);
+      }
+      return data;
+    } catch (err) {
+      set({
+        loading: false,
+        toast: { title: 'Error', message: err?.response?.data?.message || 'Failed to reject request', type: 'error' }
+      });
+      throw err;
+    }
+  },
+  bulkApproveStudentRequests: async (requestIds, labId = null) => {
+    set({ loading: true });
+    try {
+      for (const id of requestIds) {
+        await api.put(`/student-requests/${id}/approve`, { approveType: 'available' });
+      }
+      set({
+        loading: false,
+        toast: { title: 'Success', message: `Approved ${requestIds.length} student requests & deducted inventory!`, type: 'success' }
+      });
+      if (labId) {
+        useAppStore.getState().fetchInventory(labId);
+        useAppStore.getState().fetchStudentRequests(labId);
+        useAppStore.getState().fetchAggregatedLabDemand(labId);
+      }
+    } catch (err) {
+      set({
+        loading: false,
+        toast: { title: 'Error', message: err?.response?.data?.message || 'Bulk approval failed', type: 'error' }
+      });
       throw err;
     }
   },

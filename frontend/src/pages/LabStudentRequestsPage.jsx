@@ -139,6 +139,52 @@ export default function LabStudentRequestsPage() {
     rejected: studentRequests.filter((r) => r.overallStatus === 'Rejected').length,
   }), [studentRequests]);
 
+  // Aggregated Student Chemical Demand & Deficit Calculation across ALL pending student requests
+  const aggregatedDemand = useMemo(() => {
+    const map = {};
+    const pendingReqs = (studentRequests || []).filter(r => r.overallStatus === 'Pending');
+
+    pendingReqs.forEach(reqObj => {
+      (reqObj.chemicalsRequested || []).forEach(chem => {
+        const name = (chem.chemicalName || chem.name || '').trim();
+        if (!name) return;
+        const key = name.toLowerCase();
+        if (!map[key]) {
+          map[key] = {
+            chemicalName: name,
+            totalRequested: 0,
+            unit: chem.unit || chem.quantityUnit || 'mL',
+            studentCount: 0
+          };
+        }
+        map[key].totalRequested += Number(chem.quantityRequested || 0);
+        map[key].studentCount += 1;
+      });
+    });
+
+    const list = Object.values(map).map(item => {
+      const invItem = (inventory || []).find(i =>
+        (i.chemicalName || i.itemName || '').trim().toLowerCase() === item.chemicalName.toLowerCase()
+      );
+      const avail = invItem ? Number(invItem.quantity || 0) : 0;
+      const deficit = Math.max(0, item.totalRequested - avail);
+      return {
+        ...item,
+        available: avail,
+        deficit,
+        isSufficient: avail >= item.totalRequested
+      };
+    });
+
+    const totalDeficits = list.filter(i => i.deficit > 0);
+    return {
+      pendingStudentCount: pendingReqs.length,
+      chemicals: list,
+      hasDeficit: totalDeficits.length > 0,
+      totalDeficits
+    };
+  }, [studentRequests, inventory]);
+
   const handleReviewClick = (req) => {
     setSelectedRequest(req);
     setRejectReason('');
@@ -147,13 +193,13 @@ export default function LabStudentRequestsPage() {
 
   const handleApprove = async (approveType) => {
     if (!selectedRequest) return;
-    await approveStudentRequest(selectedRequest._id, approveType);
+    await approveStudentRequest(selectedRequest._id, approveType, activeLabId);
     setIsReviewModalOpen(false);
   };
 
   const handleReject = async () => {
     if (!selectedRequest) return;
-    await rejectStudentRequest(selectedRequest._id, rejectReason || 'Not specified');
+    await rejectStudentRequest(selectedRequest._id, rejectReason || 'Not specified', activeLabId);
     setIsReviewModalOpen(false);
   };
 
@@ -202,9 +248,9 @@ export default function LabStudentRequestsPage() {
     const ids = Array.from(selectedRequests);
     if (!ids.length) return;
     if (bulkApproveStudentRequests) {
-      await bulkApproveStudentRequests(ids);
+      await bulkApproveStudentRequests(ids, activeLabId);
     } else {
-      for (const id of ids) await approveStudentRequest(id, 'available');
+      for (const id of ids) await approveStudentRequest(id, 'available', activeLabId);
     }
     setSelectedRequests(new Set());
   };
@@ -289,6 +335,121 @@ export default function LabStudentRequestsPage() {
             <div className="text-2xl font-bold">{value}</div>
           </div>
         ))}
+      </div>
+
+      {/* Aggregated Student Chemical Demand & Deficit Command Center */}
+      <div className="rounded-2xl border border-[#d9e1ca] bg-gradient-to-r from-[#f7f9f1] to-[#eef4e3] p-5 shadow-sm dark:border-[#3c452f] dark:from-[#1b2116] dark:to-[#171b12] space-y-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="flex h-3 w-3 rounded-full bg-[#556b2f] animate-pulse"></span>
+              <h3 className="text-base font-bold text-[#2e3d19] dark:text-[#eef4e8]">
+                Total Student Chemical Demand & Deficit Aggregator
+              </h3>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#e1e9d3] text-[#425424] dark:bg-[#2a351f] dark:text-[#c5d0b5]">
+                {aggregatedDemand.pendingStudentCount} Pending Students
+              </span>
+            </div>
+            <p className="text-xs text-[#627443] dark:text-[#b8c9a0]">
+              Calculated sum of all chemical demands across all pending student requests for {currentLab?.name || 'this lab'}. Deficits can be requested from Central Store in 1 click.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {aggregatedDemand.hasDeficit && (
+              <Button
+                className="bg-amber-700 hover:bg-amber-800 text-white font-semibold text-xs py-2 px-3 shadow-sm flex items-center gap-1.5"
+                onClick={() => {
+                  const firstDeficit = aggregatedDemand.totalDeficits[0];
+                  setStoreModalData({
+                    chemicalName: firstDeficit?.chemicalName || '',
+                    quantityRequested: String(firstDeficit?.deficit || '500'),
+                    unit: firstDeficit?.unit || 'mL',
+                    reason: `Batch Requisition for ${aggregatedDemand.pendingStudentCount} student requests in ${currentLab?.name || 'Lab'}`
+                  });
+                  setStoreModalOpen(true);
+                }}
+              >
+                🏪 Request Deficits From Store
+              </Button>
+            )}
+
+            {aggregatedDemand.pendingStudentCount > 0 && (
+              <Button
+                className="bg-[#556b2f] hover:bg-[#455724] text-white font-semibold text-xs py-2 px-3 shadow-sm flex items-center gap-1.5"
+                onClick={async () => {
+                  const pendingIds = studentRequests.filter(r => r.overallStatus === 'Pending').map(r => r._id);
+                  if (pendingIds.length > 0) {
+                    await bulkApproveStudentRequests(pendingIds, activeLabId);
+                  }
+                }}
+              >
+                <CheckCircle size={14} />
+                Approve All ({aggregatedDemand.pendingStudentCount}) & Deduct Inventory
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Aggregated Chemicals Cards */}
+        {aggregatedDemand.chemicals.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {aggregatedDemand.chemicals.map((item, idx) => (
+              <div key={idx} className="p-3.5 rounded-xl border border-[#d2dcc2] bg-white dark:bg-[#1a1d16] dark:border-[#38422b] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-sm text-[#3c4e23] dark:text-[#eef4e8]">{item.chemicalName}</span>
+                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase ${
+                    item.isSufficient 
+                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400' 
+                      : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-400'
+                  }`}>
+                    {item.isSufficient ? '✅ Sufficient' : '⚠️ Deficit'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-1 text-center py-1.5 bg-[#f8faef] dark:bg-[#20261b] rounded-lg">
+                  <div>
+                    <p className="text-[10px] text-[#71805a]">Total Needed</p>
+                    <p className="text-xs font-bold text-[#3c4e23] dark:text-[#eef4e8]">{item.totalRequested} {item.unit}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#71805a]">Lab Stock</p>
+                    <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">{item.available} {item.unit}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#71805a]">Net Deficit</p>
+                    <p className={`text-xs font-bold ${item.deficit > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'}`}>
+                      {item.deficit > 0 ? `${item.deficit} ${item.unit}` : '0'}
+                    </p>
+                  </div>
+                </div>
+
+                {item.deficit > 0 && (
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-[11px] text-[#627443] dark:text-[#a5b48b] font-medium">{item.studentCount} students requesting</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStoreModalData({
+                          chemicalName: item.chemicalName,
+                          quantityRequested: String(item.deficit),
+                          unit: item.unit,
+                          reason: `Deficit of ${item.deficit} ${item.unit} for ${item.studentCount} student requests`
+                        });
+                        setStoreModalOpen(true);
+                      }}
+                      className="text-[11px] font-bold text-[#556b2f] dark:text-[#a8be82] hover:underline"
+                    >
+                      + Request {item.deficit} {item.unit} from Store
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="p-3 text-center text-xs text-[#71805a]">No pending student chemical requests in this lab right now.</div>
+        )}
       </div>
 
       {/* Filters & View Toggle */}
