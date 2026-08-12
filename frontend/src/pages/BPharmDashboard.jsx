@@ -457,34 +457,29 @@ const BPharmDashboard = () => {
         </button>
       </div>
 
-      {/* My Practical Subjects Section */}
-      <div className="space-y-4 pt-1">
-        {/* Header Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-[#e4ebda] dark:border-[#38432a] pb-3.5">
-          <div className="space-y-1 text-left">
-            <div className="flex items-center gap-2">
-              <Beaker className="w-5 h-5 sm:w-6 sm:h-6 text-[#556b2f] dark:text-[#c8a030] shrink-0" />
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-[#3c4e23] dark:text-[#c8a030] tracking-tight">
-                My Practical Subjects
-              </h2>
-            </div>
-            <p className="text-xs sm:text-sm text-[#556b2f] dark:text-[#a5b48b] font-bold flex items-center gap-1.5">
-              <span className="inline-block w-2 h-2 rounded-full bg-[#556b2f] dark:bg-[#c8a030]"></span>
-              {user?.course || 'B.Pharm'} &bull; Year {user?.year || 1} &bull; Semester {user?.semester || 1}
-            </p>
-          </div>
+      {/* Border Divider between Quick Navigation and My Practical Subjects */}
+      <div className="w-full my-6 border-t-2 border-dashed border-[#dce5cc] dark:border-[#333d26]"></div>
 
-          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 text-xs font-bold border border-emerald-200/80 dark:border-emerald-800/40">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>15 IP Experiments Ready</span>
-            </span>
+      {/* Dedicated Section Container Box for My Practical Subjects */}
+      <div className="rounded-3xl p-5 sm:p-7 bg-[#fcfdfa] dark:bg-[#181d13] border-2 border-[#d0dcb8] dark:border-[#38432a] shadow-lg shadow-[#556b2f]/5 space-y-6 text-center">
+        
+        {/* Centered Header Bar */}
+        <div className="flex flex-col items-center justify-center text-center space-y-1.5 pb-4 border-b-2 border-[#e4ebda] dark:border-[#38432a]">
+          <div className="flex items-center justify-center gap-2.5">
+            <Beaker className="w-6 h-6 sm:w-7 sm:h-7 text-[#556b2f] dark:text-[#c8a030] shrink-0" />
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-[#3c4e23] dark:text-[#c8a030] tracking-tight">
+              My Practical Subjects
+            </h2>
           </div>
+          <p className="text-xs sm:text-sm text-[#556b2f] dark:text-[#a5b48b] font-bold flex items-center justify-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-[#556b2f] dark:bg-[#c8a030]"></span>
+            {user?.course || 'B.Pharm'} &bull; Year {user?.year || 1} &bull; Semester {user?.semester || 1}
+          </p>
         </div>
 
         {/* Subjects Grid */}
         {myLabs && myLabs.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 text-left">
             {myLabs.map(lab => {
               const adminName = lab.admin && lab.admin !== 'Unassigned' 
                 ? lab.admin 
@@ -507,37 +502,37 @@ const BPharmDashboard = () => {
                 <div 
                   key={targetId || lab.labCode || lab.name}
                   onClick={handleNavigateToLab}
-                  className="cursor-pointer group relative overflow-hidden bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] hover:border-[#556b2f] dark:hover:border-[#c8a030] hover:shadow-xl hover:-translate-y-1 transition-all duration-200 p-5 rounded-2xl flex flex-col justify-between space-y-4 text-left"
+                  className="cursor-pointer group relative overflow-hidden bg-white dark:bg-[#1c2117] border-2 border-[#b8c99d] dark:border-[#4a5836] shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-200 p-5 sm:p-6 rounded-2xl flex flex-col justify-between space-y-4 text-left"
                 >
-                  <div className="absolute -right-3 -bottom-3 opacity-[0.03] group-hover:opacity-[0.1] transition-opacity dark:opacity-[0.05] dark:group-hover:opacity-[0.12]">
+                  <div className="absolute -right-3 -bottom-3 opacity-[0.04] group-hover:opacity-[0.12] transition-opacity dark:opacity-[0.06] dark:group-hover:opacity-[0.15]">
                     <Beaker className="w-32 h-32 text-[#556b2f] dark:text-[#c8a030]" />
                   </div>
 
                   <div className="relative z-10 space-y-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="inline-block px-2.5 py-1 bg-[#556b2f]/10 dark:bg-[#c8a030]/15 text-[#556b2f] dark:text-[#c8a030] text-xs font-extrabold rounded-lg border border-[#556b2f]/20 dark:border-[#c8a030]/20 uppercase tracking-wider">
-                        {lab.labCode || '1001'}
+                    <div className="flex items-center justify-between">
+                      <span className="inline-block px-3 py-1 bg-[#556b2f]/10 dark:bg-[#c8a030]/15 text-[#556b2f] dark:text-[#c8a030] text-xs font-extrabold rounded-lg border border-[#556b2f]/25 dark:border-[#c8a030]/25 uppercase tracking-wider">
+                        {lab.labCode || '100'}
                       </span>
-                      <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40">
-                        15 IP Experiments
+                      <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-[#f4f7ee] dark:bg-[#252d1d] text-[#556b2f] dark:text-[#c8a030] border border-[#d5e0c2] dark:border-[#38432a]">
+                        {lab.courseType || user?.course || 'B.Pharm'}
                       </span>
                     </div>
 
                     <div>
-                      <h3 className="text-lg font-extrabold text-[#3c4e23] dark:text-[#eef4e8] group-hover:text-[#556b2f] dark:group-hover:text-[#c8a030] transition-colors leading-snug">
+                      <h3 className="text-xl sm:text-2xl font-black text-[#3c4e23] dark:text-[#eef4e8] group-hover:text-[#556b2f] dark:group-hover:text-[#c8a030] transition-colors leading-tight">
                         {lab.labName || lab.name}
                       </h3>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">
-                        {lab.department || lab.courseType || 'Pharmaceutics Department'}
+                        Practical Experiments & Chemical Requisitions
                       </p>
                     </div>
 
-                    <div className="pt-3 border-t border-[#f0f2eb] dark:border-[#28301f] flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-full bg-[#556b2f]/10 dark:bg-[#c8a030]/15 flex items-center justify-center text-xs font-extrabold text-[#556b2f] dark:text-[#c8a030] shrink-0">
+                    <div className="pt-3 border-t border-[#e4ebda] dark:border-[#28301f] flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-[#556b2f]/10 dark:bg-[#c8a030]/15 flex items-center justify-center text-xs font-extrabold text-[#556b2f] dark:text-[#c8a030] shrink-0">
                         {adminName ? adminName.charAt(0).toUpperCase() : 'F'}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Faculty Instructor</p>
+                        <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">FACULTY INSTRUCTOR</p>
                         <p className="text-xs font-bold text-[#3c4e23] dark:text-[#eef4e8] truncate">
                           {adminName}
                         </p>
@@ -545,7 +540,7 @@ const BPharmDashboard = () => {
                     </div>
                   </div>
 
-                  <div className="relative z-10 pt-2 flex items-center justify-between text-xs font-extrabold text-[#556b2f] dark:text-[#c8a030] group-hover:translate-x-1 transition-transform">
+                  <div className="relative z-10 pt-3 border-t border-[#f0f2eb] dark:border-[#28301f] flex items-center justify-between text-xs font-extrabold text-[#556b2f] dark:text-[#c8a030] group-hover:translate-x-1 transition-transform">
                     <span>Enter Subject & Experiments &rarr;</span>
                     <ChevronRight className="w-4 h-4" />
                   </div>
