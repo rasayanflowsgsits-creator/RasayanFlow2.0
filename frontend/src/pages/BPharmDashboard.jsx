@@ -351,114 +351,83 @@ const BPharmDashboard = () => {
   return (
     <div className="min-h-screen bg-[#f7f9f2] dark:bg-[#141711] text-[#2c3320] dark:text-[#eef4e8] p-4 md:p-8 space-y-8 font-sans pb-24 transition-colors duration-300">
       
-      {/* Premium Glassmorphic Hero Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#273418] via-[#3d4f23] to-[#556b2f] text-white p-6 sm:p-9 shadow-2xl border border-emerald-900/30">
-        <div className="absolute -right-12 -top-12 opacity-15 pointer-events-none hidden sm:block">
-          <FlaskConical className="w-64 h-64 text-emerald-300" />
-        </div>
-        <div className="absolute left-1/3 -bottom-20 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
-        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-500/30 backdrop-blur-md text-xs font-semibold text-emerald-200">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+      {/* Static Header Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[#e4ebda] dark:border-[#2a3321] pb-5">
+        <div className="space-y-1 text-left">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#3c4e23] dark:text-[#eef4e8] tracking-tight">
+            Welcome back, {user?.name || 'Student'}!
+          </h1>
+          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[#71805a] dark:text-[#c5d0b5]">
+            <span className="bg-[#556b2f] text-white px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm">
+              B.Pharm Y{user?.year || 1} • Sem {user?.semester || 1}
+            </span>
+            {user?.group && user?.group !== 'No Group' && (
+              <span className="bg-[#f0f4e8] text-[#556b2f] dark:bg-[#28301f] dark:text-[#c5d0b5] px-2.5 py-0.5 rounded-full text-xs font-semibold">
+                {user.group.startsWith('Group') ? user.group : `Group ${user.group}`}
               </span>
-              <span>{user?.isPreview ? 'Live Student Preview Mode' : 'Student Portal Dashboard'}</span>
-            </div>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight">
-              Welcome back, <span className="bg-gradient-to-r from-white via-[#f0f7e6] to-[#d4e6b5] bg-clip-text text-transparent">{user?.name || 'Student'}</span>!
-            </h1>
-            <div className="flex flex-wrap items-center gap-2.5 text-xs sm:text-sm font-medium pt-1">
-              <span className="bg-[#c8a030] text-black px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm">
-                B.Pharm Y{user?.year || 1} • Sem {user?.semester || 1}
-              </span>
-              {user?.group && user?.group !== 'No Group' && (
-                <span className="bg-black/40 backdrop-blur-sm text-emerald-100 border border-emerald-500/20 px-3 py-1 rounded-full text-xs font-medium">
-                  {user.group.startsWith('Group') ? user.group : `Group ${user.group}`}
-                </span>
-              )}
-              <span className="text-emerald-100/90 font-mono text-xs">{currentDate}</span>
-            </div>
+            )}
+            <span className="text-[#87996c] dark:text-[#9fb384] font-medium">{currentDate}</span>
           </div>
-
-          <button 
-            onClick={() => {
-              if (myLabs && myLabs.length > 0) {
-                const targetLab = myLabs[0];
-                setActiveLabWindow(targetLab);
-              } else {
-                setActiveLabWindow({
-                  labName: 'Pharmaceutics Lab - I',
-                  labCode: 'PH101L',
-                  department: 'Pharmaceutics',
-                  admin: 'Dr. R. K. Sharma',
-                  adminEmail: 'sharma.pharmaceutics@rasayanflow.edu'
-                });
-              }
-            }}
-            className="group flex items-center gap-2.5 bg-gradient-to-r from-[#d9b238] to-[#c8a030] hover:from-[#e5bd42] hover:to-[#d6ad34] text-black px-5 py-3 rounded-2xl font-bold text-xs sm:text-sm shadow-xl shadow-amber-950/20 hover:scale-[1.02] active:scale-[0.98] transition-all shrink-0 border border-amber-300/40"
-          >
-            <FlaskConical className="w-4 h-4 group-hover:rotate-12 transition-transform" /> 
-            <span>Open Subject Lab Window</span>
-          </button>
         </div>
       </div>
 
-      {/* Modern Metrics Grid with Gradient Top Borders */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-5">
-        <Card className="relative overflow-hidden p-5 bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all text-left group">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#556b2f] to-emerald-400"></div>
-          <div className="flex items-center gap-3.5">
-            <div className="p-3 bg-[#556b2f]/10 dark:bg-[#c8a030]/15 rounded-2xl text-[#556b2f] dark:text-[#c8a030] group-hover:scale-110 transition-transform">
-              <BookOpen className="w-6 h-6" />
+      {/* Aesthetic Mobile-Responsive Stat Metrics Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        {/* Card 1: Enrolled Labs */}
+        <div className="relative overflow-hidden p-4 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all text-left">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-500"></div>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl text-emerald-700 dark:text-emerald-400 shrink-0">
+              <BookOpen className="w-5 h-5" />
             </div>
-            <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider">Enrolled Subjects</p>
-              <p className="text-2xl sm:text-3xl font-extrabold text-[#3c4e23] dark:text-[#eef4e8]">{stats.subjectsCount}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 truncate">Enrolled Labs</p>
+              <p className="text-2xl font-black text-[#3c4e23] dark:text-[#eef4e8] leading-tight">{stats.subjectsCount}</p>
             </div>
           </div>
-        </Card>
+        </div>
 
-        <Card className="relative overflow-hidden p-5 bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all text-left group">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 to-amber-500"></div>
-          <div className="flex items-center gap-3.5">
-            <div className="p-3 bg-amber-100 dark:bg-amber-900/30 rounded-2xl text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
-              <Clock className="w-6 h-6" />
+        {/* Card 2: Pending Requests */}
+        <div className="relative overflow-hidden p-4 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all text-left">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500"></div>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 rounded-xl text-amber-600 dark:text-amber-400 shrink-0">
+              <Clock className="w-5 h-5" />
             </div>
-            <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider">Pending Requests</p>
-              <p className="text-2xl sm:text-3xl font-extrabold text-amber-600 dark:text-amber-400">{stats.pending}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 truncate">Pending Requests</p>
+              <p className="text-2xl font-black text-amber-600 dark:text-amber-400 leading-tight">{stats.pending}</p>
             </div>
           </div>
-        </Card>
+        </div>
 
-        <Card className="relative overflow-hidden p-5 bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all text-left group">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-400"></div>
-          <div className="flex items-center gap-3.5">
-            <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
-              <CheckCircle2 className="w-6 h-6" />
+        {/* Card 3: Approved Requests */}
+        <div className="relative overflow-hidden p-4 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all text-left">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-teal-500"></div>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-teal-50 dark:bg-teal-950/40 rounded-xl text-teal-600 dark:text-teal-400 shrink-0">
+              <CheckCircle2 className="w-5 h-5" />
             </div>
-            <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider">Approved Requisitions</p>
-              <p className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">{stats.approved}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 truncate">Approved Requests</p>
+              <p className="text-2xl font-black text-teal-600 dark:text-teal-400 leading-tight">{stats.approved}</p>
             </div>
           </div>
-        </Card>
+        </div>
 
-        <Card className="relative overflow-hidden p-5 bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all text-left group">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-blue-500"></div>
-          <div className="flex items-center gap-3.5">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-2xl text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
-              <Activity className="w-6 h-6" />
+        {/* Card 4: Total Activity */}
+        <div className="relative overflow-hidden p-4 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all text-left">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-indigo-500"></div>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl text-indigo-600 dark:text-indigo-400 shrink-0">
+              <Activity className="w-5 h-5" />
             </div>
-            <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider">Total Activity</p>
-              <p className="text-2xl sm:text-3xl font-extrabold text-blue-600 dark:text-blue-400">{stats.totalRequests}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 truncate">Total Activity</p>
+              <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400 leading-tight">{stats.totalRequests}</p>
             </div>
           </div>
-        </Card>
+        </div>
       </div>
 
       {/* Quick Navigation Cards */}
