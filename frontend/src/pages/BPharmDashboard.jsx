@@ -371,53 +371,69 @@ const BPharmDashboard = () => {
         </div>
       </div>
 
-      {/* Aesthetic Centered Mobile-Responsive Stat Metrics Grid */}
+      {/* Structured Mobile-Responsive Stat Metrics Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         {/* Card 1: Enrolled Labs */}
-        <div className="relative overflow-hidden p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center space-y-2">
+        <div className="relative overflow-hidden p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all flex items-center justify-between gap-2">
           <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-500"></div>
-          <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl text-emerald-700 dark:text-emerald-400">
-            <BookOpen className="w-5 h-5" />
+          <div className="p-2 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl text-emerald-700 dark:text-emerald-400 shrink-0">
+            <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div className="space-y-0.5">
-            <p className="text-2xl sm:text-3xl font-black text-[#3c4e23] dark:text-[#eef4e8] leading-none">{stats.subjectsCount}</p>
-            <p className="text-xs sm:text-sm font-semibold text-gray-600 dark:text-gray-300 leading-tight">Enrolled Labs</p>
+          <div className="flex-1 flex flex-col items-center justify-center text-center px-1">
+            <p className="text-xl sm:text-2xl font-black text-[#3c4e23] dark:text-[#eef4e8] leading-none mb-0.5">
+              {stats.subjectsCount}
+            </p>
+            <p className="text-[11px] sm:text-xs font-bold text-gray-600 dark:text-gray-300 leading-tight">
+              Enrolled Labs
+            </p>
           </div>
         </div>
 
         {/* Card 2: Pending Requests */}
-        <div className="relative overflow-hidden p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center space-y-2">
+        <div className="relative overflow-hidden p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all flex items-center justify-between gap-2">
           <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500"></div>
-          <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 rounded-xl text-amber-600 dark:text-amber-400">
-            <Clock className="w-5 h-5" />
+          <div className="p-2 bg-amber-50 dark:bg-amber-950/40 rounded-xl text-amber-600 dark:text-amber-400 shrink-0">
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div className="space-y-0.5">
-            <p className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 leading-none">{stats.pending}</p>
-            <p className="text-xs sm:text-sm font-semibold text-gray-600 dark:text-gray-300 leading-tight">Pending Requests</p>
+          <div className="flex-1 flex flex-col items-center justify-center text-center px-1">
+            <p className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 leading-none mb-0.5">
+              {stats.pending}
+            </p>
+            <p className="text-[11px] sm:text-xs font-bold text-gray-600 dark:text-gray-300 leading-tight">
+              Pending Requests
+            </p>
           </div>
         </div>
 
         {/* Card 3: Approved Requests */}
-        <div className="relative overflow-hidden p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center space-y-2">
+        <div className="relative overflow-hidden p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all flex items-center justify-between gap-2">
           <div className="absolute top-0 left-0 right-0 h-1 bg-teal-500"></div>
-          <div className="p-2.5 bg-teal-50 dark:bg-teal-950/40 rounded-xl text-teal-600 dark:text-teal-400">
-            <CheckCircle2 className="w-5 h-5" />
+          <div className="p-2 bg-teal-50 dark:bg-teal-950/40 rounded-xl text-teal-600 dark:text-teal-400 shrink-0">
+            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div className="space-y-0.5">
-            <p className="text-2xl sm:text-3xl font-black text-teal-600 dark:text-teal-400 leading-none">{stats.approved}</p>
-            <p className="text-xs sm:text-sm font-semibold text-gray-600 dark:text-gray-300 leading-tight">Approved Requests</p>
+          <div className="flex-1 flex flex-col items-center justify-center text-center px-1">
+            <p className="text-xl sm:text-2xl font-black text-teal-600 dark:text-teal-400 leading-none mb-0.5">
+              {stats.approved}
+            </p>
+            <p className="text-[11px] sm:text-xs font-bold text-gray-600 dark:text-gray-300 leading-tight">
+              Approved Requests
+            </p>
           </div>
         </div>
 
         {/* Card 4: Total Activity */}
-        <div className="relative overflow-hidden p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center space-y-2">
+        <div className="relative overflow-hidden p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all flex items-center justify-between gap-2">
           <div className="absolute top-0 left-0 right-0 h-1 bg-indigo-500"></div>
-          <div className="p-2.5 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl text-indigo-600 dark:text-indigo-400">
-            <Activity className="w-5 h-5" />
+          <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl text-indigo-600 dark:text-indigo-400 shrink-0">
+            <Activity className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div className="space-y-0.5">
-            <p className="text-2xl sm:text-3xl font-black text-indigo-600 dark:text-indigo-400 leading-none">{stats.totalRequests}</p>
-            <p className="text-xs sm:text-sm font-semibold text-gray-600 dark:text-gray-300 leading-tight">Total Activity</p>
+          <div className="flex-1 flex flex-col items-center justify-center text-center px-1">
+            <p className="text-xl sm:text-2xl font-black text-indigo-600 dark:text-indigo-400 leading-none mb-0.5">
+              {stats.totalRequests}
+            </p>
+            <p className="text-[11px] sm:text-xs font-bold text-gray-600 dark:text-gray-300 leading-tight">
+              Total Activity
+            </p>
           </div>
         </div>
       </div>
