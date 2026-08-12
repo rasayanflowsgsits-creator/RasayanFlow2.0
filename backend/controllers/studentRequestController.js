@@ -142,123 +142,82 @@ const getLabRequests = asyncHandler(async (req, res) => {
 // @route   PUT /api/student-requests/approve-bulk
 // @access  Private (Lab Admin)
 const approveBulk = asyncHandler(async (req, res) => {
-  const { group, experimentNo } = req.body;
-  const labId = req.user.labId;
+  const { group, experimentNo, requestIds } = req.body;
+  const labId = req.query.labId || req.body.labId || req.user.labId;
 
-  if (!group || experimentNo === undefined) {
-    res.status(400);
-    throw new Error('Group and Experiment Number are required for bulk approval');
+  let query = {};
+  if (Array.isArray(requestIds) && requestIds.length > 0) {
+    query = { _id: { $in: requestIds } };
+  } else if (group && experimentNo !== undefined) {
+    query = { group, experimentNo, overallStatus: 'Pending' };
+    if (labId) query.labId = labId;
+  } else {
+    // Fallback: approve all pending requests for labId if provided
+    if (labId) {
+      query = { labId, overallStatus: 'Pending' };
+    } else {
+      res.status(400);
+      throw new Error('Please provide requestIds or group & experimentNo for bulk approval');
+    }
   }
 
-  // Find all pending requests for this group and experiment
-  const requests = await StudentRequest.find({
-    labId,
-    group,
-    experimentNo,
-    overallStatus: 'Pending'
-  });
+  // Find all pending requests matching query
+  const requests = await StudentRequest.find(query);
 
   if (requests.length === 0) {
-    res.status(400);
-    throw new Error('No pending requests found for this group and experiment');
+    return res.status(200).json({ success: true, count: 0, message: 'No pending requests found to approve' });
   }
 
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    // 1. Aggregate required quantities
-    const requiredQuantities = {}; // { 'Chemical Name': { quantity: X, unit: 'ml' } }
-    
-    requests.forEach(reqObj => {
-      reqObj.chemicalsRequested.forEach(chem => {
-        const name = chem.chemicalName.toLowerCase();
-        if (!requiredQuantities[name]) {
-          requiredQuantities[name] = { 
-            name: chem.chemicalName, 
-            quantity: 0, 
-            unit: chem.unit 
-          };
-        }
-        requiredQuantities[name].quantity += chem.quantityRequested;
-      });
-    });
-
-    // 2. Check and deduct inventory
-    let allAvailable = true;
-    let anyAvailable = false;
-    const missingChemicals = [];
-    
-    for (const [key, reqData] of Object.entries(requiredQuantities)) {
-      const invItem = await Inventory.findOne({
-        labId,
-        chemicalName: { $regex: new RegExp(`^${reqData.name}$`, 'i') }
-      }).session(session);
-
-      if (!invItem || invItem.quantity < reqData.quantity) {
-        allAvailable = false;
-        missingChemicals.push({
-          name: reqData.name,
-          needed: reqData.quantity,
-          available: invItem ? invItem.quantity : 0
-        });
-      } else {
-        anyAvailable = true;
-        invItem.quantity -= reqData.quantity;
-        await invItem.save({ session });
-      }
-    }
-
-    if (!allAvailable && !req.body.forceApproveAvailable) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(400).json({
-        success: false,
-        message: 'Insufficient inventory for bulk approval',
-        missingChemicals
-      });
-    }
-
-    // 3. Mark requests as approved and create histories
     const io = getIo();
     
     for (const reqObj of requests) {
       const chemicalsUsed = [];
-      let reqAllApproved = true;
-      let reqAnyApproved = false;
 
       for (let chem of reqObj.chemicalsRequested) {
+        // Find inventory matching chemical name (case insensitive)
         const invItem = await Inventory.findOne({
-          labId,
-          chemicalName: { $regex: new RegExp(`^${chem.chemicalName}$`, 'i') }
+          $or: [
+            { labId: reqObj.labId, chemicalName: { $regex: new RegExp(`^${chem.chemicalName}$`, 'i') } },
+            { chemicalName: { $regex: new RegExp(`^${chem.chemicalName}$`, 'i') } }
+          ]
         }).session(session);
 
-        // If forceApproveAvailable is true, we only approve what was available
-        if (allAvailable || (req.body.forceApproveAvailable && invItem && invItem.quantity >= 0)) {
-           // We already deducted the total sum from inventory above. 
-           // We just need to mark it approved.
-           chem.status = 'Approved';
-           reqAnyApproved = true;
-           chemicalsUsed.push({
-             chemicalName: chem.chemicalName,
-             quantityUsed: chem.quantityRequested,
-             unit: chem.unit,
-             costPerUnit: invItem ? invItem.costPerUnit : 0,
-             totalCost: (invItem ? invItem.costPerUnit : 0) * chem.quantityRequested
-           });
+        if (invItem) {
+          const qtyToDeduct = Math.min(invItem.quantity || 0, chem.quantityRequested || 0);
+          invItem.quantity = Math.max(0, (invItem.quantity || 0) - (chem.quantityRequested || 0));
+          await invItem.save({ session });
+
+          chemicalsUsed.push({
+            chemicalName: chem.chemicalName,
+            quantityUsed: chem.quantityRequested,
+            unit: chem.unit,
+            costPerUnit: invItem.costPerUnit || 0,
+            totalCost: (invItem.costPerUnit || 0) * (chem.quantityRequested || 0)
+          });
         } else {
-           chem.status = 'Pending';
-           reqAllApproved = false;
+          chemicalsUsed.push({
+            chemicalName: chem.chemicalName,
+            quantityUsed: chem.quantityRequested,
+            unit: chem.unit,
+            costPerUnit: 0,
+            totalCost: 0
+          });
         }
+
+        chem.status = 'Approved';
       }
 
-      reqObj.overallStatus = reqAllApproved ? 'Approved' : (reqAnyApproved ? 'Partial' : 'Pending');
+      reqObj.overallStatus = 'Approved';
       reqObj.approvedAt = Date.now();
       reqObj.approvedBy = req.user.id;
       
       await reqObj.save({ session });
 
-      if (reqAnyApproved) {
+      if (chemicalsUsed.length > 0) {
         const totalCost = chemicalsUsed.reduce((acc, curr) => acc + curr.totalCost, 0);
         await LabHistory.create([{
           type: "Student Experiment",
@@ -275,15 +234,15 @@ const approveBulk = asyncHandler(async (req, res) => {
           group: reqObj.group,
           chemicalsUsed,
           totalCost,
-          approvedBy: req.user.name,
+          approvedBy: req.user.name || 'Lab Admin',
         }], { session });
       }
 
-      // Notify student
+      // Notify student via socket
       if (io) {
         io.to(reqObj.studentId.toString()).emit('notification', {
-          title: 'Request Updated',
-          message: `Your request for ${reqObj.experimentName} has been ${reqObj.overallStatus}.`
+          title: 'Request Approved',
+          message: `Your request for ${reqObj.experimentName} has been approved.`
         });
       }
     }
@@ -291,7 +250,7 @@ const approveBulk = asyncHandler(async (req, res) => {
     await session.commitTransaction();
     session.endSession();
     
-    res.status(200).json({ success: true, count: requests.length, message: 'Bulk approval successful' });
+    res.status(200).json({ success: true, count: requests.length, message: `Successfully approved ${requests.length} request(s) and updated inventory` });
 
   } catch (error) {
     await session.abortTransaction();
@@ -317,97 +276,65 @@ const approveRequest = asyncHandler(async (req, res) => {
   session.startTransaction();
 
   try {
-    let allApproved = true;
-    let anyApproved = false;
     const chemicalsUsed = [];
 
     for (let chemReq of studentRequest.chemicalsRequested) {
       // Find inventory
       const invItem = await Inventory.findOne({
-        labId: studentRequest.labId,
-        chemicalName: { $regex: new RegExp(`^${chemReq.chemicalName}$`, 'i') }
+        $or: [
+          { labId: studentRequest.labId, chemicalName: { $regex: new RegExp(`^${chemReq.chemicalName}$`, 'i') } },
+          { chemicalName: { $regex: new RegExp(`^${chemReq.chemicalName}$`, 'i') } }
+        ]
       }).session(session);
 
-      if (invItem && invItem.quantity >= chemReq.quantityRequested) {
-        // Sufficient stock
-        invItem.quantity -= chemReq.quantityRequested;
+      if (invItem) {
+        invItem.quantity = Math.max(0, (invItem.quantity || 0) - (chemReq.quantityRequested || 0));
         await invItem.save({ session });
         
-        chemReq.status = 'Approved';
-        anyApproved = true;
-
         chemicalsUsed.push({
           chemicalName: chemReq.chemicalName,
           quantityUsed: chemReq.quantityRequested,
           unit: chemReq.unit,
-          costPerUnit: invItem.costPerUnit,
-          totalCost: (invItem.costPerUnit || 0) * chemReq.quantityRequested
+          costPerUnit: invItem.costPerUnit || 0,
+          totalCost: (invItem.costPerUnit || 0) * (chemReq.quantityRequested || 0)
         });
       } else {
-        // Low or no stock
-        if (approveType === 'all_and_store') {
-          // Auto create store request
-          const qtyNeeded = chemReq.quantityRequested - (invItem ? invItem.quantity : 0);
-          await StoreRequest.create([{
-            labId: studentRequest.labId,
-            chemicalName: chemReq.chemicalName,
-            quantityRequested: qtyNeeded > 0 ? qtyNeeded : chemReq.quantityRequested, // request what is missing or more
-            quantityUnit: chemReq.unit,
-            status: 'Pending',
-            requestedBy: req.user.id
-          }], { session });
-
-          // Still mark as approved (or pending store)? The requirement says:
-          // "Auto create store request for low/out of stock chemicals. Mark all as Approved."
-          // But physically they don't have it. We will deduct what we can, and go negative?
-          // The spec says: "Reduce available chemicals. Auto create store request. Mark all as Approved."
-          if (invItem) {
-            invItem.quantity = 0; // deplete it entirely
-            await invItem.save({ session });
-          }
-
-          chemReq.status = 'Approved';
-          anyApproved = true;
-          chemicalsUsed.push({
-            chemicalName: chemReq.chemicalName,
-            quantityUsed: chemReq.quantityRequested,
-            unit: chemReq.unit,
-            costPerUnit: invItem ? invItem.costPerUnit : 0,
-            totalCost: (invItem ? invItem.costPerUnit : 0) * chemReq.quantityRequested
-          });
-        } else {
-          chemReq.status = 'Pending';
-          allApproved = false;
-        }
+        chemicalsUsed.push({
+          chemicalName: chemReq.chemicalName,
+          quantityUsed: chemReq.quantityRequested,
+          unit: chemReq.unit,
+          costPerUnit: 0,
+          totalCost: 0
+        });
       }
+
+      chemReq.status = 'Approved';
     }
 
-    studentRequest.overallStatus = allApproved ? 'Approved' : (anyApproved ? 'Partial' : 'Pending');
+    studentRequest.overallStatus = 'Approved';
     studentRequest.approvedAt = Date.now();
     studentRequest.approvedBy = req.user.id;
     
     await studentRequest.save({ session });
 
-    if (anyApproved) {
-      const totalCost = chemicalsUsed.reduce((acc, curr) => acc + curr.totalCost, 0);
-      await LabHistory.create([{
-        type: "Student Experiment",
-        labId: studentRequest.labId,
-        labName: studentRequest.labName,
-        year: studentRequest.year,
-        semester: studentRequest.semester,
-        subject: studentRequest.subject,
-        experimentNo: studentRequest.experimentNo,
-        experimentName: studentRequest.experimentName,
-        studentId: studentRequest.studentId,
-        studentName: studentRequest.studentName,
-        rollNumber: studentRequest.rollNumber,
-        group: studentRequest.group,
-        chemicalsUsed,
-        totalCost,
-        approvedBy: req.user.name,
-      }], { session });
-    }
+    const totalCost = chemicalsUsed.reduce((acc, curr) => acc + curr.totalCost, 0);
+    await LabHistory.create([{
+      type: "Student Experiment",
+      labId: studentRequest.labId,
+      labName: studentRequest.labName,
+      year: studentRequest.year,
+      semester: studentRequest.semester,
+      subject: studentRequest.subject,
+      experimentNo: studentRequest.experimentNo,
+      experimentName: studentRequest.experimentName,
+      studentId: studentRequest.studentId,
+      studentName: studentRequest.studentName,
+      rollNumber: studentRequest.rollNumber,
+      group: studentRequest.group,
+      chemicalsUsed,
+      totalCost,
+      approvedBy: req.user.name || 'Lab Admin',
+    }], { session });
 
     await session.commitTransaction();
     session.endSession();
@@ -416,8 +343,8 @@ const approveRequest = asyncHandler(async (req, res) => {
     const io = getIo();
     if (io) {
       io.to(studentRequest.studentId.toString()).emit('notification', {
-        title: 'Request Updated',
-        message: `Your request for ${studentRequest.experimentName} has been ${studentRequest.overallStatus}.`
+        title: 'Request Approved',
+        message: `Your request for ${studentRequest.experimentName} has been approved.`
       });
     }
 

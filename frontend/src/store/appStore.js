@@ -557,9 +557,7 @@ const useAppStore = create((set) => ({
   bulkApproveStudentRequests: async (requestIds, labId = null) => {
     set({ loading: true });
     try {
-      for (const id of requestIds) {
-        await api.put(`/student-requests/${id}/approve`, { approveType: 'available' });
-      }
+      await api.put('/student-requests/approve-bulk', { requestIds, labId });
       set({
         loading: false,
         toast: { title: 'Success', message: `Approved ${requestIds.length} student requests & deducted inventory!`, type: 'success' }
