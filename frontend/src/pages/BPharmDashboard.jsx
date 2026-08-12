@@ -371,94 +371,70 @@ const BPharmDashboard = () => {
         </div>
       </div>
 
-      {/* Aesthetic Mobile-Responsive Stat Metrics Grid */}
+      {/* Aesthetic Centered Mobile-Responsive Stat Metrics Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         {/* Card 1: Enrolled Labs */}
-        <div className="relative overflow-hidden p-4 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all text-left">
+        <div className="relative overflow-hidden p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center space-y-2">
           <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-500"></div>
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl text-emerald-700 dark:text-emerald-400 shrink-0">
-              <BookOpen className="w-5 h-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 truncate">Enrolled Labs</p>
-              <p className="text-2xl font-black text-[#3c4e23] dark:text-[#eef4e8] leading-tight">{stats.subjectsCount}</p>
-            </div>
+          <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl text-emerald-700 dark:text-emerald-400">
+            <BookOpen className="w-5 h-5" />
+          </div>
+          <div className="space-y-0.5">
+            <p className="text-2xl sm:text-3xl font-black text-[#3c4e23] dark:text-[#eef4e8] leading-none">{stats.subjectsCount}</p>
+            <p className="text-xs sm:text-sm font-semibold text-gray-600 dark:text-gray-300 leading-tight">Enrolled Labs</p>
           </div>
         </div>
 
         {/* Card 2: Pending Requests */}
-        <div className="relative overflow-hidden p-4 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all text-left">
+        <div className="relative overflow-hidden p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center space-y-2">
           <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500"></div>
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 rounded-xl text-amber-600 dark:text-amber-400 shrink-0">
-              <Clock className="w-5 h-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 truncate">Pending Requests</p>
-              <p className="text-2xl font-black text-amber-600 dark:text-amber-400 leading-tight">{stats.pending}</p>
-            </div>
+          <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 rounded-xl text-amber-600 dark:text-amber-400">
+            <Clock className="w-5 h-5" />
+          </div>
+          <div className="space-y-0.5">
+            <p className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 leading-none">{stats.pending}</p>
+            <p className="text-xs sm:text-sm font-semibold text-gray-600 dark:text-gray-300 leading-tight">Pending Requests</p>
           </div>
         </div>
 
         {/* Card 3: Approved Requests */}
-        <div className="relative overflow-hidden p-4 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all text-left">
+        <div className="relative overflow-hidden p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center space-y-2">
           <div className="absolute top-0 left-0 right-0 h-1 bg-teal-500"></div>
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-teal-50 dark:bg-teal-950/40 rounded-xl text-teal-600 dark:text-teal-400 shrink-0">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 truncate">Approved Requests</p>
-              <p className="text-2xl font-black text-teal-600 dark:text-teal-400 leading-tight">{stats.approved}</p>
-            </div>
+          <div className="p-2.5 bg-teal-50 dark:bg-teal-950/40 rounded-xl text-teal-600 dark:text-teal-400">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+          <div className="space-y-0.5">
+            <p className="text-2xl sm:text-3xl font-black text-teal-600 dark:text-teal-400 leading-none">{stats.approved}</p>
+            <p className="text-xs sm:text-sm font-semibold text-gray-600 dark:text-gray-300 leading-tight">Approved Requests</p>
           </div>
         </div>
 
         {/* Card 4: Total Activity */}
-        <div className="relative overflow-hidden p-4 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all text-left">
+        <div className="relative overflow-hidden p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center space-y-2">
           <div className="absolute top-0 left-0 right-0 h-1 bg-indigo-500"></div>
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl text-indigo-600 dark:text-indigo-400 shrink-0">
-              <Activity className="w-5 h-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 truncate">Total Activity</p>
-              <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400 leading-tight">{stats.totalRequests}</p>
-            </div>
+          <div className="p-2.5 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl text-indigo-600 dark:text-indigo-400">
+            <Activity className="w-5 h-5" />
+          </div>
+          <div className="space-y-0.5">
+            <p className="text-2xl sm:text-3xl font-black text-indigo-600 dark:text-indigo-400 leading-none">{stats.totalRequests}</p>
+            <p className="text-xs sm:text-sm font-semibold text-gray-600 dark:text-gray-300 leading-tight">Total Activity</p>
           </div>
         </div>
       </div>
 
-      {/* Quick Navigation Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Quick Navigation Card */}
+      <div className="w-full">
         <button 
           onClick={() => navigate('/my-borrowings')}
-          className="flex items-center justify-between p-5 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] hover:border-[#556b2f] dark:hover:border-[#c8a030] hover:shadow-lg hover:-translate-y-0.5 transition-all group"
+          className="w-full flex items-center justify-between p-5 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] hover:border-[#556b2f] dark:hover:border-[#c8a030] hover:shadow-lg hover:-translate-y-0.5 transition-all group"
         >
-          <div className="flex items-center gap-3.5">
+          <div className="flex items-center gap-3.5 text-left">
             <div className="p-3 bg-[#556b2f]/10 dark:bg-[#c8a030]/15 rounded-xl text-[#556b2f] dark:text-[#c8a030]">
               <Store className="w-5 h-5" />
             </div>
-            <div className="text-left">
+            <div>
               <span className="font-bold text-sm block text-[#3c4e23] dark:text-[#eef4e8]">My Active Chemical Requisitions</span>
               <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Track assigned chemical quantities & status</span>
-            </div>
-          </div>
-          <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#556b2f] dark:group-hover:text-[#c8a030] group-hover:translate-x-1 transition-all" />
-        </button>
-        
-        <button 
-          onClick={() => navigate('/about')}
-          className="flex items-center justify-between p-5 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] hover:border-[#556b2f] dark:hover:border-[#c8a030] hover:shadow-lg hover:-translate-y-0.5 transition-all group"
-        >
-          <div className="flex items-center gap-3.5">
-            <div className="p-3 bg-[#556b2f]/10 dark:bg-[#c8a030]/15 rounded-xl text-[#556b2f] dark:text-[#c8a030]">
-              <Info className="w-5 h-5" />
-            </div>
-            <div className="text-left">
-              <span className="font-bold text-sm block text-[#3c4e23] dark:text-[#eef4e8]">About RasayanFlow</span>
-              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Lab Management & IP Pharmacopoeia System</span>
             </div>
           </div>
           <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#556b2f] dark:group-hover:text-[#c8a030] group-hover:translate-x-1 transition-all" />
