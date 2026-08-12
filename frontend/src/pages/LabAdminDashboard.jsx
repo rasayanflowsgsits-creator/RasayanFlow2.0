@@ -142,18 +142,18 @@ export default function LabAdminDashboard() {
     }
   }, [fetchExperiments, fetchInventory, fetchTransactions, labId, store.fetchLabRequests]);
 
-  const currentLab = assignedLabs.find((lab) => String(lab.id || lab._id) === String(labId)) || store.labs.find((lab) => String(lab.id || lab._id) === String(labId));
-  const pendingBorrowRequests = store.transactions.filter((tx) => tx.status === 'pending' && tx.type === 'borrow');
-  const pendingLabRequests = store.labRequests.filter(r => r.labId === labId && r.status === 'Pending');
+  const currentLab = assignedLabs.find((lab) => String(lab.id || lab._id) === String(labId)) || (store.labs || []).find((lab) => String(lab.id || lab._id) === String(labId));
+  const pendingBorrowRequests = (store.transactions || []).filter((tx) => tx?.status === 'pending' && tx?.type === 'borrow');
+  const pendingLabRequests = (store.labRequests || []).filter(r => r?.labId === labId && r?.status === 'Pending');
 
-  const storeRequests = useStoreManagerMock(state => state.requests);
-  const pendingStoreRequestsCount = storeRequests.filter(r => r.lab === currentLab?.name && r.status === 'Pending').length;
-  const pendingInventoryRequests = pendingBorrowRequests.filter((tx) => tx.requestCategory !== 'experiment');
-  const pendingExperimentRequests = pendingBorrowRequests.filter((tx) => tx.requestCategory === 'experiment');
-  const students = store.users.filter((entry) => entry.role === 'student' && (!entry.labId || String(entry.labId) === String(labId)));
-  const lowStockCount = store.inventory.filter((item) => Number(item.quantity || 0) <= Number(item.minThreshold || 0)).length;
-  const totalInventoryValue = store.inventory.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.costPerUnit || 0), 0);
-  const experimentSpend = store.experiments.reduce((sum, experiment) => sum + Number(experiment.totalEstimatedExpense || 0), 0);
+  const storeRequests = useStoreManagerMock(state => state?.requests || []);
+  const pendingStoreRequestsCount = (storeRequests || []).filter(r => r?.lab === currentLab?.name && r?.status === 'Pending').length;
+  const pendingInventoryRequests = pendingBorrowRequests.filter((tx) => tx?.requestCategory !== 'experiment');
+  const pendingExperimentRequests = pendingBorrowRequests.filter((tx) => tx?.requestCategory === 'experiment');
+  const students = (store.users || []).filter((entry) => entry?.role === 'student' && (!entry?.labId || String(entry?.labId) === String(labId)));
+  const lowStockCount = (store.inventory || []).filter((item) => Number(item?.quantity || 0) <= Number(item?.minThreshold || 0)).length;
+  const totalInventoryValue = (store.inventory || []).reduce((sum, item) => sum + Number(item?.quantity || 0) * Number(item?.costPerUnit || 0), 0);
+  const experimentSpend = (store.experiments || []).reduce((sum, experiment) => sum + Number(experiment?.totalEstimatedExpense || 0), 0);
 
   const smart = store.smartInventory || {};
 
@@ -544,8 +544,8 @@ export default function LabAdminDashboard() {
   const experimentHeaders = [
     { key: 'experimentNumber', label: 'Experiment No.' },
     { key: 'experimentObject', label: 'Experiment Object' },
-    { key: 'requiredInventory', label: 'Required Chemicals', render: (row) => row.requiredInventory.map((entry) => entry.chemicalName).join(', ') || '--' },
-    { key: 'totalEstimatedExpense', label: 'Expense', render: (row) => `Rs. ${Number(row.totalEstimatedExpense || 0).toFixed(2)}` },
+    { key: 'requiredInventory', label: 'Required Chemicals', render: (row) => (row?.requiredInventory || []).map((entry) => entry?.chemicalName || entry?.inventoryItemId || '').filter(Boolean).join(', ') || '--' },
+    { key: 'totalEstimatedExpense', label: 'Expense', render: (row) => `Rs. ${Number(row?.totalEstimatedExpense || 0).toFixed(2)}` },
     { key: 'actions', label: 'Actions', render: (row) => <Button variant='outline' className='px-3 py-1 text-xs text-red-700 dark:text-red-300' onClick={() => setDeleteExperimentTarget(row)}><Trash2 size={14} /> Delete</Button> }
   ];
 
@@ -564,7 +564,7 @@ export default function LabAdminDashboard() {
         <p className='text-3xl font-semibold text-rose-600 dark:text-rose-400'>{(smart.notAvailable ?? 0) + (smart.low ?? 0)}</p>
       </Card>
       <Card title='Chemicals in Stock' subtitle='Total labInventory records'>
-        <p className='text-3xl font-semibold text-[#3c4e23] dark:text-[#eef4e8]'>{store.inventory.length}</p>
+        <p className='text-3xl font-semibold text-[#3c4e23] dark:text-[#eef4e8]'>{(store.inventory || []).length}</p>
       </Card>
     </div>
 
@@ -626,11 +626,11 @@ export default function LabAdminDashboard() {
             <Button variant="outline" onClick={() => setCreateOpen(true)}><Plus size={16} /> Add Chemical</Button>
           </div>
         </div>
-        <Table headers={inventoryHeaders} rows={store.inventory.map((item) => ({ ...item, highlight: Number(item.quantity || 0) <= Number(item.minThreshold || 0) }))} />
+        <Table headers={inventoryHeaders} rows={(store.inventory || []).map((item) => ({ ...item, highlight: Number(item?.quantity || 0) <= Number(item?.minThreshold || 0) }))} />
       </div>
 
       <div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between pt-4 border-t border-[#e8efd9] dark:border-[#2e3d19]'><div><h2 className='text-xl font-semibold'>Experiments In This Lab</h2><p className='text-sm text-slate-500 dark:text-slate-400'>Experiment object, required inventory, and estimated expense are managed together here.</p></div><div className='flex flex-wrap gap-2'><Button variant='outline' onClick={downloadExperimentsImportTemplate}><FileDown size={16} /> Template CSV</Button><Button variant='outline' onClick={() => setExperimentImportOpen(true)}><Upload size={16} /> Import Experiments</Button><Button variant='outline' onClick={() => setCreateOpen(true)}><Plus size={16} /> Add Inventory First</Button><Button onClick={() => setExperimentOpen(true)}><Plus size={16} /> Add Experiment</Button></div></div>
-      <Table headers={experimentHeaders} rows={store.experiments} />
+      <Table headers={experimentHeaders} rows={store.experiments || []} />
     </> : null}
 
     {/* Store Request Modal */}

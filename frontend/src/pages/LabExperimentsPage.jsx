@@ -528,7 +528,7 @@ export default function LabExperimentsPage() {
                 label: 'Chemicals Required & Stock Status',
                 render: (row) => (
                   <div className="flex flex-col text-sm space-y-1">
-                    {row.chemicals.map((c, i) => {
+                    {(row.chemicals || []).map((c, i) => {
                       const stock = getStockStatus(c.chemicalName);
                       return (
                         <div key={i} className="flex items-center gap-2">
