@@ -682,14 +682,14 @@ const BPharmDashboard = () => {
                   key={req._id || req.id}
                   className="bg-white dark:bg-[#1c2117] border-2 border-[#b8c99d] dark:border-[#4a5836] shadow-md rounded-2xl p-4 sm:p-5 space-y-3 transition-all text-left"
                 >
-                  {/* Card Header: Lab, Date, Status */}
+                  {/* Line 1 (Box Top): Exp Badge, Lab Name, Date, Status */}
                   <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-[#f0f2eb] dark:border-[#28301f]">
                     <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-1 bg-[#556b2f]/10 dark:bg-[#c8a030]/15 text-[#556b2f] dark:text-[#c8a030] text-xs font-black rounded-lg border border-[#556b2f]/20 uppercase">
-                        {req.experimentNo ? `Exp ${req.experimentNo}` : 'Practical'}
+                      <span className="px-2.5 py-0.5 bg-[#556b2f]/10 dark:bg-[#c8a030]/15 text-[#556b2f] dark:text-[#c8a030] text-xs font-black rounded-md border border-[#556b2f]/20 uppercase">
+                        {req.experimentNo ? (req.experimentNo.toLowerCase().startsWith('exp') ? req.experimentNo : `Exp ${req.experimentNo}`) : 'Exp 1'}
                       </span>
-                      <span className="text-sm font-extrabold text-[#3c4e23] dark:text-[#eef4e8]">
-                        {req.labName || 'Pharmaceutics Lab'}
+                      <span className="text-base font-extrabold text-[#3c4e23] dark:text-[#eef4e8]">
+                        {req.labName || 'HAP1'}
                       </span>
                     </div>
 
@@ -701,14 +701,22 @@ const BPharmDashboard = () => {
                     </div>
                   </div>
 
-                  {/* Experiment Object/Name */}
+                  {/* Line 2: Approved By Lab Admin */}
+                  <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 font-semibold pt-0.5">
+                    <span className="text-gray-400 dark:text-gray-500 font-medium">Approved by:</span>
+                    <span className="font-bold text-[#556b2f] dark:text-[#c8a030]">
+                      {req.approvedByName || (typeof req.approvedBy === 'object' ? req.approvedBy?.name : req.approvedBy) || 'Lab Admin'}
+                    </span>
+                  </div>
+
+                  {/* Line 3: Experiment Object / Name */}
                   <div>
                     <h4 className="text-sm sm:text-base font-bold text-[#3c4e23] dark:text-[#eef4e8]">
                       {req.experimentName}
                     </h4>
                   </div>
 
-                  {/* Detailed Chemical Consumption Breakdown */}
+                  {/* Line 4: Detailed Chemical Consumption Breakdown */}
                   {chemList.length > 0 && (
                     <div className="bg-[#fcfdfa] dark:bg-[#141711] border border-[#e4ebda] dark:border-[#2f3823] rounded-xl p-3 space-y-2">
                       <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
