@@ -241,22 +241,26 @@ export default function StudentBorrowingsPage() {
 
           </div>
 
-          {/* Status Filter Buttons */}
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <span className="text-xs font-bold text-gray-500 dark:text-gray-400 mr-1">Status Filter:</span>
-            {['Approved', 'Pending', 'All', 'Rejected'].map(status => (
-              <button
-                key={status}
-                onClick={() => setStatusFilter(status)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  statusFilter === status 
-                    ? 'bg-[#556b2f] text-white shadow-sm dark:bg-[#c8a030] dark:text-black' 
-                    : 'bg-white dark:bg-[#20251a] text-gray-600 dark:text-gray-300 border border-[#d5e0c2] dark:border-[#38432a] hover:bg-gray-50'
-                }`}
-              >
-                {status === 'Approved' ? '✅ Approved Only' : status}
-              </button>
-            ))}
+          {/* Structured Mobile-First Status Filter Grid */}
+          <div className="space-y-1.5 pt-1">
+            <p className="text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              Filter Activity Status:
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {['Approved', 'Pending', 'All', 'Rejected'].map(status => (
+                <button
+                  key={status}
+                  onClick={() => setStatusFilter(status)}
+                  className={`py-2 px-3 rounded-xl text-xs font-extrabold text-center transition-all ${
+                    statusFilter === status 
+                      ? 'bg-[#556b2f] text-white shadow-md dark:bg-[#c8a030] dark:text-black border-2 border-[#556b2f] dark:border-[#c8a030]' 
+                      : 'bg-white dark:bg-[#20251a] text-gray-700 dark:text-gray-300 border-2 border-[#cfd8bd] dark:border-[#4e5d35] hover:bg-gray-50'
+                  }`}
+                >
+                  {status === 'Approved' ? '✅ Approved' : status}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

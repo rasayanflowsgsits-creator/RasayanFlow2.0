@@ -646,22 +646,12 @@ const BPharmDashboard = () => {
             </div>
           </div>
 
-          {/* Status Filter Buttons */}
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <span className="text-xs font-bold text-gray-500 dark:text-gray-400 mr-1">Status Filter:</span>
-            {['Approved', 'Pending', 'All', 'Rejected'].map(status => (
-              <button
-                key={status}
-                onClick={() => setStatusFilter(status)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  statusFilter === status 
-                    ? 'bg-[#556b2f] text-white shadow-sm dark:bg-[#c8a030] dark:text-black' 
-                    : 'bg-white dark:bg-[#20251a] text-gray-600 dark:text-gray-300 border border-[#d5e0c2] dark:border-[#38432a] hover:bg-gray-50'
-                }`}
-              >
-                {status === 'Approved' ? '✅ Approved Only' : status}
-              </button>
-            ))}
+          {/* Static Approved Chemicals Only Indicator */}
+          <div className="flex items-center gap-2 pt-1">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 text-xs font-extrabold border border-emerald-200/80 dark:border-emerald-800/40">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Showing Approved Chemicals Only</span>
+            </span>
           </div>
         </div>
 
