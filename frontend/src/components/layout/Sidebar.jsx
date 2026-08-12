@@ -25,6 +25,7 @@ import {
 import { NavLink } from "react-router-dom";
 import { useState, useEffect } from "react";
 import useAuthStore from "../../store/authStore";
+import useAppStore from "../../store/appStore";
 import useStoreManagerMock from "../../store/storeManagerMock";
 import { parsePackSize, safeRound, totalStock } from "../../utils/storeHelpers";
 
@@ -117,7 +118,7 @@ export default function Sidebar({ collapsed }) {
   let storeRequestsCount = 0;
   if (role === 'lab-admin' || role === 'labAdmin' || role === 'lab_admin') {
     const studentRequests = useAppStore.getState()?.studentRequests || [];
-    storeRequestsCount = studentRequests.filter(r => r.overallStatus === 'Pending').length;
+    storeRequestsCount = (studentRequests || []).filter(r => r?.overallStatus === 'Pending').length;
   }
 
   return (
