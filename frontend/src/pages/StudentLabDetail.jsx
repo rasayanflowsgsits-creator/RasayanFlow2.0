@@ -359,7 +359,7 @@ export default function StudentLabDetail() {
               </div>
 
               {/* EXPERIMENT CARDS GRID */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {exps.map((exp) => {
                   const existingReq = getExperimentRequest(exp);
                   const status = existingReq ? existingReq.overallStatus : 'NOT_REQUESTED';
@@ -373,33 +373,33 @@ export default function StudentLabDetail() {
                   return (
                     <div 
                       key={exp._id || exp.id || exp.experimentNo}
-                      className={`bg-white dark:bg-[#1f2419] rounded-[14px] shadow-[0_2px_8px_rgba(0,0,0,0.06)] p-5 mb-4 border border-[#e8eadf] dark:border-[#3c452f] ${cardBorderClass} flex flex-col justify-between transition-all duration-200 hover:shadow-md`}
+                      className={`bg-white dark:bg-[#1f2419] rounded-xl shadow-sm p-3.5 border border-[#e8eadf] dark:border-[#3c452f] ${cardBorderClass} flex flex-col justify-between transition-all duration-200 hover:shadow-md`}
                     >
                       <div>
                         {/* Exp No & Title */}
-                        <div className="flex justify-between items-start gap-2 mb-2">
-                          <span className="inline-block px-2.5 py-0.5 bg-[#f0f4e8] dark:bg-[#28301f] text-[#556b2f] dark:text-[#c8a030] text-xs font-bold rounded-md uppercase tracking-wider">
+                        <div className="flex items-center justify-between gap-2 mb-1.5">
+                          <span className="inline-block px-2 py-0.5 bg-[#f0f4e8] dark:bg-[#28301f] text-[#556b2f] dark:text-[#c8a030] text-[10px] font-bold rounded uppercase tracking-wider">
                             Exp {String(exp.experimentNo).padStart(2, '0')}
                           </span>
                         </div>
                         
-                        <h3 className="text-base font-bold text-[#3c4e23] dark:text-[#eef4e8] mb-4">
+                        <h3 className="text-xs sm:text-sm font-bold text-[#3c4e23] dark:text-[#eef4e8] mb-2.5 line-clamp-2">
                           {exp.experimentName}
                         </h3>
 
                         {/* Chemicals Required Table */}
-                        <div className="mb-5">
-                          <p className="text-xs font-semibold text-[#71805a] dark:text-[#a5b48b] mb-2 uppercase tracking-wider">
+                        <div className="mb-3">
+                          <p className="text-[10px] font-bold text-[#71805a] dark:text-[#a5b48b] mb-1 uppercase tracking-wider">
                             Chemicals / Reagents Required:
                           </p>
                           <div className="overflow-hidden rounded-lg border border-[#f0ede6] dark:border-[#3c452f]">
-                            <table className="w-full text-xs text-left">
-                              <thead className="bg-[#f4f6ee] dark:bg-[#28301f] text-[#3c4e23] dark:text-[#eef4e8] font-bold">
+                            <table className="w-full text-[11px] text-left">
+                              <thead className="bg-[#f4f6ee] dark:bg-[#28301f] text-[#3c4e23] dark:text-[#eef4e8] font-bold text-[10px]">
                                 <tr>
-                                  <th className="px-3 py-2 border-b border-[#f0ede6] dark:border-[#3c452f]">Chemical Name</th>
-                                  <th className="px-3 py-2 border-b border-[#f0ede6] dark:border-[#3c452f] w-16">Qty</th>
-                                  <th className="px-3 py-2 border-b border-[#f0ede6] dark:border-[#3c452f] w-16">Unit</th>
-                                  <th className="px-3 py-2 border-b border-[#f0ede6] dark:border-[#3c452f] w-36">Stock Status</th>
+                                  <th className="px-2 py-1 border-b border-[#f0ede6] dark:border-[#3c452f]">Chemical Name</th>
+                                  <th className="px-1.5 py-1 border-b border-[#f0ede6] dark:border-[#3c452f] w-10 text-center">Qty</th>
+                                  <th className="px-1.5 py-1 border-b border-[#f0ede6] dark:border-[#3c452f] w-10">Unit</th>
+                                  <th className="px-2 py-1 border-b border-[#f0ede6] dark:border-[#3c452f]">Stock Status</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -412,17 +412,17 @@ export default function StudentLabDetail() {
                                       key={idx} 
                                       className={`${idx % 2 === 0 ? 'bg-white dark:bg-[#1a1d16]' : 'bg-[#fafdf7] dark:bg-[#20251a]'} border-b last:border-none border-[#f0ede6] dark:border-[#3c452f]`}
                                     >
-                                      <td className="px-3 py-2 font-medium text-gray-800 dark:text-gray-200">
+                                      <td className="px-2 py-1 font-medium text-gray-800 dark:text-gray-200">
                                         {chem.chemicalName}
                                       </td>
-                                      <td className="px-3 py-2 text-gray-600 dark:text-gray-400 font-semibold">
+                                      <td className="px-1.5 py-1 text-gray-600 dark:text-gray-400 font-semibold text-center">
                                         {chem.quantityPerStudent || chem.quantity || 1}
                                       </td>
-                                      <td className="px-3 py-2 text-gray-500 font-medium">
+                                      <td className="px-1.5 py-1 text-gray-500 font-medium">
                                         {chem.unit || 'mL'}
                                       </td>
-                                      <td className="px-3 py-2">
-                                        <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
+                                      <td className="px-2 py-1">
+                                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                                           isAvailable ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' :
                                           isLow ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' :
                                           'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300'
@@ -436,7 +436,7 @@ export default function StudentLabDetail() {
                                 })}
                                 {(!exp.chemicals || exp.chemicals.length === 0) && (
                                   <tr>
-                                    <td colSpan="4" className="px-3 py-2 text-gray-400 italic text-center">
+                                    <td colSpan="4" className="px-2 py-1 text-gray-400 italic text-center">
                                       No chemicals configured
                                     </td>
                                   </tr>
@@ -448,16 +448,16 @@ export default function StudentLabDetail() {
                       </div>
 
                       {/* CARD FOOTER & ACTIONS BASED ON STATE */}
-                      <div className="pt-3 border-t border-[#f0f2eb] dark:border-[#3c452f]/60">
+                      <div className="pt-2.5 border-t border-[#f0f2eb] dark:border-[#3c452f]/60">
                         {/* STATE 1: NOT REQUESTED */}
                         {(!existingReq || status === 'NOT_REQUESTED') && (
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between text-xs text-gray-500 font-medium">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium">
                               <span>Status: <strong className="text-gray-700 dark:text-gray-300">Not Requested</strong></span>
                             </div>
                             <Button 
                               onClick={() => handleOpenRequestModal(exp)}
-                              className="w-full bg-[#556b2f] hover:bg-[#435525] text-white font-bold py-2.5 rounded-xl shadow-sm flex items-center justify-center gap-2"
+                              className="w-full bg-[#556b2f] hover:bg-[#435525] text-white font-bold py-1.5 rounded-lg shadow-sm text-xs flex items-center justify-center gap-1.5"
                             >
                               📋 Request These Chemicals
                             </Button>
@@ -466,14 +466,14 @@ export default function StudentLabDetail() {
 
                         {/* STATE 2: PENDING */}
                         {status === 'Pending' && (
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between text-xs text-[#f0c040] font-bold">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-[11px] text-[#f0c040] font-bold">
                               <span className="flex items-center gap-1">⏳ Request Pending</span>
-                              <span className="text-[11px] text-gray-400">ID: {existingReq.requestId}</span>
+                              <span className="text-[10px] text-gray-400 font-mono">ID: {existingReq.requestId}</span>
                             </div>
                             <button 
                               onClick={() => handleViewDetails(existingReq)}
-                              className="w-full border-2 border-[#f0c040] text-[#b88c14] dark:text-[#f0c040] hover:bg-[#f0c040]/10 font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
+                              className="w-full border-2 border-[#f0c040] text-[#b88c14] dark:text-[#f0c040] hover:bg-[#f0c040]/10 font-bold py-1.5 rounded-lg text-xs transition-colors flex items-center justify-center gap-1.5"
                             >
                               View Request Status
                             </button>
@@ -482,18 +482,18 @@ export default function StudentLabDetail() {
 
                         {/* STATE 3: APPROVED */}
                         {(status === 'Approved' || status === 'Partial') && (
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between text-xs text-[#4a9a4a] font-bold">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-[11px] text-[#4a9a4a] font-bold">
                               <span className="flex items-center gap-1">✅ Chemicals Approved</span>
                               {existingReq.approvedAt && (
-                                <span className="text-[11px] text-gray-400 font-normal">
+                                <span className="text-[10px] text-gray-400 font-normal">
                                   {new Date(existingReq.approvedAt).toLocaleDateString()}
                                 </span>
                               )}
                             </div>
                             <button 
                               onClick={() => handleViewDetails(existingReq)}
-                              className="w-full border-2 border-[#4a9a4a] text-[#4a9a4a] hover:bg-[#4a9a4a]/10 font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
+                              className="w-full border-2 border-[#4a9a4a] text-[#4a9a4a] hover:bg-[#4a9a4a]/10 font-bold py-1.5 rounded-lg text-xs transition-colors flex items-center justify-center gap-1.5"
                             >
                               View Details
                             </button>
@@ -502,18 +502,18 @@ export default function StudentLabDetail() {
 
                         {/* STATE 4: REJECTED */}
                         {status === 'Rejected' && (
-                          <div className="space-y-2">
-                            <div className="text-xs text-[#c04040]">
+                          <div className="space-y-1.5">
+                            <div className="text-[11px] text-[#c04040]">
                               <div className="font-bold flex items-center gap-1">❌ Request Rejected</div>
                               {existingReq.rejectionReason && (
-                                <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-0.5 line-clamp-1">
+                                <p className="text-[10px] text-rose-600 dark:text-rose-400 mt-0.5 line-clamp-1">
                                   Reason: {existingReq.rejectionReason}
                                 </p>
                               )}
                             </div>
                             <button 
                               onClick={() => handleOpenRequestModal(exp)}
-                              className="w-full border-2 border-[#c04040] text-[#c04040] hover:bg-[#c04040]/10 font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
+                              className="w-full border-2 border-[#c04040] text-[#c04040] hover:bg-[#c04040]/10 font-bold py-1.5 rounded-lg text-xs transition-colors flex items-center justify-center gap-1.5"
                             >
                               🔄 Request Again
                             </button>
