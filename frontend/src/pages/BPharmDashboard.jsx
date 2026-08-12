@@ -673,6 +673,9 @@ const BPharmDashboard = () => {
                 ? new Date(req.requestedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
                 : '12 Aug 2026';
 
+              const expNoStr = String(req.experimentNo ?? '1');
+              const expBadgeLabel = expNoStr.toLowerCase().startsWith('exp') ? expNoStr : `Exp ${expNoStr}`;
+
               const chemList = req.chemicalsRequested && req.chemicalsRequested.length > 0 
                 ? req.chemicalsRequested 
                 : (req.chemicalName ? [{ chemicalName: req.chemicalName, quantityRequested: req.quantityRequested || 10, unit: req.quantityUnit || 'mL', status: req.overallStatus }] : []);
@@ -686,7 +689,7 @@ const BPharmDashboard = () => {
                   <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-[#f0f2eb] dark:border-[#28301f]">
                     <div className="flex items-center gap-2">
                       <span className="px-2.5 py-0.5 bg-[#556b2f]/10 dark:bg-[#c8a030]/15 text-[#556b2f] dark:text-[#c8a030] text-xs font-black rounded-md border border-[#556b2f]/20 uppercase">
-                        {req.experimentNo ? (req.experimentNo.toLowerCase().startsWith('exp') ? req.experimentNo : `Exp ${req.experimentNo}`) : 'Exp 1'}
+                        {expBadgeLabel}
                       </span>
                       <span className="text-base font-extrabold text-[#3c4e23] dark:text-[#eef4e8]">
                         {req.labName || 'HAP1'}
