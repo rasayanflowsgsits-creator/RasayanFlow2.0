@@ -458,25 +458,30 @@ const BPharmDashboard = () => {
       </div>
 
       {/* My Practical Subjects Grid */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#e4ebda] dark:border-[#38432a] pb-3">
+      <div className="space-y-5 pt-2">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-[#e4ebda] dark:border-[#38432a] pb-4">
           <div>
-            <h2 className="text-2xl font-extrabold text-[#3c4e23] dark:text-[#c8a030] flex items-center gap-2.5">
-              <Beaker className="w-6 h-6 text-[#556b2f] dark:text-[#c8a030]" /> My Practical Subjects
+            <h2 className="text-3xl sm:text-4xl font-black text-[#3c4e23] dark:text-[#c8a030] flex items-center gap-3 tracking-tight">
+              <Beaker className="w-8 h-8 text-[#556b2f] dark:text-[#c8a030] shrink-0" /> My Practical Subjects
             </h2>
-            {user?.course && user?.year && user?.semester && (
-              <p className="text-xs text-[#71805a] dark:text-[#a5b48b] mt-0.5 font-semibold">
+            {user?.course && user?.year && user?.semester ? (
+              <p className="text-sm sm:text-base text-[#556b2f] dark:text-[#a5b48b] mt-1.5 font-extrabold flex items-center gap-2">
+                <span className="inline-block w-2 h-2 rounded-full bg-[#556b2f] dark:bg-[#c8a030]"></span>
                 {user.course} &bull; Year {user.year} &bull; Semester {user.semester}
+              </p>
+            ) : (
+              <p className="text-sm text-[#556b2f] dark:text-[#a5b48b] mt-1 font-bold">
+                B.Pharm &bull; Year 1 &bull; Semester 1
               </p>
             )}
           </div>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 text-xs font-bold self-start sm:self-auto border border-emerald-200 dark:border-emerald-800/40">
-            <CheckCircle2 className="w-3.5 h-3.5" /> 15 IP Practical Experiments Ready
+          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 text-xs font-bold self-start sm:self-auto border border-emerald-200 dark:border-emerald-800/40 shadow-sm">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> 15 IP Practical Experiments Ready
           </span>
         </div>
 
         {myLabs && myLabs.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
             {myLabs.map(lab => {
               const adminName = lab.admin && lab.admin !== 'Unassigned' 
                 ? lab.admin 
@@ -529,14 +534,10 @@ const BPharmDashboard = () => {
                         {adminName ? adminName.charAt(0).toUpperCase() : 'F'}
                       </div>
                       <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400">Assigned Faculty</p>
                         <p className="text-xs font-bold text-[#3c4e23] dark:text-[#eef4e8] truncate">
                           {adminName}
                         </p>
-                        {lab.adminEmail ? (
-                          <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate font-mono">
-                            {lab.adminEmail}
-                          </p>
-                        ) : null}
                       </div>
                     </div>
                     
