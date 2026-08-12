@@ -256,9 +256,53 @@ function App() {
                     <Route path='*' element={<NotFound />} />
                   </Routes>
 
-                  <div className='mt-8'>
-                    <button className='text-xs text-[#71805a] hover:text-[#556b2f] dark:text-[#c5d0b5]' onClick={logout}>Logout</button>
-                  </div>
+                  {/* Realistic Institutional Footer Bar */}
+                  <footer className="mt-12 pt-8 pb-10 border-t-2 border-dashed border-[#e4ebda] dark:border-[#38432a] text-left">
+                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                      
+                      {/* Brand Info */}
+                      <div className="space-y-1.5 max-w-md">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-lg bg-[#556b2f] dark:bg-[#c8a030] flex items-center justify-center text-white dark:text-black font-extrabold text-xs">
+                            R
+                          </div>
+                          <span className="font-black text-base text-[#3c4e23] dark:text-[#c8a030] tracking-tight">
+                            RasayanFlow 2.0
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#556b2f]/10 dark:bg-[#c8a030]/15 text-[#556b2f] dark:text-[#c8a030] border border-[#556b2f]/20 dark:border-[#c8a030]/20">
+                            v2.4 Live
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium leading-relaxed">
+                          Integrated Pharmacy & Chemical Inventory Management System. Streamlining practical lab requisitions, store allocations, and IP compliance.
+                        </p>
+                      </div>
+
+                      {/* System Status & Compliance */}
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs font-bold border border-emerald-200/60 dark:border-emerald-800/40">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                          <span>All Systems Operational</span>
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-[#20251a] text-gray-600 dark:text-gray-300 text-xs font-bold border border-[#d5e0c2] dark:border-[#38432a]">
+                          <span>IP 2026 Compliant</span>
+                        </span>
+                      </div>
+
+                    </div>
+
+                    {/* Bottom Links & Copyright */}
+                    <div className="mt-6 pt-4 border-t border-[#f0f2eb] dark:border-[#28301f] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 dark:text-gray-400 font-medium">
+                      <p>&copy; {new Date().getFullYear()} RasayanFlow &bull; Department of Pharmacy. All rights reserved.</p>
+                      <div className="flex items-center gap-4 font-semibold text-[#556b2f] dark:text-[#c8a030]">
+                        <button onClick={() => window.location.href = '/about'} className="hover:underline">About System</button>
+                        <span>&bull;</span>
+                        <span className="text-gray-400">Help & Support</span>
+                        <span>&bull;</span>
+                        <button onClick={logout} className="hover:underline text-rose-600 dark:text-rose-400">Sign Out</button>
+                      </div>
+                    </div>
+                  </footer>
                 </main>
               </div>
               {toast && <Toast {...toast} onClose={removeToast} />}
