@@ -228,7 +228,9 @@ const BPharmDashboard = () => {
   const { myLabs, fetchMyLabs, studentRequests, fetchMyStudentRequests, setToast } = useAppStore();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('Approved'); // Default to Approved per user request
+  const [selectedLabFilter, setSelectedLabFilter] = useState('All');
+  const [historyPage, setHistoryPage] = useState(1);
 
   // In-Page Interactive Lab Window Modal State
   const [activeLabWindow, setActiveLabWindow] = useState(null);
@@ -251,6 +253,11 @@ const BPharmDashboard = () => {
     fetchMyStudentRequests();
   }, [user?.course, user?.year, user?.semester, fetchMyLabs, fetchMyStudentRequests]);
 
+  // Reset page when filters change
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [searchQuery, statusFilter, selectedLabFilter]);
+
   // Derived Stats
   const stats = useMemo(() => {
     const allReqs = [...localRequests, ...(studentRequests || [])];
@@ -266,13 +273,26 @@ const BPharmDashboard = () => {
   const filteredRequests = useMemo(() => {
     const allReqs = [...localRequests, ...(studentRequests || [])];
     return allReqs.filter(req => {
-      const matchesSearch = 
-        req.labName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        req.experimentName?.toLowerCase().includes(searchQuery.toLowerCase());
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch = !q || 
+        req.labName?.toLowerCase().includes(q) || 
+        req.experimentName?.toLowerCase().includes(q) ||
+        (Array.isArray(req.chemicalsRequested) && req.chemicalsRequested.some(c => c.chemicalName?.toLowerCase().includes(q)));
+      
       const matchesStatus = statusFilter === 'All' || req.overallStatus === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesLab = selectedLabFilter === 'All' || req.labName?.toLowerCase().includes(selectedLabFilter.toLowerCase());
+      
+      return matchesSearch && matchesStatus && matchesLab;
     }).sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt));
-  }, [studentRequests, localRequests, searchQuery, statusFilter]);
+  }, [studentRequests, localRequests, searchQuery, statusFilter, selectedLabFilter]);
+
+  // Pagination for 100+ requests
+  const ITEMS_PER_PAGE = 5;
+  const totalPages = Math.max(1, Math.ceil(filteredRequests.length / ITEMS_PER_PAGE));
+  const paginatedRequests = useMemo(() => {
+    const start = (historyPage - 1) * ITEMS_PER_PAGE;
+    return filteredRequests.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredRequests, historyPage]);
 
   const filteredExperiments = useMemo(() => {
     if (!expSearch.trim()) return FIFTEEN_PHARMA_EXPERIMENTS;
@@ -569,71 +589,184 @@ const BPharmDashboard = () => {
         )}
       </div>
 
-      {/* Requisition History Section */}
-      <Card className="bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] rounded-2xl overflow-hidden shadow-sm text-left">
-        <div className="p-5 sm:p-6 border-b border-[#e4ebda] dark:border-[#38432a] space-y-4 text-left bg-gradient-to-r from-gray-50/50 to-emerald-50/30 dark:from-[#191e14] dark:to-[#1c2117]">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h2 className="text-xl font-extrabold text-[#3c4e23] dark:text-[#c8a030] flex items-center gap-2.5">
-              <Activity className="w-5 h-5 text-[#556b2f] dark:text-[#c8a030]" /> Requisition History & Logs
-            </h2>
-            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 font-mono">
-              Showing {filteredRequests.length} activity records
-            </span>
+      {/* Border Divider before Requisition History */}
+      <div className="w-full my-6 border-t-2 border-dashed border-[#dce5cc] dark:border-[#333d26]"></div>
+
+      {/* Dedicated Section Container Box for Requisition History & Chemical Consumption Logs */}
+      <div className="rounded-3xl p-5 sm:p-7 bg-[#fcfdfa] dark:bg-[#181d13] border-2 border-[#d0dcb8] dark:border-[#38432a] shadow-lg shadow-[#556b2f]/5 space-y-6 text-left">
+        
+        {/* Header Bar */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b-2 border-[#e4ebda] dark:border-[#38432a]">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5">
+              <Activity className="w-6 h-6 text-[#556b2f] dark:text-[#c8a030] shrink-0" />
+              <h2 className="text-2xl sm:text-3xl font-black text-[#3c4e23] dark:text-[#c8a030] tracking-tight">
+                Approved Chemical Activity & Requisition Logs
+              </h2>
+            </div>
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium">
+              Track requested vs approved chemical quantities across all your enrolled labs
+            </p>
           </div>
-          
-          <div className="flex flex-col md:flex-row md:items-center justify-start gap-3 text-left">
-            <div className="relative w-full md:w-80">
+
+          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 text-xs font-bold border border-emerald-200/80 dark:border-emerald-800/40 self-start md:self-auto">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span>Showing {filteredRequests.length} Total Records</span>
+          </span>
+        </div>
+
+        {/* Filter Controls Row */}
+        <div className="space-y-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            {/* Search Input */}
+            <div className="relative flex-1">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
-                placeholder="Search by lab or experiment..."
+                placeholder="Search by experiment or chemical name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 w-full bg-white dark:bg-[#141711] border-[#cfd8bd] dark:border-[#4e5d35] focus:ring-2 focus:ring-[#556b2f] text-xs py-2 rounded-xl"
+                className="pl-10 w-full bg-white dark:bg-[#141711] border-2 border-[#cfd8bd] dark:border-[#4e5d35] focus:ring-2 focus:ring-[#556b2f] text-xs py-2.5 rounded-xl font-medium"
               />
             </div>
-            
-            <div className="flex overflow-x-auto gap-2 pb-1 text-left justify-start">
-              {['All', 'Pending', 'Approved', 'Partial', 'Rejected'].map(status => (
-                <button
-                  key={status}
-                  onClick={() => setStatusFilter(status)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                    statusFilter === status 
-                      ? 'bg-gradient-to-r from-[#556b2f] to-[#435525] text-white shadow-md dark:from-[#c8a030] dark:to-[#b58f28] dark:text-black' 
-                      : 'bg-gray-100/80 text-gray-600 hover:bg-gray-200 dark:bg-gray-800/80 dark:text-gray-300 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  {status}
-                </button>
-              ))}
+
+            {/* Lab Filter Selector */}
+            <div className="w-full sm:w-64">
+              <select
+                value={selectedLabFilter}
+                onChange={(e) => setSelectedLabFilter(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-white dark:bg-[#141711] border-2 border-[#cfd8bd] dark:border-[#4e5d35] text-xs font-bold text-[#3c4e23] dark:text-[#eef4e8] rounded-xl outline-none focus:ring-2 focus:ring-[#556b2f]"
+              >
+                <option value="All">All Enrolled Labs ({myLabs?.length || 0})</option>
+                {myLabs?.map(lab => (
+                  <option key={lab._id || lab.labCode || lab.name} value={lab.labName || lab.name}>
+                    {lab.labCode ? `${lab.labCode} - ` : ''}{lab.labName || lab.name}
+                  </option>
+                ))}
+              </select>
             </div>
+          </div>
+
+          {/* Status Filter Buttons */}
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <span className="text-xs font-bold text-gray-500 dark:text-gray-400 mr-1">Status Filter:</span>
+            {['Approved', 'Pending', 'All', 'Rejected'].map(status => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  statusFilter === status 
+                    ? 'bg-[#556b2f] text-white shadow-sm dark:bg-[#c8a030] dark:text-black' 
+                    : 'bg-white dark:bg-[#20251a] text-gray-600 dark:text-gray-300 border border-[#d5e0c2] dark:border-[#38432a] hover:bg-gray-50'
+                }`}
+              >
+                {status === 'Approved' ? '✅ Approved Only' : status}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="p-4 sm:p-6 text-left">
-          <Table
-            headers={[
-              { key: 'date', label: 'Date', render: (row) => <span className="font-mono text-xs text-gray-600 dark:text-gray-300 font-semibold">{new Date(row.requestedAt).toLocaleDateString('en-GB')}</span> },
-              { key: 'subject', label: 'Subject / Lab', render: (row) => (
-                <div className="text-left">
-                  <div className="text-sm font-bold text-[#3c4e23] dark:text-[#eef4e8]">{row.labName}</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">{row.subject}</div>
+        {/* Structured Activity Records List */}
+        {paginatedRequests.length > 0 ? (
+          <div className="space-y-4">
+            {paginatedRequests.map(req => {
+              const formattedDate = req.requestedAt 
+                ? new Date(req.requestedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                : '12 Aug 2026';
+
+              const chemList = req.chemicalsRequested && req.chemicalsRequested.length > 0 
+                ? req.chemicalsRequested 
+                : (req.chemicalName ? [{ chemicalName: req.chemicalName, quantityRequested: req.quantityRequested || 10, unit: req.quantityUnit || 'mL', status: req.overallStatus }] : []);
+
+              return (
+                <div 
+                  key={req._id || req.id}
+                  className="bg-white dark:bg-[#1c2117] border-2 border-[#b8c99d] dark:border-[#4a5836] shadow-md rounded-2xl p-4 sm:p-5 space-y-3 transition-all text-left"
+                >
+                  {/* Card Header: Lab, Date, Status */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-[#f0f2eb] dark:border-[#28301f]">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 bg-[#556b2f]/10 dark:bg-[#c8a030]/15 text-[#556b2f] dark:text-[#c8a030] text-xs font-black rounded-lg border border-[#556b2f]/20 uppercase">
+                        {req.experimentNo ? `Exp ${req.experimentNo}` : 'Practical'}
+                      </span>
+                      <span className="text-sm font-extrabold text-[#3c4e23] dark:text-[#eef4e8]">
+                        {req.labName || 'Pharmaceutics Lab'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono font-medium text-gray-500 dark:text-gray-400">
+                        {formattedDate}
+                      </span>
+                      {getStatusBadge(req.overallStatus)}
+                    </div>
+                  </div>
+
+                  {/* Experiment Object/Name */}
+                  <div>
+                    <h4 className="text-sm sm:text-base font-bold text-[#3c4e23] dark:text-[#eef4e8]">
+                      {req.experimentName}
+                    </h4>
+                  </div>
+
+                  {/* Detailed Chemical Consumption Breakdown */}
+                  {chemList.length > 0 && (
+                    <div className="bg-[#fcfdfa] dark:bg-[#141711] border border-[#e4ebda] dark:border-[#2f3823] rounded-xl p-3 space-y-2">
+                      <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                        <Beaker className="w-3.5 h-3.5 text-[#556b2f]" /> Chemical Requisition & Approved Quantities:
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {chemList.map((c, idx) => (
+                          <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-[#1c2117] border border-[#e8eadf] dark:border-[#38432a] text-xs">
+                            <span className="font-semibold text-[#3c4e23] dark:text-[#eef4e8] truncate mr-2">
+                              {c.chemicalName}
+                            </span>
+                            <span className="font-mono text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800/40 shrink-0">
+                              {c.quantityRequested || c.quantity} {c.unit || c.quantityUnit || 'mL'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )},
-              { key: 'experiment', label: 'Experiment', render: (row) => (
-                <div className="text-xs text-gray-900 dark:text-gray-100 text-left font-medium">
-                  <span className="font-bold mr-1.5 text-[#556b2f] dark:text-[#c8a030] px-2 py-0.5 rounded bg-[#556b2f]/10 dark:bg-[#c8a030]/15">
-                    Exp {row.experimentNo}
-                  </span> 
-                  {row.experimentName}
+              );
+            })}
+
+            {/* Pagination Controls for 100+ Requests */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between pt-4 border-t border-[#e4ebda] dark:border-[#38432a]">
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 font-mono">
+                  Page {historyPage} of {totalPages} &bull; {filteredRequests.length} total records
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    disabled={historyPage === 1}
+                    onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-[#1c2117] border border-[#cfd8bd] dark:border-[#4e5d35] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    &larr; Previous
+                  </button>
+                  <button
+                    disabled={historyPage === totalPages}
+                    onClick={() => setHistoryPage(p => Math.min(totalPages, p + 1))}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#556b2f] text-white dark:bg-[#c8a030] dark:text-black disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90"
+                  >
+                    Next &rarr;
+                  </button>
                 </div>
-              )},
-              { key: 'status', label: 'Status', render: (row) => getStatusBadge(row.overallStatus) }
-            ]}
-            rows={filteredRequests}
-          />
-        </div>
-      </Card>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="p-8 text-center bg-white dark:bg-[#1c2117] border border-dashed border-[#d9e1ca] dark:border-[#414a33] rounded-2xl space-y-2">
+            <Beaker className="w-8 h-8 text-gray-400 mx-auto" />
+            <h3 className="text-base font-bold text-[#3c4e23] dark:text-[#eef4e8]">No requisition records found</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              No chemical requests match your current lab filter or search query.
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* ========================================================= */}
       {/* IN-PAGE FULL-SCREEN INTERACTIVE LAB WINDOW MODAL */}
