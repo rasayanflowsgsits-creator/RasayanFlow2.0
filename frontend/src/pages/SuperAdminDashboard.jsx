@@ -1817,135 +1817,213 @@ export default function SuperAdminDashboard() {
           {/* Institutional Labs Performance & System Analytics - Vertical Stack */}
           <div className='space-y-6'>
 
-            {/* 1. Department Labs Performance Analytics (Full Width) */}
+            {/* 1. Department Labs Performance Analytics (Executive Donut & Radial Gauge Cards) */}
             <Card 
               title='Department Labs Performance Analytics' 
               subtitle='Real-time operational readiness, syllabus density & chemical requisition status across labs' 
               className='w-full'
             >
-              <div className='space-y-5 pt-3'>
-                {/* Top Metric Header Row */}
-                <div className='grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 rounded-2xl bg-[#f4f6ee] dark:bg-[#1a1d16] border border-[#d9e1ca] dark:border-[#414a33]'>
+              <div className='space-y-6 pt-3'>
+                {/* Top Summary Metrics */}
+                <div className='grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-2xl bg-[#f4f6ee] dark:bg-[#1a1d16] border border-[#d9e1ca] dark:border-[#414a33]'>
                   <div>
-                    <p className='text-[10px] font-bold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Active Department Labs</p>
-                    <p className='text-lg font-black text-[#37412a] dark:text-[#e4e9d8] mt-0.5'>{labs.length} Labs</p>
+                    <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Active Department Labs</p>
+                    <p className='text-xl font-black text-[#37412a] dark:text-[#e4e9d8] mt-0.5'>{labs.length} Labs</p>
                   </div>
                   <div>
-                    <p className='text-[10px] font-bold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Avg Readiness Score</p>
-                    <p className='text-lg font-black text-emerald-600 dark:text-emerald-400 mt-0.5'>94.8%</p>
+                    <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Avg Readiness Score</p>
+                    <p className='text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5'>94.8%</p>
                   </div>
                   <div>
-                    <p className='text-[10px] font-bold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Active Practicals</p>
-                    <p className='text-lg font-black text-[#5c6e46] dark:text-[#a8be8a] mt-0.5'>{curriculumExperiments.length || 18} Exps</p>
+                    <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Active Practicals</p>
+                    <p className='text-xl font-black text-[#5c6e46] dark:text-[#a8be8a] mt-0.5'>{curriculumExperiments.length || 18} Exps</p>
                   </div>
                   <div>
-                    <p className='text-[10px] font-bold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Requisition Fulfillment</p>
-                    <p className='text-lg font-black text-indigo-600 dark:text-indigo-400 mt-0.5'>98.2%</p>
+                    <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Requisition Fulfillment</p>
+                    <p className='text-xl font-black text-indigo-600 dark:text-indigo-400 mt-0.5'>98.2%</p>
                   </div>
                 </div>
 
-                {/* Lab Performance Bar Chart */}
-                <div className='space-y-4 pt-1'>
-                  <div className='flex items-center justify-between text-xs font-extrabold text-[#71805a] dark:text-[#a5b48b] uppercase tracking-wider pb-1 border-b border-[#f0f4e8] dark:border-[#2a3121]'>
-                    <span>Department Lab Name</span>
-                    <span>Readiness & Active Requisitions</span>
-                  </div>
-
-                  {labs.length === 0 ? (
-                    <p className='text-center py-6 text-xs text-[#71805a]'>No labs available to compute performance metrics.</p>
-                  ) : (
-                    labs.slice(0, 5).map((lab, index) => {
+                {/* Lab Performance Cards Grid with Radial Gauge Rings */}
+                {labs.length === 0 ? (
+                  <p className='text-center py-6 text-xs text-[#71805a]'>No labs available to compute performance metrics.</p>
+                ) : (
+                  <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                    {labs.slice(0, 6).map((lab, index) => {
                       const hasAdmin = lab.admin && lab.admin !== 'Unassigned';
                       const performanceScore = hasAdmin ? Math.min(98, 82 + (index * 4) + (lab.name ? lab.name.length % 7 : 3)) : 45;
-                      const barGradient = performanceScore > 85 
-                        ? 'from-[#5c6e46] to-[#87996c]' 
-                        : performanceScore > 60 
-                        ? 'from-amber-500 to-amber-400' 
-                        : 'from-rose-500 to-rose-400';
+                      
+                      // SVG Circle calculations (radius 26, circumference 163.36)
+                      const strokeDashoffset = 163.36 - (163.36 * performanceScore) / 100;
+                      const ringColor = performanceScore > 85 ? 'text-[#5c6e46] dark:text-[#a8be8a]' : performanceScore > 60 ? 'text-amber-500' : 'text-rose-500';
 
                       return (
-                        <div key={lab.id || index} className='space-y-1.5 p-3 rounded-xl border border-[#e8efd9] bg-[#fffef8] hover:border-[#5c6e46] transition-all dark:border-[#2a3121] dark:bg-[#20251a]'>
-                          <div className='flex items-center justify-between text-xs'>
-                            <div className='flex items-center gap-2 min-w-0'>
-                              <span className='h-2 w-2 rounded-full bg-[#5c6e46]' />
-                              <span className='font-bold text-[#37412a] dark:text-[#e4e9d8] truncate'>{lab.name || lab.labName}</span>
-                              <span className='rounded bg-[#f4f6ee] px-1.5 py-0.5 text-[10px] font-mono text-[#5c6e46] dark:bg-[#2a3121] dark:text-[#a5b48b] shrink-0'>
+                        <div key={lab.id || index} className='flex items-center gap-4 p-4 rounded-2xl border border-[#d9e1ca] bg-[#fffef8] hover:border-[#5c6e46] hover:shadow-md transition-all dark:border-[#414a33] dark:bg-[#20251a]'>
+                          {/* Radial Gauge Ring */}
+                          <div className='relative shrink-0 w-16 h-16 flex items-center justify-center'>
+                            <svg className='w-16 h-16 transform -rotate-90' viewBox='0 0 60 60'>
+                              <circle cx='30' cy='30' r='26' stroke='currentColor' strokeWidth='6' className='text-[#e8efd9] dark:text-[#2a3121]' fill='transparent' />
+                              <circle 
+                                cx='30' 
+                                cy='30' 
+                                r='26' 
+                                stroke='currentColor' 
+                                strokeWidth='6' 
+                                className={`${ringColor} transition-all duration-700 ease-out`} 
+                                fill='transparent' 
+                                strokeDasharray='163.36'
+                                strokeDashoffset={strokeDashoffset}
+                                strokeLinecap='round'
+                              />
+                            </svg>
+                            <span className='absolute font-black text-xs text-[#37412a] dark:text-[#e4e9d8]'>{performanceScore}%</span>
+                          </div>
+
+                          {/* Lab Details */}
+                          <div className='space-y-1 flex-1 min-w-0'>
+                            <div className='flex items-center justify-between gap-2'>
+                              <h5 className='font-extrabold text-sm text-[#37412a] dark:text-[#e4e9d8] truncate'>{lab.name || lab.labName}</h5>
+                              <span className='rounded-md bg-[#f4f6ee] px-2 py-0.5 text-[10px] font-mono font-bold text-[#5c6e46] dark:bg-[#2a3121] dark:text-[#a5b48b] shrink-0'>
                                 {lab.labCode || lab.code || 'LAB'}
                               </span>
                             </div>
-                            <div className='flex items-center gap-3 shrink-0'>
-                              <span className={`text-[11px] font-bold ${hasAdmin ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`}>
-                                {hasAdmin ? `${lab.admin}` : 'Unassigned Admin'}
+                            
+                            <p className='text-xs text-[#71805a] dark:text-[#a5b48b] font-medium'>
+                              Faculty Admin: <strong className={hasAdmin ? 'text-[#5c6e46] dark:text-[#a8be8a]' : 'text-amber-600'}>{hasAdmin ? lab.admin : 'Unassigned'}</strong>
+                            </p>
+                            
+                            <div className='flex items-center justify-between text-[11px] pt-1 border-t border-[#f0f4e8] dark:border-[#2a3121]'>
+                              <span className='text-gray-500 dark:text-gray-400 font-medium'>{lab.courseType || 'B.Pharm'} • Yr {lab.year || '1'} Sem {lab.semester || '1'}</span>
+                              <span className={`font-bold ${hasAdmin ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-600'}`}>
+                                {hasAdmin ? '🟢 Operational' : '⚠️ Pending Admin'}
                               </span>
-                              <span className='font-extrabold text-[#37412a] dark:text-[#e4e9d8]'>{performanceScore}%</span>
                             </div>
-                          </div>
-
-                          {/* Animated Horizontal Bar */}
-                          <div className='h-2.5 w-full overflow-hidden rounded-full bg-[#e8efd9] dark:bg-[#2a3121]'>
-                            <div 
-                              className={`h-full rounded-full bg-gradient-to-r ${barGradient} transition-all duration-700 ease-out`} 
-                              style={{ width: `${performanceScore}%` }}
-                            />
-                          </div>
-
-                          <div className='flex items-center justify-between text-[10px] text-[#71805a] dark:text-[#a5b48b] pt-0.5'>
-                            <span>{lab.courseType || 'B.Pharm'} • Year {lab.year || '1'} Sem {lab.semester || '1'}</span>
-                            <span>{hasAdmin ? 'Operational & Syncing' : 'Needs Admin Assignment'}</span>
                           </div>
                         </div>
                       );
-                    })
-                  )}
-                </div>
+                    })}
+                  </div>
+                )}
               </div>
             </Card>
 
-            {/* 2. System Role Distribution & Capacity (Full Width Below Lab Performance) */}
+            {/* 2. System Role Distribution & Capacity (SVG Donut Chart & Segmented Distribution Bar) */}
             <Card 
               title='System Role Distribution & Capacity' 
               subtitle='Institutional user volume & role allocation breakdown' 
               className='w-full'
             >
-              <div className='space-y-4 pt-3'>
-                {/* Role Breakdown Visual Cards */}
-                {[
-                  { label: 'Students', count: students.length, color: 'bg-emerald-500', bgLight: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300', percentage: users.length ? Math.round((students.length / users.length) * 100) : 80 },
-                  { label: 'Lab Administrators', count: labAdmins.length, color: 'bg-blue-500', bgLight: 'bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300', percentage: users.length ? Math.round((labAdmins.length / users.length) * 100) : 10 },
-                  { label: 'Store Managers', count: storeAdmins.length, color: 'bg-indigo-500', bgLight: 'bg-indigo-50 text-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300', percentage: users.length ? Math.round((storeAdmins.length / users.length) * 100) : 5 },
-                  { label: 'Super Admins', count: superAdmins.length, color: 'bg-purple-500', bgLight: 'bg-purple-50 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300', percentage: users.length ? Math.round((superAdmins.length / users.length) * 100) : 5 }
-                ].map((item, i) => (
-                  <div key={i} className='space-y-1.5 p-3 rounded-xl border border-[#d9e1ca] bg-[#fffef8] dark:border-[#414a33] dark:bg-[#20251a]'>
-                    <div className='flex items-center justify-between text-xs font-bold text-[#37412a] dark:text-[#e4e9d8]'>
-                      <div className='flex items-center gap-2'>
-                        <span className={`h-2.5 w-2.5 rounded-full ${item.color}`} />
-                        <span>{item.label}</span>
+              {(() => {
+                const totalU = users.length || 1;
+                const studPct = Math.round((students.length / totalU) * 100);
+                const labAdminPct = Math.round((labAdmins.length / totalU) * 100);
+                const storeAdminPct = Math.round((storeAdmins.length / totalU) * 100);
+                const superAdminPct = Math.max(0, 100 - studPct - labAdminPct - storeAdminPct);
+
+                // SVG Donut circumference = 2 * PI * 38 = 238.76
+                const c = 238.76;
+                const studOffset = c - (c * studPct) / 100;
+                const labOffset = c - (c * (studPct + labAdminPct)) / 100;
+                const storeOffset = c - (c * (studPct + labAdminPct + storeAdminPct)) / 100;
+
+                return (
+                  <div className='space-y-6 pt-3'>
+                    {/* SVG Donut Chart + Role Breakdown Cards */}
+                    <div className='grid grid-cols-1 md:grid-cols-3 gap-6 items-center bg-[#fcfdfa] dark:bg-[#151712] p-5 rounded-2xl border border-[#d9e1ca] dark:border-[#414a33]'>
+                      
+                      {/* SVG Donut Graphic */}
+                      <div className='flex flex-col items-center justify-center relative py-2'>
+                        <svg className='w-48 h-48 transform -rotate-90' viewBox='0 0 100 100'>
+                          <circle cx='50' cy='50' r='38' stroke='currentColor' strokeWidth='12' className='text-[#e8efd9] dark:text-[#20251a]' fill='transparent' />
+                          
+                          {/* Student Segment */}
+                          <circle 
+                            cx='50' cy='50' r='38' stroke='#5c6e46' strokeWidth='12' 
+                            fill='transparent' strokeDasharray={c} strokeDashoffset={studOffset} strokeLinecap='round' 
+                          />
+                          {/* Lab Admin Segment */}
+                          <circle 
+                            cx='50' cy='50' r='38' stroke='#c8a030' strokeWidth='12' 
+                            fill='transparent' strokeDasharray={c} strokeDashoffset={labOffset} strokeLinecap='round' 
+                          />
+                          {/* Store Admin Segment */}
+                          <circle 
+                            cx='50' cy='50' r='38' stroke='#0284c7' strokeWidth='12' 
+                            fill='transparent' strokeDasharray={c} strokeDashoffset={storeOffset} strokeLinecap='round' 
+                          />
+                        </svg>
+
+                        {/* Center Metric Label */}
+                        <div className='absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none'>
+                          <span className='text-3xl font-black text-[#37412a] dark:text-[#e4e9d8]'>{users.length}</span>
+                          <span className='text-[10px] font-extrabold text-[#71805a] dark:text-[#a5b48b] uppercase tracking-wider'>Total Users</span>
+                        </div>
                       </div>
-                      <span className={`px-2 py-0.5 rounded-md text-[11px] font-black ${item.bgLight}`}>
-                        {item.count} Users ({item.percentage}%)
-                      </span>
-                    </div>
 
-                    <div className='h-2 w-full overflow-hidden rounded-full bg-[#e8efd9] dark:bg-[#2a3121]'>
-                      <div 
-                        className={`h-full rounded-full ${item.color} transition-all duration-500`} 
-                        style={{ width: `${Math.max(item.percentage, 5)}%` }}
-                      />
+                      {/* Role Breakdown Cards & Continuous Stacked Bar */}
+                      <div className='md:col-span-2 space-y-4'>
+                        <div className='space-y-1'>
+                          <div className='flex items-center justify-between text-xs font-bold text-[#71805a] dark:text-[#a5b48b]'>
+                            <span>Role Allocation Ratio</span>
+                            <span>{users.length} Active System Accounts</span>
+                          </div>
+                          {/* Continuous Multi-Color Stacked Bar */}
+                          <div className='flex h-4 w-full overflow-hidden rounded-full border border-[#d9e1ca] dark:border-[#414a33] bg-[#e8efd9] dark:bg-[#20251a] p-0.5'>
+                            <div style={{ width: `${studPct}%` }} className='bg-[#5c6e46] h-full rounded-l-full transition-all duration-500' title={`Students: ${studPct}%`} />
+                            <div style={{ width: `${labAdminPct}%` }} className='bg-[#c8a030] h-full transition-all duration-500' title={`Lab Admins: ${labAdminPct}%`} />
+                            <div style={{ width: `${storeAdminPct}%` }} className='bg-[#0284c7] h-full transition-all duration-500' title={`Store Managers: ${storeAdminPct}%`} />
+                            <div style={{ width: `${superAdminPct}%` }} className='bg-purple-600 h-full rounded-r-full transition-all duration-500' title={`Super Admins: ${superAdminPct}%`} />
+                          </div>
+                        </div>
+
+                        {/* 4 Role Legend Cards */}
+                        <div className='grid grid-cols-2 gap-3'>
+                          <div className='p-3 rounded-xl border border-[#d9e1ca] bg-white dark:border-[#414a33] dark:bg-[#20251a] flex items-center justify-between'>
+                            <div className='flex items-center gap-2'>
+                              <span className='w-3 h-3 rounded-full bg-[#5c6e46]' />
+                              <span className='text-xs font-bold text-[#37412a] dark:text-[#e4e9d8]'>Students</span>
+                            </div>
+                            <span className='text-xs font-black text-[#5c6e46] dark:text-[#a8be8a] bg-[#e8efd9] dark:bg-[#2a3320] px-2 py-0.5 rounded-md'>
+                              {students.length} ({studPct}%)
+                            </span>
+                          </div>
+
+                          <div className='p-3 rounded-xl border border-[#d9e1ca] bg-white dark:border-[#414a33] dark:bg-[#20251a] flex items-center justify-between'>
+                            <div className='flex items-center gap-2'>
+                              <span className='w-3 h-3 rounded-full bg-[#c8a030]' />
+                              <span className='text-xs font-bold text-[#37412a] dark:text-[#e4e9d8]'>Lab Admins</span>
+                            </div>
+                            <span className='text-xs font-black text-[#c8a030] bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-md'>
+                              {labAdmins.length} ({labAdminPct}%)
+                            </span>
+                          </div>
+
+                          <div className='p-3 rounded-xl border border-[#d9e1ca] bg-white dark:border-[#414a33] dark:bg-[#20251a] flex items-center justify-between'>
+                            <div className='flex items-center gap-2'>
+                              <span className='w-3 h-3 rounded-full bg-[#0284c7]' />
+                              <span className='text-xs font-bold text-[#37412a] dark:text-[#e4e9d8]'>Store Managers</span>
+                            </div>
+                            <span className='text-xs font-black text-[#0284c7] bg-sky-50 dark:bg-sky-950/50 px-2 py-0.5 rounded-md'>
+                              {storeAdmins.length} ({storeAdminPct}%)
+                            </span>
+                          </div>
+
+                          <div className='p-3 rounded-xl border border-[#d9e1ca] bg-white dark:border-[#414a33] dark:bg-[#20251a] flex items-center justify-between'>
+                            <div className='flex items-center gap-2'>
+                              <span className='w-3 h-3 rounded-full bg-purple-600' />
+                              <span className='text-xs font-bold text-[#37412a] dark:text-[#e4e9d8]'>Super Admins</span>
+                            </div>
+                            <span className='text-xs font-black text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 px-2 py-0.5 rounded-md'>
+                              {superAdmins.length} ({superAdminPct}%)
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
                     </div>
                   </div>
-                ))}
-
-                {/* Institutional Health Status Badge */}
-                <div className='p-3.5 rounded-xl bg-[#f4f6ee] dark:bg-[#1a1d16] border border-[#d9e1ca] dark:border-[#414a33] space-y-2 mt-2'>
-                  <div className='flex items-center justify-between text-xs font-bold text-[#3c4e23] dark:text-[#eef4e8]'>
-                    <span className='flex items-center gap-1.5'><CheckCircle2 size={15} className='text-emerald-600' /> System Security & Audit</span>
-                    <span className='text-[10px] uppercase font-extrabold text-emerald-700 bg-emerald-100 dark:bg-emerald-950/80 dark:text-emerald-300 px-2 py-0.5 rounded-md'>Optimal</span>
-                  </div>
-                  <p className='text-[11px] text-[#71805a] dark:text-[#a5b48b] leading-relaxed'>
-                    All lab administrator accounts, student enrollments, and store manager roles are actively monitored via secure audit logs.
-                  </p>
-                </div>
-              </div>
+                );
+              })()}
             </Card>
 
             {/* 3. Recent Activity Stream (Full Width Below Role Distribution) */}
