@@ -34,7 +34,7 @@ const getStoreOverview = asyncHandler(async (req, res) => {
     return valB - valA;
   });
 
-  const topChemicals = sorted.slice(0, 10).map((c) => {
+  const allMappedChemicals = sorted.map((c) => {
     const qty = Number(c.availableQty) || 0;
     const uPrice = Number(c.unitPrice || c.pricePerUnit || c.purchasePrice) || 0;
     const tVal = (c.totalValue !== undefined && c.totalValue !== null) ? Number(c.totalValue) : (qty * uPrice);
@@ -59,7 +59,8 @@ const getStoreOverview = asyncHandler(async (req, res) => {
     totalValue,
     lowStockCount,
     outOfStockCount,
-    topChemicals
+    topChemicals: allMappedChemicals,
+    chemicals: allMappedChemicals
   });
 });
 

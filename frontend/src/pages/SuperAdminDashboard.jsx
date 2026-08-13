@@ -116,6 +116,7 @@ export default function SuperAdminDashboard() {
   const [studentCourseFilter, setStudentCourseFilter] = useState('all');
   const [studentSemFilter, setStudentSemFilter] = useState('all');
   const [matrixSearch, setMatrixSearch] = useState('');
+  const [storeChemSearch, setStoreChemSearch] = useState('');
 
   // Curriculum State & Navigation
   const [currCourseFilter, setCurrCourseFilter] = useState('B.Pharm');
@@ -2052,9 +2053,28 @@ export default function SuperAdminDashboard() {
             </Card>
           </div>
 
-          {/* Simple Table Card */}
-          <Card title='Chemical Stock Summary' subtitle='Top chemicals by value in Central Store'>
+          {/* Scrollable Complete Chemical Inventory Table Card */}
+          <Card title='Chemical Store Inventory Summary' subtitle='Complete inventory of all chemicals registered in Central Store'>
             <div className='space-y-4 pt-2'>
+              {/* Search & Item Counter Filter Bar */}
+              <div className='flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-[#f8faee] dark:bg-[#1a1d16] p-3 rounded-xl border border-[#d9e1ca] dark:border-[#414a33]'>
+                <div className='relative flex-1'>
+                  <Search size={15} className='absolute left-3 top-1/2 -translate-y-1/2 text-[#87996c]' />
+                  <input
+                    type='text'
+                    value={storeChemSearch}
+                    onChange={(e) => setStoreChemSearch(e.target.value)}
+                    placeholder='Search all store chemicals by name, grade, or status...'
+                    className='w-full rounded-xl border border-[#d9e1ca] bg-white py-2 pl-9 pr-3 text-xs font-semibold text-[#37412a] outline-none focus:border-[#5c6e46] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
+                  />
+                </div>
+                <div className='flex items-center gap-2 shrink-0'>
+                  <span className='text-xs font-extrabold text-[#5c6e46] dark:text-[#a8be8a] bg-white dark:bg-[#20251a] px-3 py-1.5 rounded-xl border border-[#d9e1ca] dark:border-[#414a33] shadow-2xs'>
+                    Total: {storeOverview.topChemicals.length} Chemicals
+                  </span>
+                </div>
+              </div>
+
               {loadingStoreOverview ? (
                 <div className='py-8 text-center text-sm text-[#71805a] dark:text-[#a5b48b]'>
                   Loading chemical inventory summary...
@@ -2064,9 +2084,9 @@ export default function SuperAdminDashboard() {
                   No store chemical inventory data found.
                 </div>
               ) : (
-                <div className='overflow-x-auto rounded-xl border border-[#d9e1ca] dark:border-[#414a33]'>
+                <div className='max-h-[500px] overflow-y-auto overflow-x-auto rounded-xl border border-[#d9e1ca] dark:border-[#414a33] shadow-inner scrollbar-thin'>
                   <table className='w-full text-left border-collapse'>
-                    <thead className='bg-[#f4f6ee] dark:bg-[#242a1d] border-b border-[#d9e1ca] dark:border-[#414a33]'>
+                    <thead className='sticky top-0 z-10 bg-[#f4f6ee] dark:bg-[#242a1d] border-b border-[#d9e1ca] dark:border-[#414a33] shadow-2xs'>
                       <tr>
                         <th className='px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Chemical Name</th>
                         <th className='px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Grade</th>
@@ -2077,40 +2097,50 @@ export default function SuperAdminDashboard() {
                       </tr>
                     </thead>
                     <tbody className='divide-y divide-[#e8efd9] dark:divide-[#2a3121] bg-[#fffef8] dark:bg-[#20251a]'>
-                      {storeOverview.topChemicals.map((chem) => {
-                        const isOut = chem.status === 'Out of Stock';
-                        const isLow = chem.status === 'Low Stock';
-                        const badgeClass = isOut
-                          ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-900/40'
-                          : isLow
-                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-900/40'
-                          : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/40';
+                      {storeOverview.topChemicals
+                        .filter((chem) => {
+                          const q = storeChemSearch.trim().toLowerCase();
+                          if (!q) return true;
+                          return (
+                            (chem.name || '').toLowerCase().includes(q) ||
+                            (chem.grade || '').toLowerCase().includes(q) ||
+                            (chem.status || '').toLowerCase().includes(q)
+                          );
+                        })
+                        .map((chem) => {
+                          const isOut = chem.status === 'Out of Stock';
+                          const isLow = chem.status === 'Low Stock';
+                          const badgeClass = isOut
+                            ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-900/40'
+                            : isLow
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-900/40'
+                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/40';
 
-                        return (
-                          <tr key={chem.id || chem._id} className='hover:bg-[#f4f6ee]/60 dark:hover:bg-[#2a3121]/60 transition-colors'>
-                            <td className='px-4 py-3 font-bold text-[#37412a] dark:text-[#e4e9d8] text-sm'>
-                              {chem.name}
-                            </td>
-                            <td className='px-4 py-3 text-sm text-[#5c6e46] dark:text-[#a5b48b] font-medium'>
-                              {chem.grade || 'N/A'}
-                            </td>
-                            <td className='px-4 py-3 text-sm font-semibold text-[#37412a] dark:text-[#e4e9d8]'>
-                              {chem.availableQty} {chem.unit}
-                            </td>
-                            <td className='px-4 py-3 text-sm text-[#37412a] dark:text-[#e4e9d8] font-mono'>
-                              ₹{Number(chem.unitPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </td>
-                            <td className='px-4 py-3 text-sm font-bold text-[#37412a] dark:text-[#e4e9d8] font-mono'>
-                              ₹{Number(chem.totalValue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </td>
-                            <td className='px-4 py-3 text-sm'>
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${badgeClass}`}>
-                                {chem.status || 'In Stock'}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
+                          return (
+                            <tr key={chem.id || chem._id} className='hover:bg-[#f4f6ee]/60 dark:hover:bg-[#2a3121]/60 transition-colors'>
+                              <td className='px-4 py-3 font-bold text-[#37412a] dark:text-[#e4e9d8] text-sm'>
+                                {chem.name}
+                              </td>
+                              <td className='px-4 py-3 text-sm text-[#5c6e46] dark:text-[#a5b48b] font-medium'>
+                                {chem.grade || 'N/A'}
+                              </td>
+                              <td className='px-4 py-3 text-sm font-semibold text-[#37412a] dark:text-[#e4e9d8]'>
+                                {chem.availableQty} {chem.unit}
+                              </td>
+                              <td className='px-4 py-3 text-sm text-[#37412a] dark:text-[#e4e9d8] font-mono'>
+                                ₹{Number(chem.unitPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                              <td className='px-4 py-3 text-sm font-bold text-[#37412a] dark:text-[#e4e9d8] font-mono'>
+                                ₹{Number(chem.totalValue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                              <td className='px-4 py-3 text-sm'>
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${badgeClass}`}>
+                                  {chem.status || 'In Stock'}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
                     </tbody>
                   </table>
                 </div>
