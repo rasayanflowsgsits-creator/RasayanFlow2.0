@@ -199,9 +199,7 @@ export default function SuperAdminDashboard() {
       }
     };
 
-    if (activeTab === 'master-chemicals' || activeTab === 'store') {
-      loadOverviewData();
-    }
+    loadOverviewData();
   }, [activeTab]);
 
   // Central Store Overview State & Fetching

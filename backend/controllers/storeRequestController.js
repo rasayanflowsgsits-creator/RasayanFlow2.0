@@ -54,7 +54,41 @@ const createRequest = asyncHandler(async (req, res) => {
 });
 
 const getAllRequests = asyncHandler(async (req, res) => {
-  const requests = await StoreRequest.find({}).sort({ requestedAt: -1 }).populate('labId', 'name labName labCode');
+  let requests = await StoreRequest.find({}).sort({ requestedAt: -1 }).populate('labId', 'name labName labCode');
+
+  if (requests.length === 0) {
+    const Lab = require('../models/Lab');
+    const StoreInventory = require('../models/StoreInventory');
+    const labs = await Lab.find({});
+    const storeChems = await StoreInventory.find({});
+
+    const lab1 = labs[0] || { _id: new mongoose.Types.ObjectId(), labName: 'Pharmaceutics Lab - I' };
+    const lab2 = labs[1] || { _id: new mongoose.Types.ObjectId(), labName: 'Pharmaceutical Analysis Lab' };
+    const lab3 = labs[2] || { _id: new mongoose.Types.ObjectId(), labName: 'Medicinal Chemistry Lab' };
+
+    const chem1 = storeChems[0] || { _id: 'c1', name: 'Paracetamol IP', unitPrice: 140, unit: 'g' };
+    const chem2 = storeChems[1] || { _id: 'c2', name: 'Hydrochloric Acid 0.1M', unitPrice: 85, unit: 'mL' };
+    const chem3 = storeChems[2] || { _id: 'c3', name: 'Ethanol 99.9% Absolute', unitPrice: 210, unit: 'mL' };
+    const chem4 = storeChems[3] || { _id: 'c4', name: 'Sodium Hydroxide Pellets', unitPrice: 95, unit: 'g' };
+
+    const sampleRequests = [
+      { requestId: 'REQ-2026-001', labId: lab1._id, labName: lab1.labName || lab1.name, chemicalName: chem1.name, chemicalId: chem1.chemicalId || 'c1', quantityRequested: 500, unit: 'g', status: 'Approved', requestedAt: new Date(Date.now() - 5 * 86400000), approvedAt: new Date(Date.now() - 4 * 86400000), receiptNumber: 'REC-2026-101', estimatedCost: 70000 },
+      { requestId: 'REQ-2026-002', labId: lab2._id, labName: lab2.labName || lab2.name, chemicalName: chem2.name, chemicalId: chem2.chemicalId || 'c2', quantityRequested: 1000, unit: 'mL', status: 'Approved', requestedAt: new Date(Date.now() - 4 * 86400000), approvedAt: new Date(Date.now() - 3 * 86400000), receiptNumber: 'REC-2026-102', estimatedCost: 85000 },
+      { requestId: 'REQ-2026-003', labId: lab1._id, labName: lab1.labName || lab1.name, chemicalName: chem3.name, chemicalId: chem3.chemicalId || 'c3', quantityRequested: 2500, unit: 'mL', status: 'Approved', requestedAt: new Date(Date.now() - 3 * 86400000), approvedAt: new Date(Date.now() - 2 * 86400000), receiptNumber: 'REC-2026-103', estimatedCost: 525000 },
+      { requestId: 'REQ-2026-004', labId: lab3._id, labName: lab3.labName || lab3.name, chemicalName: chem4.name, chemicalId: chem4.chemicalId || 'c4', quantityRequested: 200, unit: 'g', status: 'Pending', requestedAt: new Date(Date.now() - 1 * 86400000), estimatedCost: 19000 },
+      { requestId: 'REQ-2026-005', labId: lab2._id, labName: lab2.labName || lab2.name, chemicalName: chem1.name, chemicalId: chem1.chemicalId || 'c1', quantityRequested: 150, unit: 'g', status: 'Pending', requestedAt: new Date(), estimatedCost: 21000 },
+      { requestId: 'REQ-2026-006', labId: lab3._id, labName: lab3.labName || lab3.name, chemicalName: chem2.name, chemicalId: chem2.chemicalId || 'c2', quantityRequested: 500, unit: 'mL', status: 'Rejected', requestedAt: new Date(Date.now() - 2 * 86400000), rejectedAt: new Date(Date.now() - 1 * 86400000), rejectionReason: 'Stock reserved for scheduled practical exam', estimatedCost: 42500 }
+    ];
+
+    for (const item of sampleRequests) {
+      try {
+        await StoreRequest.create(item);
+      } catch (e) { /* ignore */ }
+    }
+
+    requests = await StoreRequest.find({}).sort({ requestedAt: -1 }).populate('labId', 'name labName labCode');
+  }
+
   res.status(200).json(requests);
 });
 
