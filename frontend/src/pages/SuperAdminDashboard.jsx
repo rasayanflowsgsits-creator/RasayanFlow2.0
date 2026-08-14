@@ -1817,97 +1817,7 @@ export default function SuperAdminDashboard() {
           {/* Institutional Labs Performance & System Analytics - Vertical Stack */}
           <div className='space-y-6'>
 
-            {/* 1. Department Labs Performance Analytics (Executive Donut & Radial Gauge Cards) */}
-            <Card 
-              title='Department Labs Performance Analytics' 
-              subtitle='Real-time operational readiness, syllabus density & chemical requisition status across labs' 
-              className='w-full'
-            >
-              <div className='space-y-6 pt-3'>
-                {/* Top Summary Metrics */}
-                <div className='grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-2xl bg-[#f4f6ee] dark:bg-[#1a1d16] border border-[#d9e1ca] dark:border-[#414a33]'>
-                  <div>
-                    <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Active Department Labs</p>
-                    <p className='text-xl font-black text-[#37412a] dark:text-[#e4e9d8] mt-0.5'>{labs.length} Labs</p>
-                  </div>
-                  <div>
-                    <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Avg Readiness Score</p>
-                    <p className='text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5'>94.8%</p>
-                  </div>
-                  <div>
-                    <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Active Practicals</p>
-                    <p className='text-xl font-black text-[#5c6e46] dark:text-[#a8be8a] mt-0.5'>{curriculumExperiments.length || 18} Exps</p>
-                  </div>
-                  <div>
-                    <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Requisition Fulfillment</p>
-                    <p className='text-xl font-black text-indigo-600 dark:text-indigo-400 mt-0.5'>98.2%</p>
-                  </div>
-                </div>
-
-                {/* Lab Performance Cards Grid with Radial Gauge Rings */}
-                {labs.length === 0 ? (
-                  <p className='text-center py-6 text-xs text-[#71805a]'>No labs available to compute performance metrics.</p>
-                ) : (
-                  <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                    {labs.slice(0, 6).map((lab, index) => {
-                      const hasAdmin = lab.admin && lab.admin !== 'Unassigned';
-                      const performanceScore = hasAdmin ? Math.min(98, 82 + (index * 4) + (lab.name ? lab.name.length % 7 : 3)) : 45;
-                      
-                      // SVG Circle calculations (radius 26, circumference 163.36)
-                      const strokeDashoffset = 163.36 - (163.36 * performanceScore) / 100;
-                      const ringColor = performanceScore > 85 ? 'text-[#5c6e46] dark:text-[#a8be8a]' : performanceScore > 60 ? 'text-amber-500' : 'text-rose-500';
-
-                      return (
-                        <div key={lab.id || index} className='flex items-center gap-4 p-4 rounded-2xl border border-[#d9e1ca] bg-[#fffef8] hover:border-[#5c6e46] hover:shadow-md transition-all dark:border-[#414a33] dark:bg-[#20251a]'>
-                          {/* Radial Gauge Ring */}
-                          <div className='relative shrink-0 w-16 h-16 flex items-center justify-center'>
-                            <svg className='w-16 h-16 transform -rotate-90' viewBox='0 0 60 60'>
-                              <circle cx='30' cy='30' r='26' stroke='currentColor' strokeWidth='6' className='text-[#e8efd9] dark:text-[#2a3121]' fill='transparent' />
-                              <circle 
-                                cx='30' 
-                                cy='30' 
-                                r='26' 
-                                stroke='currentColor' 
-                                strokeWidth='6' 
-                                className={`${ringColor} transition-all duration-700 ease-out`} 
-                                fill='transparent' 
-                                strokeDasharray='163.36'
-                                strokeDashoffset={strokeDashoffset}
-                                strokeLinecap='round'
-                              />
-                            </svg>
-                            <span className='absolute font-black text-xs text-[#37412a] dark:text-[#e4e9d8]'>{performanceScore}%</span>
-                          </div>
-
-                          {/* Lab Details */}
-                          <div className='space-y-1 flex-1 min-w-0'>
-                            <div className='flex items-center justify-between gap-2'>
-                              <h5 className='font-extrabold text-sm text-[#37412a] dark:text-[#e4e9d8] truncate'>{lab.name || lab.labName}</h5>
-                              <span className='rounded-md bg-[#f4f6ee] px-2 py-0.5 text-[10px] font-mono font-bold text-[#5c6e46] dark:bg-[#2a3121] dark:text-[#a5b48b] shrink-0'>
-                                {lab.labCode || lab.code || 'LAB'}
-                              </span>
-                            </div>
-                            
-                            <p className='text-xs text-[#71805a] dark:text-[#a5b48b] font-medium'>
-                              Faculty Admin: <strong className={hasAdmin ? 'text-[#5c6e46] dark:text-[#a8be8a]' : 'text-amber-600'}>{hasAdmin ? lab.admin : 'Unassigned'}</strong>
-                            </p>
-                            
-                            <div className='flex items-center justify-between text-[11px] pt-1 border-t border-[#f0f4e8] dark:border-[#2a3121]'>
-                              <span className='text-gray-500 dark:text-gray-400 font-medium'>{lab.courseType || 'B.Pharm'} • Yr {lab.year || '1'} Sem {lab.semester || '1'}</span>
-                              <span className={`font-bold ${hasAdmin ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-600'}`}>
-                                {hasAdmin ? '🟢 Operational' : '⚠️ Pending Admin'}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </Card>
-
-            {/* 2. System Role Distribution & Capacity (SVG Donut Chart & Segmented Distribution Bar) */}
+            {/* 1. System Role Distribution & Capacity (SVG Donut Chart & Segmented Distribution Bar - TOP CARD) */}
             <Card 
               title='System Role Distribution & Capacity' 
               subtitle='Institutional user volume & role allocation breakdown' 
@@ -2024,6 +1934,98 @@ export default function SuperAdminDashboard() {
                   </div>
                 );
               })()}
+            </Card>
+
+            {/* 2. Department Labs Performance Analytics (BELOW System Role Distribution - Scrollable Container) */}
+            <Card 
+              title='Department Labs Performance Analytics' 
+              subtitle='Real-time operational readiness, syllabus density & chemical requisition status across labs' 
+              className='w-full'
+            >
+              <div className='space-y-6 pt-3'>
+                {/* Top Summary Metrics */}
+                <div className='grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-2xl bg-[#f4f6ee] dark:bg-[#1a1d16] border border-[#d9e1ca] dark:border-[#414a33]'>
+                  <div>
+                    <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Active Department Labs</p>
+                    <p className='text-xl font-black text-[#37412a] dark:text-[#e4e9d8] mt-0.5'>{labs.length} Labs</p>
+                  </div>
+                  <div>
+                    <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Avg Readiness Score</p>
+                    <p className='text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5'>94.8%</p>
+                  </div>
+                  <div>
+                    <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Active Practicals</p>
+                    <p className='text-xl font-black text-[#5c6e46] dark:text-[#a8be8a] mt-0.5'>{curriculumExperiments.length || 18} Exps</p>
+                  </div>
+                  <div>
+                    <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Requisition Fulfillment</p>
+                    <p className='text-xl font-black text-indigo-600 dark:text-indigo-400 mt-0.5'>98.2%</p>
+                  </div>
+                </div>
+
+                {/* Lab Performance Cards Grid with Radial Gauge Rings & Scrollable Container */}
+                {labs.length === 0 ? (
+                  <p className='text-center py-6 text-xs text-[#71805a]'>No labs available to compute performance metrics.</p>
+                ) : (
+                  <div className='max-h-[480px] overflow-y-auto pr-1.5 space-y-4 scrollbar-thin'>
+                    <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                      {labs.map((lab, index) => {
+                        const hasAdmin = lab.admin && lab.admin !== 'Unassigned';
+                        const performanceScore = hasAdmin ? Math.min(98, 82 + (index * 4) + (lab.name ? lab.name.length % 7 : 3)) : 45;
+                        
+                        // SVG Circle calculations (radius 26, circumference 163.36)
+                        const strokeDashoffset = 163.36 - (163.36 * performanceScore) / 100;
+                        const ringColor = performanceScore > 85 ? 'text-[#5c6e46] dark:text-[#a8be8a]' : performanceScore > 60 ? 'text-amber-500' : 'text-rose-500';
+
+                        return (
+                          <div key={lab.id || index} className='flex items-center gap-4 p-4 rounded-2xl border border-[#d9e1ca] bg-[#fffef8] hover:border-[#5c6e46] hover:shadow-md transition-all dark:border-[#414a33] dark:bg-[#20251a]'>
+                            {/* Radial Gauge Ring */}
+                            <div className='relative shrink-0 w-16 h-16 flex items-center justify-center'>
+                              <svg className='w-16 h-16 transform -rotate-90' viewBox='0 0 60 60'>
+                                <circle cx='30' cy='30' r='26' stroke='currentColor' strokeWidth='6' className='text-[#e8efd9] dark:text-[#2a3121]' fill='transparent' />
+                                <circle 
+                                  cx='30' 
+                                  cy='30' 
+                                  r='26' 
+                                  stroke='currentColor' 
+                                  strokeWidth='6' 
+                                  className={`${ringColor} transition-all duration-700 ease-out`} 
+                                  fill='transparent' 
+                                  strokeDasharray='163.36'
+                                  strokeDashoffset={strokeDashoffset}
+                                  strokeLinecap='round'
+                                />
+                              </svg>
+                              <span className='absolute font-black text-xs text-[#37412a] dark:text-[#e4e9d8]'>{performanceScore}%</span>
+                            </div>
+
+                            {/* Lab Details */}
+                            <div className='space-y-1 flex-1 min-w-0'>
+                              <div className='flex items-center justify-between gap-2'>
+                                <h5 className='font-extrabold text-sm text-[#37412a] dark:text-[#e4e9d8] truncate'>{lab.name || lab.labName}</h5>
+                                <span className='rounded-md bg-[#f4f6ee] px-2 py-0.5 text-[10px] font-mono font-bold text-[#5c6e46] dark:bg-[#2a3121] dark:text-[#a5b48b] shrink-0'>
+                                  {lab.labCode || lab.code || 'LAB'}
+                                </span>
+                              </div>
+                              
+                              <p className='text-xs text-[#71805a] dark:text-[#a5b48b] font-medium'>
+                                Faculty Admin: <strong className={hasAdmin ? 'text-[#5c6e46] dark:text-[#a8be8a]' : 'text-amber-600'}>{hasAdmin ? lab.admin : 'Unassigned'}</strong>
+                              </p>
+                              
+                              <div className='flex items-center justify-between text-[11px] pt-1 border-t border-[#f0f4e8] dark:border-[#2a3121]'>
+                                <span className='text-gray-500 dark:text-gray-400 font-medium'>{lab.courseType || 'B.Pharm'} • Yr {lab.year || '1'} Sem {lab.semester || '1'}</span>
+                                <span className={`font-bold ${hasAdmin ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-600'}`}>
+                                  {hasAdmin ? '🟢 Operational' : '⚠️ Pending Admin'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
             </Card>
 
             {/* 3. Recent Activity Stream (Full Width Below Role Distribution) */}
