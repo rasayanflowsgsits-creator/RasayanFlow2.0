@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Download, FileDown, Pencil, Plus, Trash2, Upload } from 'lucide-react';
+import { 
+  Download, FileDown, Pencil, Plus, Trash2, Upload, Search, 
+  FlaskConical, AlertTriangle, CheckCircle2, PackageCheck, 
+  Building2, Boxes, Store, RefreshCw, ChevronRight, Filter, Layers
+} from 'lucide-react';
 import { useLocation } from 'react-router-dom';
-import { jsPDF } from 'jspdf';
 import useAppStore from '../store/appStore';
 import useAuthStore from '../store/authStore';
 import Card from '../components/ui/Card';
-import Table from '../components/ui/Table';
 import Modal from '../components/ui/Modal';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import { parseCsv } from '../utils/csv';
-import useStoreManagerMock from '../store/storeManagerMock';
 import LabImportModal from '../components/LabImportModal';
 
 const UNIT_OPTIONS = ['mg', 'g', 'kg', 'mcg', 'mL', 'L', 'uL', 'tablets', 'capsules', 'bottles', 'boxes', 'packs', 'vials', 'ampoules', 'units'];
@@ -21,7 +22,7 @@ const EMPTY_EXPERIMENT = { experimentNumber: '', experimentObject: '', requiredI
 const SelectUnit = ({ value, onChange }) => (
   <label className='relative block text-sm text-slate-700 dark:text-slate-300'>
     <span className='mb-1 block text-xs font-medium tracking-wide'>Quantity unit</span>
-    <select value={value} onChange={onChange} className='w-full rounded-lg border border-[#cfd8bd] bg-[#fffef8] px-3 py-2 text-[#3c4e23] focus:outline-none focus:ring-2 focus:ring-[#6f7d45] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]'>
+    <select value={value} onChange={onChange} className='w-full rounded-xl border border-[#cfd8bd] bg-[#fffef8] px-3 py-2 text-xs text-[#3c4e23] focus:outline-none focus:ring-2 focus:ring-[#5c6e46] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8] font-bold'>
       {UNIT_OPTIONS.map((unit) => <option key={unit} value={unit}>{unit}</option>)}
     </select>
   </label>
@@ -38,8 +39,7 @@ export default function LabAdminDashboard() {
   } = store;
   const user = useAuthStore((state) => state.user);
   const location = useLocation();
-  const isTransactionsPage = location.pathname === '/transactions';
-  const isAnalyticsPage = location.pathname === '/analytics';
+
   const assignedLabs = useMemo(() => {
     const currentUserId = String(user?.id || user?._id || '');
     const currentUserEmail = (user?.email || '').toLowerCase();
@@ -48,17 +48,14 @@ export default function LabAdminDashboard() {
     return store.labs.filter((lab) => {
       const labIdStr = String(lab.id || lab._id || '');
 
-      // 1. Check lab.admins array by ID or email
       const isDirectAdmin = Array.isArray(lab.admins) && lab.admins.some((admin) => {
         const adminIdStr = String(admin.id || admin._id || admin);
         const adminEmailStr = (admin.email || '').toLowerCase();
         return (adminIdStr && adminIdStr === currentUserId) || (adminEmailStr && adminEmailStr === currentUserEmail);
       });
 
-      // 2. Check user.labId link
       const matchesUserLabId = Boolean(currentUserLabId && currentUserLabId === labIdStr);
 
-      // 3. Check lab admin string / email / labName property
       const matchesAdminNameOrEmail = Boolean(
         (lab.adminEmail && lab.adminEmail.toLowerCase() === currentUserEmail) ||
         (lab.email && lab.email.toLowerCase() === currentUserEmail) ||
@@ -69,8 +66,16 @@ export default function LabAdminDashboard() {
       return isDirectAdmin || matchesUserLabId || matchesAdminNameOrEmail;
     });
   }, [store.labs, user]);
+
   const [selectedLabId, setSelectedLabId] = useState(() => localStorage.getItem('pharmlab-active-lab') || '');
   const labId = selectedLabId || assignedLabs[0]?.id || assignedLabs[0]?._id || user?.labId || '';
+
+  // Local state for UI controls
+  const [searchTerm, setSearchTerm] = useState('');
+  const [stockStatusFilter, setStockStatusFilter] = useState('all'); // 'all', 'optimal', 'low', 'out'
+  const [activeTab, setActiveTab] = useState('inventory'); // 'inventory', 'experiments'
+
+  // Modal states
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [experimentOpen, setExperimentOpen] = useState(false);
@@ -79,9 +84,7 @@ export default function LabAdminDashboard() {
   const [experimentForm, setExperimentForm] = useState(EMPTY_EXPERIMENT);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteExperimentTarget, setDeleteExperimentTarget] = useState(null);
-  const [reviewingId, setReviewingId] = useState('');
-  const [reviewingExperimentRequestId, setReviewingExperimentRequestId] = useState('');
-  const [blockingUserId, setBlockingUserId] = useState('');
+
   const [savingItem, setSavingItem] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const [savingExperiment, setSavingExperiment] = useState(false);
@@ -94,15 +97,6 @@ export default function LabAdminDashboard() {
   const [editCasLookupMessage, setEditCasLookupMessage] = useState('');
   const [editCasLookupType, setEditCasLookupType] = useState('');
   const [importOpen, setImportOpen] = useState(false);
-  const [importing, setImporting] = useState(false);
-  const [importFileName, setImportFileName] = useState('');
-  const [importItems, setImportItems] = useState([]);
-  const [importIssues, setImportIssues] = useState([]);
-  const [experimentImportOpen, setExperimentImportOpen] = useState(false);
-  const [experimentImporting, setExperimentImporting] = useState(false);
-  const [experimentImportFileName, setExperimentImportFileName] = useState('');
-  const [experimentImportExperiments, setExperimentImportExperiments] = useState([]);
-  const [experimentImportIssues, setExperimentImportIssues] = useState([]);
 
   const [storeModalOpen, setStoreModalOpen] = useState(false);
   const [storeModalData, setStoreModalData] = useState({ chemicalName: '', quantityRequested: '100', unit: 'mL', reason: '' });
@@ -121,6 +115,7 @@ export default function LabAdminDashboard() {
   };
 
   useEffect(() => { fetchLabs(); fetchUsers(); }, [fetchLabs, fetchUsers]);
+  
   useEffect(() => {
     if (!assignedLabs.length) return;
     const validSelection = assignedLabs.some((lab) => String(lab.id || lab._id) === String(selectedLabId));
@@ -130,48 +125,57 @@ export default function LabAdminDashboard() {
       localStorage.setItem('pharmlab-active-lab', nextLabId);
     }
   }, [assignedLabs, selectedLabId]);
+
   useEffect(() => {
     if (!labId) return;
     fetchInventory(labId);
-    if (store.fetchSmartInventory) store.fetchSmartInventory(labId);
     fetchTransactions({ labId });
     fetchExperiments({ labId });
     store.fetchLabRequests();
-    if (store.fetchStudentRequests) {
-      store.fetchStudentRequests(labId);
-    }
-  }, [fetchExperiments, fetchInventory, fetchTransactions, labId, store.fetchLabRequests]);
+  }, [fetchExperiments, fetchInventory, fetchTransactions, labId]);
 
   const currentLab = assignedLabs.find((lab) => String(lab.id || lab._id) === String(labId)) || (store.labs || []).find((lab) => String(lab.id || lab._id) === String(labId));
-  const pendingBorrowRequests = (store.transactions || []).filter((tx) => tx?.status === 'pending' && tx?.type === 'borrow');
-  const pendingLabRequests = (store.labRequests || []).filter(r => r?.labId === labId && r?.status === 'Pending');
 
-  const storeRequests = useStoreManagerMock(state => state?.requests || []);
-  const pendingStoreRequestsCount = (storeRequests || []).filter(r => r?.lab === currentLab?.name && r?.status === 'Pending').length;
-  const pendingInventoryRequests = pendingBorrowRequests.filter((tx) => tx?.requestCategory !== 'experiment');
-  const pendingExperimentRequests = pendingBorrowRequests.filter((tx) => tx?.requestCategory === 'experiment');
-  const students = (store.users || []).filter((entry) => entry?.role === 'student' && (!entry?.labId || String(entry?.labId) === String(labId)));
-  const lowStockCount = (store.inventory || []).filter((item) => Number(item?.quantity || 0) <= Number(item?.minThreshold || 0)).length;
-  const totalInventoryValue = (store.inventory || []).reduce((sum, item) => sum + Number(item?.quantity || 0) * Number(item?.costPerUnit || 0), 0);
-  const experimentSpend = (store.experiments || []).reduce((sum, experiment) => sum + Number(experiment?.totalEstimatedExpense || 0), 0);
+  // Derived stock metrics
+  const inventoryList = useMemo(() => store.inventory || [], [store.inventory]);
+  
+  const totalChemicalsCount = inventoryList.length;
+  const optimalStockCount = useMemo(() => inventoryList.filter(i => Number(i.quantity || 0) > Number(i.minThreshold || 5)).length, [inventoryList]);
+  const lowStockCount = useMemo(() => inventoryList.filter(i => Number(i.quantity || 0) > 0 && Number(i.quantity || 0) <= Number(i.minThreshold || 5)).length, [inventoryList]);
+  const outOfStockCount = useMemo(() => inventoryList.filter(i => Number(i.quantity || 0) <= 0).length, [inventoryList]);
+  const totalValuation = useMemo(() => inventoryList.reduce((sum, item) => sum + (Number(item.quantity || 0) * Number(item.costPerUnit || 0)), 0), [inventoryList]);
 
-  const smart = store.smartInventory || {};
+  // Filtered inventory list
+  const filteredInventory = useMemo(() => {
+    return inventoryList.filter(item => {
+      const q = searchTerm.trim().toLowerCase();
+      const nameMatch = !q || [item.chemicalName, item.casNumber, item.category, item.chemicalFormula, item.storageLocation].filter(Boolean).some(val => val.toLowerCase().includes(q));
+      
+      const qty = Number(item.quantity || 0);
+      const thresh = Number(item.minThreshold || 5);
+
+      let statusMatch = true;
+      if (stockStatusFilter === 'optimal') statusMatch = qty > thresh;
+      else if (stockStatusFilter === 'low') statusMatch = qty > 0 && qty <= thresh;
+      else if (stockStatusFilter === 'out') statusMatch = qty <= 0;
+
+      return nameMatch && statusMatch;
+    });
+  }, [inventoryList, searchTerm, stockStatusFilter]);
 
   const saveItem = async (payload, isEdit = false) => {
-    const action = isEdit ? store.updateInventoryItem(payload.id, payload) : store.createInventoryItem({ labId, ...payload });
-    return action;
+    return isEdit ? store.updateInventoryItem(payload.id, payload) : store.createInventoryItem({ labId, ...payload });
   };
 
   const handleAddItem = async () => {
     if (!labId || !newItem.chemicalName.trim() || !String(newItem.quantity).trim()) {
-      store.setToast({ type: 'error', message: 'Chemical name and quantity are required before saving.' });
+      store.setToast({ type: 'error', message: 'Chemical name and quantity are required.' });
       return;
     }
     setSavingItem(true);
     try {
       const item = await saveItem({ ...newItem, chemicalName: newItem.chemicalName.trim(), category: newItem.category.trim(), quantity: Number(newItem.quantity), costPerUnit: Number(newItem.costPerUnit || 0), minThreshold: Number(newItem.minThreshold || 5) });
-      store.setToast({ type: 'success', message: `${item.chemicalName} added.` });
-      store.setHighlight(item.id);
+      store.setToast({ type: 'success', message: `${item.chemicalName} added to inventory.` });
       setCreateOpen(false);
       setNewItem(EMPTY_ITEM);
     } catch (error) {
@@ -185,7 +189,6 @@ export default function LabAdminDashboard() {
     try {
       const item = await saveItem({ ...editItem, chemicalName: editItem.chemicalName.trim(), category: editItem.category.trim(), quantity: Number(editItem.quantity), costPerUnit: Number(editItem.costPerUnit || 0), minThreshold: Number(editItem.minThreshold || 5) }, true);
       store.setToast({ type: 'success', message: `${item.chemicalName} updated.` });
-      store.setHighlight(item.id);
       setEditOpen(false);
     } catch (error) {
       store.setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to update chemical.' });
@@ -198,7 +201,7 @@ export default function LabAdminDashboard() {
     setSavingExperiment(true);
     try {
       await store.createExperiment({ labId, experimentNumber: experimentForm.experimentNumber.trim(), experimentObject: experimentForm.experimentObject.trim(), requiredInventory });
-      store.setToast({ type: 'success', message: 'Experiment created.' });
+      store.setToast({ type: 'success', message: 'Experiment created successfully.' });
       setExperimentOpen(false);
       setExperimentForm(EMPTY_EXPERIMENT);
     } catch (error) {
@@ -206,74 +209,8 @@ export default function LabAdminDashboard() {
     } finally { setSavingExperiment(false); }
   };
 
-  const handleImportFile = async (file) => {
-    if (!file) return;
-    const text = await file.text();
-    const { records } = parseCsv(text);
-    const issues = [];
-    const items = [];
-
-    records.forEach((record, index) => {
-      const chemicalName = String(record.chemicalName || record.itemName || '').trim();
-      const quantityUnit = String(record.quantityUnit || '').trim();
-      const quantity = record.quantity === '' ? 0 : Number(record.quantity);
-      const minThreshold = record.minThreshold === '' ? 5 : Number(record.minThreshold);
-
-      if (!chemicalName) issues.push({ index, message: 'Missing chemicalName' });
-      if (!quantityUnit) issues.push({ index, message: 'Missing quantityUnit' });
-      if (!Number.isFinite(quantity) || quantity < 0) issues.push({ index, message: 'Invalid quantity' });
-      if (!Number.isFinite(minThreshold) || minThreshold < 0) issues.push({ index, message: 'Invalid minThreshold' });
-
-      items.push({
-        itemCode: String(record.itemCode || '').trim(),
-        chemicalName,
-        category: String(record.category || 'Chemical').trim() || 'Chemical',
-        quantity,
-        quantityUnit,
-        costPerUnit: record.costPerUnit === '' ? 0 : Number(record.costPerUnit),
-        minThreshold,
-        casNumber: String(record.casNumber || '').trim(),
-        smiles: String(record.smiles || '').trim(),
-        inchi: String(record.inchi || '').trim(),
-        chemicalFormula: String(record.chemicalFormula || '').trim(),
-        manufacturingCompany: String(record.manufacturingCompany || '').trim(),
-        entryDate: String(record.entryDate || '').trim(),
-        storageLocation: String(record.storageLocation || '').trim(),
-        lotNumber: String(record.lotNumber || '').trim(),
-        expiryDate: String(record.expiryDate || '').trim(),
-        abstract: String(record.abstract || '').trim(),
-        pubmedId: String(record.pubmedId || '').trim(),
-      });
-    });
-
-    setImportItems(items);
-    setImportIssues(issues.slice(0, 50));
-  };
-
-  const submitBulkImport = async () => {
-    if (!labId || importing || !importItems.length) return;
-    setImporting(true);
-    try {
-      const result = await store.bulkImportInventoryItems({ labId, items: importItems });
-      await store.fetchInventory(labId);
-      store.setToast({
-        type: result?.errorCount ? 'warning' : 'success',
-        message: `Import done: ${result?.createdCount ?? 0} created, ${result?.skippedCount ?? 0} skipped, ${result?.errorCount ?? 0} errors.`,
-      });
-      setImportOpen(false);
-      setImportFileName('');
-      setImportItems([]);
-      setImportIssues([]);
-    } catch (error) {
-      store.setToast({ type: 'error', message: error?.response?.data?.message || 'Bulk import failed.' });
-    } finally {
-      setImporting(false);
-    }
-  };
-
   const autofillFromCas = async (item, setItem, setLoading, setLastFetchedCas, setStatusMessage, setStatusType) => {
     const normalizedCas = item.casNumber.trim();
-
     if (!normalizedCas) {
       setStatusType('error');
       setStatusMessage('Enter a CAS number first.');
@@ -303,162 +240,72 @@ export default function LabAdminDashboard() {
       }));
       setLastFetchedCas(normalizedCas);
       setStatusType('success');
-      setStatusMessage(`PubChem matched ${pubchemData.chemicalName || normalizedCas}. Review the fields below, then save the chemical.`);
+      setStatusMessage(`PubChem matched ${pubchemData.chemicalName || normalizedCas}. Review fields and save.`);
     } catch (error) {
       setStatusType('error');
-      setStatusMessage(error?.response?.data?.message || 'Failed to fetch chemical details from PubChem.');
+      setStatusMessage(error?.response?.data?.message || 'Failed to fetch details from PubChem.');
     } finally {
       setLoading(false);
     }
   };
 
-  const modalFields = (item, setItem, isLoadingCas, lastFetchedCas, setLoading, setLastFetchedCas, statusMessage, statusType, setStatusMessage, setStatusType) => <div className='space-y-4'>
-    <div className='rounded-xl border border-[#d9e1ca] bg-[#f7f8f1] p-4 dark:border-[#414a33] dark:bg-[#28301f]'>
-      <div className='flex flex-col gap-3 sm:flex-row sm:items-end'>
-        <div className='flex-1'>
-          <Input
-            label='CAS number'
-            value={item.casNumber}
-            onChange={(e) => {
-              const nextCas = e.target.value;
-              setItem((s) => ({ ...s, casNumber: nextCas, category: 'Chemical' }));
-              if (nextCas.trim() !== lastFetchedCas) {
-                setLastFetchedCas('');
-                setStatusMessage('');
-                setStatusType('');
-              }
-            }}
-            placeholder='50-78-2'
-          />
+  const modalFields = (item, setItem, isLoadingCas, lastFetchedCas, setLoading, setLastFetchedCas, statusMessage, statusType, setStatusMessage, setStatusType) => (
+    <div className='space-y-4'>
+      <div className='rounded-xl border border-[#d9e1ca] bg-[#f8faee] p-4 dark:border-[#414a33] dark:bg-[#20251a]'>
+        <div className='flex flex-col gap-3 sm:flex-row sm:items-end'>
+          <div className='flex-1'>
+            <Input
+              label='CAS Registry Number'
+              value={item.casNumber}
+              onChange={(e) => {
+                const nextCas = e.target.value;
+                setItem((s) => ({ ...s, casNumber: nextCas }));
+                if (nextCas.trim() !== lastFetchedCas) {
+                  setLastFetchedCas('');
+                  setStatusMessage('');
+                  setStatusType('');
+                }
+              }}
+              placeholder='e.g. 50-78-2'
+            />
+          </div>
+          <Button type='button' variant='outline' className='sm:w-auto font-bold border-[#5c6e46] text-[#5c6e46]' onClick={() => autofillFromCas(item, setItem, setLoading, setLastFetchedCas, setStatusMessage, setStatusType)} disabled={isLoadingCas}>
+            {isLoadingCas ? 'Fetching...' : '🔍 Auto Fetch PubChem'}
+          </Button>
         </div>
-        <Button type='button' variant='outline' className='sm:w-auto' onClick={() => autofillFromCas(item, setItem, setLoading, setLastFetchedCas, setStatusMessage, setStatusType)} disabled={isLoadingCas}>
-          {isLoadingCas ? 'Fetching...' : 'Auto Fetch'}
-        </Button>
+        {statusMessage ? <div className={`mt-3 rounded-lg px-3 py-2 text-xs font-semibold ${statusType === 'success' ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : statusType === 'error' ? 'bg-rose-50 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'}`}>{statusMessage}</div> : null}
       </div>
-      <p className='mt-2 text-xs text-[#71805a] dark:text-[#c5d0b5]'>Enter the CAS number, then click Auto Fetch to pull available PubChem fields. This only fills the form. Use Save chemical to add it to inventory.</p>
-      {statusMessage ? <div className={`mt-3 rounded-lg px-3 py-2 text-xs ${statusType === 'success' ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-200' : statusType === 'error' ? 'bg-rose-50 text-rose-800 dark:bg-rose-900/20 dark:text-rose-200' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'}`}>{statusMessage}</div> : null}
+      <Input label='Chemical Name *' value={item.chemicalName} onChange={(e) => setItem((s) => ({ ...s, chemicalName: e.target.value }))} placeholder='e.g. Salicylic Acid IP' />
+      <div className='grid gap-4 sm:grid-cols-2'>
+        <Input label='Cost Per Unit (₹)' type='number' value={item.costPerUnit} onChange={(e) => setItem((s) => ({ ...s, costPerUnit: e.target.value }))} placeholder='140' />
+        <Input label='Category' value={item.category || 'Reagent'} onChange={(e) => setItem((s) => ({ ...s, category: e.target.value }))} placeholder='e.g. Active Ingredient / Reagent' />
+      </div>
+      <div className='grid gap-4 sm:grid-cols-2'>
+        <Input label='Chemical Formula' value={item.chemicalFormula} onChange={(e) => setItem((s) => ({ ...s, chemicalFormula: e.target.value }))} placeholder='C7H6O3' />
+        <Input label='Supplier / Manufacturer' value={item.manufacturingCompany} onChange={(e) => setItem((s) => ({ ...s, manufacturingCompany: e.target.value }))} placeholder='Sigma Aldrich / Loba Chemie' />
+      </div>
+      <div className='grid gap-4 sm:grid-cols-2'>
+        <Input label='Quantity in Stock *' type='number' value={item.quantity} onChange={(e) => setItem((s) => ({ ...s, quantity: e.target.value }))} placeholder='500' />
+        <SelectUnit value={item.quantityUnit} onChange={(e) => setItem((s) => ({ ...s, quantityUnit: e.target.value }))} />
+      </div>
+      <div className='grid gap-4 sm:grid-cols-2'>
+        <Input label='Storage Location' value={item.storageLocation} onChange={(e) => setItem((s) => ({ ...s, storageLocation: e.target.value }))} placeholder='Shelf A2 / Acid Cabinet' />
+        <Input label='Low Stock Alert Threshold' type='number' value={item.minThreshold} onChange={(e) => setItem((s) => ({ ...s, minThreshold: e.target.value }))} placeholder='5' />
+      </div>
     </div>
-    <Input label='Chemical name' value={item.chemicalName} onChange={(e) => setItem((s) => ({ ...s, chemicalName: e.target.value }))} />
-    <div className='grid gap-4 sm:grid-cols-2'><Input label='Cost per unit' type='number' value={item.costPerUnit} onChange={(e) => setItem((s) => ({ ...s, costPerUnit: e.target.value }))} /><Input label='Category' value='Chemical' readOnly className='bg-[#f4f5eb] dark:bg-[#28301f]' /></div>
-    <div className='grid gap-4 sm:grid-cols-2'><Input label='PubChem matched CAS' value={item.casNumber} onChange={(e) => setItem((s) => ({ ...s, casNumber: e.target.value }))} /><Input label='Chemical formula' value={item.chemicalFormula} onChange={(e) => setItem((s) => ({ ...s, chemicalFormula: e.target.value }))} /></div>
-    <div className='grid gap-4 sm:grid-cols-2'><Input label='SMILES' value={item.smiles} onChange={(e) => setItem((s) => ({ ...s, smiles: e.target.value }))} /><Input label='InChI' value={item.inchi} onChange={(e) => setItem((s) => ({ ...s, inchi: e.target.value }))} /></div>
-    <div className='grid gap-4 sm:grid-cols-2'><Input label='Manufacturing company' value={item.manufacturingCompany} onChange={(e) => setItem((s) => ({ ...s, manufacturingCompany: e.target.value }))} /><Input label='Entry date' type='date' value={item.entryDate} onChange={(e) => setItem((s) => ({ ...s, entryDate: e.target.value }))} /></div>
-    <div className='grid gap-4 sm:grid-cols-2'><Input label='Quantity' type='number' value={item.quantity} onChange={(e) => setItem((s) => ({ ...s, quantity: e.target.value }))} /><SelectUnit value={item.quantityUnit} onChange={(e) => setItem((s) => ({ ...s, quantityUnit: e.target.value }))} /></div>
-    <div className='grid gap-4 sm:grid-cols-2'><Input label='Storage location' value={item.storageLocation} onChange={(e) => setItem((s) => ({ ...s, storageLocation: e.target.value }))} /><Input label='Lot / batch number' value={item.lotNumber} onChange={(e) => setItem((s) => ({ ...s, lotNumber: e.target.value }))} /></div>
-    <div className='grid gap-4 sm:grid-cols-2'><Input label='Low stock threshold' type='number' value={item.minThreshold} onChange={(e) => setItem((s) => ({ ...s, minThreshold: e.target.value }))} /><Input label='Expiry date' type='date' value={item.expiryDate} onChange={(e) => setItem((s) => ({ ...s, expiryDate: e.target.value }))} /></div>
-  </div>;
+  );
 
   const downloadInventoryImportTemplate = () => {
-    const headers = [
-      'itemCode',
-      'chemicalName',
-      'quantity',
-      'quantityUnit',
-      'minThreshold',
-      'costPerUnit',
-      'casNumber',
-      'chemicalFormula',
-      'manufacturingCompany',
-      'storageLocation',
-      'lotNumber',
-      'expiryDate',
-    ];
-    const sample = ['CHEM001', 'Acetone', '500', 'mL', '5', '0', '67-64-1', 'C3H6O', 'Generic', 'Shelf A1', 'LOT-123', '2030-12-31'];
+    const headers = ['chemicalName', 'quantity', 'quantityUnit', 'minThreshold', 'costPerUnit', 'casNumber', 'chemicalFormula', 'manufacturingCompany', 'storageLocation'];
+    const sample = ['Acetone AR Grade', '500', 'mL', '5', '120', '67-64-1', 'C3H6O', 'Loba Chemie', 'Solvent Cabinet A1'];
     const csv = `${headers.join(',')}\n${sample.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')}\n`;
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'inventory-import-template.csv';
+    link.download = 'PharmaLab_Inventory_Template.csv';
     link.click();
     URL.revokeObjectURL(url);
-  };
-
-  const downloadExperimentsImportTemplate = () => {
-    const headers = ['experimentNumber', 'experimentObject', 'requirements'];
-    const sample = [
-      'EXP-001',
-      'Measure pH of sample',
-      'CHEM001:10:mL;CHEM002:5:g',
-    ];
-    const csv = `${headers.join(',')}\n${sample.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')}\n`;
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'experiments-import-template.csv';
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const parseRequirementsCell = (value) => {
-    const text = String(value || '').trim();
-    if (!text) return [];
-    return text
-      .split(';')
-      .map((entry) => entry.trim())
-      .filter(Boolean)
-      .map((entry) => {
-        const [itemCode, quantity, quantityUnit] = entry.split(':').map((part) => String(part || '').trim());
-        return {
-          itemCode,
-          quantity: Number(quantity || 0),
-          quantityUnit: quantityUnit || '',
-        };
-      });
-  };
-
-  const handleExperimentImportFile = async (file) => {
-    if (!file) return;
-    const text = await file.text();
-    const { records } = parseCsv(text);
-    const issues = [];
-    const experiments = [];
-
-    records.forEach((record, index) => {
-      const experimentNumber = String(record.experimentNumber || '').trim();
-      const experimentObject = String(record.experimentObject || '').trim();
-      const requiredInventory = parseRequirementsCell(record.requirements);
-
-      if (!experimentNumber) issues.push({ index, message: 'Missing experimentNumber' });
-      if (!experimentObject) issues.push({ index, message: 'Missing experimentObject' });
-      if (!requiredInventory.length) issues.push({ index, message: 'Missing requirements (use ITEMCODE:QTY:UNIT;...)' });
-
-      requiredInventory.forEach((req, reqIndex) => {
-        if (!req.itemCode) issues.push({ index, message: `Requirement #${reqIndex + 1} missing itemCode` });
-        if (!Number.isFinite(req.quantity) || req.quantity <= 0) issues.push({ index, message: `Requirement #${reqIndex + 1} invalid quantity` });
-      });
-
-      experiments.push({
-        experimentNumber,
-        experimentObject,
-        requiredInventory,
-      });
-    });
-
-    setExperimentImportExperiments(experiments);
-    setExperimentImportIssues(issues.slice(0, 50));
-  };
-
-  const submitExperimentBulkImport = async () => {
-    if (!labId || experimentImporting || !experimentImportExperiments.length) return;
-    setExperimentImporting(true);
-    try {
-      const result = await store.bulkImportExperiments({ labId, experiments: experimentImportExperiments });
-      await store.fetchExperiments({ labId });
-      store.setToast({
-        type: result?.errorCount ? 'warning' : 'success',
-        message: `Experiment import done: ${result?.createdCount ?? 0} created, ${result?.skippedCount ?? 0} skipped, ${result?.errorCount ?? 0} errors.`,
-      });
-      setExperimentImportOpen(false);
-      setExperimentImportFileName('');
-      setExperimentImportExperiments([]);
-      setExperimentImportIssues([]);
-    } catch (error) {
-      store.setToast({ type: 'error', message: error?.response?.data?.message || 'Experiment import failed.' });
-    } finally {
-      setExperimentImporting(false);
-    }
   };
 
   const handleSendStoreRequestSubmit = async () => {
@@ -475,7 +322,7 @@ export default function LabAdminDashboard() {
         });
       }
       setStoreModalOpen(false);
-      store.setToast({ type: 'success', message: `Store request submitted for ${storeModalData.chemicalName}` });
+      store.setToast({ type: 'success', message: `Store transfer request submitted for ${storeModalData.chemicalName}` });
     } catch (e) {
       store.setToast({ type: 'error', message: 'Failed to submit store request' });
     } finally {
@@ -483,199 +330,526 @@ export default function LabAdminDashboard() {
     }
   };
 
-  const requiredHeaders = [
-    { key: 'chemicalName', label: 'Chemical Name', render: (row) => <span className="font-semibold text-[#3c4e23] dark:text-[#eef4e8]">{row.chemicalName}</span> },
-    { key: 'quantityPerStudent', label: 'Required / Student', render: (row) => <span className="font-medium text-[#556b2f] dark:text-[#c5d0b5]">{row.quantityPerStudent} {row.unit}</span> },
-    { key: 'labStock', label: 'Available in Lab', render: (row) => <span className="font-bold text-[#3c4e23] dark:text-[#eef4e8]">{row.labStock} {row.unit}</span> },
-    { key: 'usedInExperiments', label: 'Used in Experiments', render: (row) => (
-        <div className="flex flex-wrap gap-1">
-          {(row.usedInExperiments || []).map((exp, i) => (
-            <span key={i} className="px-2 py-0.5 rounded-md bg-[#f4f6ee] text-[#556b2f] text-xs dark:bg-[#28301f] dark:text-[#c5d0b5]">{exp}</span>
-          ))}
-        </div>
-      )
-    },
-    { key: 'status', label: 'Status', render: (row) => {
-        if (row.status === 'Available') return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">✅ Available</span>;
-        if (row.status === 'Low') return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">⚠️ Low Stock</span>;
-        return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400">❌ Not Available</span>;
-      }
-    },
-    { key: 'actions', label: 'Actions', render: (row) => (
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            className="text-xs border-[#cfd8bd] text-[#556b2f]"
-            onClick={() => {
-              setNewItem({ ...EMPTY_ITEM, chemicalName: row.chemicalName, quantityUnit: row.unit || 'g', quantity: '0' });
-              setCreateOpen(true);
-            }}
-          >
-            ➕ Add to Inventory
-          </Button>
-          <Button
-            size="sm"
-            className="text-xs bg-[#556b2f] text-white hover:bg-[#4a5f28]"
-            onClick={() => {
-              setStoreModalData({ chemicalName: row.chemicalName, quantityRequested: '100', unit: row.unit || 'g', reason: `Lab Requirement for ${(row.usedInExperiments || []).join(', ')}` });
-              setStoreModalOpen(true);
-            }}
-          >
-            🏪 Request from Store
-          </Button>
-        </div>
-      )
-    }
-  ];
-
-  const inventoryHeaders = [
-    { key: 'chemicalName', label: 'Chemical Name' },
-    { key: 'casNumber', label: 'CAS No.' },
-    { key: 'quantity', label: 'Stock', render: (row) => `${row.quantity} ${row.quantityUnit || ''}`.trim() },
-    { key: 'costPerUnit', label: 'Cost/Unit', render: (row) => `Rs. ${Number(row.costPerUnit || 0).toFixed(2)}` },
-    { key: 'source', label: 'Source', render: (row) => {
-        const isStore = row.source === 'Store Transfer';
-        return <span className={`inline-block px-2 py-1 rounded-md text-xs font-medium ${isStore ? 'bg-[#6f7d45] text-white' : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'}`}>{row.source || 'Manual Entry'}</span>
-    }},
-    { key: 'entryDate', label: 'Entry Date', render: (row) => row.entryDate ? new Date(row.entryDate).toLocaleString('en-US', { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A' },
-    { key: 'actions', label: 'Actions', render: (row) => <div className='flex flex-wrap gap-2'><Button variant='outline' className='px-3 py-1 text-xs' onClick={() => openEditModal(row)}><Pencil size={14} /> Edit</Button><Button variant='outline' className='px-3 py-1 text-xs text-red-700 dark:text-red-300' onClick={() => setDeleteTarget(row)}><Trash2 size={14} /> Delete</Button></div> }
-  ];
-  const experimentHeaders = [
-    { key: 'experimentNumber', label: 'Experiment No.' },
-    { key: 'experimentObject', label: 'Experiment Object' },
-    { key: 'requiredInventory', label: 'Required Chemicals', render: (row) => (row?.requiredInventory || []).map((entry) => entry?.chemicalName || entry?.inventoryItemId || '').filter(Boolean).join(', ') || '--' },
-    { key: 'totalEstimatedExpense', label: 'Expense', render: (row) => `Rs. ${Number(row?.totalEstimatedExpense || 0).toFixed(2)}` },
-    { key: 'actions', label: 'Actions', render: (row) => <Button variant='outline' className='px-3 py-1 text-xs text-red-700 dark:text-red-300' onClick={() => setDeleteExperimentTarget(row)}><Trash2 size={14} /> Delete</Button> }
-  ];
-
-  return <div className='space-y-6 pb-10'>
-    <div className='rounded-xl border border-[#d9e1ca] bg-[#f9faef] px-4 py-3 dark:border-[#414a33] dark:bg-[#1f2419]'><div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'><div><p className='text-sm font-medium text-[#3c4e23] dark:text-[#eef4e8]'>You are admin of {assignedLabs.length} lab{assignedLabs.length > 1 ? 's' : ''}</p><p className='mt-1 text-xs text-[#71805a] dark:text-[#c5d0b5]'>Current dashboard: {currentLab?.name || 'Assigned Lab'}{currentLab?.courseType ? ` • ${currentLab.courseType}` : ''}{currentLab?.year ? ` • Year ${currentLab.year}` : ''}{currentLab?.semester ? ` • Sem ${currentLab.semester}` : ''}{currentLab?.department ? ` • ${currentLab.department}` : ''}</p></div><div className='flex flex-wrap gap-2'>{assignedLabs.map((lab) => { const labKey = String(lab.id || lab._id); return <Button key={labKey} variant={labKey === String(labId) ? 'primary' : 'outline'} className='px-3 py-1 text-xs' onClick={() => { setSelectedLabId(labKey); localStorage.setItem('pharmlab-active-lab', labKey); }}>{lab.labName || lab.name || 'Lab'}{lab.courseType ? ` (${lab.courseType} Y${lab.year} S${lab.semester})` : ''}</Button>; })}</div></div></div>
-    
-    {/* Smart Top Stat Cards */}
-    <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-4'>
-      <Card title='Total Chemicals Needed' subtitle='Required for lab experiments'>
-        <p className='text-3xl font-semibold text-[#556b2f] dark:text-[#c5d0b5]'>{smart.totalNeeded ?? 0}</p>
-      </Card>
-      <Card title='Available in Lab' subtitle='Sufficient stock for experiments'>
-        <p className='text-3xl font-semibold text-emerald-600 dark:text-emerald-400'>{smart.available ?? 0}</p>
-      </Card>
-      <Card title='Not Available / Low' subtitle='Stock replenishment required'>
-        <p className='text-3xl font-semibold text-rose-600 dark:text-rose-400'>{(smart.notAvailable ?? 0) + (smart.low ?? 0)}</p>
-      </Card>
-      <Card title='Chemicals in Stock' subtitle='Total labInventory records'>
-        <p className='text-3xl font-semibold text-[#3c4e23] dark:text-[#eef4e8]'>{(store.inventory || []).length}</p>
-      </Card>
-    </div>
-
-    {/* Live Practical Batch Requisition Widget */}
-    <div className="rounded-2xl border border-[#d9e1ca] bg-gradient-to-r from-[#f4f6ee] to-[#ebf1e1] p-4 shadow-sm dark:border-[#3c452f] dark:from-[#1f2519] dark:to-[#171b12]">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="flex h-3 w-3 rounded-full bg-[#556b2f] animate-pulse"></span>
-            <h3 className="text-base font-bold text-[#2e3d19] dark:text-[#eef4e8]">
-              Batch Student Demand Aggregator
-            </h3>
+  return (
+    <div className='space-y-6 pb-12 animate-in fade-in duration-200'>
+      
+      {/* TOP HEADER: LAB SWITCHER & BREADCRUMB */}
+      <div className='rounded-3xl border border-[#d9e1ca] bg-[#fffef8] p-6 shadow-sm dark:border-[#414a33] dark:bg-[#20251a] flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between'>
+        <div>
+          <div className='mb-1 flex items-center gap-1.5 text-[11px] font-semibold text-[#87996c] dark:text-[#7a8f62]'>
+            <span>Pharma Laboratory</span>
+            <ChevronRight size={12} />
+            <span className='text-[#5c6e46] dark:text-[#a8be8a] font-bold'>Inventory Management</span>
           </div>
-          <p className="text-xs text-[#627443] dark:text-[#b8c9a0]">
-            Sum of chemical demand for 50+ students in {currentLab?.name || 'this lab'}. If stock is low, review deficits and send requisition to Central Store.
+          <h2 className='text-2xl font-black text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2.5'>
+            <Building2 size={24} className='text-[#5c6e46]' />
+            {currentLab?.name || currentLab?.labName || 'Pharmacy Laboratory Stock'}
+          </h2>
+          <p className='mt-0.5 text-xs font-medium text-[#71805a] dark:text-[#a5b48b]'>
+            {currentLab?.courseType || 'B.Pharm'} &bull; Year {currentLab?.year || '1'} &bull; Sem {currentLab?.semester || '1'} {currentLab?.department ? `&bull; ${currentLab.department}` : ''}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            className="bg-[#556b2f] text-white hover:bg-[#455724] font-semibold text-xs py-2 px-3 shadow-sm"
-            onClick={() => {
-              setStoreModalData({
-                chemicalName: smart.chemicals?.[0]?.chemicalName || 'Acetone',
-                quantityRequested: String(smart.chemicals?.[0]?.deficit || '500'),
-                unit: smart.chemicals?.[0]?.unit || 'mL',
-                reason: `Practical Batch Requisition for ${currentLab?.name || 'Lab'}`
-              });
+
+        {/* Lab Switcher Pills */}
+        <div className='flex flex-wrap items-center gap-2 shrink-0'>
+          <span className='text-xs font-bold text-[#71805a] dark:text-[#a5b48b] mr-1 hidden sm:inline'>Switch Lab:</span>
+          {assignedLabs.map((lab) => {
+            const labKey = String(lab.id || lab._id);
+            const isSelected = labKey === String(labId);
+            return (
+              <button
+                key={labKey}
+                type='button'
+                onClick={() => {
+                  setSelectedLabId(labKey);
+                  localStorage.setItem('pharmlab-active-lab', labKey);
+                }}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all duration-200 border ${
+                  isSelected
+                    ? 'bg-[#5c6e46] text-white border-[#5c6e46] shadow-2xs dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                    : 'bg-white text-[#5c6e46] border-[#d9e1ca] hover:bg-[#f4f6ee] dark:bg-[#1a1d16] dark:text-[#a8be8a] dark:border-[#414a33]'
+                }`}
+              >
+                {lab.labName || lab.name || 'Lab'} ({lab.courseType || 'B.Pharm'} Y{lab.year} S{lab.semester})
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 4 EXECUTIVE METRIC CARDS */}
+      <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+        <div className='rounded-2xl border border-[#d9e1ca] bg-white p-4 shadow-2xs dark:border-[#414a33] dark:bg-[#1a1d16] flex items-center justify-between'>
+          <div>
+            <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#71805a] dark:text-[#a5b48b]'>Total Reagents</p>
+            <h4 className='mt-1 text-2xl font-black text-[#37412a] dark:text-[#e4e9d8]'>{totalChemicalsCount}</h4>
+            <p className='text-[10px] text-[#71805a] dark:text-[#a5b48b] font-medium mt-0.5'>Registered chemical items</p>
+          </div>
+          <div className='flex h-11 w-11 items-center justify-center rounded-2xl bg-[#f4f6ee] text-[#5c6e46] dark:bg-[#28301f] dark:text-[#a8be8a] shrink-0'>
+            <Boxes size={20} />
+          </div>
+        </div>
+
+        <div className='rounded-2xl border border-[#d9e1ca] bg-white p-4 shadow-2xs dark:border-[#414a33] dark:bg-[#1a1d16] flex items-center justify-between'>
+          <div>
+            <p className='text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-emerald-400'>Optimal Stock</p>
+            <h4 className='mt-1 text-2xl font-black text-emerald-800 dark:text-emerald-300'>{optimalStockCount}</h4>
+            <p className='text-[10px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5'>Sufficient quantity</p>
+          </div>
+          <div className='flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 shrink-0'>
+            <CheckCircle2 size={20} />
+          </div>
+        </div>
+
+        <div className='rounded-2xl border border-[#d9e1ca] bg-white p-4 shadow-2xs dark:border-[#414a33] dark:bg-[#1a1d16] flex items-center justify-between'>
+          <div>
+            <p className='text-[10px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-400'>Low Stock Alerts</p>
+            <h4 className='mt-1 text-2xl font-black text-amber-800 dark:text-amber-300'>{lowStockCount + outOfStockCount}</h4>
+            <p className='text-[10px] text-amber-600 dark:text-amber-400 font-medium mt-0.5'>Action required</p>
+          </div>
+          <div className='flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 shrink-0'>
+            <AlertTriangle size={20} />
+          </div>
+        </div>
+
+        <div className='rounded-2xl border border-[#c5d6aa] bg-[#f8faee] p-4 shadow-2xs dark:border-[#414a33] dark:bg-[#242c1c] flex items-center justify-between'>
+          <div>
+            <p className='text-[10px] font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#a8be8a]'>Total Stock Valuation</p>
+            <h4 className='mt-1 text-2xl font-black text-[#3c4e23] dark:text-[#e4e9d8]'>₹ {totalValuation.toLocaleString('en-IN')}</h4>
+            <p className='text-[10px] text-[#5c6e46] dark:text-[#a8be8a] font-medium mt-0.5'>Lab chemical value</p>
+          </div>
+          <div className='flex h-11 w-11 items-center justify-center rounded-2xl bg-[#5c6e46] text-white shadow-2xs shrink-0 font-black text-lg'>
+            ₹
+          </div>
+        </div>
+      </div>
+
+      {/* TABS & ACTION CONTROL BAR */}
+      <div className='rounded-3xl border border-[#d9e1ca] bg-[#fffef8] p-5 shadow-sm dark:border-[#414a33] dark:bg-[#20251a] space-y-4'>
+        
+        {/* TOP TAB SWITCH & ACTIONS */}
+        <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-[#e8efd9] pb-4 dark:border-[#2e3d19]'>
+          <div className='flex items-center gap-2 bg-[#f4f6ee] dark:bg-[#1a1d16] p-1 rounded-2xl border border-[#d9e1ca] dark:border-[#414a33]'>
+            <button
+              type='button'
+              onClick={() => setActiveTab('inventory')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold transition-all ${
+                activeTab === 'inventory'
+                  ? 'bg-[#5c6e46] text-white shadow-2xs dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                  : 'text-[#5c6e46] hover:bg-white/60 dark:text-[#a8be8a] dark:hover:bg-[#20251a]'
+              }`}
+            >
+              <Boxes size={15} />
+              <span>Chemical Stock Inventory ({filteredInventory.length})</span>
+            </button>
+            <button
+              type='button'
+              onClick={() => setActiveTab('experiments')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold transition-all ${
+                activeTab === 'experiments'
+                  ? 'bg-[#5c6e46] text-white shadow-2xs dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                  : 'text-[#5c6e46] hover:bg-white/60 dark:text-[#a8be8a] dark:hover:bg-[#20251a]'
+              }`}
+            >
+              <FlaskConical size={15} />
+              <span>Lab Experiments ({store.experiments?.length || 0})</span>
+            </button>
+          </div>
+
+          <div className='flex flex-wrap items-center gap-2 shrink-0'>
+            <Button variant='outline' onClick={downloadInventoryImportTemplate} className='text-xs px-3 py-2 border-[#5c6e46] text-[#5c6e46] font-bold rounded-xl'>
+              <FileDown size={14} className='mr-1.5' /> Template CSV
+            </Button>
+            <Button variant='outline' onClick={() => setImportOpen(true)} className='text-xs px-3 py-2 border-[#5c6e46] text-[#5c6e46] font-bold rounded-xl'>
+              <Upload size={14} className='mr-1.5' /> Bulk Import
+            </Button>
+            <Button onClick={() => {
+              setStoreModalData({ chemicalName: '', quantityRequested: '100', unit: 'mL', reason: `Stock replenishment for ${currentLab?.name}` });
               setStoreModalOpen(true);
-            }}
+            }} className='text-xs px-3.5 py-2 font-bold bg-[#c8a030] hover:bg-[#b08b26] text-white rounded-xl shadow-xs'>
+              <Store size={14} className='mr-1.5' /> Request Central Store
+            </Button>
+            <Button onClick={() => setCreateOpen(true)} className='text-xs px-4 py-2 font-bold bg-[#5c6e46] hover:bg-[#4a5e2a] text-white rounded-xl shadow-xs'>
+              <Plus size={15} className='mr-1.5' /> Add Chemical
+            </Button>
+          </div>
+        </div>
+
+        {/* SEARCH & STATUS FILTER BAR */}
+        {activeTab === 'inventory' && (
+          <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3'>
+            {/* Live Search Input */}
+            <div className='relative flex-1'>
+              <Search size={16} className='absolute left-3.5 top-1/2 -translate-y-1/2 text-[#87996c]' />
+              <input
+                type='text'
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder='Search by chemical name, CAS number, formula, location...'
+                className='w-full rounded-xl border border-[#d9e1ca] bg-white py-2 pl-10 pr-4 text-xs font-semibold text-[#37412a] outline-none focus:border-[#5c6e46] focus:ring-2 focus:ring-[#5c6e46]/20 transition-all dark:border-[#414a33] dark:bg-[#1a1d16] dark:text-[#e4e9d8]'
+              />
+            </div>
+
+            {/* Stock Status Pills */}
+            <div className='flex items-center gap-1 bg-[#f4f6ee] dark:bg-[#1a1d16] p-1 rounded-xl border border-[#d9e1ca] dark:border-[#414a33] shrink-0'>
+              {[
+                { id: 'all', label: 'All Stock' },
+                { id: 'optimal', label: 'Optimal' },
+                { id: 'low', label: 'Low Stock' },
+                { id: 'out', label: 'Depleted' }
+              ].map(st => (
+                <button
+                  key={st.id}
+                  type='button'
+                  onClick={() => setStockStatusFilter(st.id)}
+                  className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
+                    stockStatusFilter === st.id
+                      ? 'bg-[#5c6e46] text-white shadow-2xs dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                      : 'text-[#5c6e46] hover:bg-white/60 dark:text-[#a8be8a] dark:hover:bg-[#20251a]'
+                  }`}
+                >
+                  {st.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* SECTION 1: INVENTORY TABLE */}
+        {activeTab === 'inventory' && (
+          <div className='rounded-2xl border border-[#d9e1ca] bg-white overflow-hidden shadow-xs dark:border-[#414a33] dark:bg-[#1a1d16]'>
+            <div className='overflow-x-auto'>
+              <table className='w-full border-collapse text-left text-xs'>
+                <thead>
+                  <tr className='bg-[#f4f6ee] dark:bg-[#151712] border-b border-[#d9e1ca] dark:border-[#414a33]'>
+                    <th className='px-5 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>Chemical &amp; Formula</th>
+                    <th className='px-5 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>Category &amp; Location</th>
+                    <th className='px-5 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>Stock Level</th>
+                    <th className='px-5 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>Unit Cost &amp; Value</th>
+                    <th className='px-5 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c] text-center'>Status</th>
+                    <th className='px-5 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c] text-right'>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredInventory.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className='px-6 py-12 text-center text-xs text-[#87996c] italic space-y-2'>
+                        <Boxes size={32} className='mx-auto text-[#a8be8a] opacity-50' />
+                        <p className='font-bold text-[#37412a] dark:text-[#e4e9d8]'>No chemical reagents found in this lab inventory.</p>
+                        <p className='text-[11px] text-[#71805a] dark:text-[#a5b48b]'>Click "+ Add Chemical" or "Bulk Import" to add reagents to stock.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredInventory.map((item) => {
+                      const qty = Number(item.quantity || 0);
+                      const thresh = Number(item.minThreshold || 5);
+                      const unitCost = Number(item.costPerUnit || 0);
+                      const totalVal = qty * unitCost;
+
+                      const isOut = qty <= 0;
+                      const isLow = !isOut && qty <= thresh;
+
+                      return (
+                        <tr key={item.id || item._id} className='border-b border-[#e4eed3] dark:border-[#2a3320] hover:bg-[#f8faee] dark:hover:bg-[#20251a] transition-colors'>
+                          
+                          {/* Chemical Name & CAS */}
+                          <td className='px-5 py-4 font-bold text-[#37412a] dark:text-[#e4e9d8]'>
+                            <div className='flex items-center gap-2'>
+                              <span className='font-black text-sm text-[#2e3d19] dark:text-[#e4e9d8]'>{item.chemicalName}</span>
+                              {item.casNumber && (
+                                <span className='rounded bg-[#e8efd9] px-1.5 py-0.5 text-[10px] font-mono font-bold text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'>
+                                  CAS: {item.casNumber}
+                                </span>
+                              )}
+                            </div>
+                            {item.chemicalFormula && (
+                              <p className='text-[11px] font-mono text-[#71805a] dark:text-[#a5b48b] mt-0.5'>
+                                🧪 {item.chemicalFormula}
+                              </p>
+                            )}
+                          </td>
+
+                          {/* Category & Location */}
+                          <td className='px-5 py-4 font-semibold text-[#71805a] dark:text-[#a5b48b]'>
+                            <span className='inline-block rounded-md bg-[#f4f6ee] px-2 py-0.5 text-xs font-bold text-[#5c6e46] dark:bg-[#28301f] dark:text-[#a8be8a]'>
+                              {item.category || 'Reagent'}
+                            </span>
+                            {item.storageLocation && (
+                              <p className='text-[10px] text-[#71805a] dark:text-[#a5b48b] mt-1 font-medium'>
+                                📍 {item.storageLocation}
+                              </p>
+                            )}
+                          </td>
+
+                          {/* Stock Level */}
+                          <td className='px-5 py-4 font-mono font-bold text-[#37412a] dark:text-[#e4e9d8]'>
+                            <div className='flex items-center gap-2'>
+                              <span className='text-sm'>{qty} {item.quantityUnit || 'units'}</span>
+                            </div>
+                            <p className='text-[10px] font-sans font-medium text-[#71805a] dark:text-[#a5b48b] mt-0.5'>
+                              Alert Min: {thresh} {item.quantityUnit || 'units'}
+                            </p>
+                          </td>
+
+                          {/* Unit Cost & Total Value */}
+                          <td className='px-5 py-4 font-mono font-bold text-[#3c4e23] dark:text-[#e4e9d8]'>
+                            <div>₹ {unitCost.toLocaleString('en-IN')} / {item.quantityUnit || 'unit'}</div>
+                            <div className='text-[11px] font-extrabold text-[#5c6e46] dark:text-[#a8be8a] mt-0.5'>
+                              Total: ₹ {totalVal.toLocaleString('en-IN')}
+                            </div>
+                          </td>
+
+                          {/* Status */}
+                          <td className='px-5 py-4 text-center'>
+                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold border ${
+                              isOut
+                                ? 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800'
+                                : isLow
+                                ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
+                                : 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
+                            }`}>
+                              {isOut ? '🔴 Depleted' : isLow ? '🟡 Low Stock' : '🟢 Optimal'}
+                            </span>
+                          </td>
+
+                          {/* Actions */}
+                          <td className='px-5 py-4 text-right'>
+                            <div className='flex items-center justify-end gap-1.5'>
+                              <Button
+                                size='sm'
+                                variant='outline'
+                                onClick={() => openEditModal(item)}
+                                className='text-xs px-2.5 py-1 border-[#5c6e46] text-[#5c6e46] rounded-lg font-bold'
+                              >
+                                <Pencil size={12} className='mr-1' /> Edit
+                              </Button>
+                              <Button
+                                size='sm'
+                                variant='outline'
+                                onClick={() => {
+                                  setStoreModalData({
+                                    chemicalName: item.chemicalName,
+                                    quantityRequested: '100',
+                                    unit: item.quantityUnit || 'mL',
+                                    reason: `Restock requisition for ${currentLab?.name || 'Lab'}`
+                                  });
+                                  setStoreModalOpen(true);
+                                }}
+                                className='text-xs px-2.5 py-1 border-[#c8a030] text-[#c8a030] rounded-lg font-bold hover:bg-amber-50'
+                              >
+                                <Store size={12} className='mr-1' /> Restock
+                              </Button>
+                              <button
+                                type='button'
+                                onClick={() => setDeleteTarget(item)}
+                                className='p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg dark:text-rose-400 dark:hover:bg-rose-950/40 transition-colors'
+                                title='Delete Chemical'
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* SECTION 2: LAB EXPERIMENTS TABLE */}
+        {activeTab === 'experiments' && (
+          <div className='rounded-2xl border border-[#d9e1ca] bg-white overflow-hidden shadow-xs dark:border-[#414a33] dark:bg-[#1a1d16] space-y-4 p-4 sm:p-6'>
+            <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-[#e8efd9] pb-4 dark:border-[#2e3d19]'>
+              <div>
+                <h3 className='text-base font-extrabold text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2'>
+                  <FlaskConical size={18} className='text-[#5c6e46]' /> Lab Experiments &amp; Prescribed Reagents
+                </h3>
+                <p className='text-xs text-[#71805a] dark:text-[#a5b48b] mt-0.5 font-medium'>
+                  Experiments registered for {currentLab?.name || 'this lab'} and required inventory chemicals
+                </p>
+              </div>
+              <Button onClick={() => setExperimentOpen(true)} className='text-xs px-4 py-2 font-bold bg-[#5c6e46] text-white rounded-xl'>
+                <Plus size={15} className='mr-1.5' /> Add Experiment
+              </Button>
+            </div>
+
+            <div className='overflow-x-auto'>
+              <table className='w-full border-collapse text-left text-xs'>
+                <thead>
+                  <tr className='bg-[#f4f6ee] dark:bg-[#151712] border-b border-[#d9e1ca] dark:border-[#414a33]'>
+                    <th className='px-5 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>Exp No</th>
+                    <th className='px-5 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>Experiment Title</th>
+                    <th className='px-5 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>Required Chemical Reagents</th>
+                    <th className='px-5 py-3.5 font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c] text-right'>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(store.experiments || []).length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className='px-6 py-8 text-center text-xs text-[#87996c] italic'>
+                        No experiments registered for this lab yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    (store.experiments || []).map((exp) => (
+                      <tr key={exp.id || exp._id} className='border-b border-[#e4eed3] dark:border-[#2a3320] hover:bg-[#f8faee] dark:hover:bg-[#20251a] transition-colors'>
+                        <td className='px-5 py-4 font-mono font-bold text-[#5c6e46] dark:text-[#a8be8a]'>
+                          {exp.experimentNumber || 'Exp 01'}
+                        </td>
+                        <td className='px-5 py-4 font-bold text-[#37412a] dark:text-[#e4e9d8]'>
+                          {exp.experimentObject}
+                        </td>
+                        <td className='px-5 py-4 font-medium text-[#71805a] dark:text-[#a5b48b]'>
+                          {(exp.requiredInventory || []).map(r => `${r.chemicalName || r.inventoryItemId} (${r.quantity || 1} ${r.quantityUnit || 'mL'})`).join(', ') || 'No chemicals required'}
+                        </td>
+                        <td className='px-5 py-4 text-right'>
+                          <button
+                            type='button'
+                            onClick={() => setDeleteExperimentTarget(exp)}
+                            className='p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg dark:text-rose-400 dark:hover:bg-rose-950/40 transition-colors'
+                            title='Delete Experiment'
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* CENTRAL STORE REQUISITION MODAL */}
+      <Modal open={storeModalOpen} onClose={() => setStoreModalOpen(false)} title='Request Reagent Transfer from Central Store'>
+        <div className='space-y-4 text-left'>
+          <Input
+            label='Chemical Reagent Name *'
+            value={storeModalData.chemicalName}
+            onChange={(e) => setStoreModalData({ ...storeModalData, chemicalName: e.target.value })}
+            placeholder='e.g. Hydrochloric Acid 0.1M'
+          />
+          <div className='grid grid-cols-2 gap-4'>
+            <Input
+              label='Quantity Requested *'
+              type='number'
+              value={storeModalData.quantityRequested}
+              onChange={(e) => setStoreModalData({ ...storeModalData, quantityRequested: e.target.value })}
+              placeholder='500'
+            />
+            <SelectUnit
+              value={storeModalData.unit}
+              onChange={(e) => setStoreModalData({ ...storeModalData, unit: e.target.value })}
+            />
+          </div>
+          <Input
+            label='Reason for Store Requisition'
+            value={storeModalData.reason}
+            onChange={(e) => setStoreModalData({ ...storeModalData, reason: e.target.value })}
+            placeholder='e.g. Stock shortage for B.Pharm Practical Practicals'
+          />
+          <Button
+            onClick={handleSendStoreRequestSubmit}
+            disabled={submittingStoreReq || !storeModalData.chemicalName || !storeModalData.quantityRequested}
+            className='w-full bg-[#5c6e46] text-white font-extrabold py-2.5 rounded-xl mt-2 shadow-sm'
           >
-            📤 Send Requisition to Central Store
+            {submittingStoreReq ? 'Sending Requisition...' : 'Submit Requisition to Central Store'}
           </Button>
         </div>
-      </div>
+      </Modal>
+
+      {/* BULK IMPORT & ADD/EDIT MODALS */}
+      <LabImportModal open={importOpen} onClose={() => setImportOpen(false)} labId={labId} />
+
+      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title='Add Chemical Reagent to Lab Inventory'>
+        <div className='space-y-4'>
+          {modalFields(newItem, setNewItem, autofillingCas, lastAutofilledCas, setAutofillingCas, setLastAutofilledCas, casLookupMessage, casLookupType, setCasLookupMessage, setCasLookupType)}
+          <Button className='w-full font-bold bg-[#5c6e46] text-white py-2.5 rounded-xl' onClick={handleAddItem} disabled={savingItem || !labId || autofillingCas}>
+            {savingItem ? 'Saving Reagent...' : 'Save Chemical Reagent'}
+          </Button>
+        </div>
+      </Modal>
+
+      <Modal open={editOpen} onClose={() => setEditOpen(false)} title='Edit Chemical Reagent Details'>
+        <div className='space-y-4'>
+          {modalFields(editItem, setEditItem, editAutofillingCas, lastEditAutofilledCas, setEditAutofillingCas, setLastEditAutofilledCas, editCasLookupMessage, editCasLookupType, setEditCasLookupMessage, setEditCasLookupType)}
+          <Button className='w-full font-bold bg-[#5c6e46] text-white py-2.5 rounded-xl' onClick={handleEditItem} disabled={savingEdit || editAutofillingCas}>
+            {savingEdit ? 'Saving Changes...' : 'Save Reagent Changes'}
+          </Button>
+        </div>
+      </Modal>
+
+      <Modal open={experimentOpen} onClose={() => setExperimentOpen(false)} title='Add Practical Experiment'>
+        <div className='space-y-4'>
+          <Input label='Experiment Number *' value={experimentForm.experimentNumber} onChange={(e) => setExperimentForm((s) => ({ ...s, experimentNumber: e.target.value }))} placeholder='Exp 01' />
+          <Input label='Experiment Object / Title *' value={experimentForm.experimentObject} onChange={(e) => setExperimentForm((s) => ({ ...s, experimentObject: e.target.value }))} placeholder='Formulation of Simple Syrup IP' />
+          <div className='rounded-xl border border-[#d9e1ca] p-4 dark:border-[#414a33]'>
+            <p className='font-bold text-xs text-[#3c4e23] dark:text-[#eef4e8] mb-2'>Required Inventory Chemicals</p>
+            <div className='space-y-3'>
+              {experimentForm.requiredInventory.map((entry, index) => (
+                <div key={`req-${index}`} className='grid gap-3 rounded-lg bg-[#f7f8f1] p-3 dark:bg-[#28301f] lg:grid-cols-[1.4fr_0.8fr_0.8fr_auto]'>
+                  <label className='relative block text-sm text-slate-700 dark:text-slate-300'>
+                    <span className='mb-1 block text-xs font-medium tracking-wide'>Chemical</span>
+                    <select value={entry.inventoryItemId} onChange={(e) => { const selected = store.inventory.find((item) => (item.id || item._id) === e.target.value); setExperimentForm((s) => ({ ...s, requiredInventory: s.requiredInventory.map((current, i) => i === index ? { ...current, inventoryItemId: e.target.value, chemicalName: selected?.chemicalName || '', quantityUnit: selected?.quantityUnit || 'mL' } : current) })); }} className='w-full rounded-lg border border-[#cfd8bd] bg-[#fffef8] px-3 py-2 text-[#3c4e23] focus:outline-none focus:ring-2 focus:ring-[#6f7d45] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]'>
+                      <option value=''>Select chemical</option>
+                      {store.inventory.map((item) => <option key={item.id || item._id} value={item.id || item._id}>{item.chemicalName} ({item.quantity} {item.quantityUnit})</option>)}
+                    </select>
+                  </label>
+                  <Input label='Qty / Student' type='number' value={entry.quantity} onChange={(e) => setExperimentForm((s) => ({ ...s, requiredInventory: s.requiredInventory.map((current, i) => i === index ? { ...current, quantity: e.target.value } : current) }))} />
+                  <SelectUnit value={entry.quantityUnit} onChange={(e) => setExperimentForm((s) => ({ ...s, requiredInventory: s.requiredInventory.map((current, i) => i === index ? { ...current, quantityUnit: e.target.value } : current) }))} />
+                  <div className='flex items-end'>
+                    <Button variant='outline' className='px-3 py-2 text-xs text-rose-700 dark:text-rose-300' onClick={() => setExperimentForm((s) => ({ ...s, requiredInventory: s.requiredInventory.filter((_, i) => i !== index) }))} disabled={experimentForm.requiredInventory.length === 1}>
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Button variant='outline' className='mt-3 px-3 py-1 text-xs font-bold' onClick={() => setExperimentForm((s) => ({ ...s, requiredInventory: [...s.requiredInventory, { inventoryItemId: '', quantity: '', quantityUnit: 'mL' }] }))}>
+              <Plus size={14} className='mr-1' /> Add Another Chemical
+            </Button>
+          </div>
+          <Button className='w-full bg-[#5c6e46] text-white font-bold py-2.5 rounded-xl' onClick={handleCreateExperiment} disabled={savingExperiment}>
+            {savingExperiment ? 'Saving...' : 'Save Experiment'}
+          </Button>
+        </div>
+      </Modal>
+
+      {/* DELETE CHEMICAL CONFIRMATION */}
+      <Modal open={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} title='Delete Chemical Reagent'>
+        <div className='space-y-4'>
+          <p className='text-sm text-[#37412a] dark:text-[#e4e9d8] font-medium'>
+            Are you sure you want to delete <span className='font-black underline'>{deleteTarget?.chemicalName}</span> from this lab inventory?
+          </p>
+          <div className='flex gap-3 pt-2'>
+            <Button variant='outline' className='w-full font-bold' onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button className='w-full font-bold bg-rose-600 hover:bg-rose-700 text-white' onClick={async () => { try { await store.deleteInventoryItem(deleteTarget.id || deleteTarget._id); store.setToast({ type: 'success', message: `${deleteTarget.chemicalName} deleted from inventory.` }); setDeleteTarget(null); } catch (error) { store.setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to delete chemical.' }); } }}>
+              Delete Chemical
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* DELETE EXPERIMENT CONFIRMATION */}
+      <Modal open={Boolean(deleteExperimentTarget)} onClose={() => setDeleteExperimentTarget(null)} title='Delete Experiment'>
+        <div className='space-y-4'>
+          <p className='text-sm text-[#37412a] dark:text-[#e4e9d8] font-medium'>
+            Delete experiment <span className='font-black'>{deleteExperimentTarget?.experimentNumber}</span> ({deleteExperimentTarget?.experimentObject})?
+          </p>
+          <div className='flex gap-3 pt-2'>
+            <Button variant='outline' className='w-full font-bold' onClick={() => setDeleteExperimentTarget(null)}>Cancel</Button>
+            <Button className='w-full font-bold bg-rose-600 hover:bg-rose-700 text-white' onClick={async () => { try { await store.deleteExperiment(deleteExperimentTarget.id || deleteExperimentTarget._id); store.setToast({ type: 'success', message: `Experiment deleted.` }); setDeleteExperimentTarget(null); } catch (error) { store.setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to delete experiment.' }); } }}>
+              Delete Experiment
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
     </div>
-
-    {!isTransactionsPage && !isAnalyticsPage ? <>
-      {/* SECTION 1 — Required for Experiments */}
-      <div className="space-y-3">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-[#3c4e23] dark:text-[#eef4e8]">Required for Experiments</h2>
-            <p className="text-xs text-[#71805a] dark:text-[#c5d0b5]">Auto-collected list of unique chemicals required across all uploaded lab experiments.</p>
-          </div>
-        </div>
-        <Table headers={requiredHeaders} rows={smart.chemicals || []} />
-      </div>
-
-      {/* SECTION 2 — Lab Inventory Stock */}
-      <div className="space-y-3 pt-4 border-t border-[#e8efd9] dark:border-[#2e3d19]">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-[#3c4e23] dark:text-[#eef4e8]">Lab Inventory Stock</h2>
-            <p className="text-xs text-[#71805a] dark:text-[#c5d0b5]">Actual recorded inventory items and current stock levels for this lab.</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={downloadInventoryImportTemplate}><FileDown size={16} /> Template CSV</Button>
-            <Button variant="outline" onClick={() => setImportOpen(true)}><Upload size={16} /> Bulk Import</Button>
-            <Button variant="outline" onClick={() => setCreateOpen(true)}><Plus size={16} /> Add Chemical</Button>
-          </div>
-        </div>
-        <Table headers={inventoryHeaders} rows={(store.inventory || []).map((item) => ({ ...item, highlight: Number(item?.quantity || 0) <= Number(item?.minThreshold || 0) }))} />
-      </div>
-
-      <div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between pt-4 border-t border-[#e8efd9] dark:border-[#2e3d19]'><div><h2 className='text-xl font-semibold'>Experiments In This Lab</h2><p className='text-sm text-slate-500 dark:text-slate-400'>Experiment object, required inventory, and estimated expense are managed together here.</p></div><div className='flex flex-wrap gap-2'><Button variant='outline' onClick={downloadExperimentsImportTemplate}><FileDown size={16} /> Template CSV</Button><Button variant='outline' onClick={() => setExperimentImportOpen(true)}><Upload size={16} /> Import Experiments</Button><Button variant='outline' onClick={() => setCreateOpen(true)}><Plus size={16} /> Add Inventory First</Button><Button onClick={() => setExperimentOpen(true)}><Plus size={16} /> Add Experiment</Button></div></div>
-      <Table headers={experimentHeaders} rows={store.experiments || []} />
-    </> : null}
-
-    {/* Store Request Modal */}
-    <Modal open={storeModalOpen} onClose={() => setStoreModalOpen(false)} title="Request Chemical From Central Store">
-      <div className="space-y-4 text-left">
-        <Input
-          label="Chemical Name"
-          value={storeModalData.chemicalName}
-          onChange={(e) => setStoreModalData({ ...storeModalData, chemicalName: e.target.value })}
-        />
-        <div className="grid grid-cols-2 gap-4">
-          <Input
-            label="Quantity Requested"
-            type="number"
-            value={storeModalData.quantityRequested}
-            onChange={(e) => setStoreModalData({ ...storeModalData, quantityRequested: e.target.value })}
-          />
-          <SelectUnit
-            value={storeModalData.unit}
-            onChange={(e) => setStoreModalData({ ...storeModalData, unit: e.target.value })}
-          />
-        </div>
-        <Input
-          label="Reason for Request"
-          value={storeModalData.reason}
-          onChange={(e) => setStoreModalData({ ...storeModalData, reason: e.target.value })}
-          placeholder="e.g. Experiment requirement stock shortage"
-        />
-        <Button
-          onClick={handleSendStoreRequestSubmit}
-          disabled={submittingStoreReq || !storeModalData.chemicalName || !storeModalData.quantityRequested}
-          className="w-full bg-[#556b2f] text-white font-bold py-2 rounded-xl mt-2"
-        >
-          {submittingStoreReq ? 'Sending Request...' : 'Send Store Request'}
-        </Button>
-      </div>
-    </Modal>
-
-    <LabImportModal open={importOpen} onClose={() => setImportOpen(false)} labId={labId} />
-    <Modal open={experimentImportOpen} onClose={() => { if (!experimentImporting) setExperimentImportOpen(false); }} title='Import Experiments'><div className='space-y-4'><div className='rounded-lg border border-[#d9e1ca] bg-[#f7f8f1] p-4 text-xs text-[#71805a] dark:border-[#414a33] dark:bg-[#28301f] dark:text-[#c5d0b5]'><p className='font-medium text-[#3c4e23] dark:text-[#eef4e8]'>Upload a CSV to add many experiments with required chemicals.</p><p className='mt-1'>Use the <span className='font-semibold'>requirements</span> column format: <span className='font-semibold'>ITEMCODE:QTY:UNIT;ITEMCODE2:QTY:UNIT</span>.</p><p className='mt-1'>Tip: itemCode must match your inventory (download the inventory list from your system if needed).</p></div><label className='block text-sm text-slate-700 dark:text-slate-300'><span className='mb-1 block text-xs font-medium tracking-wide'>CSV file</span><input type='file' accept='.csv,text/csv' className='block w-full cursor-pointer rounded-lg border border-[#cfd8bd] bg-[#fffef8] px-3 py-2 text-sm text-[#3c4e23] file:mr-3 file:rounded-md file:border-0 file:bg-[#556b2f] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-[#f0f4e8] hover:file:bg-[#6f7d45] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]' onChange={async (e) => { const file = e.target.files?.[0]; setExperimentImportFileName(file?.name || ''); setExperimentImportExperiments([]); setExperimentImportIssues([]); if (file) await handleExperimentImportFile(file); }} /></label>{experimentImportFileName ? <div className='text-xs text-[#71805a] dark:text-[#c5d0b5]'>Selected: <span className='font-medium'>{experimentImportFileName}</span> • Rows: <span className='font-medium'>{experimentImportExperiments.length}</span> • Issues: <span className='font-medium'>{experimentImportIssues.length}</span></div> : null}{experimentImportIssues.length ? <div className='rounded-lg border border-[#d9e1ca] bg-[#fffef8] p-3 text-xs text-slate-600 dark:border-[#414a33] dark:bg-[#20251a] dark:text-slate-300'><p className='mb-2 font-medium'>Issues (first {experimentImportIssues.length})</p><div className='max-h-40 overflow-auto space-y-1'>{experimentImportIssues.map((issue) => <p key={`exp-issue-${issue.index}`}>Row {issue.index + 2}: {issue.message}</p>)}</div></div> : null}<Button className='w-full' onClick={submitExperimentBulkImport} disabled={experimentImporting || !labId || !experimentImportExperiments.length}>{experimentImporting ? 'Importing...' : 'Import experiments'}</Button></div></Modal>
-    <Modal open={createOpen} onClose={() => setCreateOpen(false)} title='Add Chemical To Inventory'><div className='space-y-4'>{modalFields(newItem, setNewItem, autofillingCas, lastAutofilledCas, setAutofillingCas, setLastAutofilledCas, casLookupMessage, casLookupType, setCasLookupMessage, setCasLookupType)}<div className='rounded-lg border border-dashed border-[#cfd8bd] bg-[#f9faef] px-4 py-3 text-xs text-[#71805a] dark:border-[#4e5d35] dark:bg-[#1f2419] dark:text-[#c5d0b5]'>PubChem autofill does not save automatically. Review the fields, enter quantity, then click Save chemical.</div><Button className='w-full' onClick={handleAddItem} disabled={savingItem || !labId || autofillingCas}>{savingItem ? 'Saving...' : 'Save chemical'}</Button></div></Modal>
-
-    <Modal open={editOpen} onClose={() => setEditOpen(false)} title='Edit Chemical'><div className='space-y-4'>{modalFields(editItem, setEditItem, editAutofillingCas, lastEditAutofilledCas, setEditAutofillingCas, setLastEditAutofilledCas, editCasLookupMessage, editCasLookupType, setEditCasLookupMessage, setEditCasLookupType)}<Button className='w-full' onClick={handleEditItem} disabled={savingEdit || editAutofillingCas}>{savingEdit ? 'Saving...' : 'Save changes'}</Button></div></Modal>
-    <Modal open={experimentOpen} onClose={() => setExperimentOpen(false)} title='Add Experiment'><div className='space-y-4'><Input label='Experiment number' value={experimentForm.experimentNumber} onChange={(e) => setExperimentForm((s) => ({ ...s, experimentNumber: e.target.value }))} placeholder='EXP-001' /><Input label='Experiment object' value={experimentForm.experimentObject} onChange={(e) => setExperimentForm((s) => ({ ...s, experimentObject: e.target.value }))} /><div className='rounded-xl border border-[#d9e1ca] p-4 dark:border-[#414a33]'><div className='mb-3 flex items-center justify-between'><div><p className='font-medium text-[#3c4e23] dark:text-[#eef4e8]'>Required Inventory</p><p className='text-xs text-[#71805a] dark:text-[#c5d0b5]'>If a chemical is missing, add it first from this same dashboard.</p></div><Button variant='outline' className='px-3 py-1 text-xs' onClick={() => setCreateOpen(true)}><Plus size={14} /> Add Chemical</Button></div><div className='space-y-3'>{experimentForm.requiredInventory.map((entry, index) => <div key={`req-${index}`} className='grid gap-3 rounded-lg bg-[#f7f8f1] p-3 dark:bg-[#28301f] lg:grid-cols-[1.4fr_0.8fr_0.8fr_auto]'><label className='relative block text-sm text-slate-700 dark:text-slate-300'><span className='mb-1 block text-xs font-medium tracking-wide'>Chemical</span><select value={entry.inventoryItemId} onChange={(e) => { const selected = store.inventory.find((item) => item.id === e.target.value); setExperimentForm((s) => ({ ...s, requiredInventory: s.requiredInventory.map((current, i) => i === index ? { ...current, inventoryItemId: e.target.value, quantityUnit: selected?.quantityUnit || 'mL' } : current) })); }} className='w-full rounded-lg border border-[#cfd8bd] bg-[#fffef8] px-3 py-2 text-[#3c4e23] focus:outline-none focus:ring-2 focus:ring-[#6f7d45] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]'><option value=''>Select chemical</option>{store.inventory.map((item) => <option key={item.id} value={item.id}>{item.chemicalName} ({item.quantity} {item.quantityUnit})</option>)}</select></label><Input label='Required qty' type='number' value={entry.quantity} onChange={(e) => setExperimentForm((s) => ({ ...s, requiredInventory: s.requiredInventory.map((current, i) => i === index ? { ...current, quantity: e.target.value } : current) }))} /><SelectUnit value={entry.quantityUnit} onChange={(e) => setExperimentForm((s) => ({ ...s, requiredInventory: s.requiredInventory.map((current, i) => i === index ? { ...current, quantityUnit: e.target.value } : current) }))} /><div className='flex items-end'><Button variant='outline' className='px-3 py-2 text-xs text-red-700 dark:text-red-300' onClick={() => setExperimentForm((s) => ({ ...s, requiredInventory: s.requiredInventory.filter((_, i) => i !== index) }))} disabled={experimentForm.requiredInventory.length === 1}>Remove</Button></div></div>)}</div><Button variant='outline' className='mt-3 px-3 py-1 text-xs' onClick={() => setExperimentForm((s) => ({ ...s, requiredInventory: [...s.requiredInventory, { inventoryItemId: '', quantity: '', quantityUnit: 'mL' }] }))}><Plus size={14} /> Add Another Chemical</Button></div><Button className='w-full' onClick={handleCreateExperiment} disabled={savingExperiment}>{savingExperiment ? 'Saving...' : 'Save experiment'}</Button></div></Modal>
-    <Modal open={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} title='Delete Chemical'><div className='space-y-4'><p className='text-sm text-slate-600 dark:text-slate-300'>{deleteTarget ? `Delete ${deleteTarget.chemicalName || deleteTarget.name} from inventory?` : ''}</p><div className='flex gap-3'><Button variant='outline' className='w-full' onClick={() => setDeleteTarget(null)}>Cancel</Button><Button variant='danger' className='w-full' onClick={async () => { try { await store.deleteInventoryItem(deleteTarget.id); store.setToast({ type: 'success', message: `${deleteTarget.chemicalName || deleteTarget.name} deleted.` }); setDeleteTarget(null); } catch (error) { store.setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to delete chemical.' }); } }}>Delete</Button></div></div></Modal>
-    <Modal open={Boolean(deleteExperimentTarget)} onClose={() => setDeleteExperimentTarget(null)} title='Delete Experiment'><div className='space-y-4'><p className='text-sm text-slate-600 dark:text-slate-300'>{deleteExperimentTarget ? `Delete experiment ${deleteExperimentTarget.experimentNumber || deleteExperimentTarget.experimentObject || deleteExperimentTarget.id}?` : ''}</p><div className='flex gap-3'><Button variant='outline' className='w-full' onClick={() => setDeleteExperimentTarget(null)}>Cancel</Button><Button variant='danger' className='w-full' onClick={async () => { try { await store.deleteExperiment(deleteExperimentTarget.id); store.setToast({ type: 'success', message: `${deleteExperimentTarget.experimentNumber || deleteExperimentTarget.experimentObject || 'Experiment'} deleted.` }); setDeleteExperimentTarget(null); } catch (error) { store.setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to delete experiment.' }); } }}>Delete</Button></div></div></Modal>
-  </div>;
+  );
 }
