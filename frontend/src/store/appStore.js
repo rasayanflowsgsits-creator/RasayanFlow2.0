@@ -2031,22 +2031,103 @@ const useAppStore = create((set) => ({
     // PhD / Research
     { id: 'curr-17', course: 'PhD', year: '1', semester: '1', subject: 'Molecular Research Lab', expNo: 'Exp 01', name: 'High-Throughput Cell Line Toxicity & Binding Assay', requiredChemicals: 'MTT Reagent, DMSO, PBS Buffer, Fetal Bovine Serum' },
   ],
-  addCurriculumExperiment: (payload) => {
-    const newItem = { id: `curr-${Date.now()}`, ...payload };
-    set((state) => ({ curriculumExperiments: [newItem, ...state.curriculumExperiments] }));
-    return newItem;
+  fetchCurriculumExperiments: async () => {
+    try {
+      const { data } = await api.get('/lab/structure/all');
+      const raw = getPayload(data) || [];
+      if (Array.isArray(raw) && raw.length > 0) {
+        const mapped = raw.map((item) => {
+          const rawChems = item.chemicals || [];
+          const chemStr = rawChems.length > 0
+            ? rawChems.map(c => `${c.chemicalName}${c.quantityPerStudent ? ` (${c.quantityPerStudent} ${c.unit || ''})` : ''}`).join(', ')
+            : (item.requiredChemicals || '');
+
+          return {
+            id: item._id || item.id,
+            _id: item._id,
+            course: item.courseType || 'B.Pharm',
+            year: String(item.year || '1'),
+            semester: String(item.semester || '1'),
+            subject: item.subject || 'General Practical Lab',
+            expNo: `Exp ${String(item.experimentNo || 1).padStart(2, '0')}`,
+            experimentNo: item.experimentNo,
+            name: item.experimentName || 'Untitled Experiment',
+            requiredChemicals: chemStr,
+            chemicals: rawChems
+          };
+        });
+        set({ curriculumExperiments: mapped });
+        return mapped;
+      }
+    } catch (err) {
+      console.warn('Could not fetch curriculum experiments from server, keeping local default state:', err);
+    }
   },
-  updateCurriculumExperiment: (id, updates) => {
-    set((state) => ({
-      curriculumExperiments: state.curriculumExperiments.map((item) =>
-        item.id === id ? { ...item, ...updates } : item
-      )
-    }));
+  addCurriculumExperiment: async (payload) => {
+    try {
+      const expNum = parseInt(String(payload.expNo || '1').replace(/\D/g, ''), 10) || 1;
+      const chemicalsArr = (payload.requiredChemicals || '').split(',').map(c => {
+        const trimmed = c.trim();
+        return { chemicalName: trimmed, quantityPerStudent: 1, unit: 'unit' };
+      }).filter(c => c.chemicalName !== '');
+
+      const response = await api.post('/lab/structure/experiment', {
+        subject: payload.subject || 'General Practical Lab',
+        experimentNo: expNum,
+        experimentName: payload.name,
+        courseType: payload.course || 'B.Pharm',
+        year: payload.year || '1',
+        semester: payload.semester || '1',
+        chemicals: chemicalsArr
+      });
+
+      await useAppStore.getState().fetchCurriculumExperiments();
+      return getPayload(response.data);
+    } catch (err) {
+      console.warn('Server add experiment failed, adding locally:', err);
+      const newItem = { id: `curr-${Date.now()}`, ...payload };
+      set((state) => ({ curriculumExperiments: [newItem, ...state.curriculumExperiments] }));
+      return newItem;
+    }
   },
-  deleteCurriculumExperiment: (id) => {
-    set((state) => ({
-      curriculumExperiments: state.curriculumExperiments.filter((item) => item.id !== id)
-    }));
+  updateCurriculumExperiment: async (id, updates) => {
+    try {
+      const expNum = parseInt(String(updates.expNo || '1').replace(/\D/g, ''), 10) || 1;
+      const chemicalsArr = (updates.requiredChemicals || '').split(',').map(c => {
+        const trimmed = c.trim();
+        return { chemicalName: trimmed, quantityPerStudent: 1, unit: 'unit' };
+      }).filter(c => c.chemicalName !== '');
+
+      await api.put(`/lab/structure/experiment/${id}`, {
+        subject: updates.subject,
+        experimentNo: expNum,
+        experimentName: updates.name,
+        courseType: updates.course,
+        year: updates.year,
+        semester: updates.semester,
+        chemicals: chemicalsArr
+      });
+
+      await useAppStore.getState().fetchCurriculumExperiments();
+    } catch (err) {
+      console.warn('Server update experiment failed, updating locally:', err);
+      set((state) => ({
+        curriculumExperiments: state.curriculumExperiments.map((item) =>
+          item.id === id ? { ...item, ...updates } : item
+        )
+      }));
+    }
+  },
+  deleteCurriculumExperiment: async (id) => {
+    try {
+      await api.delete(`/lab/structure/experiment/${id}`);
+      await useAppStore.getState().fetchCurriculumExperiments();
+    } catch (err) {
+      console.warn('Server delete experiment failed, deleting locally:', err);
+      set((state) => ({
+        curriculumExperiments: state.curriculumExperiments.filter((item) => item.id !== id)
+      }));
+    }
   },
 
   // Broadcast System & Announcements

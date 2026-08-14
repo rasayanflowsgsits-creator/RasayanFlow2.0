@@ -42,6 +42,7 @@ export default function SuperAdminDashboard() {
     masterChemicals,
     addMasterChemical,
     curriculumExperiments,
+    fetchCurriculumExperiments,
     addCurriculumExperiment,
     updateCurriculumExperiment,
     deleteCurriculumExperiment,
@@ -869,7 +870,8 @@ export default function SuperAdminDashboard() {
     fetchLabs();
     fetchUsers();
     fetchActivityLogs({ limit: 100 });
-  }, [fetchActivityLogs, fetchLabs, fetchUsers]);
+    fetchCurriculumExperiments();
+  }, [fetchActivityLogs, fetchLabs, fetchUsers, fetchCurriculumExperiments]);
 
   // Derived user groups
   const pendingApprovals = useMemo(() => users.filter((u) => u.role !== 'super-admin' && !u.isApproved), [users]);
@@ -1042,16 +1044,16 @@ export default function SuperAdminDashboard() {
     setEditCurrModalOpen(true);
   };
 
-  const handleSaveEditExp = () => {
+  const handleSaveEditExp = async () => {
     if (!editingExp || !editingExp.name.trim()) return;
-    updateCurriculumExperiment(editingExp.id, editingExp);
+    await updateCurriculumExperiment(editingExp.id || editingExp._id, editingExp);
     setToast({ type: 'success', message: `Updated "${editingExp.name}" template.` });
     setEditCurrModalOpen(false);
     setEditingExp(null);
   };
 
-  const handleDeleteExp = (expId, expName) => {
-    deleteCurriculumExperiment(expId);
+  const handleDeleteExp = async (expId, expName) => {
+    await deleteCurriculumExperiment(expId);
     setToast({ type: 'info', message: `Deleted "${expName}" experiment template.` });
   };
 
@@ -1389,9 +1391,9 @@ export default function SuperAdminDashboard() {
     setMasterChemModalOpen(false);
   };
 
-  const handleAddCurrExp = () => {
+  const handleAddCurrExp = async () => {
     if (!newCurrExp.name.trim()) return;
-    addCurriculumExperiment(newCurrExp);
+    await addCurriculumExperiment(newCurrExp);
     setToast({ type: 'success', message: `Added ${newCurrExp.name} to Curriculum Experiments.` });
     setNewCurrExp({ course: 'B.Pharm', year: '1', semester: '1', subject: 'Pharmaceutics Lab - I', expNo: 'Exp 01', name: '', requiredChemicals: '' });
     setCurriculumModalOpen(false);

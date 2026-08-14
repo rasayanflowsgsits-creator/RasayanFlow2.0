@@ -3,6 +3,7 @@ const {
   uploadStructure,
   getStructure,
   getStudentStructure,
+  getAllStructures,
   addExperiment,
   updateExperiment,
   deleteExperiment
@@ -16,6 +17,7 @@ router.use(authMiddleware);
 
 // Routes
 router.post('/upload', uploadStructure); // Ideally Lab Admin only, but controller handles auth implicitly by req.user.labId
+router.get('/all', getAllStructures); // Super Admin & All Users
 router.get('/', getStructure); // Lab Admin & Students
 router.get('/student', getStudentStructure); // Students
 router.get('/student/:labId', getStudentStructure); // Students for specific labId

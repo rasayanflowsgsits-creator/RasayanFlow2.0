@@ -544,10 +544,76 @@ const deleteExperiment = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: {} });
 });
 
+// @desc    Get all lab structures / curriculum experiments across all labs and courses
+// @route   GET /api/lab/structure/all
+// @access  Private
+const getAllStructures = asyncHandler(async (req, res) => {
+  let structures = await LabStructure.find({}).sort({ courseType: 1, year: 1, semester: 1, subject: 1, experimentNo: 1 }).lean();
+
+  if (structures.length === 0) {
+    const labs = await Lab.find({});
+    const defaultLab = labs[0] || null;
+    const labId = defaultLab ? defaultLab._id : new mongoose.Types.ObjectId();
+    const labName = defaultLab ? (defaultLab.labName || defaultLab.name) : 'Central Lab';
+    const userId = req.user?._id || req.user?.id || labId;
+
+    const defaultCurriculum = [
+      // B.Pharm Semester 1
+      { courseType: 'B.Pharm', year: '1', semester: '1', subject: 'Pharmaceutics Lab - I', experimentNo: 1, experimentName: 'Formulation & Evaluation of Simple Syrup IP', chemicals: [{ chemicalName: 'Sucrose (66.7% w/w)', quantityPerStudent: 66.7, unit: 'g' }, { chemicalName: 'Purified Water', quantityPerStudent: 100, unit: 'mL' }, { chemicalName: 'Methylparaben', quantityPerStudent: 0.1, unit: 'g' }] },
+      { courseType: 'B.Pharm', year: '1', semester: '1', subject: 'Pharmaceutics Lab - I', experimentNo: 2, experimentName: 'Preparation of Calamine Lotion IP', chemicals: [{ chemicalName: 'Calamine', quantityPerStudent: 15, unit: 'g' }, { chemicalName: 'Zinc Oxide', quantityPerStudent: 5, unit: 'g' }, { chemicalName: 'Bentonite', quantityPerStudent: 3, unit: 'g' }, { chemicalName: 'Glycerin', quantityPerStudent: 5, unit: 'mL' }] },
+      { courseType: 'B.Pharm', year: '1', semester: '1', subject: 'Pharmaceutical Analysis Lab', experimentNo: 1, experimentName: 'Assay of Paracetamol Tablets by UV-Vis Spectrophotometry', chemicals: [{ chemicalName: 'Paracetamol IP', quantityPerStudent: 0.5, unit: 'g' }, { chemicalName: '0.1M NaOH', quantityPerStudent: 100, unit: 'mL' }, { chemicalName: 'Methanol', quantityPerStudent: 50, unit: 'mL' }] },
+      { courseType: 'B.Pharm', year: '1', semester: '1', subject: 'Inorganic Chemistry Lab', experimentNo: 1, experimentName: 'Limit Test for Chloride and Sulphate', chemicals: [{ chemicalName: 'Dilute Nitric Acid', quantityPerStudent: 10, unit: 'mL' }, { chemicalName: 'Silver Nitrate', quantityPerStudent: 5, unit: 'mL' }, { chemicalName: 'Barium Chloride', quantityPerStudent: 5, unit: 'mL' }] },
+      // B.Pharm Semester 2
+      { courseType: 'B.Pharm', year: '1', semester: '2', subject: 'Pharmaceutical Organic Chemistry - I', experimentNo: 1, experimentName: 'Systematic Qualitative Analysis of Organic Compounds', chemicals: [{ chemicalName: 'HCl 1M', quantityPerStudent: 20, unit: 'mL' }, { chemicalName: 'NaOH 1M', quantityPerStudent: 20, unit: 'mL' }, { chemicalName: 'NaHCO3', quantityPerStudent: 10, unit: 'g' }] },
+      { courseType: 'B.Pharm', year: '1', semester: '2', subject: 'Biochemistry Lab', experimentNo: 1, experimentName: 'Qualitative Analysis of Carbohydrates (Benedict & Barfoed Test)', chemicals: [{ chemicalName: 'Benedict Reagent', quantityPerStudent: 10, unit: 'mL' }, { chemicalName: 'Barfoed Reagent', quantityPerStudent: 10, unit: 'mL' }] },
+      // B.Pharm Semester 3
+      { courseType: 'B.Pharm', year: '2', semester: '3', subject: 'Physical Pharmaceutics - I', experimentNo: 1, experimentName: 'Viscosity Determination using Ostwald Viscometer', chemicals: [{ chemicalName: 'Glycerin Solutions', quantityPerStudent: 50, unit: 'mL' }, { chemicalName: 'Ethanol', quantityPerStudent: 50, unit: 'mL' }] },
+      { courseType: 'B.Pharm', year: '2', semester: '3', subject: 'Pharmaceutical Microbiology', experimentNo: 1, experimentName: 'Gram Staining Technique for Microorganisms', chemicals: [{ chemicalName: 'Crystal Violet', quantityPerStudent: 5, unit: 'mL' }, { chemicalName: 'Gram Iodine', quantityPerStudent: 5, unit: 'mL' }, { chemicalName: 'Safranin', quantityPerStudent: 5, unit: 'mL' }] },
+      // B.Pharm Semester 4
+      { courseType: 'B.Pharm', year: '2', semester: '4', subject: 'Medicinal Chemistry - I', experimentNo: 1, experimentName: 'Synthesis of Aspirin from Salicylic Acid', chemicals: [{ chemicalName: 'Salicylic Acid', quantityPerStudent: 5, unit: 'g' }, { chemicalName: 'Acetic Anhydride', quantityPerStudent: 7, unit: 'mL' }, { chemicalName: 'Concentrated H2SO4', quantityPerStudent: 1, unit: 'mL' }] },
+      { courseType: 'B.Pharm', year: '2', semester: '4', subject: 'Pharmacognosy - I', experimentNo: 1, experimentName: 'Morphological & Microscopical Study of Senna Leaf', chemicals: [{ chemicalName: 'Chloral Hydrate', quantityPerStudent: 10, unit: 'mL' }, { chemicalName: 'Phloroglucinol', quantityPerStudent: 5, unit: 'mL' }] },
+      // B.Pharm Semester 5
+      { courseType: 'B.Pharm', year: '3', semester: '5', subject: 'Industrial Pharmacy - I', experimentNo: 1, experimentName: 'Evaluation of Compressed Tablets (Friability & Hardness)', chemicals: [{ chemicalName: 'Paracetamol Granules', quantityPerStudent: 50, unit: 'g' }, { chemicalName: 'Magnesium Stearate', quantityPerStudent: 1, unit: 'g' }] },
+      // B.Pharm Semester 6
+      { courseType: 'B.Pharm', year: '3', semester: '6', subject: 'Biopharmaceutics & Pharmacokinetics', experimentNo: 1, experimentName: 'In-Vitro Dissolution Rate Testing of Oral Dosage Forms', chemicals: [{ chemicalName: '0.1N HCl Medium', quantityPerStudent: 900, unit: 'mL' }] },
+      // B.Pharm Semester 7
+      { courseType: 'B.Pharm', year: '4', semester: '7', subject: 'Instrumental Methods of Analysis', experimentNo: 1, experimentName: 'HPLC Assay of Active Pharmaceutical Ingredients', chemicals: [{ chemicalName: 'Acetonitrile HPLC Grade', quantityPerStudent: 100, unit: 'mL' }, { chemicalName: 'Water HPLC Grade', quantityPerStudent: 100, unit: 'mL' }] },
+      // B.Pharm Semester 8
+      { courseType: 'B.Pharm', year: '4', semester: '8', subject: 'Advanced Project Lab', experimentNo: 1, experimentName: 'Formulation of Polymeric Nanoparticles for Drug Delivery', chemicals: [{ chemicalName: 'PLGA Polymer', quantityPerStudent: 2, unit: 'g' }, { chemicalName: 'Dichloromethane', quantityPerStudent: 20, unit: 'mL' }] },
+      // M.Pharm
+      { courseType: 'M.Pharm', year: '1', semester: '1', subject: 'Advanced Pharmaceutics', experimentNo: 1, experimentName: 'Formulation & Characterization of Liposomal Drug Delivery', chemicals: [{ chemicalName: 'Soya Lecithin', quantityPerStudent: 5, unit: 'g' }, { chemicalName: 'Cholesterol', quantityPerStudent: 1, unit: 'g' }] },
+      { courseType: 'M.Pharm', year: '1', semester: '2', subject: 'Advanced Spectral Analysis', experimentNo: 1, experimentName: 'FTIR Spectral Interpretation & Structural Elucidation', chemicals: [{ chemicalName: 'KBr Pellets', quantityPerStudent: 10, unit: 'pcs' }] },
+      // PhD
+      { courseType: 'PhD', year: '1', semester: '1', subject: 'Molecular Research Lab', experimentNo: 1, experimentName: 'High-Throughput Cell Line Toxicity & Binding Assay', chemicals: [{ chemicalName: 'MTT Reagent', quantityPerStudent: 5, unit: 'mg' }, { chemicalName: 'DMSO', quantityPerStudent: 10, unit: 'mL' }] }
+    ];
+
+    for (const item of defaultCurriculum) {
+      try {
+        await LabStructure.create({
+          labId,
+          labName,
+          courseType: item.courseType,
+          year: item.year,
+          semester: item.semester,
+          subject: item.subject,
+          experimentNo: item.experimentNo,
+          experimentName: item.experimentName,
+          chemicals: item.chemicals,
+          uploadedBy: userId
+        });
+      } catch (e) { /* ignore duplicates */ }
+    }
+    structures = await LabStructure.find({}).sort({ courseType: 1, year: 1, semester: 1, subject: 1, experimentNo: 1 }).lean();
+  }
+
+  res.status(200).json({ success: true, count: structures.length, data: structures });
+});
+
 module.exports = {
   uploadStructure,
   getStructure,
   getStudentStructure,
+  getAllStructures,
   addExperiment,
   updateExperiment,
   deleteExperiment
