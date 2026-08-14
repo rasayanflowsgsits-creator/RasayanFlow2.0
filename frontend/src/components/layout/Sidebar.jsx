@@ -191,29 +191,11 @@ export default function Sidebar({ collapsed, isDark, toggleTheme }) {
           </nav>
         </div>
 
-        {/* BOTTOM SIDEBAR FOOTER: USER CARD, DARK MODE SWITCH & LOGOUT */}
-        <div className="mt-6 pt-3 border-t border-[#e8efd9] dark:border-[#2e3d19] space-y-2.5">
+        {/* BOTTOM SIDEBAR FOOTER: DARK MODE SWITCH & LOGOUT */}
+        <div className="mt-6 pt-3 border-t border-[#e8efd9] dark:border-[#2e3d19] space-y-2">
           {!collapsed ? (
             /* EXPANDED SIDEBAR FOOTER CARD */
-            <div className="rounded-2xl border border-[#d9e1ca] bg-[#f8faee] p-3 shadow-2xs dark:border-[#3c452f] dark:bg-[#20251a] space-y-3">
-              {/* User Mini Profile Badge */}
-              <div className="flex items-center gap-2.5 pb-2.5 border-b border-[#e8efd9] dark:border-[#2d3623]">
-                <div className="relative shrink-0">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#5c6e46] text-white font-black text-xs shadow-2xs">
-                    {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
-                  </div>
-                  <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#20251a]" />
-                </div>
-                <div className="min-w-0 flex-1 leading-tight">
-                  <p className="text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8] truncate">
-                    {user?.name || 'PharmLab User'}
-                  </p>
-                  <p className="text-[10px] font-semibold text-[#71805a] dark:text-[#a5b48b] truncate capitalize">
-                    {role.replace(/-/g, ' ')}
-                  </p>
-                </div>
-              </div>
-
+            <div className="rounded-2xl border border-[#d9e1ca] bg-[#f8faee] p-2.5 shadow-2xs dark:border-[#3c452f] dark:bg-[#20251a] space-y-2">
               {/* Smooth Pill Switch for Dark Mode */}
               <button
                 type="button"
