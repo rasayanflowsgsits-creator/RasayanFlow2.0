@@ -191,58 +191,104 @@ export default function Sidebar({ collapsed, isDark, toggleTheme }) {
           </nav>
         </div>
 
-        {/* BOTTOM SIDEBAR FOOTER: DARK MODE & LOGOUT */}
-        <div className="mt-6 pt-4 border-t border-[#e8efd9] dark:border-[#2e3d19] space-y-2">
-          {/* Dark Mode Toggle */}
-          <button
-            type="button"
-            onClick={toggleTheme}
-            title={collapsed ? (isDark ? "Light Mode" : "Dark Mode") : undefined}
-            className={`group flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all duration-200 ${
-              collapsed ? "md:justify-center md:px-2" : "gap-2.5"
-            } text-[#5c6e46] hover:bg-[#ebf1e1] dark:text-[#a8be8a] dark:hover:bg-[#27311f]`}
-          >
-            <div className="flex items-center gap-2.5 min-w-0">
-              {isDark ? <Sun size={18} className="text-amber-400 shrink-0" /> : <Moon size={18} className="text-[#5c6e46] dark:text-[#a8be8a] shrink-0" />}
-              {!collapsed && <span>{isDark ? "Light Mode" : "Dark Mode"}</span>}
-            </div>
-            {!collapsed && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full font-extrabold bg-[#e4eed3] text-[#3c4e23] dark:bg-[#2e3d19] dark:text-[#a8be8a]">
-                {isDark ? "ON" : "OFF"}
-              </span>
-            )}
-          </button>
+        {/* BOTTOM SIDEBAR FOOTER: USER CARD, DARK MODE SWITCH & LOGOUT */}
+        <div className="mt-6 pt-3 border-t border-[#e8efd9] dark:border-[#2e3d19] space-y-2.5">
+          {!collapsed ? (
+            /* EXPANDED SIDEBAR FOOTER CARD */
+            <div className="rounded-2xl border border-[#d9e1ca] bg-[#f8faee] p-3 shadow-2xs dark:border-[#3c452f] dark:bg-[#20251a] space-y-3">
+              {/* User Mini Profile Badge */}
+              <div className="flex items-center gap-2.5 pb-2.5 border-b border-[#e8efd9] dark:border-[#2d3623]">
+                <div className="relative shrink-0">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#5c6e46] text-white font-black text-xs shadow-2xs">
+                    {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                  </div>
+                  <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#20251a]" />
+                </div>
+                <div className="min-w-0 flex-1 leading-tight">
+                  <p className="text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8] truncate">
+                    {user?.name || 'PharmLab User'}
+                  </p>
+                  <p className="text-[10px] font-semibold text-[#71805a] dark:text-[#a5b48b] truncate capitalize">
+                    {role.replace(/-/g, ' ')}
+                  </p>
+                </div>
+              </div>
 
-          {/* Logout Button */}
-          <button
-            type="button"
-            onClick={() => setConfirmLogoutOpen(true)}
-            title={collapsed ? "Logout" : undefined}
-            className={`group flex w-full items-center ${
-              collapsed ? "md:justify-center md:px-2" : "gap-2.5 px-3"
-            } py-2.5 text-xs font-extrabold text-rose-700 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-950/70 border border-rose-200/80 dark:border-rose-900/40 rounded-xl transition-all duration-200 shadow-2xs`}
-          >
-            <LogOut size={16} className="shrink-0 text-rose-600 dark:text-rose-400" />
-            {!collapsed && <span>Logout</span>}
-          </button>
+              {/* Smooth Pill Switch for Dark Mode */}
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className="flex w-full items-center justify-between rounded-xl bg-white dark:bg-[#1a1d16] px-3 py-2 text-xs font-bold text-[#5c6e46] dark:text-[#a8be8a] border border-[#e4eed3] dark:border-[#38432a] hover:border-[#5c6e46] transition-all shadow-2xs"
+              >
+                <div className="flex items-center gap-2">
+                  {isDark ? (
+                    <Sun size={15} className="text-amber-400 shrink-0" />
+                  ) : (
+                    <Moon size={15} className="text-[#5c6e46] dark:text-[#a8be8a] shrink-0" />
+                  )}
+                  <span>{isDark ? 'Dark Theme' : 'Light Theme'}</span>
+                </div>
+
+                {/* Animated Pill Switch Slider */}
+                <div className={`relative h-5 w-9 rounded-full p-0.5 transition-colors duration-300 ${
+                  isDark ? 'bg-[#5c6e46]' : 'bg-[#d9e1ca]'
+                }`}>
+                  <div className={`h-4 w-4 rounded-full bg-white shadow-xs transition-transform duration-300 ${
+                    isDark ? 'translate-x-4' : 'translate-x-0'
+                  }`} />
+                </div>
+              </button>
+
+              {/* Premium Executive Logout Button */}
+              <button
+                type="button"
+                onClick={() => setConfirmLogoutOpen(true)}
+                className="group flex w-full items-center justify-center gap-2 rounded-xl bg-rose-50 dark:bg-rose-950/30 px-3 py-2 text-xs font-extrabold text-rose-700 dark:text-rose-300 border border-rose-200/80 dark:border-rose-900/50 hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 dark:hover:text-white transition-all duration-200 shadow-2xs"
+              >
+                <LogOut size={15} className="shrink-0 transition-transform group-hover:-translate-x-0.5" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          ) : (
+            /* COLLAPSED SIDEBAR ICON BUTTONS */
+            <div className="flex flex-col items-center gap-2">
+              <button
+                type="button"
+                onClick={toggleTheme}
+                title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white dark:bg-[#20251a] text-[#5c6e46] dark:text-[#a8be8a] border border-[#d9e1ca] dark:border-[#414a33] hover:bg-[#edf1e4] dark:hover:bg-[#2a3121] transition-all shadow-2xs"
+              >
+                {isDark ? <Sun size={17} className="text-amber-400" /> : <Moon size={17} />}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setConfirmLogoutOpen(true)}
+                title="Sign Out"
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 hover:bg-rose-600 hover:text-white transition-all shadow-2xs"
+              >
+                <LogOut size={16} />
+              </button>
+            </div>
+          )}
         </div>
       </aside>
 
-      {/* LOGOUT CONFIRMATION MODAL */}
+      {/* ENHANCED LOGOUT CONFIRMATION MODAL */}
       {confirmLogoutOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs animate-in fade-in">
-          <div className="w-full max-w-sm rounded-3xl border border-[#d9e1ca] bg-[#fffef8] p-6 shadow-2xl dark:border-[#414a33] dark:bg-[#20251a] space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400 shrink-0">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-sm rounded-3xl border border-[#d9e1ca] bg-[#fffef8] p-6 shadow-2xl dark:border-[#414a33] dark:bg-[#20251a] space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3.5">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400 border border-rose-500/20 shrink-0">
                 <LogOut size={22} />
               </div>
               <div>
-                <h3 className="text-base font-extrabold text-[#37412a] dark:text-[#e4e9d8]">Confirm Logout</h3>
-                <p className="text-xs font-medium text-[#71805a] dark:text-[#a5b48b]">Are you sure you want to log out of RasayanFlow?</p>
+                <h3 className="text-base font-black text-[#37412a] dark:text-[#e4e9d8]">Sign Out of RasayanFlow</h3>
+                <p className="text-xs font-medium text-[#71805a] dark:text-[#a5b48b] mt-0.5">Are you sure you want to end your active session?</p>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2.5 pt-2">
+            <div className="flex items-center justify-end gap-2.5 pt-1">
               <button
                 type="button"
                 onClick={() => setConfirmLogoutOpen(false)}
@@ -256,9 +302,9 @@ export default function Sidebar({ collapsed, isDark, toggleTheme }) {
                   setConfirmLogoutOpen(false);
                   logout();
                 }}
-                className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white hover:bg-rose-700 shadow-sm transition-colors"
+                className="rounded-xl bg-rose-600 px-4.5 py-2 text-xs font-extrabold text-white hover:bg-rose-700 shadow-md transition-colors"
               >
-                Logout Now
+                Confirm Logout
               </button>
             </div>
           </div>
