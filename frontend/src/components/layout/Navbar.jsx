@@ -217,12 +217,6 @@ export default function Navbar({ onToggleSidebar, isDark, toggleTheme }) {
               </div>
             ) : null}
           </div>
-          <button className='rounded-lg p-2 text-[#71805a] hover:bg-[#f4f6ee] dark:text-[#c5d0b5] dark:hover:bg-[#28301f]' onClick={toggleTheme}>
-            {isDark ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
-          <button className='flex min-h-[2.5rem] items-center gap-2 rounded-lg border border-[#cfd8bd] bg-[#f4f5eb] px-3 py-1.5 text-sm font-medium text-[#3c4e23] hover:bg-[#f4f6ee] dark:border-[#4e5d35] dark:bg-[#28301f] dark:text-[#eef4e8] dark:hover:bg-[#313a26]' onClick={logout}>
-            <LogOut size={14} /> Logout
-          </button>
         </div>
       </div>
     </header>

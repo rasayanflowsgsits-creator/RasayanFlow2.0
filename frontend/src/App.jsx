@@ -214,7 +214,7 @@ function App() {
             <Navigate to='/login' replace />
           ) : (
             <div className='min-h-screen bg-[#fdfdf7] text-[#3c4e23] dark:bg-[#1a1d16] dark:text-[#eef4e8]'>
-              <Sidebar collapsed={sidebarCollapsed} />
+              <Sidebar collapsed={sidebarCollapsed} isDark={darkMode} toggleTheme={() => setDarkMode((value) => !value)} />
               {!sidebarCollapsed ? <div className='fixed inset-0 z-10 bg-[#23281d]/20 md:hidden' onClick={() => setSidebarCollapsed(true)} /> : null}
               <div className={sidebarCollapsed ? 'ml-0 md:ml-20' : 'ml-0 md:ml-64'}>
                 <Navbar onToggleSidebar={() => setSidebarCollapsed((value) => !value)} isDark={darkMode} toggleTheme={() => setDarkMode((value) => !value)} />
