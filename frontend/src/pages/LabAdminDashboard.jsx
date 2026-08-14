@@ -333,10 +333,12 @@ export default function LabAdminDashboard() {
   return (
     <div className='space-y-6 pb-12 animate-in fade-in duration-200'>
       
-      {/* TOP HEADER: LAB SWITCHER & BREADCRUMB */}
-      <div className='rounded-3xl border border-[#d9e1ca] bg-[#fffef8] p-6 shadow-sm dark:border-[#414a33] dark:bg-[#20251a] flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between'>
-        <div>
-          <div className='mb-1 flex items-center gap-1.5 text-[11px] font-semibold text-[#87996c] dark:text-[#7a8f62]'>
+      {/* TOP HEADER: LAB SWITCHER, MIDDLE READINESS WIDGET & BREADCRUMB */}
+      <div className='rounded-3xl border border-[#d9e1ca] bg-[#fffef8] p-6 shadow-sm dark:border-[#414a33] dark:bg-[#20251a] grid gap-6 grid-cols-1 lg:grid-cols-12 items-center'>
+        
+        {/* LEFT COLUMN: IDENTITY & COURSE */}
+        <div className='lg:col-span-4 space-y-1'>
+          <div className='flex items-center gap-1.5 text-[11px] font-semibold text-[#87996c] dark:text-[#7a8f62]'>
             <span>Pharma Laboratory</span>
             <ChevronRight size={12} />
             <span className='text-[#5c6e46] dark:text-[#a8be8a] font-bold'>Inventory Management</span>
@@ -345,36 +347,72 @@ export default function LabAdminDashboard() {
             <Building2 size={24} className='text-[#5c6e46]' />
             {currentLab?.name || currentLab?.labName || 'Pharmacy Laboratory Stock'}
           </h2>
-          <p className='mt-0.5 text-xs font-medium text-[#71805a] dark:text-[#a5b48b]'>
+          <p className='text-xs font-semibold text-[#71805a] dark:text-[#a5b48b]'>
             {currentLab?.courseType || 'B.Pharm'} &bull; Year {currentLab?.year || '1'} &bull; Sem {currentLab?.semester || '1'} {currentLab?.department ? `&bull; ${currentLab.department}` : ''}
           </p>
         </div>
 
-        {/* Lab Switcher Pills */}
-        <div className='flex flex-wrap items-center gap-2 shrink-0'>
-          <span className='text-xs font-bold text-[#71805a] dark:text-[#a5b48b] mr-1 hidden sm:inline'>Switch Lab:</span>
-          {assignedLabs.map((lab) => {
-            const labKey = String(lab.id || lab._id);
-            const isSelected = labKey === String(labId);
-            return (
-              <button
-                key={labKey}
-                type='button'
-                onClick={() => {
-                  setSelectedLabId(labKey);
-                  localStorage.setItem('pharmlab-active-lab', labKey);
-                }}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all duration-200 border ${
-                  isSelected
-                    ? 'bg-[#5c6e46] text-white border-[#5c6e46] shadow-2xs dark:bg-[#e4e9d8] dark:text-[#20251a]'
-                    : 'bg-white text-[#5c6e46] border-[#d9e1ca] hover:bg-[#f4f6ee] dark:bg-[#1a1d16] dark:text-[#a8be8a] dark:border-[#414a33]'
-                }`}
-              >
-                {lab.labName || lab.name || 'Lab'} ({lab.courseType || 'B.Pharm'} Y{lab.year} S{lab.semester})
-              </button>
-            );
-          })}
+        {/* MIDDLE COLUMN: READINESS PROGRESS & METADATA WIDGET */}
+        <div className='lg:col-span-4 rounded-2xl border border-[#e4eed3] bg-[#f8faee] p-3.5 dark:border-[#38432a] dark:bg-[#1a1d16] space-y-2.5'>
+          <div className='flex items-center justify-between text-xs font-extrabold'>
+            <span className='text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-1.5'>
+              <PackageCheck size={15} className='text-[#5c6e46]' />
+              Stock Readiness
+            </span>
+            <span className={`px-2 py-0.5 rounded-full text-[11px] font-black ${
+              lowStockCount + outOfStockCount === 0
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+            }`}>
+              {totalChemicalsCount === 0 ? '0%' : `${Math.round((optimalStockCount / totalChemicalsCount) * 100)}% Operational`}
+            </span>
+          </div>
+
+          {/* Progress Bar */}
+          <div className='h-2 w-full rounded-full bg-[#d9e1ca] dark:bg-[#343e26] overflow-hidden p-0.5'>
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                lowStockCount + outOfStockCount === 0 ? 'bg-[#5c6e46]' : 'bg-amber-500'
+              }`}
+              style={{ width: `${totalChemicalsCount === 0 ? 0 : Math.round((optimalStockCount / totalChemicalsCount) * 100)}%` }}
+            />
+          </div>
+
+          {/* Badges Line */}
+          <div className='flex items-center justify-between text-[11px] font-semibold text-[#71805a] dark:text-[#a5b48b] pt-0.5'>
+            <span>👤 Admin: <strong className='text-[#37412a] dark:text-[#e4e9d8]'>{user?.name || 'Lab Admin'}</strong></span>
+            <span>📍 Code: <strong className='text-[#37412a] dark:text-[#e4e9d8]'>{currentLab?.labCode || `LAB-${currentLab?.name || 'HAP1'}`}</strong></span>
+          </div>
         </div>
+
+        {/* RIGHT COLUMN: LAB SWITCHER PILLS */}
+        <div className='lg:col-span-4 flex flex-col items-start lg:items-end gap-2'>
+          <span className='text-xs font-bold text-[#71805a] dark:text-[#a5b48b]'>Switch Laboratory:</span>
+          <div className='flex flex-wrap items-center gap-1.5 lg:justify-end'>
+            {assignedLabs.map((lab) => {
+              const labKey = String(lab.id || lab._id);
+              const isSelected = labKey === String(labId);
+              return (
+                <button
+                  key={labKey}
+                  type='button'
+                  onClick={() => {
+                    setSelectedLabId(labKey);
+                    localStorage.setItem('pharmlab-active-lab', labKey);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all duration-200 border ${
+                    isSelected
+                      ? 'bg-[#5c6e46] text-white border-[#5c6e46] shadow-2xs dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                      : 'bg-white text-[#5c6e46] border-[#d9e1ca] hover:bg-[#f4f6ee] dark:bg-[#1a1d16] dark:text-[#a8be8a] dark:border-[#414a33]'
+                  }`}
+                >
+                  {lab.labName || lab.name || 'Lab'} ({lab.courseType || 'B.Pharm'} Y{lab.year} S{lab.semester})
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
       </div>
 
       {/* 4 EXECUTIVE METRIC CARDS */}
