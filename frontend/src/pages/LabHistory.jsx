@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Download, Search, Calendar, FileText, ArrowDownRight, ArrowUpRight, Filter, ChevronRight, CheckCircle2, Layers, History as HistoryIcon, CalendarDays, Hash } from 'lucide-react';
+import { Download, Search, Calendar, FileText, ArrowDownRight, ArrowUpRight, Filter, ChevronRight, CheckCircle2, Layers, History as HistoryIcon, CalendarDays } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import useAppStore from '../store/appStore';
@@ -59,7 +59,7 @@ export default function LabHistory() {
   const [search, setSearch] = useState('');
   
   // Date & Month/Year Filters
-  const [dateFilter, setDateFilter] = useState(0); // 0 = All time
+  const [dateFilter, setDateFilter] = useState(7); // Default to 'This Week' (7 days) or 0 (All Time)
   const [selectedYear, setSelectedYear] = useState('ALL');
   const [selectedMonth, setSelectedMonth] = useState('ALL');
   const [sortOrder, setSortOrder] = useState('newest'); // newest | oldest
@@ -186,7 +186,7 @@ export default function LabHistory() {
     };
   }, [storeRows, labRows]);
 
-  // Selected period label for badge
+  // Selected period label for 4 Stat Cards
   const selectedPeriodLabel = useMemo(() => {
     const parts = [];
     if (selectedMonth !== 'ALL') {
@@ -200,8 +200,8 @@ export default function LabHistory() {
     if (dateFilter === 1) return 'Today';
     if (dateFilter === 7) return 'This Week';
     if (dateFilter === 30) return 'This Month';
-    if (dateFilter === 365) return 'This Year (2026)';
-    return 'All Time (2026–2056)';
+    if (dateFilter === 365) return 'This Year';
+    return 'All Time';
   }, [selectedMonth, selectedYear, dateFilter]);
 
   // Export CSV
@@ -331,10 +331,10 @@ export default function LabHistory() {
           </div>
           <h1 className="text-2xl font-black text-[#37412a] dark:text-[#e4e9d8] mt-0.5 flex items-center gap-2">
             <HistoryIcon size={24} className="text-[#5c6e46]" />
-            Monthly &amp; Yearly Lab Audit History
+            Lab Transactions &amp; History
           </h1>
           <p className="text-[#71805a] dark:text-[#c5d0b5] text-xs font-semibold">
-            Organized month-by-month &amp; year-by-year transaction archives for <strong className="text-[#37412a] dark:text-[#e4e9d8]">{activeLab?.name || activeLab?.labName || 'HAP1'}</strong>
+            Complete chronological transaction log of all stock receipts from Central Store &amp; chemical disbursements to students.
           </p>
         </div>
 
@@ -386,96 +386,9 @@ export default function LabHistory() {
         </div>
       </div>
 
-      {/* Selected Period Active Banner */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl bg-[#f4f6ee] dark:bg-[#1a1d16] border border-[#d9e1ca] dark:border-[#414a33] gap-3">
-        <div className="flex items-center gap-2">
-          <CalendarDays size={18} className="text-[#5c6e46]" />
-          <div>
-            <span className="text-xs font-bold text-[#71805a]">Audit Archive Period: </span>
-            <span className="text-xs font-black text-[#5c6e46] dark:text-[#a8be8a] bg-white dark:bg-[#20251a] px-2.5 py-1 rounded-lg border border-[#d9e1ca] dark:border-[#414a33]">
-              {selectedPeriodLabel}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4 text-xs font-bold">
-          <span className="text-[#71805a]">Store Stock In: <strong className="text-[#37412a] dark:text-[#e4e9d8] font-extrabold">{stats.receivedCount}</strong></span>
-          <span className="text-[#cfd8bd]">|</span>
-          <span className="text-[#71805a]">Student Stock Out: <strong className="text-[#37412a] dark:text-[#e4e9d8] font-extrabold">{stats.issuedCount}</strong></span>
-        </div>
-      </div>
-
-      {/* 4 Summary Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-[#d9e1ca] dark:border-[#414a33]">
-          <div className="flex items-center justify-between text-[#71805a] dark:text-[#a5b48b] text-xs font-extrabold uppercase tracking-wider mb-1">
-            <span>Store Receipts ({selectedPeriodLabel})</span>
-            <ArrowDownRight className="text-emerald-600 dark:text-emerald-400" size={16} />
-          </div>
-          <div className="text-3xl font-black text-[#37412a] dark:text-[#e4e9d8]">{stats.receivedCount}</div>
-          <div className="text-[10px] font-semibold text-[#87996c] mt-1">Stock In transactions</div>
-        </Card>
-
-        <Card className="border-[#d9e1ca] dark:border-[#414a33]">
-          <div className="flex items-center justify-between text-[#71805a] dark:text-[#a5b48b] text-xs font-extrabold uppercase tracking-wider mb-1">
-            <span>Value Received ({selectedPeriodLabel})</span>
-            <span className="text-amber-700 dark:text-amber-400 font-black">₹</span>
-          </div>
-          <div className="text-3xl font-black text-amber-700 dark:text-amber-400">{formatPrice(stats.receivedValue)}</div>
-          <div className="text-[10px] font-semibold text-[#87996c] mt-1">Inventory added</div>
-        </Card>
-
-        <Card className="border-[#d9e1ca] dark:border-[#414a33]">
-          <div className="flex items-center justify-between text-[#71805a] dark:text-[#a5b48b] text-xs font-extrabold uppercase tracking-wider mb-1">
-            <span>Student Issues ({selectedPeriodLabel})</span>
-            <ArrowUpRight className="text-blue-600 dark:text-blue-400" size={16} />
-          </div>
-          <div className="text-3xl font-black text-[#37412a] dark:text-[#e4e9d8]">{stats.issuedCount}</div>
-          <div className="text-[10px] font-semibold text-[#87996c] mt-1">Stock Out transactions</div>
-        </Card>
-
-        <Card className="border-[#d9e1ca] dark:border-[#414a33]">
-          <div className="flex items-center justify-between text-[#71805a] dark:text-[#a5b48b] text-xs font-extrabold uppercase tracking-wider mb-1">
-            <span>Value Issued ({selectedPeriodLabel})</span>
-            <span className="text-amber-700 dark:text-amber-400 font-black">₹</span>
-          </div>
-          <div className="text-3xl font-black text-amber-700 dark:text-amber-400">{formatPrice(stats.issuedValue)}</div>
-          <div className="text-[10px] font-semibold text-[#87996c] mt-1">Inventory consumed</div>
-        </Card>
-      </div>
-
-      {/* Tabs Bar */}
-      <div className="flex border-b border-[#d9e1ca] dark:border-[#414a33]">
-        <button
-          type="button"
-          className={`py-3 px-6 text-xs font-extrabold border-b-2 transition-colors flex items-center gap-2 ${
-            activeTab === 'received'
-              ? 'border-[#5c6e46] text-[#5c6e46] dark:border-[#a8be8a] dark:text-[#a8be8a]'
-              : 'border-transparent text-[#71805a] hover:text-[#37412a] dark:text-[#c5d0b5]'
-          }`}
-          onClick={() => setActiveTab('received')}
-        >
-          <ArrowDownRight size={15} />
-          Received from Store ({storeRows.length})
-        </button>
-        <button
-          type="button"
-          className={`py-3 px-6 text-xs font-extrabold border-b-2 transition-colors flex items-center gap-2 ${
-            activeTab === 'issued'
-              ? 'border-[#5c6e46] text-[#5c6e46] dark:border-[#a8be8a] dark:text-[#a8be8a]'
-              : 'border-transparent text-[#71805a] hover:text-[#37412a] dark:text-[#c5d0b5]'
-          }`}
-          onClick={() => setActiveTab('issued')}
-        >
-          <ArrowUpRight size={15} />
-          Issued to Students ({labRows.length})
-        </button>
-      </div>
-
-      {/* Filter Controls & Content Card */}
+      {/* TOP SECTION: Month & Year Selectors + Quick Presets Filter Control Card */}
       <Card className="border-[#d9e1ca] dark:border-[#414a33]">
-        {/* Month & Year Selectors Header Bar */}
-        <div className="mb-5 space-y-3">
+        <div className="space-y-3">
           <div className="flex flex-col lg:flex-row gap-3 justify-between items-stretch lg:items-center">
             {/* Search bar */}
             <div className="relative flex-1 max-w-md">
@@ -543,28 +456,105 @@ export default function LabHistory() {
             </div>
           </div>
 
-          {/* Preset Buttons */}
-          <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-[#e4eed3] dark:border-[#2e3722]">
-            <span className="text-[11px] font-extrabold text-[#71805a] mr-1">Quick Presets:</span>
-            {PRESETS.map((p) => (
-              <button
-                key={p.label}
-                type="button"
-                onClick={() => {
-                  setDateFilter(p.days);
-                  setSelectedYear('ALL');
-                  setSelectedMonth('ALL');
-                }}
-                className={`px-3 py-1 text-xs font-extrabold rounded-xl transition ${
-                  dateFilter === p.days && selectedYear === 'ALL' && selectedMonth === 'ALL'
-                    ? 'bg-[#5c6e46] text-white shadow-2xs dark:bg-[#e4e9d8] dark:text-[#20251a]'
-                    : 'bg-[#f4f6ee] text-[#5c6e46] border border-[#d9e1ca] hover:bg-white dark:bg-[#1a1d16] dark:text-[#a8be8a] dark:border-[#414a33]'
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
+          {/* Quick Presets Buttons */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[#e4eed3] dark:border-[#2e3722]">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-extrabold text-[#71805a] mr-1">Quick Presets:</span>
+              {PRESETS.map((p) => (
+                <button
+                  key={p.label}
+                  type="button"
+                  onClick={() => {
+                    setDateFilter(p.days);
+                    setSelectedYear('ALL');
+                    setSelectedMonth('ALL');
+                  }}
+                  className={`px-3.5 py-1 text-xs font-extrabold rounded-xl transition ${
+                    dateFilter === p.days && selectedYear === 'ALL' && selectedMonth === 'ALL'
+                      ? 'bg-[#5c6e46] text-white shadow-2xs dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                      : 'bg-[#f4f6ee] text-[#5c6e46] border border-[#d9e1ca] hover:bg-white dark:bg-[#1a1d16] dark:text-[#a8be8a] dark:border-[#414a33]'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Active Selected Period Badge */}
+            <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#5c6e46] dark:text-[#a8be8a] bg-[#f4f6ee] dark:bg-[#1a1d16] px-3 py-1 rounded-xl border border-[#d9e1ca] dark:border-[#414a33]">
+              <CalendarDays size={14} /> Active Period: <span>{selectedPeriodLabel}</span>
+            </div>
           </div>
+        </div>
+      </Card>
+
+      {/* MIDDLE SECTION: 4 Dynamic Stat Cards (Works dynamically with top filters!) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="border-[#d9e1ca] dark:border-[#414a33]">
+          <div className="flex items-center justify-between text-[#71805a] dark:text-[#a5b48b] text-xs font-extrabold uppercase tracking-wider mb-1">
+            <span>Store Receipts ({selectedPeriodLabel})</span>
+            <ArrowDownRight className="text-emerald-600 dark:text-emerald-400" size={16} />
+          </div>
+          <div className="text-3xl font-black text-[#37412a] dark:text-[#e4e9d8]">{stats.receivedCount}</div>
+          <div className="text-[10px] font-semibold text-[#87996c] mt-1">Stock In transactions</div>
+        </Card>
+
+        <Card className="border-[#d9e1ca] dark:border-[#414a33]">
+          <div className="flex items-center justify-between text-[#71805a] dark:text-[#a5b48b] text-xs font-extrabold uppercase tracking-wider mb-1">
+            <span>Value Received ({selectedPeriodLabel})</span>
+            <span className="text-amber-700 dark:text-amber-400 font-black">₹</span>
+          </div>
+          <div className="text-3xl font-black text-amber-700 dark:text-amber-400">{formatPrice(stats.receivedValue)}</div>
+          <div className="text-[10px] font-semibold text-[#87996c] mt-1">Inventory added</div>
+        </Card>
+
+        <Card className="border-[#d9e1ca] dark:border-[#414a33]">
+          <div className="flex items-center justify-between text-[#71805a] dark:text-[#a5b48b] text-xs font-extrabold uppercase tracking-wider mb-1">
+            <span>Student Issues ({selectedPeriodLabel})</span>
+            <ArrowUpRight className="text-blue-600 dark:text-blue-400" size={16} />
+          </div>
+          <div className="text-3xl font-black text-[#37412a] dark:text-[#e4e9d8]">{stats.issuedCount}</div>
+          <div className="text-[10px] font-semibold text-[#87996c] mt-1">Stock Out transactions</div>
+        </Card>
+
+        <Card className="border-[#d9e1ca] dark:border-[#414a33]">
+          <div className="flex items-center justify-between text-[#71805a] dark:text-[#a5b48b] text-xs font-extrabold uppercase tracking-wider mb-1">
+            <span>Value Issued ({selectedPeriodLabel})</span>
+            <span className="text-amber-700 dark:text-amber-400 font-black">₹</span>
+          </div>
+          <div className="text-3xl font-black text-amber-700 dark:text-amber-400">{formatPrice(stats.issuedValue)}</div>
+          <div className="text-[10px] font-semibold text-[#87996c] mt-1">Inventory consumed</div>
+        </Card>
+      </div>
+
+      {/* BOTTOM SECTION: Tabs Bar & Data Table */}
+      <Card className="border-[#d9e1ca] dark:border-[#414a33]">
+        {/* Tabs Bar */}
+        <div className="flex border-b border-[#d9e1ca] dark:border-[#414a33] mb-4">
+          <button
+            type="button"
+            className={`py-3 px-6 text-xs font-extrabold border-b-2 transition-colors flex items-center gap-2 ${
+              activeTab === 'received'
+                ? 'border-[#5c6e46] text-[#5c6e46] dark:border-[#a8be8a] dark:text-[#a8be8a]'
+                : 'border-transparent text-[#71805a] hover:text-[#37412a] dark:text-[#c5d0b5]'
+            }`}
+            onClick={() => setActiveTab('received')}
+          >
+            <ArrowDownRight size={15} />
+            Received from Store ({storeRows.length})
+          </button>
+          <button
+            type="button"
+            className={`py-3 px-6 text-xs font-extrabold border-b-2 transition-colors flex items-center gap-2 ${
+              activeTab === 'issued'
+                ? 'border-[#5c6e46] text-[#5c6e46] dark:border-[#a8be8a] dark:text-[#a8be8a]'
+                : 'border-transparent text-[#71805a] hover:text-[#37412a] dark:text-[#c5d0b5]'
+            }`}
+            onClick={() => setActiveTab('issued')}
+          >
+            <ArrowUpRight size={15} />
+            Issued to Students ({labRows.length})
+          </button>
         </div>
 
         {/* Data Table */}
