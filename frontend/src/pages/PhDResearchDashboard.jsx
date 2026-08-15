@@ -6,7 +6,7 @@ import Modal from '../components/ui/Modal';
 import { 
   Beaker, Plus, Clock, CheckCircle2, XCircle, Search, 
   BookOpen, User, Award, ShieldAlert, FileText, Check, Download,
-  Activity, ArrowUpRight, Sparkles, ChevronRight, Layers
+  Activity, ArrowUpRight, Sparkles, ChevronRight, Layers, FlaskConical
 } from 'lucide-react';
 
 const COMMON_UNITS = ['g', 'mg', 'kg', 'mL', 'L'];
