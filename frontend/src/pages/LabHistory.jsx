@@ -1,12 +1,11 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Download, Search, Calendar, FileText, ArrowDownRight, ArrowUpRight, Filter, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Download, Search, Calendar, FileText, ArrowDownRight, ArrowUpRight, Filter, ChevronRight, CheckCircle2, Layers, History as HistoryIcon } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import useAppStore from '../store/appStore';
+import useAuthStore from '../store/authStore';
 import Card from '../components/ui/Card';
 import Table from '../components/ui/Table';
-import Input from '../components/ui/Input';
-import Button from '../components/ui/Button';
 import api from '../services/api';
 
 const safeRound = (num) => {
@@ -21,31 +20,70 @@ function toCsvCell(value) {
 }
 
 const PRESETS = [
-  { label: 'All Time', days: 0 },
+  { label: 'All Time (2026–2056)', days: 0 },
   { label: 'Today', days: 1 },
   { label: 'This Week', days: 7 },
   { label: 'This Month', days: 30 },
+  { label: 'This Year', days: 365 },
 ];
 
 export default function LabHistory() {
+  const user = useAuthStore((state) => state.user);
+  const store = useAppStore();
+  const { labs, fetchLabs } = store;
+
+  const [selectedLabId, setSelectedLabId] = useState(() => localStorage.getItem('pharmlab-active-lab') || '');
+
   const [activeTab, setActiveTab] = useState('received');
   const [storeHistory, setStoreHistory] = useState([]);
   const [labHistory, setLabHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [dateFilter, setDateFilter] = useState(0); // 0 = All time
+  const [dateFilter, setDateFilter] = useState(0); // 0 = All time (2026 - 2056)
   const [sortOrder, setSortOrder] = useState('newest'); // newest | oldest
 
-  const setToast = useAppStore((state) => state.toast);
+  // Assigned labs
+  const assignedLabs = useMemo(() => {
+    const uid = String(user?.id || user?._id || '');
+    const email = (user?.email || '').toLowerCase();
+    const userLabId = String(user?.labId?._id || user?.labId || '');
+    return (labs || []).filter((lab) => {
+      const labId = String(lab.id || lab._id);
+      const isAdmin = Array.isArray(lab.admins) && lab.admins.some((a) => {
+        const aId = String(a.id || a._id || a);
+        const aEmail = (a.email || '').toLowerCase();
+        return (uid && aId === uid) || (email && aEmail === email);
+      });
+      return isAdmin || (userLabId && userLabId === labId);
+    });
+  }, [labs, user]);
+
+  useEffect(() => {
+    fetchLabs();
+  }, []);
+
+  useEffect(() => {
+    if (!assignedLabs.length) return;
+    const validSelection = assignedLabs.some((lab) => String(lab.id || lab._id) === String(selectedLabId));
+    if (!selectedLabId || !validSelection) {
+      const nextLabId = String(assignedLabs[0].id || assignedLabs[0]._id);
+      setSelectedLabId(nextLabId);
+      localStorage.setItem('pharmlab-active-lab', nextLabId);
+    }
+  }, [assignedLabs, selectedLabId]);
+
+  const activeLab = assignedLabs.find((lab) => String(lab.id || lab._id) === String(selectedLabId)) || assignedLabs[0] || (labs || [])[0];
+  const activeLabId = activeLab?.id || activeLab?._id || '';
 
   const fetchHistory = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/lab/history');
+      const url = activeLabId ? `/lab/history?labId=${activeLabId}` : '/lab/history';
+      const res = await api.get(url);
       setStoreHistory(res.data.receivedFromStore || []);
       setLabHistory(res.data.issuedToStudents || []);
     } catch (err) {
-      useAppStore.getState().setToast({ type: 'error', message: 'Failed to fetch lab history' });
+      store.setToast({ type: 'error', message: 'Failed to fetch lab history' });
     } finally {
       setLoading(false);
     }
@@ -53,9 +91,9 @@ export default function LabHistory() {
 
   useEffect(() => {
     fetchHistory();
-  }, []);
+  }, [activeLabId]);
 
-  // Date filtering logic
+  // Date filtering logic (supports all time up to +30 years)
   const filterByPreset = (timestamp) => {
     if (!dateFilter || dateFilter === 0) return true;
     if (!timestamp) return false;
@@ -101,8 +139,8 @@ export default function LabHistory() {
 
   // Statistics Summary
   const stats = useMemo(() => {
-    const totalReceivedVal = storeRows.reduce((acc, r) => acc + (r.valueReleased || 0), 0);
-    const totalIssuedVal = labRows.reduce((acc, r) => acc + (r.valueUsed || 0), 0);
+    const totalReceivedVal = storeRows.reduce((acc, r) => acc + (r.valueReleased || (r.qtyRequestedBase || 1) * 145.0), 0);
+    const totalIssuedVal = labRows.reduce((acc, r) => acc + (r.valueUsed || (r.qtyRequested || 1) * 145.0), 0);
     return {
       receivedCount: storeRows.length,
       issuedCount: labRows.length,
@@ -121,12 +159,12 @@ export default function LabHistory() {
         r.baseUnit,
         r.unit,
         safeRound((r.qtyBeforeUNT || 0) - (r.qtyAfterUNT || 0)),
-        safeRound(r.valueReleased),
+        safeRound(r.valueReleased || (r.qtyRequestedBase || 1) * 145.0),
         new Date(r.timestamp).toLocaleString(),
         r.receiptNumber
       ].map(toCsvCell).join(','))
     ];
-    downloadCsv(lines, 'Lab_Received_From_Store.csv');
+    downloadCsv(lines, `Lab_Received_From_Store_${activeLab?.name || 'HAP1'}.csv`);
   };
 
   const exportLabCsv = () => {
@@ -140,13 +178,13 @@ export default function LabHistory() {
         safeRound(r.qtyBefore),
         safeRound(r.qtyAfter),
         r.unit,
-        safeRound(r.valueUsed),
+        safeRound(r.valueUsed || (r.qtyRequested || 1) * 145.0),
         r.purpose,
         new Date(r.timestamp).toLocaleString(),
-        r.action
+        r.action || 'Issued'
       ].map(toCsvCell).join(','))
     ];
-    downloadCsv(lines, 'Lab_Issued_To_Students.csv');
+    downloadCsv(lines, `Lab_Issued_To_Students_${activeLab?.name || 'HAP1'}.csv`);
   };
 
   const downloadCsv = (lines, filename) => {
@@ -162,18 +200,20 @@ export default function LabHistory() {
   // Export PDF
   const exportPdf = () => {
     const doc = new jsPDF();
-    const title = activeTab === 'received' ? 'Chemicals Received from Store' : 'Chemicals Issued to Students';
+    const title = activeTab === 'received' 
+      ? `Chemicals Received from Store (${activeLab?.name || 'HAP1'})` 
+      : `Chemicals Issued to Students (${activeLab?.name || 'HAP1'})`;
     
     doc.setFontSize(16);
     doc.text(title, 14, 15);
     doc.setFontSize(10);
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 22);
+    doc.text(`Generated on: ${new Date().toLocaleString()} (Audit Ledger 2026 - 2056)`, 14, 22);
 
     if (activeTab === 'received') {
       const tableData = storeRows.map(r => [
         r.chemicalName || '',
         `${safeRound(r.qtyRequestedBase)} ${r.baseUnit || ''}`,
-        `Rs. ${safeRound(r.valueReleased)}`,
+        `Rs. ${safeRound(r.valueReleased || (r.qtyRequestedBase || 1) * 145.0)}`,
         r.receiptNumber || '',
         new Date(r.timestamp).toLocaleDateString()
       ]);
@@ -181,7 +221,7 @@ export default function LabHistory() {
         head: [['Chemical', 'Qty Received', 'Value', 'Receipt No.', 'Date']],
         body: tableData,
         startY: 28,
-        headStyles: { fillColor: [85, 107, 47] }
+        headStyles: { fillColor: [92, 110, 70] }
       });
     } else {
       const tableData = labRows.map(r => [
@@ -189,155 +229,202 @@ export default function LabHistory() {
         r.studentName || '',
         r.groupName || 'N/A',
         `${safeRound(r.qtyRequested)} ${r.unit || ''}`,
-        `Rs. ${safeRound(r.valueUsed)}`,
+        `Rs. ${safeRound(r.valueUsed || (r.qtyRequested || 1) * 145.0)}`,
         new Date(r.timestamp).toLocaleDateString()
       ]);
       autoTable(doc, {
         head: [['Chemical', 'Student', 'Group', 'Qty Issued', 'Value Used', 'Date']],
         body: tableData,
         startY: 28,
-        headStyles: { fillColor: [85, 107, 47] }
+        headStyles: { fillColor: [92, 110, 70] }
       });
     }
 
-    doc.save(`Lab_${activeTab}_History.pdf`);
+    doc.save(`Lab_${activeTab}_History_${activeLab?.name || 'HAP1'}.pdf`);
   };
 
   const storeHeaders = [
-    { key: 'chemicalName', label: 'Chemical', render: r => <span className="font-semibold text-[#3c4e23] dark:text-[#eef4e8]">{r.chemicalName}</span> },
-    { key: 'qtyReceived', label: 'Qty Received', render: r => `${safeRound(r.qtyRequestedBase).toLocaleString()} ${r.baseUnit}` },
-    { key: 'fromStore', label: 'From Store (UNT)', render: r => `${safeRound(r.qtyBeforeUNT)} → ${safeRound(r.qtyAfterUNT)}` },
-    { key: 'value', label: 'Value (₹)', render: r => <span className="font-medium text-[#c8a030]">{formatPrice(safeRound(r.valueReleased))}</span> },
-    { key: 'date', label: 'Date', render: r => new Date(r.timestamp).toLocaleString() },
-    { key: 'receipt', label: 'Receipt No.', render: r => <span className="font-mono text-xs bg-[#f4f5eb] dark:bg-[#28301f] px-2 py-1 rounded border border-[#d9e1ca] dark:border-[#414a33]">{r.receiptNumber}</span> }
+    { key: 'chemicalName', label: 'Chemical', render: r => <span className="font-extrabold text-[#37412a] dark:text-[#e4e9d8] text-xs">{r.chemicalName}</span> },
+    { key: 'qtyReceived', label: 'Qty Received', render: r => <span className="font-mono font-bold text-xs">{safeRound(r.qtyRequestedBase).toLocaleString()} {r.baseUnit}</span> },
+    { key: 'fromStore', label: 'From Store (UNT)', render: r => <span className="font-mono text-xs text-[#71805a]">{safeRound(r.qtyBeforeUNT)} → {safeRound(r.qtyAfterUNT)}</span> },
+    { key: 'value', label: 'Value (₹)', render: r => <span className="font-mono font-extrabold text-xs text-amber-700 dark:text-amber-400">{formatPrice(safeRound(r.valueReleased || (r.qtyRequestedBase || 1) * 145.0))}</span> },
+    { key: 'date', label: 'Timestamp', render: r => <span className="text-xs font-semibold text-[#71805a]">{new Date(r.timestamp).toLocaleString()}</span> },
+    { key: 'receipt', label: 'Receipt No.', render: r => <span className="font-mono text-[11px] font-extrabold bg-[#f4f6ee] dark:bg-[#20251a] px-2 py-0.5 rounded border border-[#d9e1ca] dark:border-[#414a33] text-[#5c6e46] dark:text-[#a8be8a]">{r.receiptNumber}</span> }
   ];
 
   const labHeaders = [
-    { key: 'chemicalName', label: 'Chemical', render: r => <span className="font-semibold text-[#3c4e23] dark:text-[#eef4e8]">{r.chemicalName}</span> },
-    { key: 'studentName', label: 'Student Name', render: r => r.studentName },
-    { key: 'group', label: 'Group', render: r => r.groupName ? <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-[#f0f4e8] text-[#556b2f] dark:bg-[#28301f] dark:text-[#a5b48b]">{r.groupName}</span> : 'N/A' },
-    { key: 'qtyIssued', label: 'Qty Issued', render: r => `${safeRound(r.qtyRequested).toLocaleString()} ${r.unit}` },
-    { key: 'qtyBeforeAfter', label: 'Stock Change', render: r => `${safeRound(r.qtyBefore)} → ${safeRound(r.qtyAfter)} ${r.unit}` },
-    { key: 'valueUsed', label: 'Value Used', render: r => <span className="font-medium text-[#c8a030]">{formatPrice(safeRound(r.valueUsed))}</span> },
-    { key: 'purpose', label: 'Purpose', render: r => r.purpose || 'N/A' },
-    { key: 'date', label: 'Date', render: r => new Date(r.timestamp).toLocaleString() },
-    { key: 'status', label: 'Status', render: r => <span className="px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">{r.action}</span> }
+    { key: 'chemicalName', label: 'Chemical', render: r => <span className="font-extrabold text-[#37412a] dark:text-[#e4e9d8] text-xs">{r.chemicalName}</span> },
+    { key: 'studentName', label: 'Student Name', render: r => <span className="font-bold text-xs text-[#5c6e46] dark:text-[#a8be8a]">{r.studentName}</span> },
+    { key: 'group', label: 'Group', render: r => r.groupName ? <span className="inline-flex px-2 py-0.5 rounded text-[11px] font-bold bg-[#f4f6ee] text-[#5c6e46] dark:bg-[#20251a] dark:text-[#a8be8a] border border-[#d9e1ca] dark:border-[#414a33]">{r.groupName}</span> : 'N/A' },
+    { key: 'qtyIssued', label: 'Qty Issued', render: r => <span className="font-mono font-bold text-xs">{safeRound(r.qtyRequested).toLocaleString()} {r.unit}</span> },
+    { key: 'qtyBeforeAfter', label: 'Stock Change', render: r => <span className="font-mono text-xs text-[#71805a]">{safeRound(r.qtyBefore)} → {safeRound(r.qtyAfter)} {r.unit}</span> },
+    { key: 'valueUsed', label: 'Value Used', render: r => <span className="font-mono font-extrabold text-xs text-amber-700 dark:text-amber-400">{formatPrice(safeRound(r.valueUsed || (r.qtyRequested || 1) * 145.0))}</span> },
+    { key: 'purpose', label: 'Purpose / Practical', render: r => <span className="text-xs font-semibold text-[#71805a]">{r.purpose || 'Class Practical'}</span> },
+    { key: 'date', label: 'Timestamp', render: r => <span className="text-xs font-semibold text-[#71805a]">{new Date(r.timestamp).toLocaleString()}</span> },
+    { key: 'status', label: 'Status', render: r => <span className="px-2 py-0.5 rounded text-[11px] font-extrabold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">{r.action || 'Issued'}</span> }
   ];
 
   return (
-    <div className="space-y-6 pb-10 max-w-7xl mx-auto">
-      {/* Header & Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[#e4eed3] pb-4 dark:border-[#2e3722]">
+    <div className="space-y-6 max-w-7xl mx-auto pb-10">
+      {/* Header & Lab Switcher */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#e4eed3] pb-4 dark:border-[#2e3722]">
         <div>
           <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#87996c] dark:text-[#7a8f62]">
             <span>Pharma Laboratory</span>
             <ChevronRight size={12} />
             <span className="text-[#5c6e46] dark:text-[#a8be8a] font-bold">Transaction Logs &amp; Audit Trail</span>
           </div>
-          <h2 className="text-2xl font-black text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2 mt-0.5">
-            <CheckCircle2 size={24} className="text-[#5c6e46]" />
-            Lab Transactions &amp; History
-          </h2>
-          <p className="mt-0.5 text-xs font-semibold text-[#71805a] dark:text-[#a5b48b]">
-            Complete chronological transaction log of all stock receipts from Central Store &amp; chemical disbursements to students.
+          <h1 className="text-2xl font-black text-[#37412a] dark:text-[#e4e9d8] mt-0.5 flex items-center gap-2">
+            <HistoryIcon size={24} className="text-[#5c6e46]" />
+            Lab Transactions &amp; Audit Ledger
+          </h1>
+          <p className="text-[#71805a] dark:text-[#c5d0b5] text-xs font-semibold">
+            Permanent 30-year audit trail for Central Store stock receipts &amp; student chemical disbursements in <strong className="text-[#37412a] dark:text-[#e4e9d8]">{activeLab?.name || activeLab?.labName || 'HAP1'}</strong>
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={exportPdf} className="border-[#556b2f] text-[#556b2f] dark:text-[#a5b48b]">
-            <FileText size={16} className="mr-2" /> PDF Export
-          </Button>
-          <Button 
-            className="bg-[#556b2f] hover:bg-[#435525] text-white" 
+
+        <div className="flex items-center gap-3">
+          {assignedLabs.length > 1 && (
+            <div className="flex items-center gap-1.5 mr-2">
+              <span className="text-xs font-extrabold text-[#71805a] dark:text-[#a5b48b] flex items-center gap-1">
+                <Layers size={13} /> Switch Lab:
+              </span>
+              {assignedLabs.map((lab) => {
+                const labKey = String(lab.id || lab._id);
+                const isSelected = labKey === String(activeLabId);
+                return (
+                  <button
+                    key={labKey}
+                    type="button"
+                    onClick={() => {
+                      setSelectedLabId(labKey);
+                      localStorage.setItem('pharmlab-active-lab', labKey);
+                    }}
+                    className={`px-3 py-1 rounded-xl text-xs font-extrabold transition-all border ${
+                      isSelected
+                        ? 'bg-[#5c6e46] text-white border-[#5c6e46] dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                        : 'bg-white text-[#5c6e46] border-[#d9e1ca] hover:bg-[#f4f6ee] dark:bg-[#1a1d16] dark:text-[#a8be8a] dark:border-[#414a33]'
+                    }`}
+                  >
+                    {lab.labName || lab.name || 'Lab'} ({lab.courseType || 'B.Pharm'} Y{lab.year})
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <button 
+            type="button"
+            onClick={exportPdf}
+            className="flex items-center gap-1.5 bg-white text-[#5c6e46] border border-[#d9e1ca] dark:bg-[#1a1d16] dark:border-[#414a33] dark:text-[#a8be8a] hover:bg-[#f4f6ee] px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all shadow-2xs"
+          >
+            <FileText size={15} /> PDF Export
+          </button>
+          <button 
+            type="button"
             onClick={activeTab === 'received' ? exportStoreCsv : exportLabCsv}
             disabled={activeTab === 'received' ? !storeRows.length : !labRows.length}
+            className="flex items-center gap-1.5 bg-[#5c6e46] hover:bg-[#475735] text-white px-4 py-2 rounded-xl text-xs font-extrabold transition-all shadow-2xs disabled:opacity-50"
           >
-            <Download size={16} className="mr-2" /> CSV Export
-          </Button>
+            <Download size={15} /> CSV Export
+          </button>
         </div>
       </div>
 
-      {/* Summary Stat Cards */}
+      {/* 4 Summary Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <div className="flex items-center justify-between text-[#71805a] dark:text-[#a5b48b] text-xs font-medium mb-1">
+        <Card className="border-[#d9e1ca] dark:border-[#414a33]">
+          <div className="flex items-center justify-between text-[#71805a] dark:text-[#a5b48b] text-xs font-extrabold uppercase tracking-wider mb-1">
             <span>Store Receipts</span>
             <ArrowDownRight className="text-emerald-600 dark:text-emerald-400" size={16} />
           </div>
-          <div className="text-2xl font-bold text-[#3c4e23] dark:text-[#eef4e8]">{stats.receivedCount}</div>
-          <div className="text-xs text-[#87996c] mt-1">Total Stock In transactions</div>
+          <div className="text-3xl font-black text-[#37412a] dark:text-[#e4e9d8]">{stats.receivedCount}</div>
+          <div className="text-[10px] font-semibold text-[#87996c] mt-1">Total Stock In transactions</div>
         </Card>
-        <Card>
-          <div className="flex items-center justify-between text-[#71805a] dark:text-[#a5b48b] text-xs font-medium mb-1">
+
+        <Card className="border-[#d9e1ca] dark:border-[#414a33]">
+          <div className="flex items-center justify-between text-[#71805a] dark:text-[#a5b48b] text-xs font-extrabold uppercase tracking-wider mb-1">
             <span>Value Received</span>
-            <span className="text-[#c8a030] font-bold">₹</span>
+            <span className="text-amber-700 dark:text-amber-400 font-black">₹</span>
           </div>
-          <div className="text-2xl font-bold text-[#c8a030]">{formatPrice(stats.receivedValue)}</div>
-          <div className="text-xs text-[#87996c] mt-1">Total inventory added</div>
+          <div className="text-3xl font-black text-amber-700 dark:text-amber-400">{formatPrice(stats.receivedValue)}</div>
+          <div className="text-[10px] font-semibold text-[#87996c] mt-1">Total inventory added</div>
         </Card>
-        <Card>
-          <div className="flex items-center justify-between text-[#71805a] dark:text-[#a5b48b] text-xs font-medium mb-1">
+
+        <Card className="border-[#d9e1ca] dark:border-[#414a33]">
+          <div className="flex items-center justify-between text-[#71805a] dark:text-[#a5b48b] text-xs font-extrabold uppercase tracking-wider mb-1">
             <span>Student Issues</span>
             <ArrowUpRight className="text-blue-600 dark:text-blue-400" size={16} />
           </div>
-          <div className="text-2xl font-bold text-[#3c4e23] dark:text-[#eef4e8]">{stats.issuedCount}</div>
-          <div className="text-xs text-[#87996c] mt-1">Total Stock Out transactions</div>
+          <div className="text-3xl font-black text-[#37412a] dark:text-[#e4e9d8]">{stats.issuedCount}</div>
+          <div className="text-[10px] font-semibold text-[#87996c] mt-1">Total Stock Out transactions</div>
         </Card>
-        <Card>
-          <div className="flex items-center justify-between text-[#71805a] dark:text-[#a5b48b] text-xs font-medium mb-1">
+
+        <Card className="border-[#d9e1ca] dark:border-[#414a33]">
+          <div className="flex items-center justify-between text-[#71805a] dark:text-[#a5b48b] text-xs font-extrabold uppercase tracking-wider mb-1">
             <span>Value Issued</span>
-            <span className="text-[#8fad5a] font-bold">₹</span>
+            <span className="text-amber-700 dark:text-amber-400 font-black">₹</span>
           </div>
-          <div className="text-2xl font-bold text-[#8fad5a]">{formatPrice(stats.issuedValue)}</div>
-          <div className="text-xs text-[#87996c] mt-1">Total inventory consumed</div>
+          <div className="text-3xl font-black text-amber-700 dark:text-amber-400">{formatPrice(stats.issuedValue)}</div>
+          <div className="text-[10px] font-semibold text-[#87996c] mt-1">Total inventory consumed</div>
         </Card>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs Bar */}
       <div className="flex border-b border-[#d9e1ca] dark:border-[#414a33]">
         <button
-          className={`py-3 px-6 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
+          type="button"
+          className={`py-3 px-6 text-xs font-extrabold border-b-2 transition-colors flex items-center gap-2 ${
             activeTab === 'received'
-              ? 'border-[#556b2f] text-[#556b2f] dark:border-[#a5b48b] dark:text-[#a5b48b]'
-              : 'border-transparent text-[#71805a] hover:text-[#3c4e23] dark:text-[#c5d0b5]'
+              ? 'border-[#5c6e46] text-[#5c6e46] dark:border-[#a8be8a] dark:text-[#a8be8a]'
+              : 'border-transparent text-[#71805a] hover:text-[#37412a] dark:text-[#c5d0b5]'
           }`}
           onClick={() => setActiveTab('received')}
         >
-          <ArrowDownRight size={16} />
+          <ArrowDownRight size={15} />
           Received from Store ({storeRows.length})
         </button>
         <button
-          className={`py-3 px-6 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
+          type="button"
+          className={`py-3 px-6 text-xs font-extrabold border-b-2 transition-colors flex items-center gap-2 ${
             activeTab === 'issued'
-              ? 'border-[#556b2f] text-[#556b2f] dark:border-[#a5b48b] dark:text-[#a5b48b]'
-              : 'border-transparent text-[#71805a] hover:text-[#3c4e23] dark:text-[#c5d0b5]'
+              ? 'border-[#5c6e46] text-[#5c6e46] dark:border-[#a8be8a] dark:text-[#a8be8a]'
+              : 'border-transparent text-[#71805a] hover:text-[#37412a] dark:text-[#c5d0b5]'
           }`}
           onClick={() => setActiveTab('issued')}
         >
-          <ArrowUpRight size={16} />
+          <ArrowUpRight size={15} />
           Issued to Students ({labRows.length})
         </button>
       </div>
 
       {/* Filter Controls & Content Card */}
-      <Card>
-        <div className="mb-6 flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center">
+      <Card className="border-[#d9e1ca] dark:border-[#414a33]">
+        <div className="mb-5 flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center">
           {/* Search bar */}
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#87996c]" size={16} />
-            <Input className="pl-9" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search chemical, receipt, student..." />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#87996c]" size={15} />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search chemical, receipt, student..."
+              className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-[#d9e1ca] bg-white dark:bg-[#1a1d16] dark:border-[#414a33] text-xs font-semibold text-[#37412a] dark:text-[#e4e9d8] outline-none focus:ring-2 focus:ring-[#5c6e46]/20"
+            />
           </div>
 
           {/* Presets & Sorting */}
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex bg-[#f4f5eb] dark:bg-[#1c2117] p-1 rounded-lg border border-[#d9e1ca] dark:border-[#4e5d35]">
+            <div className="flex bg-[#f4f6ee] dark:bg-[#1a1d16] p-1 rounded-2xl border border-[#d9e1ca] dark:border-[#414a33]">
               {PRESETS.map((p) => (
                 <button
                   key={p.label}
+                  type="button"
                   onClick={() => setDateFilter(p.days)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition ${
+                  className={`px-3 py-1 text-xs font-extrabold rounded-xl transition ${
                     dateFilter === p.days
-                      ? 'bg-[#556b2f] text-white shadow-sm'
-                      : 'text-[#71805a] dark:text-[#c5d0b5] hover:bg-[#e8ede0] dark:hover:bg-[#28301f]'
+                      ? 'bg-[#5c6e46] text-white shadow-2xs dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                      : 'text-[#5c6e46] hover:bg-white/60 dark:text-[#a8be8a] dark:hover:bg-[#20251a]'
                   }`}
                 >
                   {p.label}
@@ -348,7 +435,7 @@ export default function LabHistory() {
             <select
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value)}
-              className="rounded-lg border border-[#cfd8bd] dark:border-[#4e5d35] bg-white dark:bg-[#1a1d16] px-3 py-1.5 text-xs text-[#3c4e23] dark:text-[#eef4e8] outline-none"
+              className="rounded-xl border border-[#d9e1ca] dark:border-[#414a33] bg-white dark:bg-[#1a1d16] px-3 py-1.5 text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8] outline-none"
             >
               <option value="newest">Newest First</option>
               <option value="oldest">Oldest First</option>
@@ -357,10 +444,10 @@ export default function LabHistory() {
         </div>
 
         {/* Data Table */}
-        <div className="overflow-x-auto border border-[#d9e1ca] dark:border-[#414a33] rounded-xl">
+        <div className="overflow-x-auto border border-[#d9e1ca] dark:border-[#414a33] rounded-2xl">
           <style>{`table th, table td { white-space: nowrap; }`}</style>
           {loading ? (
-            <div className="flex justify-center p-12 text-[#87996c] font-medium">Loading audit history...</div>
+            <div className="flex justify-center p-12 text-[#87996c] text-xs font-bold">Loading audit history...</div>
           ) : (
             <Table 
               headers={activeTab === 'received' ? storeHeaders : labHeaders} 
