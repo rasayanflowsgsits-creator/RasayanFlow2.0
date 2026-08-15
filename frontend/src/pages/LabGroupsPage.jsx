@@ -251,66 +251,6 @@ export default function LabGroupsPage() {
     return exp ? `Exp ${exp.experimentNumber}: ${exp.experimentObject}` : 'Practical Experiment';
   };
 
-  // Group form modal JSX
-  const GroupFormContent = () => (
-    <div className="space-y-4 text-xs font-semibold">
-      <div>
-        <label className="block font-extrabold text-[#37412a] dark:text-[#e4e9d8] mb-1">Group Name *</label>
-        <input
-          type="text"
-          value={groupForm.name}
-          onChange={(e) => setGroupForm((p) => ({ ...p, name: e.target.value }))}
-          placeholder="e.g. Group-A"
-          className="w-full rounded-lg border border-[#cfd8bd] bg-white px-3.5 py-2.5 text-xs font-bold text-[#37412a] dark:text-[#e4e9d8] dark:border-[#414a33] dark:bg-[#1a1d16] outline-none focus:border-[#5c6e46] focus:ring-2 focus:ring-[#5c6e46]/20"
-        />
-      </div>
-
-      <div>
-        <label className="block font-extrabold text-[#37412a] dark:text-[#e4e9d8] mb-1">Group Leader</label>
-        <select
-          value={groupForm.leaderId}
-          onChange={(e) => setGroupForm((p) => ({ ...p, leaderId: e.target.value }))}
-          className="w-full rounded-lg border border-[#cfd8bd] bg-white px-3.5 py-2.5 text-xs font-bold text-[#37412a] dark:text-[#e4e9d8] dark:border-[#414a33] dark:bg-[#1a1d16] outline-none focus:border-[#5c6e46] focus:ring-2 focus:ring-[#5c6e46]/20"
-        >
-          <option value="">— Select Leader —</option>
-          {(eligibleTeamMembers || []).map((m) => (
-            <option key={m.id || m._id} value={m.id || m._id}>
-              {m.name} {m.rollNumber ? `(${m.rollNumber})` : ''}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label className="block font-extrabold text-[#37412a] dark:text-[#e4e9d8] mb-1">
-          Group Members <span className="text-[#71805a]">({groupForm.memberIds.length} selected)</span>
-        </label>
-        <div className="max-h-48 overflow-y-auto rounded-lg border border-[#cfd8bd] dark:border-[#414a33] bg-[#fafbf5] dark:bg-[#1a1d16] divide-y divide-[#e8efd9] dark:divide-[#2e3722]">
-          {(eligibleTeamMembers || []).map((m) => {
-            const id = String(m.id || m._id);
-            const checked = groupForm.memberIds.includes(id);
-            return (
-              <label
-                key={id}
-                className="flex items-center gap-3 px-3 py-2 hover:bg-[#f0f4e8] dark:hover:bg-[#20251a] cursor-pointer transition"
-              >
-                <div className={`h-4 w-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${checked ? 'bg-[#5c6e46] border-[#5c6e46]' : 'border-[#cfd8bd] dark:border-[#414a33]'}`}>
-                  {checked && <Check size={11} className="text-white" />}
-                </div>
-                <input type="checkbox" className="hidden" checked={checked} onChange={() => toggleMember(id)} />
-                <Avatar name={m.name} size="sm" colorIdx={(m.rollNumber || '').charCodeAt(0)} />
-                <div className="min-w-0 flex-1">
-                  <div className="font-extrabold text-[#37412a] dark:text-[#e4e9d8] truncate">{m.name}</div>
-                  {m.rollNumber && <div className="text-[10px] text-[#71805a] font-mono">Roll: {m.rollNumber}</div>}
-                </div>
-              </label>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-10">
       {/* Header & Lab Switcher */}
@@ -541,7 +481,7 @@ export default function LabGroupsPage() {
       )}
 
       {/* Create Group Modal */}
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Create New Lab Group">
+      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Create New Lab Group" panelClassName="max-w-4xl">
         <GroupFormContent />
         <div className="flex justify-end gap-3 mt-5 pt-4 border-t border-[#e4eed3] dark:border-[#2e3722]">
           <button 
@@ -563,7 +503,7 @@ export default function LabGroupsPage() {
       </Modal>
 
       {/* Edit Group Modal */}
-      <Modal open={editOpen} onClose={() => setEditOpen(false)} title={`Edit Group: ${editingTeam?.name}`}>
+      <Modal open={editOpen} onClose={() => setEditOpen(false)} title={`Edit Group: ${editingTeam?.name}`} panelClassName="max-w-4xl">
         <GroupFormContent />
         <div className="flex justify-end gap-3 mt-5 pt-4 border-t border-[#e4eed3] dark:border-[#2e3722]">
           <button 
