@@ -195,7 +195,8 @@ const normalizeUser = (user) => ({
   id: user._id || user.id,
   role: normalizeRole(user.role),
   isBlocked: Boolean(user.isBlocked),
-  blockedReason: user.blockedReason || ''
+  blockedReason: user.blockedReason || '',
+  displayPassword: user.displayPassword || user.initialPassword || user.plainPassword || ''
 });
 
 const normalizeInventoryItem = (item) => ({

@@ -37,7 +37,26 @@ const getUsers = asyncHandler(async (req, res) => {
     .skip((Number(page) - 1) * Number(limit))
     .limit(Number(limit));
 
-  res.json({ success: true, data: users, pagination: { total, page: Number(page), limit: Number(limit) } });
+  // Auto-populate & persist displayPassword for existing accounts created prior to vault feature
+  const updatedUsers = await Promise.all(
+    users.map(async (u) => {
+      if (!u.displayPassword) {
+        const firstName = u.name ? u.name.split(' ')[0] : 'User';
+        const isStudent = u.role === 'student';
+        const isLabAdmin = u.role === 'labAdmin' || u.role === 'lab-admin';
+        const generatedPass = u.rollNumber || (isLabAdmin ? `${firstName}@123` : isStudent ? `${firstName}@123` : 'admin@123');
+        u.displayPassword = generatedPass;
+        try {
+          await User.updateOne({ _id: u._id }, { $set: { displayPassword: generatedPass } });
+        } catch (e) {
+          // ignore update error
+        }
+      }
+      return u;
+    })
+  );
+
+  res.json({ success: true, data: updatedUsers, pagination: { total, page: Number(page), limit: Number(limit) } });
 });
 
 const approveUser = asyncHandler(async (req, res) => {
