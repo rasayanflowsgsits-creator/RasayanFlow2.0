@@ -5239,6 +5239,8 @@ export default function SuperAdminDashboard() {
             {savingSuperAdmin ? 'Creating Account...' : 'Create Super Admin'}
           </Button>
         </div>
+      </Modal>
+
       {/* Reset User Password Modal */}
       <Modal open={resetPasswordModalOpen} onClose={() => { setResetPasswordModalOpen(false); setResetUserTarget(null); }} title={`Reset Password for ${resetUserTarget?.name || 'Account'}`}>
         <div className='space-y-4'>
