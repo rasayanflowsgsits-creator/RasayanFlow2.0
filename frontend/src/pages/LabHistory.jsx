@@ -387,80 +387,82 @@ export default function LabHistory() {
       </div>
 
       {/* TOP SECTION: Month & Year Selectors + Quick Presets Filter Control Card */}
-      <Card className="border-[#d9e1ca] dark:border-[#414a33]">
-        <div className="space-y-3">
-          <div className="flex flex-col lg:flex-row gap-3 justify-between items-stretch lg:items-center">
-            {/* Search bar */}
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#87996c]" size={15} />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search chemical, receipt, student..."
-                className="w-full pl-9 pr-3 py-2 rounded-xl border border-[#d9e1ca] bg-white dark:bg-[#1a1d16] dark:border-[#414a33] text-xs font-semibold text-[#37412a] dark:text-[#e4e9d8] outline-none focus:ring-2 focus:ring-[#5c6e46]/20"
-              />
-            </div>
-
-            {/* Organized Year & Month Dropdowns */}
-            <div className="flex flex-wrap items-center gap-2.5">
-              {/* Year Selector */}
-              <div className="flex items-center gap-1.5 bg-[#f4f6ee] dark:bg-[#1a1d16] px-3 py-1.5 rounded-xl border border-[#d9e1ca] dark:border-[#414a33]">
-                <Calendar size={14} className="text-[#5c6e46]" />
-                <span className="text-xs font-extrabold text-[#71805a]">Year:</span>
-                <select
-                  value={selectedYear}
-                  onChange={(e) => {
-                    setSelectedYear(e.target.value);
-                    setDateFilter(0); // reset preset when picking year
-                  }}
-                  className="bg-transparent text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8] outline-none cursor-pointer"
-                >
-                  {YEARS.map((y) => (
-                    <option key={y} value={y} className="bg-white dark:bg-[#1a1d16]">
-                      {y === 'ALL' ? 'All Years (2026-2056)' : y}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Month Selector */}
-              <div className="flex items-center gap-1.5 bg-[#f4f6ee] dark:bg-[#1a1d16] px-3 py-1.5 rounded-xl border border-[#d9e1ca] dark:border-[#414a33]">
-                <CalendarDays size={14} className="text-[#5c6e46]" />
-                <span className="text-xs font-extrabold text-[#71805a]">Month:</span>
-                <select
-                  value={selectedMonth}
-                  onChange={(e) => {
-                    setSelectedMonth(e.target.value);
-                    setDateFilter(0); // reset preset when picking month
-                  }}
-                  className="bg-transparent text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8] outline-none cursor-pointer"
-                >
-                  {MONTHS.map((m) => (
-                    <option key={m.value} value={m.value} className="bg-white dark:bg-[#1a1d16]">
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Sort Order */}
-              <select
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value)}
-                className="rounded-xl border border-[#d9e1ca] dark:border-[#414a33] bg-white dark:bg-[#1a1d16] px-3 py-2 text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8] outline-none"
-              >
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-              </select>
-            </div>
+      <div className="rounded-xl border border-[#d9e1ca] dark:border-[#414a33] bg-[#fffef8] dark:bg-[#1a1d16] p-4 shadow-2xs space-y-3.5">
+        {/* Row 1: Search + Year + Month + Sort Controls */}
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          {/* Search Input */}
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#87996c]" size={14} />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search chemical, receipt, student..."
+              className="w-full pl-9 pr-3 py-2 rounded-lg border border-[#cfd8bd] bg-white dark:bg-[#1a1d16] dark:border-[#414a33] text-xs font-semibold text-[#37412a] dark:text-[#e4e9d8] outline-none focus:border-[#5c6e46] focus:ring-2 focus:ring-[#5c6e46]/20 transition-all"
+            />
           </div>
 
-          {/* Quick Presets Buttons */}
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[#e4eed3] dark:border-[#2e3722]">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-extrabold text-[#71805a] mr-1">Quick Presets:</span>
-              {PRESETS.map((p) => (
+          {/* Controls Cluster */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Year Selector */}
+            <div className="flex items-center gap-1.5 bg-white dark:bg-[#20251a] px-3 py-1.5 rounded-lg border border-[#cfd8bd] dark:border-[#414a33]">
+              <Calendar size={13} className="text-[#5c6e46]" />
+              <span className="text-xs font-extrabold text-[#71805a]">Year:</span>
+              <select
+                value={selectedYear}
+                onChange={(e) => {
+                  setSelectedYear(e.target.value);
+                  setDateFilter(0);
+                }}
+                className="bg-transparent text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8] outline-none cursor-pointer"
+              >
+                {YEARS.map((y) => (
+                  <option key={y} value={y} className="bg-white dark:bg-[#1a1d16]">
+                    {y === 'ALL' ? 'All Years (2026-2056)' : y}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Month Selector */}
+            <div className="flex items-center gap-1.5 bg-white dark:bg-[#20251a] px-3 py-1.5 rounded-lg border border-[#cfd8bd] dark:border-[#414a33]">
+              <CalendarDays size={13} className="text-[#5c6e46]" />
+              <span className="text-xs font-extrabold text-[#71805a]">Month:</span>
+              <select
+                value={selectedMonth}
+                onChange={(e) => {
+                  setSelectedMonth(e.target.value);
+                  setDateFilter(0);
+                }}
+                className="bg-transparent text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8] outline-none cursor-pointer"
+              >
+                {MONTHS.map((m) => (
+                  <option key={m.value} value={m.value} className="bg-white dark:bg-[#1a1d16]">
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Sort Order */}
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              className="rounded-lg border border-[#cfd8bd] dark:border-[#414a33] bg-white dark:bg-[#20251a] px-3 py-2 text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8] outline-none cursor-pointer"
+            >
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Row 2: Quick Presets & Active Period Status */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 pt-3 border-t border-[#e4eed3] dark:border-[#2e3722]">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-extrabold text-[#71805a] mr-1 uppercase tracking-wider">Quick Presets:</span>
+            {PRESETS.map((p) => {
+              const isActive = dateFilter === p.days && selectedYear === 'ALL' && selectedMonth === 'ALL';
+              return (
                 <button
                   key={p.label}
                   type="button"
@@ -469,24 +471,26 @@ export default function LabHistory() {
                     setSelectedYear('ALL');
                     setSelectedMonth('ALL');
                   }}
-                  className={`px-3.5 py-1 text-xs font-extrabold rounded-xl transition ${
-                    dateFilter === p.days && selectedYear === 'ALL' && selectedMonth === 'ALL'
-                      ? 'bg-[#5c6e46] text-white shadow-2xs dark:bg-[#e4e9d8] dark:text-[#20251a]'
-                      : 'bg-[#f4f6ee] text-[#5c6e46] border border-[#d9e1ca] hover:bg-white dark:bg-[#1a1d16] dark:text-[#a8be8a] dark:border-[#414a33]'
+                  className={`px-3 py-1 rounded-lg text-xs font-extrabold transition-all border ${
+                    isActive
+                      ? 'bg-[#5c6e46] text-white border-[#5c6e46] dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                      : 'bg-white text-[#5c6e46] border-[#cfd8bd] hover:bg-[#f4f6ee] dark:bg-[#20251a] dark:text-[#a8be8a] dark:border-[#414a33]'
                   }`}
                 >
                   {p.label}
                 </button>
-              ))}
-            </div>
+              );
+            })}
+          </div>
 
-            {/* Active Selected Period Badge */}
-            <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#5c6e46] dark:text-[#a8be8a] bg-[#f4f6ee] dark:bg-[#1a1d16] px-3 py-1 rounded-xl border border-[#d9e1ca] dark:border-[#414a33]">
-              <CalendarDays size={14} /> Active Period: <span>{selectedPeriodLabel}</span>
-            </div>
+          {/* Active Period Badge */}
+          <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#5c6e46] dark:text-[#a8be8a] bg-[#f4f6ee] dark:bg-[#20251a] px-3 py-1 rounded-lg border border-[#cfd8bd] dark:border-[#414a33]">
+            <CalendarDays size={13} />
+            <span>Active Period:</span>
+            <span className="font-black text-[#37412a] dark:text-[#e4e9d8]">{selectedPeriodLabel}</span>
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* MIDDLE SECTION: 4 Dynamic Stat Cards (Works dynamically with top filters!) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
