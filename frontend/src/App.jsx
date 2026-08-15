@@ -244,6 +244,7 @@ function App() {
                     <Route path='store' element={<Navigate to='/' replace />} />
                     <Route path='my-borrowings' element={isStudent ? <StudentBorrowingsPage /> : <Navigate to='/' replace />} />
                     <Route path='approval' element={isSuperAdmin ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
+                    <Route path='user-credentials' element={isSuperAdmin ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='master-chemicals' element={isSuperAdmin ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='curriculum' element={isSuperAdmin ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='store-oversight' element={isSuperAdmin ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />

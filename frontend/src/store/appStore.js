@@ -846,6 +846,11 @@ const useAppStore = create((set) => ({
     const response = await api.put(`/users/approve/${userId}`);
     return normalizeUser(getPayload(response.data));
   },
+  resetUserPassword: async (userId, newPassword) => {
+    const response = await api.put(`/users/reset-password/${userId}`, { newPassword });
+    await useAppStore.getState().fetchUsers();
+    return getPayload(response.data);
+  },
   fetchActivityLogs: async () => {
     try {
       const response = await api.get('/logs?limit=500');

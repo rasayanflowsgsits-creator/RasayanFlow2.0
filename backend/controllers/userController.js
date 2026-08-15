@@ -190,4 +190,31 @@ const createStoreAdmin = asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, data: serializeUser(user) });
 });
 
-module.exports = { getUsers, approveUser, setUserBlockedState, createSuperAdmin, createLabAdmin, createStoreAdmin };
+const resetUserPassword = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const { newPassword } = req.body;
+
+  if (!newPassword || newPassword.length < 4) {
+    res.status(400);
+    throw new Error('Password must be at least 4 characters');
+  }
+
+  const user = await User.findById(userId);
+  if (!user) {
+    res.status(404);
+    throw new Error('User account not found');
+  }
+
+  user.password = newPassword;
+  await user.save();
+
+  await ActivityLog.create({
+    userId: req.user._id,
+    action: 'reset_user_password',
+    details: `Super Admin reset password for ${user.email} (${user.role})`,
+  });
+
+  res.json({ success: true, message: `Password reset successfully for ${user.name}` });
+});
+
+module.exports = { getUsers, approveUser, setUserBlockedState, createSuperAdmin, createLabAdmin, createStoreAdmin, resetUserPassword };
