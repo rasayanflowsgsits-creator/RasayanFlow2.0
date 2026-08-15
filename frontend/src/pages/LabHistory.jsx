@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Download, Search, Calendar, FileText, ArrowDownRight, ArrowUpRight, Filter } from 'lucide-react';
+import { Download, Search, Calendar, FileText, ArrowDownRight, ArrowUpRight, Filter, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import useAppStore from '../store/appStore';
@@ -227,11 +227,19 @@ export default function LabHistory() {
   return (
     <div className="space-y-6 pb-10 max-w-7xl mx-auto">
       {/* Header & Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[#e4eed3] pb-4 dark:border-[#2e3722]">
         <div>
-          <h2 className="text-2xl font-bold text-[#3c4e23] dark:text-[#eef4e8]">Lab History & Audit Log</h2>
-          <p className="mt-1 text-sm text-[#71805a] dark:text-[#c5d0b5]">
-            Complete chronological record of all stock receipts and chemical disbursements.
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#87996c] dark:text-[#7a8f62]">
+            <span>Pharma Laboratory</span>
+            <ChevronRight size={12} />
+            <span className="text-[#5c6e46] dark:text-[#a8be8a] font-bold">Transaction Logs &amp; Audit Trail</span>
+          </div>
+          <h2 className="text-2xl font-black text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2 mt-0.5">
+            <CheckCircle2 size={24} className="text-[#5c6e46]" />
+            Lab Transactions &amp; History
+          </h2>
+          <p className="mt-0.5 text-xs font-semibold text-[#71805a] dark:text-[#a5b48b]">
+            Complete chronological transaction log of all stock receipts from Central Store &amp; chemical disbursements to students.
           </p>
         </div>
         <div className="flex items-center gap-2">

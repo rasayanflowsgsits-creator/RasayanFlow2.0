@@ -224,7 +224,7 @@ function App() {
                     <Route path='labs' element={isSuperAdmin ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='inventory' element={isLabAdmin ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='analytics' element={isLabAdmin ? <LabAnalyticsPage /> : <Navigate to='/' replace />} />
-                    <Route path='transactions' element={isLabAdmin ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
+                    <Route path='transactions' element={isLabAdmin ? <LabHistory /> : <Navigate to='/' replace />} />
                     <Route path='lab/experiments' element={isLabAdmin ? <LabExperimentsPage /> : <Navigate to='/' replace />} />
                     <Route path='lab/student-requests' element={isLabAdmin ? <LabStudentRequestsPage /> : <Navigate to='/' replace />} />
                     <Route path='lab/groups' element={isLabAdmin ? <LabGroupsPage /> : <Navigate to='/' replace />} />
