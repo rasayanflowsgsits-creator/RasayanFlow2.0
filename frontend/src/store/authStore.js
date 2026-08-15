@@ -127,6 +127,26 @@ const useAuthStore = create((set) => ({
     set({ user: previewUser, token: dummyToken, loading: false, error: null, initialized: true });
     return previewUser;
   },
+  loginAsPreviewPhDStudent: () => {
+    const previewUser = {
+      id: 'preview-phd-id',
+      _id: 'preview-phd-id',
+      name: 'Harsh Scholar (PhD)',
+      email: 'phd.scholar@rasayanflow.local',
+      role: 'student',
+      course: 'PhD',
+      year: '1',
+      isApproved: true,
+      onboardingComplete: true,
+      isPreview: true,
+      isPhD: true
+    };
+    const dummyToken = 'preview-phd-token';
+    saveToken(dummyToken);
+    saveUser(previewUser);
+    set({ user: previewUser, token: dummyToken, loading: false, error: null, initialized: true });
+    return previewUser;
+  },
   logout: () => {
     clearAuthSession();
   },
