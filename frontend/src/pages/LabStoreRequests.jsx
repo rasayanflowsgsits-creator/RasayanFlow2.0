@@ -440,24 +440,41 @@ export default function LabStoreRequests() {
         </div>
       </div>
 
-      {/* STREAMLINED CLEAN NEW STORE REQUEST MODAL (4 Clean Fields) */}
+      {/* ULTRA PREMIUM LARGE & CLEAN NEW STORE REQUEST MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-[#fffef8] dark:bg-[#20251a] rounded-3xl w-full max-w-md p-6 border border-[#d9e1ca] dark:border-[#414a33] shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
-            <div>
-              <h3 className="text-lg font-black text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2">
-                <FlaskConical size={20} className="text-[#5c6e46]" />
-                New Store Request
-              </h3>
-              <p className="text-xs font-semibold text-[#71805a] dark:text-[#a5b48b] mt-0.5">
-                Send a chemical stock transfer request to Central Store
-              </p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 sm:p-6 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-[#fffef8] dark:bg-[#1a1d16] rounded-[32px] w-full max-w-xl p-6 sm:p-8 border border-[#d9e1ca] dark:border-[#414a33] shadow-2xl space-y-6 animate-in zoom-in-95 duration-200 relative">
+            
+            {/* Top Close Button */}
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="absolute right-6 top-6 p-2 rounded-full text-[#71805a] hover:text-[#37412a] hover:bg-[#f4f6ee] dark:hover:bg-[#28301f] transition-all"
+            >
+              <XCircle size={22} />
+            </button>
+
+            {/* Modal Header */}
+            <div className="flex items-center gap-3 border-b border-[#e4eed3] pb-4 dark:border-[#2e3722]">
+              <div className="p-3.5 rounded-2xl bg-[#5c6e46]/10 text-[#5c6e46] dark:bg-[#e4e9d8]/10 dark:text-[#a8be8a]">
+                <FlaskConical size={28} />
+              </div>
+              <div>
+                <h3 className="text-xl sm:text-2xl font-black text-[#37412a] dark:text-[#e4e9d8]">
+                  New Store Request
+                </h3>
+                <p className="text-xs sm:text-sm font-semibold text-[#71805a] dark:text-[#a5b48b]">
+                  Send a chemical stock transfer request to Central Store
+                </p>
+              </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Form Body */}
+            <form onSubmit={handleSubmit} className="space-y-5">
+              
               {/* Field 1: Chemical Name */}
-              <div>
-                <label className="block text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8] mb-1">
+              <div className="space-y-1.5">
+                <label className="block text-sm font-extrabold text-[#37412a] dark:text-[#e4e9d8]">
                   Chemical Name <span className="text-rose-600">*</span>
                 </label>
                 <input 
@@ -465,29 +482,55 @@ export default function LabStoreRequests() {
                   type="text" 
                   value={formData.chemicalName} 
                   onChange={(e) => setFormData({...formData, chemicalName: e.target.value})} 
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#d9e1ca] bg-white dark:bg-[#1a1d16] dark:border-[#414a33] text-xs font-semibold text-[#37412a] dark:text-[#e4e9d8] focus:ring-2 focus:ring-[#5c6e46]/20 focus:border-[#5c6e46] outline-none" 
-                  placeholder="e.g. Sodium Chloride / Acetone / Salicylic Acid" 
+                  className="w-full px-4 py-3.5 rounded-2xl border-2 border-[#d9e1ca] bg-white dark:bg-[#20251a] dark:border-[#414a33] text-sm font-bold text-[#37412a] dark:text-[#e4e9d8] placeholder:text-[#8a9970] focus:ring-4 focus:ring-[#5c6e46]/15 focus:border-[#5c6e46] transition-all outline-none" 
+                  placeholder="e.g. Sodium Chloride, Acetone, Ethanol..." 
                 />
+
+                {/* Quick Autofill Presets */}
+                <div className="pt-1.5 flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-[#87996c] mr-1">Quick Suggestions:</span>
+                  {[
+                    { name: 'Sodium Chloride', cas: '7647-14-5', unit: 'g' },
+                    { name: 'Ethanol (95%)', cas: '64-17-5', unit: 'ml' },
+                    { name: 'Hydrochloric Acid', cas: '7647-01-0', unit: 'ml' },
+                    { name: 'Acetone', cas: '67-64-1', unit: 'ml' },
+                    { name: 'Salicylic Acid', cas: '69-72-7', unit: 'g' },
+                  ].map((preset) => (
+                    <button
+                      key={preset.name}
+                      type="button"
+                      onClick={() => setFormData({
+                        chemicalName: preset.name,
+                        casNumber: preset.cas,
+                        quantity: formData.quantity || '500',
+                        unit: preset.unit
+                      })}
+                      className="px-2.5 py-1 rounded-xl text-[11px] font-extrabold bg-[#f4f6ee] text-[#5c6e46] hover:bg-[#5c6e46] hover:text-white border border-[#d9e1ca] dark:bg-[#20251a] dark:text-[#a8be8a] dark:border-[#414a33] transition-all"
+                    >
+                      + {preset.name}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Field 2: CAS Number */}
-              <div>
-                <label className="block text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8] mb-1">
-                  CAS Number <span className="text-[#71805a] font-normal">(Optional)</span>
+              <div className="space-y-1.5">
+                <label className="block text-sm font-extrabold text-[#37412a] dark:text-[#e4e9d8]">
+                  CAS Number <span className="text-[#71805a] font-semibold text-xs">(Optional)</span>
                 </label>
                 <input 
                   type="text" 
                   value={formData.casNumber} 
                   onChange={(e) => setFormData({...formData, casNumber: e.target.value})} 
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#d9e1ca] bg-white dark:bg-[#1a1d16] dark:border-[#414a33] text-xs font-mono font-semibold text-[#37412a] dark:text-[#e4e9d8] focus:ring-2 focus:ring-[#5c6e46]/20 focus:border-[#5c6e46] outline-none" 
+                  className="w-full px-4 py-3.5 rounded-2xl border-2 border-[#d9e1ca] bg-white dark:bg-[#20251a] dark:border-[#414a33] text-sm font-mono font-bold text-[#37412a] dark:text-[#e4e9d8] placeholder:text-[#8a9970] focus:ring-4 focus:ring-[#5c6e46]/15 focus:border-[#5c6e46] transition-all outline-none" 
                   placeholder="e.g. 7647-14-5" 
                 />
               </div>
 
               {/* Fields 3 & 4: Quantity & Unit */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8] mb-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-extrabold text-[#37412a] dark:text-[#e4e9d8]">
                     Quantity <span className="text-rose-600">*</span>
                   </label>
                   <input 
@@ -497,19 +540,20 @@ export default function LabStoreRequests() {
                     step="any" 
                     value={formData.quantity} 
                     onChange={(e) => setFormData({...formData, quantity: e.target.value})} 
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#d9e1ca] bg-white dark:bg-[#1a1d16] dark:border-[#414a33] text-xs font-mono font-semibold text-[#37412a] dark:text-[#e4e9d8] focus:ring-2 focus:ring-[#5c6e46]/20 focus:border-[#5c6e46] outline-none" 
+                    className="w-full px-4 py-3.5 rounded-2xl border-2 border-[#d9e1ca] bg-white dark:bg-[#20251a] dark:border-[#414a33] text-sm font-mono font-bold text-[#37412a] dark:text-[#e4e9d8] placeholder:text-[#8a9970] focus:ring-4 focus:ring-[#5c6e46]/15 focus:border-[#5c6e46] transition-all outline-none" 
                     placeholder="e.g. 500" 
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8] mb-1">
+
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-extrabold text-[#37412a] dark:text-[#e4e9d8]">
                     Unit <span className="text-rose-600">*</span>
                   </label>
                   <select 
                     required 
                     value={formData.unit} 
                     onChange={(e) => setFormData({...formData, unit: e.target.value})} 
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#d9e1ca] bg-white dark:bg-[#1a1d16] dark:border-[#414a33] text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8] focus:ring-2 focus:ring-[#5c6e46]/20 focus:border-[#5c6e46] outline-none"
+                    className="w-full px-4 py-3.5 rounded-2xl border-2 border-[#d9e1ca] bg-white dark:bg-[#20251a] dark:border-[#414a33] text-sm font-black text-[#37412a] dark:text-[#e4e9d8] focus:ring-4 focus:ring-[#5c6e46]/15 focus:border-[#5c6e46] transition-all outline-none"
                   >
                     {UNIT_OPTIONS.map((u) => (
                       <option key={u} value={u}>{u}</option>
@@ -518,24 +562,25 @@ export default function LabStoreRequests() {
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-2.5 pt-3">
+              {/* Action Controls */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#e4eed3] dark:border-[#2e3722]">
                 <button 
                   type="button" 
                   onClick={() => setIsModalOpen(false)} 
-                  className="rounded-xl border border-[#d9e1ca] bg-white px-4 py-2.5 text-xs font-bold text-[#5c6e46] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:bg-[#1a1d16] dark:text-[#a8be8a] transition-colors"
+                  className="rounded-2xl border-2 border-[#d9e1ca] bg-white px-6 py-3.5 text-sm font-extrabold text-[#5c6e46] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#a8be8a] transition-all"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
                   disabled={submitting}
-                  className="rounded-xl bg-[#5c6e46] hover:bg-[#4a5e2a] px-5 py-2.5 text-xs font-extrabold text-white shadow-md transition-all flex items-center gap-1.5"
+                  className="rounded-2xl bg-gradient-to-r from-[#5c6e46] to-[#455532] hover:from-[#4b5b38] hover:to-[#384628] px-8 py-3.5 text-sm font-black text-white shadow-lg shadow-[#5c6e46]/20 transition-all flex items-center gap-2"
                 >
-                  {submitting ? 'Submitting...' : 'Submit Request'}
+                  {submitting ? 'Submitting...' : 'Submit Store Request'}
                 </button>
               </div>
             </form>
+
           </div>
         </div>
       )}
