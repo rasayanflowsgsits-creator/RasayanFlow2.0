@@ -81,6 +81,7 @@ export default function Sidebar({ collapsed, isDark, toggleTheme }) {
   const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
 
   const role = user?.role || "student";
+  const isPhD = user?.course === 'PhD' || user?.isPhD;
   const navRole = (role === "store-admin" || role === "store_admin" || role === "storeAdmin") 
     ? "store_admin" 
     : (role === "lab-admin" || role === "labAdmin" || role === "lab_admin") 
@@ -88,6 +89,14 @@ export default function Sidebar({ collapsed, isDark, toggleTheme }) {
     : (role === "super-admin" || role === "superAdmin") 
     ? "super-admin" 
     : role;
+
+  const currentLinks = linksMap[navRole]?.map(item => {
+    if (navRole === 'student' && isPhD) {
+      if (item.to === '/') return { ...item, label: 'Request Chemical to Store', icon: FlaskConical };
+      if (item.to === '/my-borrowings') return { ...item, label: 'Requisition History', icon: History };
+    }
+    return item;
+  }) || [];
   
   const [storeInventory, setStoreInventory] = useState([]);
   const alertThreshold = 15;
@@ -158,7 +167,7 @@ export default function Sidebar({ collapsed, isDark, toggleTheme }) {
 
           {/* NAVIGATION LINKS */}
           <nav className="space-y-1.5 w-full">
-            {linksMap[navRole]?.map((item) => {
+            {currentLinks.map((item) => {
               const Icon = item.icon;
               return (
                 <NavLink

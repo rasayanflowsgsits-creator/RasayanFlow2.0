@@ -9,13 +9,26 @@ const storeRequestSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Lab"
   },
-  labName: { type: String, required: true },
+  labName: { type: String, default: "PhD Research Scholar" },
+  studentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User"
+  },
+  studentName: { type: String },
   chemicalName: { type: String, required: true },
   chemicalId: { type: String },
   casNumber: { type: String },
   quantityRequested: { type: Number, required: true },
   unit: { type: String, required: true },
   reason: { type: String },
+  projectThesisName: { type: String },
+  supervisorName: { type: String },
+  requestType: {
+    type: String,
+    enum: ["Lab Requisition", "PhD Research", "Higher Scholar"],
+    default: "Lab Requisition"
+  },
+  course: { type: String, default: "PhD" },
   requiredBy: { type: Date },
   status: {
     type: String,

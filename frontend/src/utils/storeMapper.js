@@ -72,7 +72,7 @@ export const toBackendChemical = (chem) => ({
 
 export const toFrontendRequest = (req) => ({
   id: req._id || req.requestId || req.id,
-  lab: req.labName || (req.labId ? req.labId.name : null) || 'Unknown Lab',
+  lab: req.labName || (req.labId ? req.labId.name : null) || 'PhD Research Scholar',
   chemicalName: req.chemicalName || '',
   chemicalId: req.chemicalId || '',
   casNumber: req.casNumber || '',
@@ -82,6 +82,11 @@ export const toFrontendRequest = (req) => ({
   date: req.requestedAt || req.createdAt || new Date().toISOString(),
   receiptNumber: req.receiptNumber || '',
   reason: req.reason || '',
+  requestType: req.requestType || (req.course === 'PhD' ? 'PhD Research' : 'Lab Requisition'),
+  studentName: req.studentName || '',
+  projectThesisName: req.projectThesisName || '',
+  supervisorName: req.supervisorName || '',
+  course: req.course || '',
   _raw: req
 });
 

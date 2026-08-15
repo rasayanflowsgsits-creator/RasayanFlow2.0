@@ -21,35 +21,56 @@ const buildTrackingLog = (chemical, updateType, previousQty, previousPrice, newQ
   const stockData = totalStock(newQty, chemical.packSize);
   const totalChemStr = newQty ? `${stockData.total} ${stockData.unit}` : '--';
   return {
-  chemicalId: chemical.chemicalId,
-  chemicalName: chemical.name,
-  casNumber: chemical.cas || '',
-  formula: chemical.formula || '',
-  smiles: chemical.smiles || '',
-  grade: chemical.grade || '',
-  packSize: chemical.packSize || '',
-  updateType,
-  previousQty: safeRound(previousQty),
-  newQty: safeRound(newQty),
-  qtyChange: safeRound(newQty - previousQty),
-  previousPrice: safeRound(previousPrice),
-  newPrice: safeRound(newPrice),
-  totalChemical: totalChemStr,
-  totalPrice: safeRound(newQty * newPrice),
-  totalValue: safeRound(newQty * newPrice),
-  status: calculateStatus(newQty, chemical.reorderLevel),
-  snapshot: typeof chemical.toObject === 'function' ? chemical.toObject() : chemical,
-};
+    chemicalId: chemical.chemicalId,
+    chemicalName: chemical.name,
+    casNumber: chemical.cas || '',
+    formula: chemical.formula || '',
+    smiles: chemical.smiles || '',
+    grade: chemical.grade || '',
+    packSize: chemical.packSize || '',
+    updateType,
+    previousQty: safeRound(previousQty),
+    newQty: safeRound(newQty),
+    qtyChange: safeRound(newQty - previousQty),
+    previousPrice: safeRound(previousPrice),
+    newPrice: safeRound(newPrice),
+    totalChemical: totalChemStr,
+    totalPrice: safeRound(newQty * newPrice),
+    totalValue: safeRound(newQty * newPrice),
+    status: calculateStatus(newQty, chemical.reorderLevel),
+    snapshot: typeof chemical.toObject === 'function' ? chemical.toObject() : chemical,
+  };
 };
 
 const createRequest = asyncHandler(async (req, res) => {
-  const requestData = req.body;
-  
+  const requestData = { ...req.body };
   const timestamp = Date.now();
   requestData.requestId = `REQ-${timestamp}`;
-  requestData.labId = req.user.labId; 
-  
+  if (req.user?.labId) {
+    requestData.labId = req.user.labId;
+  }
+  requestData.studentId = req.user?._id;
+  requestData.studentName = req.user?.name || req.user?.email || 'PhD Scholar';
+
+  if (req.body.isPhD || req.body.requestType === 'PhD Research' || req.user?.course === 'PhD' || req.body.isPhDRequest) {
+    requestData.requestType = 'PhD Research';
+    requestData.course = 'PhD';
+    requestData.labName = requestData.labName || 'PhD Research Scholar';
+  }
+
   const newRequest = await StoreRequest.create(requestData);
+
+  // Emit socket event to store manager
+  const io = getIo();
+  if (io) {
+    io.emit('store:new_request', {
+      requestId: newRequest.requestId,
+      itemName: newRequest.chemicalName,
+      studentName: newRequest.studentName,
+      requestType: newRequest.requestType
+    });
+  }
+
   res.status(201).json(newRequest);
 });
 
@@ -58,26 +79,18 @@ const getAllRequests = asyncHandler(async (req, res) => {
 
   if (requests.length === 0) {
     const Lab = require('../models/Lab');
-    const StoreInventory = require('../models/StoreInventory');
     const labs = await Lab.find({});
     const storeChems = await StoreInventory.find({});
 
     const lab1 = labs[0] || { _id: new mongoose.Types.ObjectId(), labName: 'Pharmaceutics Lab - I' };
     const lab2 = labs[1] || { _id: new mongoose.Types.ObjectId(), labName: 'Pharmaceutical Analysis Lab' };
-    const lab3 = labs[2] || { _id: new mongoose.Types.ObjectId(), labName: 'Medicinal Chemistry Lab' };
 
     const chem1 = storeChems[0] || { _id: 'c1', name: 'Paracetamol IP', unitPrice: 140, unit: 'g' };
     const chem2 = storeChems[1] || { _id: 'c2', name: 'Hydrochloric Acid 0.1M', unitPrice: 85, unit: 'mL' };
-    const chem3 = storeChems[2] || { _id: 'c3', name: 'Ethanol 99.9% Absolute', unitPrice: 210, unit: 'mL' };
-    const chem4 = storeChems[3] || { _id: 'c4', name: 'Sodium Hydroxide Pellets', unitPrice: 95, unit: 'g' };
 
     const sampleRequests = [
-      { requestId: 'REQ-2026-001', labId: lab1._id, labName: lab1.labName || lab1.name, chemicalName: chem1.name, chemicalId: chem1.chemicalId || 'c1', quantityRequested: 500, unit: 'g', status: 'Approved', requestedAt: new Date(Date.now() - 5 * 86400000), approvedAt: new Date(Date.now() - 4 * 86400000), receiptNumber: 'REC-2026-101', estimatedCost: 70000 },
-      { requestId: 'REQ-2026-002', labId: lab2._id, labName: lab2.labName || lab2.name, chemicalName: chem2.name, chemicalId: chem2.chemicalId || 'c2', quantityRequested: 1000, unit: 'mL', status: 'Approved', requestedAt: new Date(Date.now() - 4 * 86400000), approvedAt: new Date(Date.now() - 3 * 86400000), receiptNumber: 'REC-2026-102', estimatedCost: 85000 },
-      { requestId: 'REQ-2026-003', labId: lab1._id, labName: lab1.labName || lab1.name, chemicalName: chem3.name, chemicalId: chem3.chemicalId || 'c3', quantityRequested: 2500, unit: 'mL', status: 'Approved', requestedAt: new Date(Date.now() - 3 * 86400000), approvedAt: new Date(Date.now() - 2 * 86400000), receiptNumber: 'REC-2026-103', estimatedCost: 525000 },
-      { requestId: 'REQ-2026-004', labId: lab3._id, labName: lab3.labName || lab3.name, chemicalName: chem4.name, chemicalId: chem4.chemicalId || 'c4', quantityRequested: 200, unit: 'g', status: 'Pending', requestedAt: new Date(Date.now() - 1 * 86400000), estimatedCost: 19000 },
-      { requestId: 'REQ-2026-005', labId: lab2._id, labName: lab2.labName || lab2.name, chemicalName: chem1.name, chemicalId: chem1.chemicalId || 'c1', quantityRequested: 150, unit: 'g', status: 'Pending', requestedAt: new Date(), estimatedCost: 21000 },
-      { requestId: 'REQ-2026-006', labId: lab3._id, labName: lab3.labName || lab3.name, chemicalName: chem2.name, chemicalId: chem2.chemicalId || 'c2', quantityRequested: 500, unit: 'mL', status: 'Rejected', requestedAt: new Date(Date.now() - 2 * 86400000), rejectedAt: new Date(Date.now() - 1 * 86400000), rejectionReason: 'Stock reserved for scheduled practical exam', estimatedCost: 42500 }
+      { requestId: 'REQ-2026-001', labId: lab1._id, labName: lab1.labName || lab1.name, chemicalName: chem1.name, chemicalId: chem1.chemicalId || 'c1', quantityRequested: 500, unit: 'g', status: 'Approved', requestedAt: new Date(Date.now() - 5 * 86400000), approvedAt: new Date(Date.now() - 4 * 86400000), receiptNumber: 'REC-2026-101', estimatedCost: 70000, requestType: 'Lab Requisition' },
+      { requestId: 'REQ-2026-002', labName: 'PhD Research Scholar', chemicalName: 'Silver Nitrate 0.1N', quantityRequested: 100, unit: 'mL', reason: 'Synthesis of Silver Nanoparticles for Target Drug Delivery', projectThesisName: 'Nano-Drug Delivery Thesis', supervisorName: 'Dr. Omprakash Tanwar', requestType: 'PhD Research', status: 'Pending', requestedAt: new Date(Date.now() - 1 * 86400000) }
     ];
 
     for (const item of sampleRequests) {
@@ -93,8 +106,13 @@ const getAllRequests = asyncHandler(async (req, res) => {
 });
 
 const getMyRequests = asyncHandler(async (req, res) => {
-  const labId = req.user.labId;
-  const requests = await StoreRequest.find({ labId }).sort({ requestedAt: -1 });
+  const filter = {
+    $or: [
+      { studentId: req.user._id },
+      ...(req.user.labId ? [{ labId: req.user.labId }] : [])
+    ]
+  };
+  const requests = await StoreRequest.find(filter).sort({ requestedAt: -1 });
   res.status(200).json(requests);
 });
 
@@ -137,38 +155,36 @@ const approveRequest = asyncHandler(async (req, res) => {
     const chemical = await chemicalSearch;
     if (!chemical) throw new Error("Chemical not found in store inventory");
 
-    // A & B: Parse pack size
+    // Parse pack size
     const packData = parsePackSize(chemical.packSize);
     const availableQtyUNT = chemical.availableQty || 0;
     
-    // C: Calculate total base stock
+    // Calculate total base stock
     const totalBase = safeRound(availableQtyUNT * packData.baseValue);
 
-    // Convert requested unit to base unit if necessary
+    // Convert requested unit to base unit
     let requestedBase = Number(request.quantityRequested) || 0;
     const reqUnit = (request.unit || '').toLowerCase().replace(/\s+/g, '');
 
-    if ((reqUnit.includes('kg') || reqUnit === 'kilogram' || reqUnit === 'kilograms') && packData.baseUnit === 'g') {
+    if ((reqUnit.includes('kg') || reqUnit === 'kilogram') && packData.baseUnit === 'g') {
       requestedBase = safeRound(requestedBase * 1000);
-    } else if ((reqUnit.includes('l') && reqUnit !== 'ml' && reqUnit !== 'milliliter' && reqUnit !== 'milliliters') && packData.baseUnit === 'ml') {
+    } else if ((reqUnit.includes('l') && reqUnit !== 'ml') && packData.baseUnit === 'ml') {
       requestedBase = safeRound(requestedBase * 1000);
     }
     
     if (totalBase < requestedBase) {
-      throw new Error(`Insufficient stock. Total base available: ${totalBase} ${packData.baseUnit}, Requested: ${requestedBase} ${packData.baseUnit}`);
+      throw new Error(`Insufficient store stock. Base available: ${totalBase} ${packData.baseUnit}, Requested: ${requestedBase} ${packData.baseUnit}`);
     }
     
-    // D: Subtract requested quantity
+    // Subtract requested quantity
     const remainingBase = safeRound(totalBase - requestedBase);
-    
-    // E: Convert back to UNT
     const newAvailableQtyUNT = safeRound(remainingBase / packData.baseValue);
     
     const qtyBeforeUNT = availableQtyUNT;
     const valueBefore = safeRound(availableQtyUNT * (chemical.unitPrice || 0));
     const unitPrice = chemical.unitPrice || 0;
 
-    // F: Update storeInventory
+    // Update storeInventory
     chemical.availableQty = newAvailableQtyUNT;
     const reorderLevel = chemical.reorderLevel || 2;
     if (chemical.availableQty <= 0) chemical.status = 'Out of Stock';
@@ -181,17 +197,16 @@ const approveRequest = asyncHandler(async (req, res) => {
 
     await StoreTracking.create([buildTrackingLog(
       chemical,
-      'Issued to Lab',
+      request.requestType === 'PhD Research' ? 'Issued to PhD Scholar' : 'Issued to Lab',
       qtyBeforeUNT,
       unitPrice,
       chemical.availableQty,
       unitPrice
     )], sessionOption);
 
-    // Calculate costPerBase
     const costPerBase = safeRound(unitPrice / packData.baseValue);
 
-    // G: Add to labInventory
+    // Add to labInventory if labId is provided
     if (request.labId) {
       const labInvQuery = inTransaction
         ? Inventory.findOne({ labId: request.labId, chemicalName: chemical.name }).session(session)
@@ -226,35 +241,32 @@ const approveRequest = asyncHandler(async (req, res) => {
           requestId: request._id,
           receivedDate: Date.now(),
           status: "In Stock",
-          
           minThreshold: 0,
           smiles: chemical.smiles || '',
-          inchi: chemical.inchiKey || '',
           chemicalFormula: chemical.formula || '',
-          manufacturingCompany: chemical.supplier || '',
           entryDate: Date.now()
         }], sessionOption);
       }
     }
 
-    // I: Update storeRequest
+    // Update storeRequest
     request.status = "Approved";
     request.approvedBy = req.user._id;
     request.approvedAt = Date.now();
     request.receiptNumber = await getNextReceiptNumber();
     await request.save(sessionOption);
 
-    // H: Save storeHistory
+    // Save storeHistory
     const valueReleased = safeRound(valueBefore - chemical.totalValue);
     
     await StoreHistory.create([{
-      type: "Store to Lab Transfer",
+      type: request.requestType === 'PhD Research' ? 'Direct PhD Requisition' : 'Store to Lab Transfer',
       requestId: request._id,
       chemicalName: chemical.name,
       chemicalId: chemical.chemicalId || '',
-      labName: request.labName,
+      labName: request.labName || 'PhD Research Scholar',
       labId: request.labId,
-      
+      studentName: request.studentName,
       qtyBeforeUNT: qtyBeforeUNT,
       qtyAfterUNT: chemical.availableQty,
       qtyBeforeBase: totalBase,
@@ -262,33 +274,34 @@ const approveRequest = asyncHandler(async (req, res) => {
       qtyAfterBase: remainingBase,
       baseUnit: packData.baseUnit,
       unit: request.unit,
-      
       unitPrice: unitPrice,
       costPerBase: costPerBase,
       valueBefore: safeRound(valueBefore),
       valueAfter: safeRound(chemical.totalValue),
       valueReleased: valueReleased,
-      
       receiptNumber: request.receiptNumber,
       action: "Approved",
       approvedBy: req.user.name || 'Store Manager',
       timestamp: Date.now()
     }], sessionOption);
 
-    // J: Create notification
-    const User = require('../models/User');
-    const labAdminQuery = inTransaction
-      ? User.find({ labId: request.labId, role: 'labAdmin' }).session(session)
-      : User.find({ labId: request.labId, role: 'labAdmin' });
-
-    const labAdmins = await labAdminQuery;
+    // Create notifications for Student or Lab Admin
+    const notifUsers = [];
+    if (request.studentId) notifUsers.push(request.studentId);
     
-    if (labAdmins.length > 0) {
-      const notifications = labAdmins.map(admin => ({
-        userId: admin._id,
+    if (request.labId) {
+      const User = require('../models/User');
+      const labAdmins = await User.find({ labId: request.labId, role: 'labAdmin' });
+      labAdmins.forEach(a => notifUsers.push(a._id));
+    }
+
+    const uniqueUserIds = Array.from(new Set(notifUsers.map(id => String(id))));
+    if (uniqueUserIds.length > 0) {
+      const notifications = uniqueUserIds.map(uId => ({
+        userId: uId,
         labId: request.labId,
         type: "request_approved",
-        message: `${request.chemicalName} ${request.quantityRequested}${request.unit} approved by Store Manager`,
+        message: `PhD Direct Requisition for ${request.chemicalName} (${request.quantityRequested}${request.unit}) approved by Store Manager`,
         chemicalName: request.chemicalName,
         quantity: request.quantityRequested,
         unit: request.unit,
@@ -298,22 +311,21 @@ const approveRequest = asyncHandler(async (req, res) => {
       await StoreNotification.create(notifications, sessionOption);
     }
 
-    // K: Commit Transaction if active
     if (inTransaction) {
       await session.commitTransaction();
     }
     session.endSession();
 
     const io = getIo();
-    if (request.labId) {
-      io.to(request.labId.toString()).emit('request-approved', {
-        chemical: chemical.name,
+    if (io) {
+      io.emit('store:request_approved', {
+        requestId: request.requestId,
+        itemName: chemical.name,
         quantity: request.quantityRequested,
-        unit: request.unit
+        unit: request.unit,
+        receiptNumber: request.receiptNumber,
+        studentName: request.studentName
       });
-    }
-    if (chemical.status === 'Low Stock' || chemical.status === 'Out of Stock') {
-       io.emit('low-stock-alert', chemical);
     }
 
     res.status(200).json(request);
@@ -352,6 +364,7 @@ const rejectRequest = asyncHandler(async (req, res) => {
     chemicalId: request.chemicalId,
     labName: request.labName,
     labId: request.labId,
+    studentName: request.studentName,
     quantityRequested: request.quantityRequested,
     unit: request.unit,
     action: "Rejected",
@@ -359,26 +372,21 @@ const rejectRequest = asyncHandler(async (req, res) => {
     timestamp: Date.now()
   });
 
-  const User = require('../models/User');
-  const labAdmins = await User.find({ labId: request.labId, role: 'labAdmin' });
-  
-  if (labAdmins.length > 0) {
-    const notifications = labAdmins.map(admin => ({
-      userId: admin._id,
-      labId: request.labId,
+  if (request.studentId) {
+    await StoreNotification.create({
+      userId: request.studentId,
       type: "request_rejected",
-      message: `Your request for ${request.chemicalName} has been rejected. Reason: ${rejectionReason}`,
+      message: `Your research request for ${request.chemicalName} has been rejected by Store Manager. Reason: ${rejectionReason}`,
       chemicalName: request.chemicalName,
       quantity: request.quantityRequested,
       unit: request.unit,
       requestId: request._id
-    }));
-    await StoreNotification.create(notifications);
+    });
   }
 
   const io = getIo();
-  if (request.labId) {
-    io.to(request.labId.toString()).emit('request-rejected', request);
+  if (io) {
+    io.emit('store:request_rejected', request);
   }
 
   res.status(200).json(request);

@@ -1,5 +1,5 @@
-import { CheckCircle2, XCircle, Download, Eye } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { CheckCircle2, XCircle, Download, Eye, GraduationCap, Award } from 'lucide-react';
+import { useMemo, useState, useEffect } from 'react';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Table from '../components/ui/Table';
@@ -12,14 +12,13 @@ import { generateReceiptPDF } from '../utils/pdfGenerator';
 import ReceiptPreviewModal from './ReceiptPreviewModal';
 import api from '../services/api';
 import { toFrontendRequest, toFrontendChemical, toFrontendHistory } from '../utils/storeMapper';
-import { useEffect } from 'react';
 
 const filters = ['All', 'Pending', 'Approved', 'Rejected'];
 
 const statusClass = {
-  Pending: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300',
-  Approved: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300',
-  Rejected: 'bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-300',
+  Pending: 'bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-900/20 dark:text-amber-300',
+  Approved: 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-900/20 dark:text-emerald-300',
+  Rejected: 'bg-rose-50 text-rose-700 border-rose-300 dark:bg-rose-900/20 dark:text-rose-300',
 };
 
 function toCsvCell(value) {
@@ -83,7 +82,9 @@ export default function StoreRequests() {
           currentStockBase,
           baseUnit,
           quantityDisplay: formatQuantity(request.quantity, request.unit),
-          dateDisplay: new Date(request.date || Date.now()).toLocaleDateString()
+          dateDisplay: new Date(request.date || Date.now()).toLocaleDateString('en-IN', {
+            day: 'numeric', month: 'short', year: 'numeric'
+          })
         };
       });
   }, [activeFilter, requests, chemicals]);
@@ -112,12 +113,10 @@ export default function StoreRequests() {
     if (!approveTarget) return;
     try {
       await api.put(`/store/requests/${approveTarget.id}/approve`);
-      if (approveData) {
-        setToast({ 
-          type: 'success', 
-          message: `Approved! ${approveTarget.chemicalName}: ${approveTarget.currentStock} UNT \u2192 ${approveData.newUNT} UNT` 
-        });
-      }
+      setToast({ 
+        type: 'success', 
+        message: `Approved! Chemical stock released from Central Store.` 
+      });
       setApproveTarget(null);
       fetchData();
     } catch (err) {
@@ -128,7 +127,7 @@ export default function StoreRequests() {
   const confirmReject = async () => {
     if (!rejectTarget) return;
     try {
-      await api.put(`/store/requests/${rejectTarget.id}/reject`, { reason: rejectReason });
+      await api.put(`/store/requests/${rejectTarget.id}/reject`, { rejectionReason: rejectReason });
       setToast({ type: 'warning', message: `Request rejected` });
       setRejectTarget(null);
       setRejectReason('');
@@ -140,13 +139,48 @@ export default function StoreRequests() {
 
   const headers = [
     { key: 'id', label: 'Request ID' },
-    { key: 'lab', label: 'Lab Name' },
+    { 
+      key: 'lab', 
+      label: 'Request Origin',
+      render: (row) => (
+        <div>
+          <div className="font-extrabold text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-1.5">
+            <span>{row.lab}</span>
+          </div>
+          {row.requestType === 'PhD Research' ? (
+            <span className="inline-flex items-center gap-1 mt-1 px-2.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 font-black text-[10px] border border-purple-300 dark:border-purple-800 uppercase tracking-wider">
+              <Award size={10} /> PhD Research
+            </span>
+          ) : (
+            <span className="inline-block mt-1 px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold text-[10px]">
+              Lab Requisition
+            </span>
+          )}
+          {row.studentName && <div className="text-[10px] font-semibold text-[#71805a]">By: {row.studentName}</div>}
+        </div>
+      )
+    },
     { key: 'chemicalName', label: 'Chemical Name' },
-    { key: 'chemicalId', label: 'Chemical ID' },
-    { key: 'currentStockBase', label: 'Current Stock', render: (r) => `${(r.currentStockBase || 0).toLocaleString()} ${r.baseUnit || 'ml'}` },
-    { key: 'quantityDisplay', label: 'Requested' },
+    { 
+      key: 'currentStockBase', 
+      label: 'Store Stock', 
+      render: (r) => (
+        <span className="font-mono text-xs font-bold text-[#5c6e46] dark:text-[#a8be8a]">
+          {(r.currentStockBase || 0).toLocaleString()} {r.baseUnit || 'ml'}
+        </span>
+      ) 
+    },
+    { key: 'quantityDisplay', label: 'Requested Qty' },
     { key: 'dateDisplay', label: 'Date' },
-    { key: 'status', label: 'Status', render: (row) => <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass[row.status]}`}>{row.status}</span> },
+    { 
+      key: 'status', 
+      label: 'Status', 
+      render: (row) => (
+        <span className={`rounded px-2.5 py-1 text-xs font-black border ${statusClass[row.status]}`}>
+          {row.status}
+        </span>
+      )
+    },
     {
       key: 'actions',
       label: 'Actions',
@@ -154,42 +188,41 @@ export default function StoreRequests() {
         if (row.status === 'Pending') {
           return (
             <div className='flex flex-wrap gap-2'>
-              <Button className='px-3 py-1 text-xs' onClick={() => setApproveTarget(row)}>
+              <Button className='px-3 py-1 text-xs bg-[#5c6e46] hover:bg-[#475735] text-white' onClick={() => setApproveTarget(row)}>
                 <CheckCircle2 size={14} className="mr-1" /> Approve
               </Button>
-              <Button variant='outline' className='px-3 py-1 text-xs text-red-700 dark:text-red-300 border-red-200 hover:bg-red-50' onClick={() => setRejectTarget(row)}>
+              <Button variant='outline' className='px-3 py-1 text-xs text-rose-700 border-rose-300 hover:bg-rose-50' onClick={() => setRejectTarget(row)}>
                 <XCircle size={14} className="mr-1" /> Reject
               </Button>
             </div>
           );
         }
         return (
-          <div className="flex items-center gap-3">
-            <span className='text-xs font-semibold text-[#71805a] dark:text-[#c5d0b5] uppercase'>Reviewed</span>
+          <div className="flex items-center gap-2">
             {row.status === 'Approved' && (
-              <div className="flex gap-2">
+              <>
                 <Button 
                   variant='outline'
-                  className="px-3 py-1 text-xs border-[#71805a] text-[#556b2f] hover:bg-[#eef4e4] dark:border-[#4e5d35] dark:text-[#c5d0b5] dark:hover:bg-[#28301f]"
+                  className="px-2.5 py-1 text-xs border-[#71805a] text-[#556b2f] hover:bg-[#eef4e4]"
                   onClick={(e) => {
                     e.stopPropagation();
                     const matchingHistory = history.find(h => h.receiptNumber === row.receiptNumber);
                     setPreviewData({ requestData: row, chemicalData: row.chem || {}, historyData: matchingHistory });
                   }}
                 >
-                  <Eye size={14} className="mr-1" /> View
+                  <Eye size={13} className="mr-1" /> View
                 </Button>
                 <Button 
-                  className="px-3 py-1 text-xs bg-[#556b2f] text-white hover:bg-[#3d4d22]"
+                  className="px-2.5 py-1 text-xs bg-[#556b2f] text-white hover:bg-[#3d4d22]"
                   onClick={(e) => {
                     e.stopPropagation();
                     const matchingHistory = history.find(h => h.receiptNumber === row.receiptNumber);
                     generateReceiptPDF(row, row.chem || {}, matchingHistory);
                   }}
                 >
-                  <Download size={14} className="mr-1" /> Receipt
+                  <Download size={13} className="mr-1" /> Receipt
                 </Button>
-              </div>
+              </>
             )}
           </div>
         );
@@ -199,12 +232,13 @@ export default function StoreRequests() {
 
   const exportCsv = () => {
     const lines = [
-      ['Request ID', 'Lab Name', 'Chemical Name', 'Chemical ID', 'Current Stock', 'Qty Requested', 'Date', 'Status'].map(toCsvCell).join(','),
+      ['Request ID', 'Lab Name', 'Type', 'Student', 'Chemical Name', 'Current Stock', 'Qty Requested', 'Date', 'Status'].map(toCsvCell).join(','),
       ...rows.map((r) => [
         r.id,
         r.lab,
+        r.requestType || 'Lab Requisition',
+        r.studentName || '',
         r.chemicalName,
-        r.chemicalId,
         `${(r.currentStockBase || 0).toLocaleString()} ${r.baseUnit || 'ml'}`,
         `${(r.quantity || 0).toLocaleString()} ${r.unit || 'ml'}`,
         r.dateDisplay,
@@ -215,22 +249,22 @@ export default function StoreRequests() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'RasayanFlow_Requests.csv';
+    link.download = 'RasayanFlow_Store_Requests.csv';
     link.click();
     URL.revokeObjectURL(url);
   };
 
   return (
     <StoreLayout 
-      title='Lab Requests' 
-      subtitle='Review dummy lab requests and update inventory locally on approvals.'
+      title='Central Store Requisitions' 
+      subtitle='Review laboratory stock requests and direct PhD research requisitions.'
       actions={
-        <Button variant='outline' onClick={exportCsv} disabled={!rows.length} className='border-[#71805a] text-[#556b2f] hover:bg-[#eef4e4] dark:border-[#4e5d35] dark:text-[#c5d0b5] dark:hover:bg-[#28301f]'>
+        <Button variant='outline' onClick={exportCsv} disabled={!rows.length} className='border-[#71805a] text-[#556b2f] hover:bg-[#eef4e4]'>
           <Download size={16} className='mr-2' /> Export CSV
         </Button>
       }
     >
-      <Card title='Request Queue' subtitle='Filter by status before approving or rejecting requests.'>
+      <Card title='Requisition Queue' subtitle='Process incoming lab requisitions and PhD research requests.'>
         <div className='mb-4 flex flex-wrap gap-2'>
           {filters.map((filter) => (
             <Button key={filter} variant={activeFilter === filter ? 'primary' : 'outline'} className='px-3 py-1 text-xs' onClick={() => setActiveFilter(filter)}>
@@ -240,42 +274,53 @@ export default function StoreRequests() {
         </div>
         <div className="overflow-x-auto border border-[#e3e9d8] dark:border-[#343b2b] rounded-lg w-full">
           {loading ? (
-            <div className="flex justify-center p-8"><span className="text-[#556b2f]">Loading requests...</span></div>
+            <div className="flex justify-center p-8"><span className="text-[#556b2f]">Loading requisitions...</span></div>
           ) : (
             <Table headers={headers} rows={rows} />
           )}
         </div>
       </Card>
 
-      <Modal open={Boolean(approveTarget)} onClose={() => setApproveTarget(null)} title='Approve this request?' panelClassName='max-w-md w-full'>
+      {/* APPROVE MODAL */}
+      <Modal open={Boolean(approveTarget)} onClose={() => setApproveTarget(null)} title='Approve Store Requisition?' panelClassName='max-w-md w-full'>
         {approveData && (
-          <div className='flex flex-col gap-4 text-sm'>
+          <div className='flex flex-col gap-4 text-xs font-bold text-[#37412a] dark:text-[#e4e9d8]'>
+            {approveData.requestType === 'PhD Research' && (
+              <div className="p-3 rounded bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-300">
+                <div className="font-black text-xs uppercase flex items-center gap-1">
+                  <Award size={14} /> PhD Direct Research Request
+                </div>
+                {approveData.studentName && <div className="mt-1">Scholar: <strong>{approveData.studentName}</strong></div>}
+                {approveData.projectThesisName && <div>Thesis: <strong>{approveData.projectThesisName}</strong></div>}
+                {approveData.supervisorName && <div>Guide: <strong>{approveData.supervisorName}</strong></div>}
+              </div>
+            )}
+
             <div className='bg-[#f9faef] p-4 rounded-lg border border-[#e3e9d8] dark:bg-[#1f2419] dark:border-[#343b2b] space-y-2'>
-              <p><strong className="text-[#556b2f] dark:text-[#a8be8a]">Lab:</strong> {approveData.lab}</p>
-              <p><strong className="text-[#556b2f] dark:text-[#a8be8a]">Chemical:</strong> {approveData.chemicalName}</p>
-              <p><strong className="text-[#556b2f] dark:text-[#a8be8a]">Total Available:</strong> {approveData.totalBaseAvailable.toLocaleString()} {approveData.baseUnit}</p>
-              <p><strong className="text-[#556b2f] dark:text-[#a8be8a]">Requested:</strong> {approveData.requestedBase.toLocaleString()} {approveData.baseUnit}</p>
-              <div className="mt-4 pt-4 border-t border-[#d9e1ca] dark:border-[#414a33]">
-                <p className="text-[15px] font-bold text-slate-800 dark:text-slate-200">
-                  Remaining: <span className="text-emerald-600">{approveData.remainingBase.toLocaleString()} {approveData.baseUnit}</span>
-                </p>
-                <p className="text-[13px] font-medium text-slate-500 dark:text-slate-400 mt-1">
-                  New Unit Price Total: {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(approveData.newPrice)}
+              <p><strong className="text-[#556b2f]">Request Origin:</strong> {approveData.lab}</p>
+              <p><strong className="text-[#556b2f]">Chemical:</strong> {approveData.chemicalName}</p>
+              <p><strong className="text-[#556b2f]">Total Available Store Stock:</strong> {approveData.totalBaseAvailable.toLocaleString()} {approveData.baseUnit}</p>
+              <p><strong className="text-[#556b2f]">Requested Base Qty:</strong> {approveData.requestedBase.toLocaleString()} {approveData.baseUnit}</p>
+              <div className="mt-3 pt-3 border-t border-[#d9e1ca] dark:border-[#414a33]">
+                <p className="text-sm font-black text-slate-800 dark:text-slate-200">
+                  Remaining Store Stock: <span className="text-emerald-600 font-mono">{approveData.remainingBase.toLocaleString()} {approveData.baseUnit}</span>
                 </p>
               </div>
             </div>
+
             <div className='mt-2 flex gap-3 justify-end'>
               <Button variant='outline' onClick={() => setApproveTarget(null)}>Cancel</Button>
-              <Button onClick={confirmApprove}>Confirm Approve</Button>
+              <Button className="bg-[#5c6e46] hover:bg-[#475735] text-white font-black" onClick={confirmApprove}>Confirm & Issue Stock</Button>
             </div>
           </div>
         )}
       </Modal>
 
-      <Modal open={Boolean(rejectTarget)} onClose={() => setRejectTarget(null)} title='Reject Request' panelClassName='max-w-md w-full'>
+      {/* REJECT MODAL */}
+      <Modal open={Boolean(rejectTarget)} onClose={() => setRejectTarget(null)} title='Reject Requisition' panelClassName='max-w-md w-full'>
         {rejectTarget && (
-          <div className='flex flex-col gap-4 text-sm'>
-            <p className='text-slate-600 dark:text-slate-300'>Please provide a reason for rejecting the request from {rejectTarget.lab} for {rejectTarget.chemicalName}.</p>
+          <div className='flex flex-col gap-4 text-xs font-bold'>
+            <p className='text-slate-600 dark:text-slate-300'>Specify rejection reason for {rejectTarget.chemicalName} requested by {rejectTarget.lab}:</p>
             <textarea
               className='w-full p-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-white'
               rows={4}
@@ -285,7 +330,7 @@ export default function StoreRequests() {
             />
             <div className='mt-2 flex gap-3 justify-end'>
               <Button variant='outline' onClick={() => setRejectTarget(null)}>Cancel</Button>
-              <Button className='bg-rose-600 hover:bg-rose-700 text-white' onClick={confirmReject}>Reject Request</Button>
+              <Button className='bg-rose-600 hover:bg-rose-700 text-white' onClick={confirmReject}>Reject Requisition</Button>
             </div>
           </div>
         )}
