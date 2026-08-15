@@ -334,11 +334,11 @@ export default function LabAdminDashboard() {
   return (
     <div className='space-y-6 pb-12 animate-in fade-in duration-200'>
       
-      {/* TOP WELCOME BANNER & LAB SWITCHER (NO INNER BOX, SEAMLESS & AESTHETIC) */}
-      <div className='rounded-3xl border border-[#d9e1ca] bg-[#fffef8] p-6 sm:p-7 shadow-sm dark:border-[#414a33] dark:bg-[#20251a] flex flex-col lg:flex-row lg:items-center justify-between gap-6'>
+      {/* TOP WELCOME BANNER & LAB SWITCHER (NO BOX CONTAINER, SMALLER & CLEAN TEXT STYLE) */}
+      <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1'>
         
-        {/* LEFT & CENTER: AESTHETIC WELCOME WRITTEN BANNER & ACADEMIC METADATA */}
-        <div className='space-y-3 flex-1 min-w-0'>
+        {/* LEFT: SMALLER & CLEAN WRITTEN WELCOME BANNER & ACADEMIC METADATA */}
+        <div className='space-y-1 flex-1 min-w-0'>
           
           {/* Breadcrumb Navigation */}
           <div className='flex items-center gap-1.5 text-[11px] font-semibold text-[#87996c] dark:text-[#7a8f62]'>
@@ -347,50 +347,41 @@ export default function LabAdminDashboard() {
             <span className='text-[#5c6e46] dark:text-[#a8be8a] font-bold'>Inventory Control Center</span>
           </div>
 
-          {/* Written Welcome Message: "Welcome [Admin Name] into [Lab Name] Laboratory" */}
-          <h2 className='text-2xl sm:text-3xl font-black text-[#37412a] dark:text-[#e4e9d8] tracking-tight leading-snug flex flex-wrap items-center gap-2.5'>
-            <span className='flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#5c6e46] text-white shadow-2xs dark:bg-[#e4e9d8] dark:text-[#20251a]'>
-              <Building2 size={22} />
-            </span>
-            <span>
-              Welcome <span className='text-[#5c6e46] dark:text-[#a8be8a] capitalize'>{user?.name || 'Administrator'}</span> into <span className='underline decoration-[#87996c]/40 decoration-wavy underline-offset-4'>{currentLab?.name || currentLab?.labName || 'Pharmacy'} Laboratory</span>
-            </span>
+          {/* Compact Written Welcome Title */}
+          <h2 className='text-base sm:text-lg font-bold text-[#37412a] dark:text-[#e4e9d8] flex flex-wrap items-center gap-1.5 leading-snug'>
+            <span>Welcome <strong className='text-[#5c6e46] dark:text-[#a8be8a] font-extrabold capitalize'>{user?.name || 'Administrator'}</strong> into <strong className='text-[#37412a] dark:text-[#e4e9d8] font-extrabold'>{currentLab?.name || currentLab?.labName || 'Pharmacy'} Laboratory</strong></span>
           </h2>
 
-          {/* Aesthetic Seamless Metadata Bar (No inner box!) */}
-          <div className='flex flex-wrap items-center gap-2 pt-1'>
-            {/* Course, Year & Semester Badge */}
-            <span className='inline-flex items-center gap-1.5 rounded-xl bg-[#e8efd9] px-3.5 py-1.5 text-xs font-extrabold text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a] border border-[#cbd8b5] dark:border-[#3a472d]'>
-              <GraduationCap size={15} className='text-[#5c6e46] dark:text-[#a8be8a]' />
+          {/* Clean Inline Academic Metadata (No Box / No Heavy Pills) */}
+          <div className='flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-[#71805a] dark:text-[#a5b48b] pt-0.5'>
+            <span className='inline-flex items-center gap-1 text-[#3c4e23] dark:text-[#a8be8a] font-bold'>
+              <GraduationCap size={14} className='text-[#5c6e46] dark:text-[#a8be8a]' />
               {currentLab?.courseType || 'B.Pharm'} &bull; Year {currentLab?.year || '1'} &bull; Sem {currentLab?.semester || '1'}
               {currentLab?.department ? ` (${currentLab.department})` : ''}
             </span>
-
-            {/* Lab Code Pill */}
-            <span className='inline-flex items-center gap-1.5 rounded-xl bg-[#f4f6ee] px-3 py-1.5 text-xs font-mono font-bold text-[#5c6e46] dark:bg-[#1a1d16] dark:text-[#c5d0b5] border border-[#d9e1ca] dark:border-[#414a33]'>
-              <MapPin size={13} className='text-[#5c6e46]' />
-              Lab Code: {currentLab?.labCode || `LAB-${currentLab?.name || '100'}`}
+            <span className='text-[#d9e1ca] dark:text-[#414a33]'>&bull;</span>
+            <span className='inline-flex items-center gap-1 font-mono text-[#5c6e46] dark:text-[#c5d0b5] font-bold'>
+              <MapPin size={12} /> Code: {currentLab?.labCode || `LAB-${currentLab?.name || '100'}`}
             </span>
-
-            {/* Operational Readiness Status Badge */}
-            <span className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-extrabold border ${
+            <span className='text-[#d9e1ca] dark:text-[#414a33]'>&bull;</span>
+            <span className={`inline-flex items-center gap-1 font-bold ${
               lowStockCount + outOfStockCount === 0
-                ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
-                : 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
+                ? 'text-emerald-700 dark:text-emerald-400'
+                : 'text-amber-700 dark:text-amber-400'
             }`}>
-              <PackageCheck size={14} />
-              Operational Readiness: {totalChemicalsCount === 0 ? '0%' : `${Math.round((optimalStockCount / totalChemicalsCount) * 100)}% Stocked`}
+              <PackageCheck size={13} />
+              Stock Readiness: {totalChemicalsCount === 0 ? '0%' : `${Math.round((optimalStockCount / totalChemicalsCount) * 100)}% Stocked`}
             </span>
           </div>
 
         </div>
 
         {/* RIGHT: LAB SWITCHER PILLS */}
-        <div className='flex flex-col items-start lg:items-end gap-2 shrink-0 border-t lg:border-t-0 lg:border-l border-[#e8efd9] dark:border-[#2e3722] pt-4 lg:pt-0 lg:pl-6'>
-          <span className='text-xs font-extrabold text-[#71805a] dark:text-[#a5b48b] flex items-center gap-1'>
-            <Layers size={13} /> Switch Active Lab:
+        <div className='flex flex-col items-start sm:items-end gap-1.5 shrink-0'>
+          <span className='text-[11px] font-extrabold text-[#71805a] dark:text-[#a5b48b] flex items-center gap-1'>
+            <Layers size={12} /> Switch Active Lab:
           </span>
-          <div className='flex flex-wrap items-center gap-1.5 lg:justify-end'>
+          <div className='flex flex-wrap items-center gap-1.5 sm:justify-end'>
             {assignedLabs.map((lab) => {
               const labKey = String(lab.id || lab._id);
               const isSelected = labKey === String(labId);
@@ -402,7 +393,7 @@ export default function LabAdminDashboard() {
                     setSelectedLabId(labKey);
                     localStorage.setItem('pharmlab-active-lab', labKey);
                   }}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all duration-200 border ${
+                  className={`px-3 py-1 rounded-xl text-xs font-extrabold transition-all duration-200 border ${
                     isSelected
                       ? 'bg-[#5c6e46] text-white border-[#5c6e46] shadow-2xs dark:bg-[#e4e9d8] dark:text-[#20251a]'
                       : 'bg-white text-[#5c6e46] border-[#d9e1ca] hover:bg-[#f4f6ee] dark:bg-[#1a1d16] dark:text-[#a8be8a] dark:border-[#414a33]'
