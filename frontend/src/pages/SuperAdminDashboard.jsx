@@ -1487,7 +1487,7 @@ export default function SuperAdminDashboard() {
       const codeOrRoll = u.rollNumber || u.labCode || (isLabAdmin ? u.assignedLabCode : '') || 'N/A';
       const courseStr = isStudent ? (u.course || u.courseType || 'B.Pharm') : (u.academicLabel || 'All Courses');
       const semStr = u.semester ? `Sem ${u.semester}` : (u.year ? `Year ${u.year}` : 'N/A');
-      const pass = showPasswordMap[u.id] || u.plainPassword || u.initialPassword || (isLabAdmin ? 'labadmin@123' : isStudent ? 'student123' : 'admin123');
+      const pass = u.displayPassword || u.initialPassword || u.plainPassword || (typeof showPasswordMap[u.id] === 'string' ? showPasswordMap[u.id] : '') || (isLabAdmin ? 'labadmin@123' : isStudent ? 'student123' : 'admin123');
       return `"${u.name}","${u.roleDisplay}","${u.email}","${codeOrRoll}","${courseStr}","${u.year || '1'}","${semStr}","${u.assignedLabName || 'Unassigned'}","${u.isApproved ? 'Approved' : 'Pending'}","${pass}"`;
     }).join("\n");
 
@@ -2927,7 +2927,12 @@ export default function SuperAdminDashboard() {
                       const isVisible = Boolean(showPasswordMap[userRow.id]);
                       const isLabAdmin = userRow.role === 'lab-admin' || userRow.role === 'labAdmin';
                       const isStudent = userRow.role === 'student';
-                      const displayPassword = showPasswordMap[userRow.id] || userRow.plainPassword || userRow.initialPassword || (isLabAdmin ? 'labadmin@123' : isStudent ? 'student123' : 'admin123');
+                      const displayPassword =
+                        userRow.displayPassword ||
+                        userRow.initialPassword ||
+                        userRow.plainPassword ||
+                        (typeof showPasswordMap[userRow.id] === 'string' ? showPasswordMap[userRow.id] : '') ||
+                        (isLabAdmin ? 'labadmin@123' : isStudent ? 'student123' : 'admin123');
 
                       return (
                         <tr key={userRow.id} className='hover:bg-[#f4f6ee]/60 dark:hover:bg-[#2a3121]/60 transition-colors'>

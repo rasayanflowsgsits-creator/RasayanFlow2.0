@@ -94,6 +94,7 @@ const register = asyncHandler(async (req, res) => {
     name,
     email,
     password,
+    displayPassword: password,
     role: isSuperAdmin ? 'superAdmin' : role || 'student',
     labId: labId || null,
     labName,

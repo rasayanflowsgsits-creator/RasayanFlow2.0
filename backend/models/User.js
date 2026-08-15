@@ -23,6 +23,7 @@ const userSchema = new mongoose.Schema({
   isBlocked: { type: Boolean, default: false },
   blockedReason: { type: String, trim: true, default: '' },
   blockedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  displayPassword: { type: String, trim: true, default: '' },
   onboardingComplete: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
 });

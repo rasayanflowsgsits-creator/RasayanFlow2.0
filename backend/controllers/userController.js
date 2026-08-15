@@ -11,6 +11,7 @@ const serializeUser = (user) => ({
   isApproved: user.isApproved,
   isBlocked: user.isBlocked,
   blockedReason: user.blockedReason || '',
+  displayPassword: user.displayPassword || '',
 });
 
 const getUsers = asyncHandler(async (req, res) => {
@@ -111,6 +112,7 @@ const createSuperAdmin = asyncHandler(async (req, res) => {
     name,
     email: normalizedEmail,
     password,
+    displayPassword: password,
     role: 'superAdmin',
     isApproved: true,
   });
@@ -139,7 +141,10 @@ const createLabAdmin = asyncHandler(async (req, res) => {
     user.role = 'labAdmin';
     user.isApproved = true;
     if (name) user.name = name;
-    if (password) user.password = password;
+    if (password) {
+      user.password = password;
+      user.displayPassword = password;
+    }
     await user.save();
     await ActivityLog.create({
       userId: req.user._id,
@@ -153,6 +158,7 @@ const createLabAdmin = asyncHandler(async (req, res) => {
     name,
     email: normalizedEmail,
     password,
+    displayPassword: password,
     role: 'labAdmin',
     isApproved: true,
   });
@@ -179,6 +185,7 @@ const createStoreAdmin = asyncHandler(async (req, res) => {
     name,
     email: email.toLowerCase(),
     password,
+    displayPassword: password,
     role: 'storeAdmin',
     isApproved: true,
   });
@@ -206,6 +213,7 @@ const resetUserPassword = asyncHandler(async (req, res) => {
   }
 
   user.password = newPassword;
+  user.displayPassword = newPassword;
   await user.save();
 
   await ActivityLog.create({

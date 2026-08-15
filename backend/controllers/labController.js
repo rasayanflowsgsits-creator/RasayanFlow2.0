@@ -54,7 +54,10 @@ const createLab = asyncHandler(async (req, res) => {
       existingAdmin.semester = lab.semester || '1';
       existingAdmin.isApproved = true;
       if (adminName && adminName.trim()) existingAdmin.name = adminName.trim();
-      if (adminPassword && adminPassword.trim()) existingAdmin.password = adminPassword.trim();
+      if (adminPassword && adminPassword.trim()) {
+        existingAdmin.password = adminPassword.trim();
+        existingAdmin.displayPassword = adminPassword.trim();
+      }
       await existingAdmin.save();
       provisionedAdmin = existingAdmin;
     }
@@ -77,15 +80,20 @@ const createLab = asyncHandler(async (req, res) => {
       existingUser.semester = lab.semester || '1';
       existingUser.isApproved = true;
       if (adminName && adminName.trim()) existingUser.name = adminName.trim();
-      if (adminPassword && adminPassword.trim()) existingUser.password = adminPassword.trim();
+      if (adminPassword && adminPassword.trim()) {
+        existingUser.password = adminPassword.trim();
+        existingUser.displayPassword = adminPassword.trim();
+      }
       await existingUser.save();
       provisionedAdmin = existingUser;
     } else {
       // User does not exist -> Create new labAdmin user
+      const defaultPass = (adminPassword && adminPassword.trim()) || '123456';
       provisionedAdmin = await User.create({
         name: (adminName && adminName.trim()) || normalizedEmail.split('@')[0],
         email: normalizedEmail,
-        password: (adminPassword && adminPassword.trim()) || '123456',
+        password: defaultPass,
+        displayPassword: defaultPass,
         role: 'labAdmin',
         isApproved: true,
         labId: lab._id,
@@ -199,10 +207,12 @@ const assignAdmin = asyncHandler(async (req, res) => {
 
   let isNewUser = false;
   if (!admin && normalizedEmail) {
+    const defaultPass = (password && password.trim()) || '123456';
     admin = await User.create({
       name: (name && name.trim()) || normalizedEmail.split('@')[0],
       email: normalizedEmail,
-      password: (password && password.trim()) || '123456',
+      password: defaultPass,
+      displayPassword: defaultPass,
       role: 'labAdmin',
       isApproved: true,
       labId: lab._id,
@@ -232,7 +242,10 @@ const assignAdmin = asyncHandler(async (req, res) => {
     admin.semester = lab.semester || '1';
     admin.isApproved = true;
     if (name && name.trim()) admin.name = name.trim();
-    if (password && password.trim()) admin.password = password.trim();
+    if (password && password.trim()) {
+      admin.password = password.trim();
+      admin.displayPassword = password.trim();
+    }
     await admin.save();
   }
 
