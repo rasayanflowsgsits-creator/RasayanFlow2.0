@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Download, Search, Calendar, FileText, ArrowDownRight, ArrowUpRight, Filter, ChevronRight, CheckCircle2, Layers, History as HistoryIcon } from 'lucide-react';
+import { Download, Search, Calendar, FileText, ArrowDownRight, ArrowUpRight, Filter, ChevronRight, CheckCircle2, Layers, History as HistoryIcon, CalendarDays, Hash } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import useAppStore from '../store/appStore';
@@ -27,6 +27,24 @@ const PRESETS = [
   { label: 'This Year', days: 365 },
 ];
 
+const YEARS = ['ALL', ...Array.from({ length: 31 }, (_, i) => String(2026 + i))];
+
+const MONTHS = [
+  { value: 'ALL', label: 'All Months' },
+  { value: '0', label: 'January' },
+  { value: '1', label: 'February' },
+  { value: '2', label: 'March' },
+  { value: '3', label: 'April' },
+  { value: '4', label: 'May' },
+  { value: '5', label: 'June' },
+  { value: '6', label: 'July' },
+  { value: '7', label: 'August' },
+  { value: '8', label: 'September' },
+  { value: '9', label: 'October' },
+  { value: '10', label: 'November' },
+  { value: '11', label: 'December' },
+];
+
 export default function LabHistory() {
   const user = useAuthStore((state) => state.user);
   const store = useAppStore();
@@ -39,7 +57,11 @@ export default function LabHistory() {
   const [labHistory, setLabHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [dateFilter, setDateFilter] = useState(0); // 0 = All time (2026 - 2056)
+  
+  // Date & Month/Year Filters
+  const [dateFilter, setDateFilter] = useState(0); // 0 = All time
+  const [selectedYear, setSelectedYear] = useState('ALL');
+  const [selectedMonth, setSelectedMonth] = useState('ALL');
   const [sortOrder, setSortOrder] = useState('newest'); // newest | oldest
 
   // Assigned labs
@@ -93,15 +115,30 @@ export default function LabHistory() {
     fetchHistory();
   }, [activeLabId]);
 
-  // Date filtering logic (supports all time up to +30 years)
-  const filterByPreset = (timestamp) => {
-    if (!dateFilter || dateFilter === 0) return true;
+  // Date, Month & Year Filtering Logic
+  const matchesFilter = (timestamp) => {
     if (!timestamp) return false;
     const date = new Date(timestamp);
-    const now = new Date();
-    const diffTime = Math.abs(now - date);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays <= dateFilter;
+    
+    // Preset relative days filter
+    if (dateFilter > 0) {
+      const now = new Date();
+      const diffTime = Math.abs(now - date);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays > dateFilter) return false;
+    }
+
+    // Specific Year filter
+    if (selectedYear !== 'ALL') {
+      if (date.getFullYear() !== Number(selectedYear)) return false;
+    }
+
+    // Specific Month filter
+    if (selectedMonth !== 'ALL') {
+      if (date.getMonth() !== Number(selectedMonth)) return false;
+    }
+
+    return true;
   };
 
   // Filtered & Sorted Rows
@@ -109,7 +146,7 @@ export default function LabHistory() {
     const q = search.trim().toLowerCase();
     let rows = storeHistory.filter(r => {
       const matchesSearch = !q || r.chemicalName?.toLowerCase().includes(q) || r.receiptNumber?.toLowerCase().includes(q);
-      return matchesSearch && filterByPreset(r.timestamp);
+      return matchesSearch && matchesFilter(r.timestamp);
     });
 
     rows.sort((a, b) => {
@@ -119,13 +156,13 @@ export default function LabHistory() {
     });
 
     return rows;
-  }, [storeHistory, search, dateFilter, sortOrder]);
+  }, [storeHistory, search, dateFilter, selectedYear, selectedMonth, sortOrder]);
 
   const labRows = useMemo(() => {
     const q = search.trim().toLowerCase();
     let rows = labHistory.filter(r => {
       const matchesSearch = !q || r.chemicalName?.toLowerCase().includes(q) || r.studentName?.toLowerCase().includes(q);
-      return matchesSearch && filterByPreset(r.timestamp);
+      return matchesSearch && matchesFilter(r.timestamp);
     });
 
     rows.sort((a, b) => {
@@ -135,7 +172,7 @@ export default function LabHistory() {
     });
 
     return rows;
-  }, [labHistory, search, dateFilter, sortOrder]);
+  }, [labHistory, search, dateFilter, selectedYear, selectedMonth, sortOrder]);
 
   // Statistics Summary
   const stats = useMemo(() => {
@@ -148,6 +185,24 @@ export default function LabHistory() {
       issuedValue: totalIssuedVal,
     };
   }, [storeRows, labRows]);
+
+  // Selected period label for badge
+  const selectedPeriodLabel = useMemo(() => {
+    const parts = [];
+    if (selectedMonth !== 'ALL') {
+      const mObj = MONTHS.find(m => m.value === selectedMonth);
+      if (mObj) parts.push(mObj.label);
+    }
+    if (selectedYear !== 'ALL') {
+      parts.push(selectedYear);
+    }
+    if (parts.length > 0) return parts.join(' ');
+    if (dateFilter === 1) return 'Today';
+    if (dateFilter === 7) return 'This Week';
+    if (dateFilter === 30) return 'This Month';
+    if (dateFilter === 365) return 'This Year (2026)';
+    return 'All Time (2026–2056)';
+  }, [selectedMonth, selectedYear, dateFilter]);
 
   // Export CSV
   const exportStoreCsv = () => {
@@ -164,7 +219,7 @@ export default function LabHistory() {
         r.receiptNumber
       ].map(toCsvCell).join(','))
     ];
-    downloadCsv(lines, `Lab_Received_From_Store_${activeLab?.name || 'HAP1'}.csv`);
+    downloadCsv(lines, `Lab_Received_From_Store_${activeLab?.name || 'HAP1'}_${selectedPeriodLabel.replace(/\s+/g, '_')}.csv`);
   };
 
   const exportLabCsv = () => {
@@ -184,7 +239,7 @@ export default function LabHistory() {
         r.action || 'Issued'
       ].map(toCsvCell).join(','))
     ];
-    downloadCsv(lines, `Lab_Issued_To_Students_${activeLab?.name || 'HAP1'}.csv`);
+    downloadCsv(lines, `Lab_Issued_To_Students_${activeLab?.name || 'HAP1'}_${selectedPeriodLabel.replace(/\s+/g, '_')}.csv`);
   };
 
   const downloadCsv = (lines, filename) => {
@@ -207,7 +262,7 @@ export default function LabHistory() {
     doc.setFontSize(16);
     doc.text(title, 14, 15);
     doc.setFontSize(10);
-    doc.text(`Generated on: ${new Date().toLocaleString()} (Audit Ledger 2026 - 2056)`, 14, 22);
+    doc.text(`Period: ${selectedPeriodLabel} | Generated on: ${new Date().toLocaleString()}`, 14, 22);
 
     if (activeTab === 'received') {
       const tableData = storeRows.map(r => [
@@ -240,7 +295,7 @@ export default function LabHistory() {
       });
     }
 
-    doc.save(`Lab_${activeTab}_History_${activeLab?.name || 'HAP1'}.pdf`);
+    doc.save(`Lab_${activeTab}_History_${activeLab?.name || 'HAP1'}_${selectedPeriodLabel.replace(/\s+/g, '_')}.pdf`);
   };
 
   const storeHeaders = [
@@ -276,10 +331,10 @@ export default function LabHistory() {
           </div>
           <h1 className="text-2xl font-black text-[#37412a] dark:text-[#e4e9d8] mt-0.5 flex items-center gap-2">
             <HistoryIcon size={24} className="text-[#5c6e46]" />
-            Lab Transactions &amp; Audit Ledger
+            Monthly &amp; Yearly Lab Audit History
           </h1>
           <p className="text-[#71805a] dark:text-[#c5d0b5] text-xs font-semibold">
-            Permanent 30-year audit trail for Central Store stock receipts &amp; student chemical disbursements in <strong className="text-[#37412a] dark:text-[#e4e9d8]">{activeLab?.name || activeLab?.labName || 'HAP1'}</strong>
+            Organized month-by-month &amp; year-by-year transaction archives for <strong className="text-[#37412a] dark:text-[#e4e9d8]">{activeLab?.name || activeLab?.labName || 'HAP1'}</strong>
           </p>
         </div>
 
@@ -331,42 +386,61 @@ export default function LabHistory() {
         </div>
       </div>
 
+      {/* Selected Period Active Banner */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl bg-[#f4f6ee] dark:bg-[#1a1d16] border border-[#d9e1ca] dark:border-[#414a33] gap-3">
+        <div className="flex items-center gap-2">
+          <CalendarDays size={18} className="text-[#5c6e46]" />
+          <div>
+            <span className="text-xs font-bold text-[#71805a]">Audit Archive Period: </span>
+            <span className="text-xs font-black text-[#5c6e46] dark:text-[#a8be8a] bg-white dark:bg-[#20251a] px-2.5 py-1 rounded-lg border border-[#d9e1ca] dark:border-[#414a33]">
+              {selectedPeriodLabel}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 text-xs font-bold">
+          <span className="text-[#71805a]">Store Stock In: <strong className="text-[#37412a] dark:text-[#e4e9d8] font-extrabold">{stats.receivedCount}</strong></span>
+          <span className="text-[#cfd8bd]">|</span>
+          <span className="text-[#71805a]">Student Stock Out: <strong className="text-[#37412a] dark:text-[#e4e9d8] font-extrabold">{stats.issuedCount}</strong></span>
+        </div>
+      </div>
+
       {/* 4 Summary Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border-[#d9e1ca] dark:border-[#414a33]">
           <div className="flex items-center justify-between text-[#71805a] dark:text-[#a5b48b] text-xs font-extrabold uppercase tracking-wider mb-1">
-            <span>Store Receipts</span>
+            <span>Store Receipts ({selectedPeriodLabel})</span>
             <ArrowDownRight className="text-emerald-600 dark:text-emerald-400" size={16} />
           </div>
           <div className="text-3xl font-black text-[#37412a] dark:text-[#e4e9d8]">{stats.receivedCount}</div>
-          <div className="text-[10px] font-semibold text-[#87996c] mt-1">Total Stock In transactions</div>
+          <div className="text-[10px] font-semibold text-[#87996c] mt-1">Stock In transactions</div>
         </Card>
 
         <Card className="border-[#d9e1ca] dark:border-[#414a33]">
           <div className="flex items-center justify-between text-[#71805a] dark:text-[#a5b48b] text-xs font-extrabold uppercase tracking-wider mb-1">
-            <span>Value Received</span>
+            <span>Value Received ({selectedPeriodLabel})</span>
             <span className="text-amber-700 dark:text-amber-400 font-black">₹</span>
           </div>
           <div className="text-3xl font-black text-amber-700 dark:text-amber-400">{formatPrice(stats.receivedValue)}</div>
-          <div className="text-[10px] font-semibold text-[#87996c] mt-1">Total inventory added</div>
+          <div className="text-[10px] font-semibold text-[#87996c] mt-1">Inventory added</div>
         </Card>
 
         <Card className="border-[#d9e1ca] dark:border-[#414a33]">
           <div className="flex items-center justify-between text-[#71805a] dark:text-[#a5b48b] text-xs font-extrabold uppercase tracking-wider mb-1">
-            <span>Student Issues</span>
+            <span>Student Issues ({selectedPeriodLabel})</span>
             <ArrowUpRight className="text-blue-600 dark:text-blue-400" size={16} />
           </div>
           <div className="text-3xl font-black text-[#37412a] dark:text-[#e4e9d8]">{stats.issuedCount}</div>
-          <div className="text-[10px] font-semibold text-[#87996c] mt-1">Total Stock Out transactions</div>
+          <div className="text-[10px] font-semibold text-[#87996c] mt-1">Stock Out transactions</div>
         </Card>
 
         <Card className="border-[#d9e1ca] dark:border-[#414a33]">
           <div className="flex items-center justify-between text-[#71805a] dark:text-[#a5b48b] text-xs font-extrabold uppercase tracking-wider mb-1">
-            <span>Value Issued</span>
+            <span>Value Issued ({selectedPeriodLabel})</span>
             <span className="text-amber-700 dark:text-amber-400 font-black">₹</span>
           </div>
           <div className="text-3xl font-black text-amber-700 dark:text-amber-400">{formatPrice(stats.issuedValue)}</div>
-          <div className="text-[10px] font-semibold text-[#87996c] mt-1">Total inventory consumed</div>
+          <div className="text-[10px] font-semibold text-[#87996c] mt-1">Inventory consumed</div>
         </Card>
       </div>
 
@@ -400,46 +474,96 @@ export default function LabHistory() {
 
       {/* Filter Controls & Content Card */}
       <Card className="border-[#d9e1ca] dark:border-[#414a33]">
-        <div className="mb-5 flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center">
-          {/* Search bar */}
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#87996c]" size={15} />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search chemical, receipt, student..."
-              className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-[#d9e1ca] bg-white dark:bg-[#1a1d16] dark:border-[#414a33] text-xs font-semibold text-[#37412a] dark:text-[#e4e9d8] outline-none focus:ring-2 focus:ring-[#5c6e46]/20"
-            />
-          </div>
-
-          {/* Presets & Sorting */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex bg-[#f4f6ee] dark:bg-[#1a1d16] p-1 rounded-2xl border border-[#d9e1ca] dark:border-[#414a33]">
-              {PRESETS.map((p) => (
-                <button
-                  key={p.label}
-                  type="button"
-                  onClick={() => setDateFilter(p.days)}
-                  className={`px-3 py-1 text-xs font-extrabold rounded-xl transition ${
-                    dateFilter === p.days
-                      ? 'bg-[#5c6e46] text-white shadow-2xs dark:bg-[#e4e9d8] dark:text-[#20251a]'
-                      : 'text-[#5c6e46] hover:bg-white/60 dark:text-[#a8be8a] dark:hover:bg-[#20251a]'
-                  }`}
-                >
-                  {p.label}
-                </button>
-              ))}
+        {/* Month & Year Selectors Header Bar */}
+        <div className="mb-5 space-y-3">
+          <div className="flex flex-col lg:flex-row gap-3 justify-between items-stretch lg:items-center">
+            {/* Search bar */}
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#87996c]" size={15} />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search chemical, receipt, student..."
+                className="w-full pl-9 pr-3 py-2 rounded-xl border border-[#d9e1ca] bg-white dark:bg-[#1a1d16] dark:border-[#414a33] text-xs font-semibold text-[#37412a] dark:text-[#e4e9d8] outline-none focus:ring-2 focus:ring-[#5c6e46]/20"
+              />
             </div>
 
-            <select
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value)}
-              className="rounded-xl border border-[#d9e1ca] dark:border-[#414a33] bg-white dark:bg-[#1a1d16] px-3 py-1.5 text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8] outline-none"
-            >
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-            </select>
+            {/* Organized Year & Month Dropdowns */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Year Selector */}
+              <div className="flex items-center gap-1.5 bg-[#f4f6ee] dark:bg-[#1a1d16] px-3 py-1.5 rounded-xl border border-[#d9e1ca] dark:border-[#414a33]">
+                <Calendar size={14} className="text-[#5c6e46]" />
+                <span className="text-xs font-extrabold text-[#71805a]">Year:</span>
+                <select
+                  value={selectedYear}
+                  onChange={(e) => {
+                    setSelectedYear(e.target.value);
+                    setDateFilter(0); // reset preset when picking year
+                  }}
+                  className="bg-transparent text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8] outline-none cursor-pointer"
+                >
+                  {YEARS.map((y) => (
+                    <option key={y} value={y} className="bg-white dark:bg-[#1a1d16]">
+                      {y === 'ALL' ? 'All Years (2026-2056)' : y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Month Selector */}
+              <div className="flex items-center gap-1.5 bg-[#f4f6ee] dark:bg-[#1a1d16] px-3 py-1.5 rounded-xl border border-[#d9e1ca] dark:border-[#414a33]">
+                <CalendarDays size={14} className="text-[#5c6e46]" />
+                <span className="text-xs font-extrabold text-[#71805a]">Month:</span>
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => {
+                    setSelectedMonth(e.target.value);
+                    setDateFilter(0); // reset preset when picking month
+                  }}
+                  className="bg-transparent text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8] outline-none cursor-pointer"
+                >
+                  {MONTHS.map((m) => (
+                    <option key={m.value} value={m.value} className="bg-white dark:bg-[#1a1d16]">
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Sort Order */}
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                className="rounded-xl border border-[#d9e1ca] dark:border-[#414a33] bg-white dark:bg-[#1a1d16] px-3 py-2 text-xs font-extrabold text-[#37412a] dark:text-[#e4e9d8] outline-none"
+              >
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Preset Buttons */}
+          <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-[#e4eed3] dark:border-[#2e3722]">
+            <span className="text-[11px] font-extrabold text-[#71805a] mr-1">Quick Presets:</span>
+            {PRESETS.map((p) => (
+              <button
+                key={p.label}
+                type="button"
+                onClick={() => {
+                  setDateFilter(p.days);
+                  setSelectedYear('ALL');
+                  setSelectedMonth('ALL');
+                }}
+                className={`px-3 py-1 text-xs font-extrabold rounded-xl transition ${
+                  dateFilter === p.days && selectedYear === 'ALL' && selectedMonth === 'ALL'
+                    ? 'bg-[#5c6e46] text-white shadow-2xs dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                    : 'bg-[#f4f6ee] text-[#5c6e46] border border-[#d9e1ca] hover:bg-white dark:bg-[#1a1d16] dark:text-[#a8be8a] dark:border-[#414a33]'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
           </div>
         </div>
 
