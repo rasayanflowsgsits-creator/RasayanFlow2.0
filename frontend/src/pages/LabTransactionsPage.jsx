@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { 
   CheckCircle2, Clock, XCircle, RefreshCw, Search, Filter, 
-  ChevronRight, Building2, Layers, Download, Check, X, ArrowUpRight, ArrowDownLeft
+  ChevronRight, Building2, Layers, Download, Check, X, ArrowUpRight, ArrowDownLeft,
+  FlaskConical, User, ShieldAlert
 } from 'lucide-react';
 import useAppStore from '../store/appStore';
 import useAuthStore from '../store/authStore';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import Input from '../components/ui/Input';
 import Table from '../components/ui/Table';
 
 export default function LabTransactionsPage() {
@@ -53,33 +53,105 @@ export default function LabTransactionsPage() {
   const activeLab = assignedLabs.find((lab) => String(lab.id || lab._id) === String(selectedLabId)) || assignedLabs[0] || (store.labs || [])[0];
   const labId = activeLab?.id || activeLab?._id || '';
 
-  // Fetch transactions for active lab
+  // Fetch transactions and student requests for active lab
   useEffect(() => {
     if (labId) {
       store.fetchTransactions({ labId });
+      if (store.fetchStudentRequests) store.fetchStudentRequests(labId);
+      if (store.fetchLabRequests) store.fetchLabRequests();
+      if (store.fetchInventory) store.fetchInventory(labId);
     }
   }, [labId]);
 
-  const rawTransactions = store.transactions || [];
+  // Aggregate Real Transactions & Student Requisitions
+  const unifiedTransactions = useMemo(() => {
+    const list = [];
+    const seenIds = new Set();
 
-  // Filtered transactions for active lab
-  const labTransactions = useMemo(() => {
-    if (!labId) return rawTransactions;
-    return rawTransactions.filter(tx => {
+    // 1. Process store.transactions
+    (store.transactions || []).forEach(tx => {
+      const id = String(tx._id || tx.id || '');
+      if (id) seenIds.add(id);
       const txLabId = String(tx.labId?._id || tx.labId || '');
-      return !txLabId || txLabId === String(labId);
+      if (!txLabId || txLabId === String(labId)) {
+        list.push({
+          id: id || `tx-${Math.random()}`,
+          rawId: id,
+          sourceType: 'transaction',
+          itemName: tx.itemName || tx.itemId?.itemName || tx.chemicalName || tx.experimentTitle || 'Chemical Reagent',
+          requesterName: tx.requesterName || tx.userId?.name || tx.requesterEmail || 'Student',
+          requesterEmail: tx.requesterEmail || tx.userId?.email || 'Registered User',
+          quantity: tx.quantity || 1,
+          quantityUnit: tx.quantityUnit || tx.itemId?.quantityUnit || 'mL',
+          type: tx.type || 'borrow',
+          status: (tx.status || 'pending').toLowerCase(),
+          timestamp: tx.timestamp || tx.createdAt || new Date().toISOString(),
+          purpose: tx.purpose || tx.experimentTitle || 'Practical Requisition'
+        });
+      }
     });
-  }, [rawTransactions, labId]);
+
+    // 2. Process store.studentRequests (Student Experiment Requisitions)
+    (store.studentRequests || []).forEach(req => {
+      const id = String(req._id || req.id || '');
+      if (seenIds.has(id)) return;
+      const reqLabId = String(req.labId?._id || req.labId || '');
+      if (!reqLabId || reqLabId === String(labId)) {
+        const chemNames = (req.chemicalsRequested || []).map(c => `${c.chemicalName || c.name || 'Chemical'} (${c.quantityRequested || 1}${c.unit || 'mL'})`).join(', ') || 'Experiment Chemicals';
+        list.push({
+          id: id || `st-${Math.random()}`,
+          rawId: id,
+          sourceType: 'studentRequest',
+          itemName: req.experimentName ? `Exp ${req.experimentNo || 1}: ${req.experimentName}` : (req.subject || chemNames),
+          requesterName: req.studentName || 'Student',
+          requesterEmail: req.rollNumber ? `Roll No: ${req.rollNumber}` : 'Student',
+          quantity: (req.chemicalsRequested || []).length || 1,
+          quantityUnit: 'chemicals',
+          type: 'borrow',
+          status: (req.overallStatus || 'Pending').toLowerCase(),
+          timestamp: req.requestedAt || req.createdAt || new Date().toISOString(),
+          purpose: req.subject ? `${req.subject} Practical ${req.group ? `(Group ${req.group})` : ''}` : 'Class Practical'
+        });
+      }
+    });
+
+    // 3. Process store.labRequests
+    (store.labRequests || []).forEach(req => {
+      const id = String(req._id || req.id || '');
+      if (seenIds.has(id)) return;
+      const reqLabId = String(req.labId?._id || req.labId || '');
+      if (!reqLabId || reqLabId === String(labId)) {
+        list.push({
+          id: id || `lr-${Math.random()}`,
+          rawId: id,
+          sourceType: 'labRequest',
+          itemName: req.chemicalName || 'Chemical Reagent',
+          requesterName: req.studentName || req.userName || 'Student',
+          requesterEmail: req.groupName ? `Group: ${req.groupName}` : 'Student',
+          quantity: req.quantityRequested || req.quantity || 1,
+          quantityUnit: req.unit || 'mL',
+          type: 'borrow',
+          status: (req.status || 'pending').toLowerCase(),
+          timestamp: req.createdAt || req.timestamp || new Date().toISOString(),
+          purpose: req.purpose || 'Laboratory Practical'
+        });
+      }
+    });
+
+    // Sort newest first
+    list.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    return list;
+  }, [store.transactions, store.studentRequests, store.labRequests, labId]);
 
   // Derived metrics
-  const totalCount = labTransactions.length;
-  const pendingCount = useMemo(() => labTransactions.filter(t => t.status === 'pending').length, [labTransactions]);
-  const approvedCount = useMemo(() => labTransactions.filter(t => t.status === 'approved' || t.status === 'completed').length, [labTransactions]);
-  const rejectedCount = useMemo(() => labTransactions.filter(t => t.status === 'rejected').length, [labTransactions]);
+  const totalCount = unifiedTransactions.length;
+  const pendingCount = useMemo(() => unifiedTransactions.filter(t => t.status === 'pending').length, [unifiedTransactions]);
+  const approvedCount = useMemo(() => unifiedTransactions.filter(t => t.status === 'approved' || t.status === 'completed').length, [unifiedTransactions]);
+  const rejectedCount = useMemo(() => unifiedTransactions.filter(t => t.status === 'rejected').length, [unifiedTransactions]);
 
   // Search & Tab Filter
   const filteredTransactions = useMemo(() => {
-    return labTransactions.filter(tx => {
+    return unifiedTransactions.filter(tx => {
       // Tab filter
       if (activeTab === 'pending' && tx.status !== 'pending') return false;
       if (activeTab === 'approved' && tx.status !== 'approved' && tx.status !== 'completed') return false;
@@ -88,30 +160,34 @@ export default function LabTransactionsPage() {
       // Search term filter
       if (!searchTerm.trim()) return true;
       const q = searchTerm.toLowerCase();
-      const itemName = tx.itemName || tx.itemId?.itemName || tx.chemicalName || tx.experimentTitle || '';
-      const requester = tx.requesterName || tx.userId?.name || tx.requesterEmail || '';
-      const purpose = tx.purpose || '';
-      
       return (
-        itemName.toLowerCase().includes(q) ||
-        requester.toLowerCase().includes(q) ||
-        purpose.toLowerCase().includes(q)
+        (tx.itemName || '').toLowerCase().includes(q) ||
+        (tx.requesterName || '').toLowerCase().includes(q) ||
+        (tx.requesterEmail || '').toLowerCase().includes(q) ||
+        (tx.purpose || '').toLowerCase().includes(q)
       );
     });
-  }, [labTransactions, activeTab, searchTerm]);
+  }, [unifiedTransactions, activeTab, searchTerm]);
 
-  // Approve Transaction Handler
-  const handleApprove = async (txId) => {
-    setActionLoading(txId);
+  // Approve Handler
+  const handleApprove = async (tx) => {
+    const txId = tx.rawId;
+    setActionLoading(tx.id);
     try {
-      if (store.approveBorrowRequest) {
+      if (tx.sourceType === 'studentRequest' && store.approveStudentRequest) {
+        await store.approveStudentRequest(txId, 'available', labId);
+      } else if (tx.sourceType === 'labRequest' && store.approveLabRequest) {
+        await store.approveLabRequest(txId);
+      } else if (store.approveBorrowRequest) {
         await store.approveBorrowRequest(txId);
-      } else {
-        await store.fetchTransactions({ labId });
       }
-      store.setToast({ type: 'success', message: 'Transaction request approved successfully.' });
+      store.setToast({ type: 'success', message: `Request for ${tx.itemName} approved.` });
+      
+      // Refresh lab data
       store.fetchTransactions({ labId });
-      store.fetchInventory(labId);
+      if (store.fetchStudentRequests) store.fetchStudentRequests(labId);
+      if (store.fetchLabRequests) store.fetchLabRequests();
+      if (store.fetchInventory) store.fetchInventory(labId);
     } catch (err) {
       store.setToast({ type: 'error', message: err?.response?.data?.message || 'Failed to approve request.' });
     } finally {
@@ -119,17 +195,24 @@ export default function LabTransactionsPage() {
     }
   };
 
-  // Reject Transaction Handler
-  const handleReject = async (txId) => {
-    setActionLoading(txId);
+  // Reject Handler
+  const handleReject = async (tx) => {
+    const txId = tx.rawId;
+    setActionLoading(tx.id);
     try {
-      if (store.rejectBorrowRequest) {
+      if (tx.sourceType === 'studentRequest' && store.rejectStudentRequest) {
+        await store.rejectStudentRequest(txId, 'Not specified', labId);
+      } else if (tx.sourceType === 'labRequest' && store.rejectLabRequest) {
+        await store.rejectLabRequest(txId, 'Declined by Lab Admin');
+      } else if (store.rejectBorrowRequest) {
         await store.rejectBorrowRequest(txId);
-      } else {
-        await store.fetchTransactions({ labId });
       }
-      store.setToast({ type: 'info', message: 'Transaction request rejected.' });
+      store.setToast({ type: 'info', message: `Request for ${tx.itemName} rejected.` });
+
+      // Refresh lab data
       store.fetchTransactions({ labId });
+      if (store.fetchStudentRequests) store.fetchStudentRequests(labId);
+      if (store.fetchLabRequests) store.fetchLabRequests();
     } catch (err) {
       store.setToast({ type: 'error', message: err?.response?.data?.message || 'Failed to reject request.' });
     } finally {
@@ -138,32 +221,32 @@ export default function LabTransactionsPage() {
   };
 
   const tableHeaders = [
-    { key: 'item', label: 'Item / Reagent', render: tx => (
+    { key: 'item', label: 'Item / Practical Requisition', render: tx => (
       <div>
         <span className="font-extrabold text-[#37412a] dark:text-[#e4e9d8] text-xs">
-          {tx.itemName || tx.itemId?.itemName || tx.chemicalName || tx.experimentTitle || 'Reagent / Experiment'}
+          {tx.itemName}
         </span>
-        {tx.experimentTitle && (
-          <span className="block text-[10px] text-[#71805a] font-semibold">Practical: {tx.experimentTitle}</span>
+        {tx.purpose && (
+          <span className="block text-[10px] text-[#71805a] font-semibold">{tx.purpose}</span>
         )}
       </div>
     )},
-    { key: 'requester', label: 'Requester / Student', render: tx => (
+    { key: 'requester', label: 'Student / Requester', render: tx => (
       <div>
         <span className="font-extrabold text-[#5c6e46] dark:text-[#a8be8a] text-xs">
-          {tx.requesterName || tx.userId?.name || 'Student'}
+          {tx.requesterName}
         </span>
         <span className="block text-[10px] text-[#71805a]">
-          {tx.requesterEmail || tx.userId?.email || 'Student Account'}
+          {tx.requesterEmail}
         </span>
       </div>
     )},
     { key: 'qty', label: 'Quantity', render: tx => (
       <span className="font-mono font-extrabold text-xs text-[#37412a] dark:text-[#e4e9d8]">
-        {tx.quantity || 1} {tx.quantityUnit || tx.itemId?.quantityUnit || 'units'}
+        {tx.quantity} {tx.quantityUnit}
       </span>
     )},
-    { key: 'type', label: 'Transaction Type', render: tx => {
+    { key: 'type', label: 'Type', render: tx => {
       const isBorrow = tx.type === 'borrow';
       return (
         <span className={`inline-flex items-center gap-1 text-[11px] font-extrabold px-2 py-0.5 rounded-md border ${
@@ -172,7 +255,7 @@ export default function LabTransactionsPage() {
             : 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
         }`}>
           {isBorrow ? <ArrowUpRight size={12} /> : <ArrowDownLeft size={12} />}
-          {isBorrow ? 'Borrowing' : 'Stock Return'}
+          {isBorrow ? 'Borrowing' : 'Return'}
         </span>
       );
     }},
@@ -193,12 +276,11 @@ export default function LabTransactionsPage() {
     }},
     { key: 'date', label: 'Timestamp', render: tx => (
       <span className="text-[11px] font-semibold text-[#71805a]">
-        {new Date(tx.timestamp || tx.createdAt || Date.now()).toLocaleString()}
+        {new Date(tx.timestamp).toLocaleString()}
       </span>
     )},
     { key: 'actions', label: 'Action Controls', render: tx => {
       const isPending = tx.status === 'pending';
-      const txId = tx._id || tx.id;
       if (!isPending) {
         return <span className="text-[11px] font-bold text-[#71805a]">✓ Processed</span>;
       }
@@ -206,16 +288,16 @@ export default function LabTransactionsPage() {
         <div className="flex items-center gap-1.5">
           <button
             type="button"
-            disabled={actionLoading === txId}
-            onClick={() => handleApprove(txId)}
+            disabled={actionLoading === tx.id}
+            onClick={() => handleApprove(tx)}
             className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-extrabold shadow-2xs transition-colors"
           >
             <Check size={13} /> Approve
           </button>
           <button
             type="button"
-            disabled={actionLoading === txId}
-            onClick={() => handleReject(txId)}
+            disabled={actionLoading === tx.id}
+            onClick={() => handleReject(tx)}
             className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-extrabold shadow-2xs transition-colors"
           >
             <X size={13} /> Reject
