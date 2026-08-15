@@ -229,7 +229,7 @@ function App() {
                     <Route path='lab/experiments' element={isLabAdmin ? <LabExperimentsPage /> : <Navigate to='/' replace />} />
                     <Route path='lab/student-requests' element={isLabAdmin ? <LabStudentRequestsPage /> : <Navigate to='/' replace />} />
                     <Route path='lab/groups' element={isLabAdmin ? <LabGroupsPage /> : <Navigate to='/' replace />} />
-                    <Route path='lab/live' element={isLabAdmin ? <LabLiveMonitorPage /> : <Navigate to='/' replace />} />
+                    <Route path='lab/live' element={<Navigate to='/' replace />} />
                     <Route path='lab/store-requests' element={isLabAdmin ? <LabStoreRequests /> : <Navigate to='/' replace />} />
                     <Route path='lab/history' element={isLabAdmin ? <LabHistory /> : <Navigate to='/' replace />} />
                     <Route path='lab/notifications' element={isLabAdmin ? <LabNotifications /> : <Navigate to='/' replace />} />
