@@ -224,68 +224,65 @@ export default function PhDResearchDashboard() {
         </button>
       </div>
 
-      {/* 3 Stat Cards Grid (Balanced Squarish Design) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Card 1: Total Requests */}
-        <div className="relative overflow-hidden rounded-lg bg-white dark:bg-[#1a1d16] border border-[#cfd8bd] dark:border-[#414a33] p-4.5 shadow-xs hover:shadow-md transition-all space-y-3">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-indigo-500"></div>
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-black text-indigo-700 dark:text-indigo-400 uppercase tracking-wider">
-              Total Requisitions
-            </span>
-            <div className="p-2 rounded bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
-              <Beaker className="w-4 h-4" />
-            </div>
+      {/* 3 Stat Cards Grid (Space-Efficient Compact Layout) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Card 1: Total Requisitions */}
+        <div className="rounded-lg bg-white dark:bg-[#1a1d16] border border-[#cfd8bd] dark:border-[#414a33] p-4 shadow-2xs hover:shadow-md transition-all flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+            <Beaker className="w-5 h-5" />
           </div>
-          <div className="flex items-baseline justify-between pt-1">
-            <span className="text-3xl font-black text-[#37412a] dark:text-[#e4e9d8] leading-none">
-              {stats.total}
-            </span>
-            <span className="text-[10px] font-bold text-indigo-800 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
-              Direct Store
-            </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-black text-indigo-700 dark:text-indigo-400 uppercase tracking-wider truncate">
+              Total Requisitions
+            </p>
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-2xl font-black text-[#37412a] dark:text-[#e4e9d8] leading-none">
+                {stats.total}
+              </span>
+              <span className="text-[10px] font-bold text-indigo-800 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
+                Direct Store
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Card 2: Pending Store */}
-        <div className="relative overflow-hidden rounded-lg bg-white dark:bg-[#1a1d16] border border-[#cfd8bd] dark:border-[#414a33] p-4.5 shadow-xs hover:shadow-md transition-all space-y-3">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500"></div>
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-wider">
-              Pending Store
-            </span>
-            <div className="p-2 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
-              <Clock className="w-4 h-4" />
-            </div>
+        <div className="rounded-lg bg-white dark:bg-[#1a1d16] border border-[#cfd8bd] dark:border-[#414a33] p-4 shadow-2xs hover:shadow-md transition-all flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+            <Clock className="w-5 h-5" />
           </div>
-          <div className="flex items-baseline justify-between pt-1">
-            <span className="text-3xl font-black text-amber-600 dark:text-amber-400 leading-none">
-              {stats.pending}
-            </span>
-            <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800">
-              Awaiting Manager
-            </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-wider truncate">
+              Pending Store
+            </p>
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-2xl font-black text-amber-600 dark:text-amber-400 leading-none">
+                {stats.pending}
+              </span>
+              <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800">
+                Awaiting Manager
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Card 3: Issued & Approved */}
-        <div className="relative overflow-hidden rounded-lg bg-white dark:bg-[#1a1d16] border border-[#cfd8bd] dark:border-[#414a33] p-4.5 shadow-xs hover:shadow-md transition-all space-y-3">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-500"></div>
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
-              Issued & Approved
-            </span>
-            <div className="p-2 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-              <CheckCircle2 className="w-4 h-4" />
-            </div>
+        <div className="rounded-lg bg-white dark:bg-[#1a1d16] border border-[#cfd8bd] dark:border-[#414a33] p-4 shadow-2xs hover:shadow-md transition-all flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-5 h-5" />
           </div>
-          <div className="flex items-baseline justify-between pt-1">
-            <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400 leading-none">
-              {stats.approved}
-            </span>
-            <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
-              Receipt Issued
-            </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-wider truncate">
+              Issued & Approved
+            </p>
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 leading-none">
+                {stats.approved}
+              </span>
+              <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                Receipt Issued
+              </span>
+            </div>
           </div>
         </div>
       </div>
