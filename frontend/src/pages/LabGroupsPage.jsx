@@ -246,9 +246,168 @@ export default function LabGroupsPage() {
     return member?.name || member?.email || 'Leader';
   };
 
-  const getExperimentName = (expId) => {
-    const exp = (experiments || []).find((e) => String(e.id || e._id) === String(expId));
-    return exp ? `Exp ${exp.experimentNumber}: ${exp.experimentObject}` : 'Practical Experiment';
+  // Group form modal JSX (Split 2-Column Layout for 100+ Students)
+  const GroupFormContent = () => {
+    const [studentSearch, setStudentSearch] = useState('');
+
+    const filteredStudents = useMemo(() => {
+      if (!studentSearch.trim()) return eligibleTeamMembers || [];
+      const q = studentSearch.toLowerCase();
+      return (eligibleTeamMembers || []).filter(
+        (m) =>
+          (m.name || '').toLowerCase().includes(q) ||
+          (m.rollNumber || '').toLowerCase().includes(q) ||
+          (m.email || '').toLowerCase().includes(q)
+      );
+    }, [eligibleTeamMembers, studentSearch]);
+
+    const handleSelectAllFiltered = () => {
+      const filteredIds = filteredStudents.map((m) => String(m.id || m._id));
+      setGroupForm((prev) => {
+        const nextSet = new Set(prev.memberIds);
+        filteredIds.forEach((id) => nextSet.add(id));
+        return { ...prev, memberIds: Array.from(nextSet) };
+      });
+    };
+
+    const handleClearSelection = () => {
+      setGroupForm((prev) => ({ ...prev, memberIds: [] }));
+    };
+
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 text-xs font-semibold">
+        {/* Left Column: Group Info & Leader (4 cols) */}
+        <div className="lg:col-span-4 space-y-4 border-r border-[#e4eed3] pr-0 lg:pr-5 dark:border-[#2e3722]">
+          <div>
+            <label className="block font-extrabold text-[#37412a] dark:text-[#e4e9d8] mb-1">
+              Group Name <span className="text-rose-600">*</span>
+            </label>
+            <input
+              type="text"
+              value={groupForm.name}
+              onChange={(e) => setGroupForm((p) => ({ ...p, name: e.target.value }))}
+              placeholder="e.g. Group-A"
+              className="w-full rounded-lg border border-[#cfd8bd] bg-white px-3.5 py-2.5 text-xs font-bold text-[#37412a] dark:text-[#e4e9d8] dark:border-[#414a33] dark:bg-[#1a1d16] outline-none focus:border-[#5c6e46] focus:ring-2 focus:ring-[#5c6e46]/20"
+            />
+          </div>
+
+          <div>
+            <label className="block font-extrabold text-[#37412a] dark:text-[#e4e9d8] mb-1">Group Leader</label>
+            <select
+              value={groupForm.leaderId}
+              onChange={(e) => setGroupForm((p) => ({ ...p, leaderId: e.target.value }))}
+              className="w-full rounded-lg border border-[#cfd8bd] bg-white px-3.5 py-2.5 text-xs font-bold text-[#37412a] dark:text-[#e4e9d8] dark:border-[#414a33] dark:bg-[#1a1d16] outline-none focus:border-[#5c6e46] focus:ring-2 focus:ring-[#5c6e46]/20"
+            >
+              <option value="">— Select Group Leader —</option>
+              {(eligibleTeamMembers || []).map((m) => (
+                <option key={m.id || m._id} value={m.id || m._id}>
+                  {m.name} {m.rollNumber ? `(${m.rollNumber})` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Group Summary Box */}
+          <div className="rounded-xl bg-[#f4f6ee] dark:bg-[#1a1d16] p-4 border border-[#d9e1ca] dark:border-[#414a33] space-y-2">
+            <div className="text-[11px] font-extrabold text-[#5c6e46] uppercase tracking-wider">Group Summary</div>
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-[#71805a]">Selected Members:</span>
+              <span className="font-extrabold text-[#37412a] dark:text-[#e4e9d8]">{groupForm.memberIds.length} Students</span>
+            </div>
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-[#71805a]">Group Leader:</span>
+              <span className="font-extrabold text-[#5c6e46] dark:text-[#a8be8a]">
+                {groupForm.leaderId ? getLeaderName(groupForm.leaderId) : 'None'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: 100+ Student Selection Panel (8 cols) */}
+        <div className="lg:col-span-8 space-y-3">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <label className="font-extrabold text-[#37412a] dark:text-[#e4e9d8]">
+              Select Students ({groupForm.memberIds.length} of {eligibleTeamMembers?.length || 0} selected)
+            </label>
+
+            {/* Batch Action Buttons */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleSelectAllFiltered}
+                className="text-[11px] font-extrabold text-[#5c6e46] hover:underline"
+              >
+                + Select All Filtered ({filteredStudents.length})
+              </button>
+              <span className="text-[#cfd8bd]">|</span>
+              <button
+                type="button"
+                onClick={handleClearSelection}
+                className="text-[11px] font-bold text-rose-600 hover:underline"
+              >
+                Clear Selection
+              </button>
+            </div>
+          </div>
+
+          {/* Student Search Input */}
+          <div className="relative">
+            <input
+              type="text"
+              value={studentSearch}
+              onChange={(e) => setStudentSearch(e.target.value)}
+              placeholder="Search 100+ students by roll number or name..."
+              className="w-full pl-9 pr-3 py-2 rounded-lg border border-[#cfd8bd] bg-white dark:bg-[#1a1d16] dark:border-[#414a33] text-xs font-semibold text-[#37412a] dark:text-[#e4e9d8] outline-none focus:ring-2 focus:ring-[#5c6e46]/20"
+            />
+            <Users size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#87996c]" />
+          </div>
+
+          {/* 2-Column Spacious Student Selection Grid */}
+          <div className="h-80 overflow-y-auto rounded-xl border border-[#d9e1ca] dark:border-[#414a33] bg-[#fafbf5] dark:bg-[#151712] p-2">
+            {filteredStudents.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {filteredStudents.map((m) => {
+                  const id = String(m.id || m._id);
+                  const checked = groupForm.memberIds.includes(id);
+                  const isLeader = String(groupForm.leaderId) === id;
+                  return (
+                    <div
+                      key={id}
+                      onClick={() => toggleMember(id)}
+                      className={`flex items-center gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-all ${
+                        checked
+                          ? 'border-[#5c6e46] bg-white dark:bg-[#20251a] shadow-2xs'
+                          : 'border-[#e8efd9] dark:border-[#2e3722] hover:bg-white/60 dark:hover:bg-[#20251a]/50'
+                      }`}
+                    >
+                      <div className={`h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 ${checked ? 'bg-[#5c6e46] border-[#5c6e46]' : 'border-[#cfd8bd] dark:border-[#414a33]'}`}>
+                        {checked && <Check size={11} className="text-white" />}
+                      </div>
+                      <Avatar name={m.name} size="sm" colorIdx={(m.rollNumber || '').charCodeAt(0)} />
+                      <div className="min-w-0 flex-1">
+                        <div className="font-extrabold text-[#37412a] dark:text-[#e4e9d8] truncate flex items-center gap-1">
+                          <span>{m.name}</span>
+                          {isLeader && (
+                            <span className="px-1 py-0.2 text-[9px] font-black bg-amber-100 text-amber-800 rounded">L</span>
+                          )}
+                        </div>
+                        {m.rollNumber && (
+                          <div className="text-[10px] text-[#71805a] font-mono">Roll: {m.rollNumber}</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="px-3 py-10 text-center text-xs text-[#71805a]">
+                No students found matching "{studentSearch}".
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
