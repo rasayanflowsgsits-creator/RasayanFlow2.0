@@ -193,26 +193,42 @@ export default function PhDResearchDashboard() {
         </div>
       </div>
 
-      {/* Structured Metrics Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        {/* Action Button Card */}
-        <div className="relative overflow-hidden p-5 rounded-2xl bg-white dark:bg-[#1c2117] border-2 border-[#556b2f]/30 dark:border-[#c8a030]/30 shadow-md hover:shadow-lg transition-all flex flex-col justify-between space-y-3">
-          <div className="absolute top-0 left-0 right-0 h-1.5 bg-[#556b2f]"></div>
-          <div>
-            <span className="text-[11px] font-black text-[#556b2f] dark:text-[#c8a030] uppercase tracking-wider">Direct Action</span>
-            <h3 className="text-base font-black text-[#3c4e23] dark:text-[#eef4e8] mt-0.5">Request Chemical</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">Direct requisition to Central Store</p>
+      {/* Prominent Mobile & Desktop Call-To-Action Banner */}
+      <div className="w-full bg-gradient-to-r from-[#2e3d19] via-[#3c4e23] to-[#556b2f] dark:from-[#1a2211] dark:via-[#283518] dark:to-[#384822] border-2 border-[#556b2f] rounded-2xl p-5 sm:p-6 text-white shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-white/10 dark:bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0 border border-white/20">
+            <FlaskConical className="w-6 h-6 text-amber-300" />
           </div>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="w-full py-2.5 px-4 bg-[#556b2f] hover:bg-[#3c4e23] text-white rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 shadow-md hover:scale-[1.02]"
-          >
-            <Plus size={16} /> New Direct Request
-          </button>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded bg-[#c8a030] text-black text-[10px] font-black uppercase tracking-wider">
+                Direct PhD Requisition
+              </span>
+              <span className="text-[11px] font-semibold text-emerald-200 hidden xs:inline">
+                Skips Lab Admin
+              </span>
+            </div>
+            <h2 className="text-lg sm:text-xl font-black mt-1 text-white leading-tight">
+              Request Chemical Directly to Store Manager
+            </h2>
+            <p className="text-xs text-emerald-100/90 mt-0.5 font-medium">
+              Submit your research synthesis requirements directly to the Central Store for fast issuance.
+            </p>
+          </div>
         </div>
 
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="w-full sm:w-auto shrink-0 px-6 py-3 bg-[#c8a030] hover:bg-[#b08b26] text-black font-black text-xs sm:text-sm rounded-xl transition-all shadow-lg hover:scale-[1.02] flex items-center justify-center gap-2 uppercase tracking-wider"
+        >
+          <Plus size={18} /> New Chemical Request
+        </button>
+      </div>
+
+      {/* 3 Stat Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Card 1: Total Requests */}
-        <div className="relative overflow-hidden p-5 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all flex items-center justify-between gap-3">
+        <div className="relative overflow-hidden p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all flex items-center justify-between gap-3">
           <div className="absolute top-0 left-0 right-0 h-1 bg-indigo-500"></div>
           <div className="p-3 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl text-indigo-600 dark:text-indigo-400 shrink-0">
             <Beaker className="w-5 h-5" />
@@ -229,7 +245,7 @@ export default function PhDResearchDashboard() {
         </div>
 
         {/* Card 2: Pending Store */}
-        <div className="relative overflow-hidden p-5 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all flex items-center justify-between gap-3">
+        <div className="relative overflow-hidden p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all flex items-center justify-between gap-3">
           <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500"></div>
           <div className="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-xl text-amber-600 dark:text-amber-400 shrink-0">
             <Clock className="w-5 h-5" />
@@ -246,7 +262,7 @@ export default function PhDResearchDashboard() {
         </div>
 
         {/* Card 3: Approved */}
-        <div className="relative overflow-hidden p-5 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all flex items-center justify-between gap-3">
+        <div className="relative overflow-hidden p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#1c2117] border border-[#e4ebda] dark:border-[#38432a] shadow-sm hover:shadow-md transition-all flex items-center justify-between gap-3">
           <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-500"></div>
           <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl text-emerald-600 dark:text-emerald-400 shrink-0">
             <CheckCircle2 className="w-5 h-5" />
