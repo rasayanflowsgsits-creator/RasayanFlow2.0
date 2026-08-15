@@ -193,29 +193,6 @@ export default function PhDResearchDashboard() {
         </div>
       </div>
 
-      {/* Styled Gradient Banner Card */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#2e3d19] via-[#3c4e23] to-[#556b2f] p-6 sm:p-8 text-white shadow-xl">
-        <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none hidden md:block">
-          <Beaker className="w-48 h-48 text-white" />
-        </div>
-        <div className="relative z-10 space-y-3 max-w-3xl">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="px-3 py-1 bg-[#c8a030] text-black text-xs font-black rounded-full uppercase tracking-wider shadow-sm">
-              Higher Scholar Portal
-            </span>
-            <span className="px-3 py-1 bg-white/20 text-white text-xs font-extrabold rounded-full backdrop-blur-sm">
-              Bypasses Lab Admin Verification
-            </span>
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-black leading-tight">
-            Direct Central Store Requisition
-          </h2>
-          <p className="text-xs sm:text-sm font-medium text-emerald-100/90 leading-relaxed">
-            As a PhD Scholar, your chemical requests bypass intermediate laboratory quotas and are routed <strong>directly to the Central Store Manager</strong> for immediate issuance and receipt logging.
-          </p>
-        </div>
-      </div>
-
       {/* Structured Metrics Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         {/* Action Button Card */}
