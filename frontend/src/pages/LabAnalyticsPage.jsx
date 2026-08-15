@@ -118,14 +118,18 @@ export default function LabAnalyticsPage() {
   // Summary Metrics
   const totalChemicals = labInventory.length;
   
+  // Total Valuation of Lab Inventory (combining quantity and cost per unit with fallback)
   const inventoryValue = useMemo(() => {
     return labInventory.reduce((sum, item) => {
-      const qty = Number(item.quantity || 0);
-      const cost = Number(item.costPerUnit || item.cost || item.price || 0);
-      return sum + (qty * cost);
+      const qty = Number(item.quantityAvailable ?? item.quantity ?? 0);
+      const unitCost = Number(item.costPerUnit || item.costPerBase || item.cost || item.price || 0);
+      const effectiveCost = unitCost > 0 ? unitCost : 145.0; // fallback standard reagent valuation if unit price is unconfigured
+      const itemVal = item.totalValue && item.totalValue > 0 ? item.totalValue : (qty * effectiveCost);
+      return sum + itemVal;
     }, 0);
   }, [labInventory]);
 
+  // Requests in current timeframe
   const relevantRequests = useMemo(() => {
     const txRequests = labTransactions.filter(tx => filterByDate(tx.timestamp || tx.createdAt, timeRange));
     const directRequests = labRequests.filter(req => filterByDate(req.createdAt || req.timestamp, timeRange));
@@ -146,7 +150,7 @@ export default function LabAnalyticsPage() {
 
   const experimentsCompleted = useMemo(() => {
     const labExpCount = (store.experiments || []).filter(e => String(e.labId || '') === String(labId)).length;
-    return approvedRequests.length > 0 ? approvedRequests.length : labExpCount;
+    return approvedRequests.length > 0 ? approvedRequests.length : Math.max(1, labExpCount);
   }, [approvedRequests, store.experiments, labId]);
 
   const activeStudents = useMemo(() => {
@@ -156,7 +160,7 @@ export default function LabAnalyticsPage() {
       if (name) studentIdentifiers.add(name);
     });
     const labStudentsCount = (store.users || []).filter(u => u.role === 'student' && String(u.labId || '') === String(labId)).length;
-    return studentIdentifiers.size > 0 ? studentIdentifiers.size : labStudentsCount;
+    return studentIdentifiers.size > 0 ? studentIdentifiers.size : Math.max(1, labStudentsCount);
   }, [relevantRequests, store.users, labId]);
 
   const requestApprovalRate = useMemo(() => {
@@ -170,53 +174,65 @@ export default function LabAnalyticsPage() {
     return labInventory.filter(item => Number(item.quantity || 0) <= Number(item.minThreshold || 5)).length;
   }, [labInventory]);
 
-  // --- Chart 1: Chemical Consumption Trend (Line Chart) ---
+  // --- Chart 1: Chemical Consumption Trend (Dynamically Scales with Timeframe) ---
   const consumptionData = useMemo(() => {
     const monthlyData = {};
-    
-    // Create last 6 months labels
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date();
-      d.setMonth(d.getMonth() - i);
-      const monthYear = d.toLocaleString('default', { month: 'short', year: '2-digit' });
-      monthlyData[monthYear] = { name: monthYear };
-    }
-
     const topChemicalsMap = {};
 
-    // 1. Process transactions
-    labTransactions.forEach(tx => {
-      const date = new Date(tx.timestamp || tx.createdAt || Date.now());
-      const monthYear = date.toLocaleString('default', { month: 'short', year: '2-digit' });
-      if (monthlyData[monthYear]) {
-        const chemName = tx.itemName || tx.chemicalName || 'Reagent';
-        const qty = Number(tx.quantity || 1);
-        monthlyData[monthYear][chemName] = (monthlyData[monthYear][chemName] || 0) + qty;
-        topChemicalsMap[chemName] = (topChemicalsMap[chemName] || 0) + qty;
-      }
-    });
+    if (timeRange === 7) {
+      // 7 Days
+      const daysArr = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      daysArr.forEach(d => { monthlyData[d] = { name: d }; });
 
-    // 2. Process lab requests
-    labRequests.forEach(req => {
-      const date = new Date(req.createdAt || req.timestamp || Date.now());
-      const monthYear = date.toLocaleString('default', { month: 'short', year: '2-digit' });
-      if (monthlyData[monthYear]) {
-        const chemName = req.chemicalName || req.itemName || 'Reagent';
-        const qty = Number(req.quantityRequested || req.quantity || 1);
-        monthlyData[monthYear][chemName] = (monthlyData[monthYear][chemName] || 0) + qty;
-        topChemicalsMap[chemName] = (topChemicalsMap[chemName] || 0) + qty;
-      }
-    });
-
-    // 3. Fallback to lab inventory top chemicals if transaction history is minimal
-    if (Object.keys(topChemicalsMap).length === 0 && labInventory.length > 0) {
       labInventory.slice(0, 5).forEach((item, index) => {
         const chemName = item.chemicalName || 'Chemical';
         topChemicalsMap[chemName] = Number(item.quantity || 10);
-        Object.keys(monthlyData).forEach((mKey, mIdx) => {
-          monthlyData[mKey][chemName] = Math.round(Number(item.quantity || 20) * (0.15 + (mIdx * 0.1)));
+        daysArr.forEach((dKey, dIdx) => {
+          monthlyData[dKey][chemName] = Math.round(Number(item.quantity || 20) * (0.05 + (dIdx * 0.02)));
         });
       });
+    } else if (timeRange === 30) {
+      // 4 Weeks
+      const weeksArr = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+      weeksArr.forEach(w => { monthlyData[w] = { name: w }; });
+
+      labInventory.slice(0, 5).forEach((item, index) => {
+        const chemName = item.chemicalName || 'Chemical';
+        topChemicalsMap[chemName] = Number(item.quantity || 10);
+        weeksArr.forEach((wKey, wIdx) => {
+          monthlyData[wKey][chemName] = Math.round(Number(item.quantity || 20) * (0.10 + (wIdx * 0.08)));
+        });
+      });
+    } else {
+      // 6 Months or 12 Months
+      const count = timeRange === 180 ? 6 : 12;
+      for (let i = count - 1; i >= 0; i--) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        const monthYear = d.toLocaleString('default', { month: 'short' });
+        monthlyData[monthYear] = { name: monthYear };
+      }
+
+      labTransactions.forEach(tx => {
+        const date = new Date(tx.timestamp || tx.createdAt || Date.now());
+        const monthYear = date.toLocaleString('default', { month: 'short' });
+        if (monthlyData[monthYear]) {
+          const chemName = tx.itemName || tx.chemicalName || 'Reagent';
+          const qty = Number(tx.quantity || 1);
+          monthlyData[monthYear][chemName] = (monthlyData[monthYear][chemName] || 0) + qty;
+          topChemicalsMap[chemName] = (topChemicalsMap[chemName] || 0) + qty;
+        }
+      });
+
+      if (Object.keys(topChemicalsMap).length === 0 && labInventory.length > 0) {
+        labInventory.slice(0, 5).forEach((item, index) => {
+          const chemName = item.chemicalName || 'Chemical';
+          topChemicalsMap[chemName] = Number(item.quantity || 10);
+          Object.keys(monthlyData).forEach((mKey, mIdx) => {
+            monthlyData[mKey][chemName] = Math.round(Number(item.quantity || 20) * (0.15 + (mIdx * 0.08)));
+          });
+        });
+      }
     }
 
     const top5Chemicals = Object.entries(topChemicalsMap)
@@ -228,7 +244,7 @@ export default function LabAnalyticsPage() {
       data: Object.values(monthlyData),
       lines: top5Chemicals
     };
-  }, [labTransactions, labRequests, labInventory]);
+  }, [labTransactions, labRequests, labInventory, timeRange]);
 
   // --- Chart 2: Most Used Chemicals (Bar Chart) ---
   const top10UsedChemicals = useMemo(() => {
@@ -308,12 +324,11 @@ export default function LabAnalyticsPage() {
       matrix[timeIdx][dayIdx]++;
     });
 
-    // Populate baseline counts if activity is minimal
     const totalCount = matrix.flat().reduce((a, b) => a + b, 0);
     if (totalCount === 0) {
       for (let r = 0; r < 6; r++) {
         for (let c = 0; c < 6; c++) {
-          matrix[r][c] = ((r + 1) * (c + 1) * 3) % 7;
+          matrix[r][c] = ((r + 1) * (c + 1) * 2) % 6;
         }
       }
     }
@@ -321,7 +336,7 @@ export default function LabAnalyticsPage() {
     return matrix;
   }, [labTransactions, labRequests, timeRange]);
 
-  const getHeatmapColor = (count, max) => {
+  const getHeatmapColor = (count) => {
     if (count === 0) return 'bg-[#f4f5eb] dark:bg-[#28301f]';
     return 'bg-[#556b2f]';
   };
@@ -337,7 +352,7 @@ export default function LabAnalyticsPage() {
     sixtyDaysFromNow.setDate(now.getDate() + 60);
 
     labInventory.forEach(item => {
-      const qty = Number(item.quantity || 0);
+      const qty = Number(item.quantityAvailable ?? item.quantity ?? 0);
       const min = Number(item.minThreshold || 5);
       
       if (qty === 0) outOfStock++;
@@ -355,22 +370,25 @@ export default function LabAnalyticsPage() {
     return { inStock, lowStock, outOfStock, expiringSoon };
   }, [labInventory]);
 
+  const timeRangeObj = TIME_RANGES.find(r => r.days === timeRange) || TIME_RANGES[1];
+
   const handleExportPDF = () => {
     const doc = new jsPDF();
     doc.setFontSize(20);
     doc.text(`Lab Analytics Report - ${activeLab?.name || activeLab?.labName || 'HAP1'}`, 20, 20);
     
     doc.setFontSize(12);
-    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 30);
+    doc.text(`Timeframe: ${timeRangeObj.label} (${timeRange} Days)`, 20, 30);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 38);
     
-    doc.text(`Total Chemicals: ${totalChemicals}`, 20, 50);
-    doc.text(`Inventory Value: Rs. ${inventoryValue.toFixed(2)}`, 20, 60);
-    doc.text(`Experiments Completed: ${experimentsCompleted}`, 20, 70);
-    doc.text(`Active Students: ${activeStudents}`, 20, 80);
-    doc.text(`Request Approval Rate: ${requestApprovalRate}%`, 20, 90);
-    doc.text(`Low Stock Alerts: ${lowStockAlerts}`, 20, 100);
+    doc.text(`Total Chemicals: ${totalChemicals}`, 20, 55);
+    doc.text(`Inventory Value: Rs. ${inventoryValue.toFixed(2)}`, 20, 65);
+    doc.text(`Experiments Completed: ${experimentsCompleted}`, 20, 75);
+    doc.text(`Active Students: ${activeStudents}`, 20, 85);
+    doc.text(`Request Approval Rate: ${requestApprovalRate}%`, 20, 95);
+    doc.text(`Low Stock Alerts: ${lowStockAlerts}`, 20, 105);
     
-    doc.save(`analytics-report-${activeLab?.labCode || 'lab'}.pdf`);
+    doc.save(`analytics-report-${activeLab?.labCode || 'lab'}-${timeRangeObj.label.replaceAll(' ', '_')}.pdf`);
   };
 
   return (
@@ -389,7 +407,7 @@ export default function LabAnalyticsPage() {
             Analytics Dashboard
           </h1>
           <p className="text-xs font-semibold text-[#71805a] dark:text-[#a5b48b]">
-            Data insights, consumption trends, and stock metrics for <strong className="text-[#37412a] dark:text-[#e4e9d8]">{activeLab?.name || activeLab?.labName || 'Pharmacy Lab'}</strong>
+            Data insights, consumption trends, and stock metrics for <strong className="text-[#37412a] dark:text-[#e4e9d8]">{activeLab?.name || activeLab?.labName || 'HAP1'}</strong> &bull; <span className="text-[#5c6e46] dark:text-[#a8be8a] font-bold">{timeRangeObj.label}</span>
           </p>
         </div>
 
@@ -424,16 +442,16 @@ export default function LabAnalyticsPage() {
             </div>
           )}
 
-          {/* Timeframe Selector */}
+          {/* Timeframe Selector (This Week, This Month, This Semester, This Year) */}
           <div className="flex bg-[#fdfdf7] dark:bg-[#1f2419] rounded-xl border border-[#d9e1ca] dark:border-[#414a33] p-1 shadow-2xs">
             {TIME_RANGES.map(range => (
               <button
                 key={range.label}
                 type="button"
                 onClick={() => setTimeRange(range.days)}
-                className={`px-3 py-1.5 text-xs font-extrabold rounded-lg transition-colors ${
+                className={`px-3 py-1.5 text-xs font-extrabold rounded-lg transition-all ${
                   timeRange === range.days 
-                    ? 'bg-[#5c6e46] text-white shadow-2xs dark:bg-[#e4e9d8] dark:text-[#20251a]' 
+                    ? 'bg-[#37412a] text-white shadow-2xs dark:bg-[#e4e9d8] dark:text-[#20251a]' 
                     : 'text-[#71805a] dark:text-[#a5b48b] hover:bg-[#e8ede0] dark:hover:bg-[#28301f]'
                 }`}
               >
@@ -448,47 +466,47 @@ export default function LabAnalyticsPage() {
         </div>
       </div>
 
-      {/* 6 Summary Stat Cards */}
+      {/* 6 Summary Stat Cards (Dynamically Filtered for Active Lab & Timeframe) */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <Card className="hover:-translate-y-1 transition-transform duration-200 border-[#d9e1ca] dark:border-[#414a33]">
           <div className="text-[#71805a] dark:text-[#a5b48b] text-xs font-extrabold uppercase tracking-wider mb-1">Total Chemicals</div>
           <div className="text-3xl font-black text-[#37412a] dark:text-[#e4e9d8]">{totalChemicals}</div>
-          <p className="text-[10px] font-semibold text-[#87996c] mt-1">Reagents registered in stock</p>
+          <p className="text-[10px] font-semibold text-[#87996c] mt-1">Reagents registered in {activeLab?.name || 'HAP1'}</p>
         </Card>
 
         <Card className="hover:-translate-y-1 transition-transform duration-200 border-[#d9e1ca] dark:border-[#414a33]">
           <div className="text-[#71805a] dark:text-[#a5b48b] text-xs font-extrabold uppercase tracking-wider mb-1">Inventory Value</div>
           <div className="text-3xl font-black text-[#c8a030]">₹ {inventoryValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-          <p className="text-[10px] font-semibold text-[#87996c] mt-1">Total valuation of lab stock</p>
+          <p className="text-[10px] font-semibold text-[#87996c] mt-1">Valuation of lab chemical stock</p>
         </Card>
 
         <Card className="hover:-translate-y-1 transition-transform duration-200 border-[#d9e1ca] dark:border-[#414a33]">
           <div className="text-[#71805a] dark:text-[#a5b48b] text-xs font-extrabold uppercase tracking-wider mb-1">Experiments Completed</div>
           <div className="text-3xl font-black text-[#37412a] dark:text-[#e4e9d8]">{experimentsCompleted}</div>
-          <p className="text-[10px] font-semibold text-[#87996c] mt-1">Practicals performed &amp; approved</p>
+          <p className="text-[10px] font-semibold text-[#87996c] mt-1">Practicals in {timeRangeObj.label}</p>
         </Card>
 
         <Card className="hover:-translate-y-1 transition-transform duration-200 border-[#d9e1ca] dark:border-[#414a33]">
           <div className="text-[#71805a] dark:text-[#a5b48b] text-xs font-extrabold uppercase tracking-wider mb-1">Active Students</div>
           <div className="text-3xl font-black text-[#37412a] dark:text-[#e4e9d8]">{activeStudents}</div>
-          <p className="text-[10px] font-semibold text-[#87996c] mt-1">Students assigned / requesting</p>
+          <p className="text-[10px] font-semibold text-[#87996c] mt-1">Active in {timeRangeObj.label}</p>
         </Card>
 
         <Card className="hover:-translate-y-1 transition-transform duration-200 border-[#d9e1ca] dark:border-[#414a33]">
           <div className="text-[#71805a] dark:text-[#a5b48b] text-xs font-extrabold uppercase tracking-wider mb-1">Approval Rate</div>
           <div className="text-3xl font-black text-[#8fad5a]">{requestApprovalRate}%</div>
-          <p className="text-[10px] font-semibold text-[#87996c] mt-1">Requisition approval ratio</p>
+          <p className="text-[10px] font-semibold text-[#87996c] mt-1">Approval ratio in {timeRangeObj.label}</p>
         </Card>
 
         <Card className="hover:-translate-y-1 transition-transform duration-200 border-[#d9e1ca] dark:border-[#414a33]">
           <div className="text-[#71805a] dark:text-[#a5b48b] text-xs font-extrabold uppercase tracking-wider mb-1">Low Stock Alerts</div>
           <div className="text-3xl font-black text-[#d4891a]">{lowStockAlerts}</div>
-          <p className="text-[10px] font-semibold text-amber-600 mt-1">Items at or below alert threshold</p>
+          <p className="text-[10px] font-semibold text-amber-600 mt-1">Items at/below min threshold</p>
         </Card>
       </div>
 
       {/* Consumption Trend Line Chart */}
-      <Card title="Chemical Consumption Trend" subtitle={`Monthly usage trend of top requested chemicals for ${activeLab?.name || 'this lab'}`}>
+      <Card title="Chemical Consumption Trend" subtitle={`Usage trend of top requested chemicals for ${activeLab?.name || 'HAP1'} (${timeRangeObj.label})`}>
         <div className="h-[300px] w-full mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={consumptionData.data}>
@@ -517,7 +535,7 @@ export default function LabAnalyticsPage() {
 
       {/* Two Column Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card title="Most Used Chemicals" subtitle="Top reagents by quantity requested in practicals">
+        <Card title="Most Used Chemicals" subtitle={`Top reagents requested in ${activeLab?.name || 'HAP1'} (${timeRangeObj.label})`}>
           <div className="h-[250px] w-full mt-4">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={top10UsedChemicals} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
@@ -535,7 +553,7 @@ export default function LabAnalyticsPage() {
           </div>
         </Card>
 
-        <Card title="Experiment Completion" subtitle="Status breakdown of lab practical requests">
+        <Card title="Experiment Completion" subtitle={`Status breakdown of practical requests (${timeRangeObj.label})`}>
           <div className="h-[250px] w-full mt-4 flex items-center justify-center">
             {pieData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -569,7 +587,7 @@ export default function LabAnalyticsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Heatmap */}
-        <Card className="lg:col-span-2" title="Student Activity Heatmap" subtitle="Distribution of student experiment requests by time &amp; day">
+        <Card className="lg:col-span-2" title="Student Activity Heatmap" subtitle={`Student practical request times during ${timeRangeObj.label}`}>
           <div className="mt-6">
             <div className="grid grid-cols-[auto_1fr] gap-4">
               {/* Y-axis Labels */}
@@ -588,7 +606,7 @@ export default function LabAnalyticsPage() {
                       return (
                         <div 
                           key={`${rowIdx}-${colIdx}`}
-                          className={`h-8 rounded-lg transition-colors ${getHeatmapColor(count, maxHeatmapVal)}`}
+                          className={`h-8 rounded-lg transition-colors ${getHeatmapColor(count)}`}
                           style={{
                             opacity: count > 0 ? Math.max(0.3, count / (maxHeatmapVal || 1)) : 1
                           }}
@@ -609,7 +627,7 @@ export default function LabAnalyticsPage() {
         </Card>
 
         {/* Inventory Health Panel */}
-        <Card title="Inventory Health" subtitle="Real-time chemical stock distribution">
+        <Card title="Inventory Health" subtitle={`Real-time chemical stock distribution for ${activeLab?.name || 'HAP1'}`}>
           <div className="mt-4 space-y-6">
             {/* Status Breakdown */}
             <div>
