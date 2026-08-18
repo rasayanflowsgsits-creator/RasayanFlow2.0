@@ -5,6 +5,7 @@ const chemicalRequirementSchema = new mongoose.Schema(
     chemicalName: { type: String, required: true, trim: true },
     quantityPerStudent: { type: Number, required: true, min: 0 },
     unit: { type: String, required: true, trim: true },
+    isUnlocked: { type: Boolean, default: false }
   },
   { _id: false }
 );

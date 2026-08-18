@@ -28,6 +28,7 @@ const inventorySchema = new mongoose.Schema({
   requestId: { type: String, trim: true },
   receivedDate: { type: Date },
   status: { type: String, enum: ["In Stock", "Low Stock", "Out of Stock"], default: "In Stock" },
+  isUnlocked: { type: Boolean, default: false },
   
   // Metadata
   casNumber: { type: String, trim: true, default: '' },

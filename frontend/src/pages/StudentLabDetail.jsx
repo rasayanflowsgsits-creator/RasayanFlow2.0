@@ -603,14 +603,27 @@ export default function StudentLabDetail() {
                       <p className="text-xs text-gray-500 mb-3">Subject: {exp.subject || 'Practical'}</p>
 
                       {/* Chemicals List */}
-                      <div className="space-y-1 mb-4 p-2 bg-[#fafdf7] dark:bg-[#1a1d16] rounded-lg border border-[#e8eadf] dark:border-[#3c452f]">
-                        <p className="text-[10px] font-bold text-[#71805a] dark:text-[#a5b48b] uppercase tracking-wider mb-1">Required Chemicals:</p>
-                        {(exp.chemicals || []).map((c, i) => (
-                          <div key={i} className="text-xs flex justify-between text-gray-700 dark:text-gray-300">
-                            <span>• {c.chemicalName}</span>
-                            <span className="font-semibold">{c.quantityPerStudent || c.quantity || 1} {c.unit || 'mL'}</span>
-                          </div>
-                        ))}
+                      <div className="space-y-1.5 mb-4 p-2.5 bg-[#fafdf7] dark:bg-[#1a1d16] rounded-lg border border-[#e8eadf] dark:border-[#3c452f]">
+                        <p className="text-[10px] font-bold text-[#71805a] dark:text-[#a5b48b] uppercase tracking-wider mb-1">Required Chemicals & Individual Lock Status:</p>
+                        {(exp.chemicals || []).map((c, i) => {
+                          const chemUnlocked = Boolean(c.isUnlocked);
+                          return (
+                            <div key={i} className="text-xs flex items-center justify-between text-gray-700 dark:text-gray-300 py-0.5">
+                              <span className="flex items-center gap-1">
+                                <span>{chemUnlocked ? '🔓' : '🔒'}</span>
+                                <span className="font-medium">{c.chemicalName}</span>
+                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-semibold text-gray-500">{c.quantityPerStudent || c.quantity || 1} {c.unit || 'mL'}</span>
+                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                                  chemUnlocked ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300'
+                                }`}>
+                                  {chemUnlocked ? 'Unlocked' : 'Locked'}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 

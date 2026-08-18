@@ -622,6 +622,10 @@ const toggleExperimentLock = asyncHandler(async (req, res) => {
   const newStatus = typeof req.body.isUnlocked === 'boolean' ? req.body.isUnlocked : !experiment.isUnlocked;
   experiment.isUnlocked = newStatus;
   experiment.unlockedAt = newStatus ? new Date() : null;
+  experiment.chemicals = (experiment.chemicals || []).map(c => {
+    const obj = typeof c.toObject === 'function' ? c.toObject() : c;
+    return { ...obj, isUnlocked: newStatus };
+  });
   experiment.updatedAt = Date.now();
   await experiment.save();
 
@@ -629,6 +633,47 @@ const toggleExperimentLock = asyncHandler(async (req, res) => {
     success: true,
     data: experiment,
     message: `Experiment ${newStatus ? 'UNLOCKED 🔓' : 'LOCKED 🔒'} successfully`
+  });
+});
+
+// @desc    Toggle lock/unlock for a specific chemical within an experiment
+// @route   PUT /api/lab/structure/experiment/:id/chemical-lock
+// @access  Private (Lab Admin)
+const toggleChemicalLockInExperiment = asyncHandler(async (req, res) => {
+  const { chemicalName, isUnlocked } = req.body;
+  const experiment = await LabStructure.findById(req.params.id);
+  
+  if (!experiment) {
+    res.status(404);
+    throw new Error('Experiment not found');
+  }
+
+  let found = false;
+  experiment.chemicals = (experiment.chemicals || []).map(c => {
+    const obj = typeof c.toObject === 'function' ? c.toObject() : c;
+    if (obj.chemicalName?.toLowerCase() === chemicalName?.toLowerCase()) {
+      found = true;
+      const targetStatus = typeof isUnlocked === 'boolean' ? isUnlocked : !obj.isUnlocked;
+      return { ...obj, isUnlocked: targetStatus };
+    }
+    return obj;
+  });
+
+  if (!found) {
+    res.status(404);
+    throw new Error(`Chemical "${chemicalName}" not found in experiment`);
+  }
+
+  const anyUnlocked = experiment.chemicals.some(c => c.isUnlocked);
+  experiment.isUnlocked = anyUnlocked;
+  experiment.updatedAt = Date.now();
+
+  await experiment.save();
+
+  res.status(200).json({
+    success: true,
+    data: experiment,
+    message: `Chemical "${chemicalName}" lock status updated`
   });
 });
 
@@ -647,16 +692,17 @@ const bulkToggleLock = asyncHandler(async (req, res) => {
   const queryIds = getLabIdQuery(lab._id);
   const targetUnlocked = typeof isUnlocked === 'boolean' ? isUnlocked : true;
 
-  await LabStructure.updateMany(
-    { labId: { $in: queryIds } },
-    {
-      $set: {
-        isUnlocked: targetUnlocked,
-        unlockedAt: targetUnlocked ? new Date() : null,
-        updatedAt: Date.now()
-      }
-    }
-  );
+  const docs = await LabStructure.find({ labId: { $in: queryIds } });
+  for (const doc of docs) {
+    doc.isUnlocked = targetUnlocked;
+    doc.unlockedAt = targetUnlocked ? new Date() : null;
+    doc.chemicals = (doc.chemicals || []).map(c => {
+      const obj = typeof c.toObject === 'function' ? c.toObject() : c;
+      return { ...obj, isUnlocked: targetUnlocked };
+    });
+    doc.updatedAt = Date.now();
+    await doc.save();
+  }
 
   const updatedDocs = await LabStructure.find({ labId: { $in: queryIds } }).sort({ subject: 1, experimentNo: 1 });
 
@@ -664,7 +710,7 @@ const bulkToggleLock = asyncHandler(async (req, res) => {
     success: true,
     count: updatedDocs.length,
     data: updatedDocs,
-    message: `All experiments ${targetUnlocked ? 'UNLOCKED 🔓' : 'LOCKED 🔒'} for today's practical session`
+    message: `All experiments and chemicals ${targetUnlocked ? 'UNLOCKED 🔓' : 'LOCKED 🔒'} for today's practical session`
   });
 });
 
@@ -677,5 +723,6 @@ module.exports = {
   updateExperiment,
   deleteExperiment,
   toggleExperimentLock,
+  toggleChemicalLockInExperiment,
   bulkToggleLock
 };

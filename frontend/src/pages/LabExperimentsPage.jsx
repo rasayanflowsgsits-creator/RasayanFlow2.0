@@ -332,6 +332,16 @@ export default function LabExperimentsPage() {
     }
   };
 
+  const handleToggleChemicalLock = async (expId, chemicalName, currentStatus) => {
+    try {
+      await api.put(`/lab/structure/experiment/${expId}/chemical-lock`, { chemicalName, isUnlocked: !currentStatus });
+      if (activeLabId) fetchLabStructure(activeLabId);
+      if (setToast) setToast({ type: 'success', message: `Chemical "${chemicalName}" ${!currentStatus ? 'UNLOCKED 🔓' : 'LOCKED 🔒'}` });
+    } catch (err) {
+      alert(err?.response?.data?.message || 'Failed to toggle chemical lock');
+    }
+  };
+
   const handleBulkToggleLock = async (targetUnlocked) => {
     try {
       await api.put('/lab/structure/experiment/lock-all', { labId: activeLabId, isUnlocked: targetUnlocked });
@@ -530,33 +540,51 @@ export default function LabExperimentsPage() {
                 </h3>
 
                 <div className="space-y-2 mb-4">
-                  <p className="text-xs font-semibold text-[#71805a] uppercase tracking-wider">Required Chemicals</p>
+                  <p className="text-xs font-semibold text-[#71805a] uppercase tracking-wider">Required Chemicals (Click Icon to Lock/Unlock)</p>
                   {(exp.chemicals || []).map((c, ci) => {
                     const stock = getStockStatus(c.chemicalName);
+                    const chemUnlocked = Boolean(c.isUnlocked);
                     return (
                       <div key={ci} className="flex items-center justify-between text-xs p-2 rounded-lg bg-[#fdfdf7] dark:bg-[#1a1d16] border border-[#e8ece1] dark:border-[#3c452f]">
-                        <div className="font-medium text-[#3c4e23] dark:text-[#eef4e8]">
-                          {c.chemicalName} <span className="text-[#87996c]">({c.quantityPerStudent} {c.unit})</span>
-                        </div>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${stock.color}`}>
-                          {stock.label}
-                        </span>
-                        {(stock.status === 'missing' || stock.status === 'out' || stock.status === 'low') && (
+                        <div className="flex items-center gap-1.5">
                           <button
-                            onClick={() => {
-                              setStoreModalData({
-                                chemicalName: c.chemicalName,
-                                quantityRequested: String(c.quantityPerStudent * 10), // Example: for 10 students
-                                unit: c.unit || 'g',
-                                reason: `Required for ${exp.subject} - Exp ${exp.experimentNo}`
-                              });
-                              setStoreModalOpen(true);
-                            }}
-                            className="ml-2 text-[10px] font-semibold text-[#556b2f] hover:underline"
+                            type="button"
+                            onClick={() => handleToggleChemicalLock(exp._id || exp.id, c.chemicalName, chemUnlocked)}
+                            className={`p-1 rounded text-[10px] font-bold border transition ${
+                              chemUnlocked
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 hover:bg-emerald-100'
+                                : 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 hover:bg-amber-100'
+                            }`}
+                            title={chemUnlocked ? `Click to lock ${c.chemicalName}` : `Click to unlock ${c.chemicalName} for students`}
                           >
-                            Request
+                            {chemUnlocked ? <Unlock size={12} className="text-emerald-600" /> : <Lock size={12} className="text-amber-600" />}
                           </button>
-                        )}
+                          <div className="font-medium text-[#3c4e23] dark:text-[#eef4e8]">
+                            {c.chemicalName} <span className="text-[#87996c]">({c.quantityPerStudent} {c.unit})</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${stock.color}`}>
+                            {stock.label}
+                          </span>
+                          {(stock.status === 'missing' || stock.status === 'out' || stock.status === 'low') && (
+                            <button
+                              onClick={() => {
+                                setStoreModalData({
+                                  chemicalName: c.chemicalName,
+                                  quantityRequested: String(c.quantityPerStudent * 10),
+                                  unit: c.unit || 'g',
+                                  reason: `Required for ${exp.subject} - Exp ${exp.experimentNo}`
+                                });
+                                setStoreModalOpen(true);
+                              }}
+                              className="text-[10px] font-semibold text-[#556b2f] hover:underline"
+                            >
+                              Request
+                            </button>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
