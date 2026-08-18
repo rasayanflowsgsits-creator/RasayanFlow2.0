@@ -337,7 +337,115 @@ export default function LabStudentRequestsPage() {
         ))}
       </div>
 
+      {/* TODAY'S PRACTICAL DISPENSING & 1-CLICK APPROVAL COMMAND PANEL */}
+      <div className="rounded-2xl border border-[#dce5cc] bg-[#fffef8] dark:bg-[#1a1d16] dark:border-[#3c452f] p-5 shadow-sm space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-[#e8eadf] dark:border-[#3c452f] pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="flex h-3 w-3 rounded-full bg-emerald-500 animate-pulse" />
+              <h3 className="text-base font-bold text-[#3c4e23] dark:text-[#eef4e8] flex items-center gap-2">
+                <FlaskConical className="w-5 h-5 text-[#556b2f] dark:text-[#c8a030]" />
+                Today's Total Chemical Requisition Summary — {currentLab?.labName || currentLab?.name || 'HAP1'}
+              </h3>
+            </div>
+            <p className="text-xs text-[#71805a] dark:text-[#a5b48b] mt-1">
+              Aggregated sum of all chemical quantities requested by students for today's practical sessions.
+            </p>
+          </div>
 
+          <div className="flex flex-wrap items-center gap-2">
+            {aggregatedDemand.pendingStudentCount > 0 ? (
+              <Button
+                onClick={async () => {
+                  const pendingIds = studentRequests.filter(r => r.overallStatus === 'Pending').map(r => r._id);
+                  if (pendingIds.length > 0) {
+                    await bulkApproveStudentRequests(pendingIds, activeLabId);
+                    if (setToast) setToast({ type: 'success', message: `✅ Approved and released chemicals for ${pendingIds.length} student requests!` });
+                  }
+                }}
+                className="bg-[#556b2f] hover:bg-[#435525] text-white font-bold py-2.5 px-4 rounded-xl shadow-sm text-xs flex items-center gap-2"
+              >
+                <CheckCircle size={16} />
+                ⚡ 1-Click Approve & Dispense All Pending ({aggregatedDemand.pendingStudentCount})
+              </Button>
+            ) : (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-xs font-bold border border-emerald-200 dark:border-emerald-800">
+                <CheckCircle size={14} /> All Student Requests Dispensed
+              </div>
+            )}
+
+            <button
+              onClick={() => window.location.href = '/lab/history'}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#f4f6ee] text-[#556b2f] dark:bg-[#28301f] dark:text-[#c8a030] text-xs font-bold border border-[#dce5cc] dark:border-[#3c452f] hover:bg-[#e4ebda] transition"
+            >
+              📜 View Release History
+            </button>
+          </div>
+        </div>
+
+        {/* Aggregated Chemical Badges Grid */}
+        {aggregatedDemand.chemicals.length > 0 ? (
+          <div className="space-y-2">
+            <p className="text-xs font-bold text-[#71805a] dark:text-[#a5b48b] uppercase tracking-wider">
+              Total Chemical Demands for Today's Experiments:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {aggregatedDemand.chemicals.map((item, idx) => (
+                <div 
+                  key={idx} 
+                  className="p-3 rounded-xl border border-[#e8eadf] dark:border-[#3c452f] bg-[#fafdf7] dark:bg-[#20251a] flex flex-col justify-between"
+                >
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <span className="font-bold text-xs text-[#3c4e23] dark:text-[#eef4e8]">{item.chemicalName}</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      item.isSufficient 
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' 
+                        : 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300'
+                    }`}>
+                      {item.isSufficient ? '✅ Sufficient' : '⚠️ Deficit'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs py-1.5 px-2 bg-white dark:bg-[#1a1d16] rounded-lg border border-[#f0ede6] dark:border-[#3c452f] mb-2">
+                    <div>
+                      <span className="text-[10px] text-gray-400 block">Total Requested:</span>
+                      <strong className="text-[#3c4e23] dark:text-[#eef4e8]">{item.totalRequested} {item.unit}</strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-gray-400 block">Lab Stock:</span>
+                      <strong className={item.isSufficient ? 'text-emerald-600' : 'text-rose-600'}>
+                        {item.available} {item.unit}
+                      </strong>
+                    </div>
+                  </div>
+
+                  {item.deficit > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStoreModalData({
+                          chemicalName: item.chemicalName,
+                          quantityRequested: String(item.deficit),
+                          unit: item.unit,
+                          reason: `Deficit for ${item.studentCount} student requests in ${currentLab?.labName || currentLab?.name || 'Lab'}`
+                        });
+                        setStoreModalOpen(true);
+                      }}
+                      className="w-full text-center text-[11px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 p-1.5 rounded-lg border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800 transition"
+                    >
+                      🏪 Request Deficit ({item.deficit} {item.unit}) from Store
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 text-center text-xs text-[#71805a] dark:text-[#a5b48b] bg-[#fafdf7] dark:bg-[#20251a] rounded-xl border border-dashed border-[#e8eadf] dark:border-[#3c452f]">
+            No active student chemical requests for this lab right now. All requests are up to date!
+          </div>
+        )}
+      </div>
 
       {/* Filters & View Toggle */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
