@@ -6,7 +6,7 @@ import { parsePackSize, safeRound } from '../utils/storeHelpers';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import api from '../services/api';
-import { toFrontendChemical } from '../utils/storeMapper';
+import { toFrontendChemical, toFrontendHistory } from '../utils/storeMapper';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const YEARS = [2024, 2025, 2026];
