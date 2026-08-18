@@ -2,7 +2,7 @@ import React from 'react';
 import useAuthStore from '../store/authStore';
 import { 
   ShieldCheck, Store, FlaskConical, GraduationCap, BookOpen, 
-  Settings, CheckCircle2, Sparkles, Layers, ArrowRight, UserCheck
+  Settings, CheckCircle2, Sparkles, Layers, ArrowRight, UserCheck, Check, Workflow, FileText, ClipboardList
 } from 'lucide-react';
 
 const ROLE_MANUALS = {
@@ -13,12 +13,26 @@ const ROLE_MANUALS = {
     badge: 'Master System Governance',
     icon: ShieldCheck,
     overview: 'As Super Admin, you hold master administrative governance over the entire RasayanFlow system across all pharmacy departments, laboratories, central store facilities, and user accounts.',
-    capabilities: [
+    features: [
       'Master User Administration & Role Provisioning across all institute departments',
       'Laboratory Facility Provisioning, Admin Assignment, and Safety Stock Threshold configuration',
       'Master Central Store Monitoring & Financial Stock Valuation oversight',
       'System-wide Audit Tracking, Live Monitor Logs, and Automated Security Oversight',
       'Global Safety Hazard Thresholds and Institution Compliance Reporting'
+    ],
+    useCases: [
+      {
+        title: 'Use Case 1: Provisioning a New Laboratory',
+        desc: 'Create a new Organic Chemistry Lab facility, set chemical stock thresholds, and assign a dedicated Lab Admin.'
+      },
+      {
+        title: 'Use Case 2: User Access & Role Audit',
+        desc: 'Review active user credentials, reset passwords, or re-assign user roles (Lab Admin, Store Manager, Faculty, Student).'
+      },
+      {
+        title: 'Use Case 3: Annual Regulatory Audit',
+        desc: 'Export institutional stock movement reports, financial valuation logs, and safety compliance records in CSV/PDF format.'
+      }
     ],
     handlingSteps: [
       {
@@ -51,13 +65,27 @@ const ROLE_MANUALS = {
     badge: 'Central Inventory & Issue Authority',
     icon: Store,
     overview: 'As Central Store Manager, you control the institute’s primary chemical and equipment repository, managing bulk vendor receiving, lab stock fulfillment, direct PhD scholar requisitions, and receipt code logging.',
-    capabilities: [
+    features: [
       'Central Inventory Control (Pure grade chemicals, analytical solvents, glasswares, apparatus)',
       'Direct PhD Scholar Requisition review, approval, and immediate stock release',
       'Lab Admin bulk stock replenishment request processing & dispatch tracking',
       'Automated Store Receipt Code generation (REC-2026-XXXX) upon stock approval',
       'Inwarding new stock shipments via manual entry or bulk CSV imports',
       'Stock Valuation, Monthly Inward/Outward history, and Low Stock alerts'
+    ],
+    useCases: [
+      {
+        title: 'Use Case 1: Processing PhD Scholar Requests',
+        desc: 'Review direct PhD chemical requisition, approve stock release, and issue an official Store Receipt Code (REC-XXXX).'
+      },
+      {
+        title: 'Use Case 2: Inwarding Vendor Shipments',
+        desc: 'Upload vendor chemical invoices via Bulk CSV Import or manual entry to update central store inventory balances.'
+      },
+      {
+        title: 'Use Case 3: Fulfilling Lab Stock Replenishment',
+        desc: 'Review bulk chemical request from a Lab Admin and release stock to the departmental laboratory.'
+      }
     ],
     handlingSteps: [
       {
@@ -95,12 +123,26 @@ const ROLE_MANUALS = {
     badge: 'Departmental Lab Operations',
     icon: FlaskConical,
     overview: 'As Lab Admin, you oversee daily lab operations, practical experiment setups, student chemical borrow request approvals, and store stock replenishment for your designated lab facility.',
-    capabilities: [
+    features: [
       'Lab-specific Inventory Control (Chemicals, reagents, glasswares allocated to your lab)',
       'Requisitioning bulk chemical stock replenishment from the Central Store Manager',
       'Practical Experiment & Student Group/Batch configuration',
       'Real-time Student Borrow Request approval during practical sessions',
       'Lab History Archiving by Month (Jan-Dec) and Year (2026-2056) with CSV/PDF exports'
+    ],
+    useCases: [
+      {
+        title: 'Use Case 1: Preparing a Practical Session',
+        desc: 'Configure "Synthesis of Aspirin" practical, assign chemical quantities per student group, and publish to students.'
+      },
+      {
+        title: 'Use Case 2: Approving Student Borrows',
+        desc: 'Review incoming student borrow requests during practical hours, verify roll numbers, and issue chemicals.'
+      },
+      {
+        title: 'Use Case 3: Requesting Stock Replenishment',
+        desc: 'Submit a Store Request to the Store Manager when lab chemical stock falls below safety limits.'
+      }
     ],
     handlingSteps: [
       {
@@ -138,12 +180,22 @@ const ROLE_MANUALS = {
     badge: 'Direct Central Store Requisition Authority',
     icon: GraduationCap,
     overview: 'As a PhD Scholar, you hold direct requisition rights to the Central Store Manager for independent doctoral research, bypassing intermediate lab quotas and semester structures.',
-    capabilities: [
+    features: [
       'Direct Central Store Requisition access bypassing lab admin approvals',
       'Project & Thesis Title mapping with Supervisor/Guide details',
       'Live Chemical & CAS Number autocomplete from Central Store Inventory',
       'Real-Time Store Receipt Code (REC-XXXX) tracking for physical chemical pickup',
       'Personal Research Requisition history and audit trail'
+    ],
+    useCases: [
+      {
+        title: 'Use Case 1: Requisitioning Synthesis Chemicals',
+        desc: 'Submit a direct request for Silver Nitrate specifying Thesis Title and Guide Name.'
+      },
+      {
+        title: 'Use Case 2: Chemical Pickup with Receipt Code',
+        desc: 'Present the generated Store Receipt Code (REC-XXXX) at the Central Store for chemical pickup.'
+      }
     ],
     handlingSteps: [
       {
@@ -176,11 +228,21 @@ const ROLE_MANUALS = {
     badge: 'Post-Graduate Departmental Research',
     icon: FlaskConical,
     overview: 'As an M.Pharm Scholar, you conduct specialized thesis research across post-graduate pharmacy branches (Pharmaceutics, Pharmacology, Chemistry, QA) utilizing departmental lab inventory.',
-    capabilities: [
+    features: [
       'Departmental Research Lab access for specialized synthesis and testing',
       'Requesting high-purity reagents, analytical grade solvents, and specialized equipment',
       'Synthesis parameter logging and chemical consumption tracking',
       'Departmental thesis project integration and lab admin coordination'
+    ],
+    useCases: [
+      {
+        title: 'Use Case 1: Requisitioning Analytical Solvents',
+        desc: 'Request HPLC-grade Acetonitrile for thesis formulation assay.'
+      },
+      {
+        title: 'Use Case 2: Scheduling Instrument Usage',
+        desc: 'Coordinate with Lab Admin to reserve UV-Vis Spectrophotometer slots.'
+      }
     ],
     handlingSteps: [
       {
@@ -213,11 +275,21 @@ const ROLE_MANUALS = {
     badge: 'Process & Pilot Plant Technology',
     icon: Settings,
     overview: 'As an M.Tech Scholar, your focus is on pharmaceutical engineering, pilot-scale formulation, process optimization, and heavy analytical instrumentation.',
-    capabilities: [
+    features: [
       'Industrial Pharmaceutical Technology & Pilot Plant Lab access',
       'Bulk formulation material & process chemical requisitions',
       'Heavy machinery slotting (HPLC, Tablet Compression, Lyophilizers, UV-Vis Spectrophotometers)',
       'Process yield tracking and raw material usage logging'
+    ],
+    useCases: [
+      {
+        title: 'Use Case 1: Pilot Plant Batch Trial',
+        desc: 'Request formulation excipients for a pilot-scale tablet compression trial.'
+      },
+      {
+        title: 'Use Case 2: Heavy Equipment Slotting',
+        desc: 'Reserve time slots for Lyophilizer freeze-drying equipment.'
+      }
     ],
     handlingSteps: [
       {
@@ -250,11 +322,21 @@ const ROLE_MANUALS = {
     badge: 'Undergraduate Curriculum Practical',
     icon: BookOpen,
     overview: 'As a B.Pharm Student, you participate in scheduled academic practical coursework, group experiment borrowing, and foundational pharmacy practical training.',
-    capabilities: [
+    features: [
       'Year & Semester structured practical schedule (Y1-Y4, Sem 1-8)',
       'Group-based chemical & glassware borrowing for pre-configured practical experiments',
       'Live experiment practical syllabus, safety guides, and required chemical lists',
       'Personal borrow history and apparatus return status tracking'
+    ],
+    useCases: [
+      {
+        title: 'Use Case 1: Practical Chemical Borrowing',
+        desc: 'Select "Synthesis of Aspirin" practical and request group chemicals from the Lab Admin.'
+      },
+      {
+        title: 'Use Case 2: Returning Glassware',
+        desc: 'Ensure safe cleaning and return of borrowed volumetric flasks and beakers after practical completion.'
+      }
     ],
     handlingSteps: [
       {
@@ -338,7 +420,7 @@ export default function AboutPage() {
           </h1>
         </div>
         <p className="text-xs sm:text-sm text-[#71805a] dark:text-[#a5b48b] font-semibold">
-          Detailed operational manual, authorized capabilities, and step-by-step system handling guide for your active role.
+          Detailed operational manual, authorized capabilities, real-world use cases, and step-by-step system handling guide for your active role.
         </p>
       </div>
 
@@ -397,24 +479,52 @@ export default function AboutPage() {
           </p>
         </div>
 
-        {/* Authorized Capabilities Section */}
+        {/* Authorized Features Section */}
         <div className="space-y-3">
           <h3 className="text-sm font-black text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2">
             <Layers className="w-4 h-4 text-[#5c6e46] dark:text-[#a8be8a]" />
-            <span>Authorized System Actions & Capabilities</span>
+            <span>Key Authorized Features & Capabilities</span>
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-            {currentManual.capabilities.map((cap, idx) => (
+            {currentManual.features.map((feat, idx) => (
               <div 
                 key={idx}
                 className="p-3 bg-white dark:bg-[#20251a] rounded border border-[#cfd8bd] dark:border-[#414a33] text-xs font-bold text-[#37412a] dark:text-[#e4e9d8] flex items-start gap-2.5"
               >
                 <CheckCircle2 size={16} className="text-[#5c6e46] dark:text-[#a8be8a] shrink-0 mt-0.5" />
-                <span>{cap}</span>
+                <span>{feat}</span>
               </div>
             ))}
           </div>
         </div>
+
+        {/* Core Real-World Use Cases Section */}
+        {currentManual.useCases && currentManual.useCases.length > 0 && (
+          <div className="space-y-3 pt-2">
+            <h3 className="text-sm font-black text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2">
+              <ClipboardList className="w-4 h-4 text-[#5c6e46] dark:text-[#a8be8a]" />
+              <span>Core Operational Use Cases</span>
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {currentManual.useCases.map((uc, idx) => (
+                <div 
+                  key={idx}
+                  className="p-4 bg-[#fdfdf7] dark:bg-[#20251a] rounded border border-[#cfd8bd] dark:border-[#414a33] shadow-2xs space-y-1.5"
+                >
+                  <span className="text-[10px] font-black text-[#5c6e46] dark:text-[#a8be8a] uppercase tracking-wider block">
+                    Scenario {idx + 1}
+                  </span>
+                  <h4 className="text-xs font-black text-[#37412a] dark:text-[#e4e9d8]">
+                    {uc.title}
+                  </h4>
+                  <p className="text-xs font-semibold text-[#71805a] dark:text-[#a5b48b] leading-relaxed">
+                    {uc.desc}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Step-by-Step Handling Guide */}
         <div className="space-y-3 pt-2">
@@ -447,8 +557,9 @@ export default function AboutPage() {
 
         {/* Execution Flowchart */}
         <div className="p-4 bg-[#f4f6ee] dark:bg-[#20251a] rounded border border-[#cfd8bd] dark:border-[#414a33] space-y-2">
-          <h4 className="text-xs font-black text-[#5c6e46] dark:text-[#a8be8a] uppercase tracking-wider">
-            Your System Execution Flow:
+          <h4 className="text-xs font-black text-[#5c6e46] dark:text-[#a8be8a] uppercase tracking-wider flex items-center gap-1.5">
+            <Workflow size={14} />
+            <span>Your System Execution Flow:</span>
           </h4>
           <div className="flex flex-wrap items-center gap-2 text-xs font-black text-[#37412a] dark:text-[#e4e9d8]">
             {currentManual.workflowFlowchart.map((node, idx) => (
