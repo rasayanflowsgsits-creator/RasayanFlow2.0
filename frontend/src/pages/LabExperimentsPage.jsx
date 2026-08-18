@@ -261,7 +261,8 @@ export default function LabExperimentsPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [addingExp, setAddingExp] = useState(false);
   const [newExp, setNewExp] = useState({
-    subject: 'HAP1',
+    subject: 'Human Anatomy & Physiology',
+    labCode: 'HAP1',
     experimentNo: '1',
     experimentName: '',
     chemicals: [{ chemicalName: '', quantityPerStudent: '10', unit: 'mL' }]
@@ -284,10 +285,12 @@ export default function LabExperimentsPage() {
   const [editingExpId, setEditingExpId] = useState(null);
 
   const handleOpenAddModal = () => {
-    const defaultSubj = currentLab?.labName || currentLab?.name || 'HAP1';
+    const defaultSubj = currentLab?.department || 'Human Anatomy & Physiology';
+    const defaultCode = currentLab?.labCode || currentLab?.labName || currentLab?.name || 'HAP1';
     setEditingExpId(null);
     setNewExp({
       subject: defaultSubj,
+      labCode: defaultCode,
       experimentNo: String((labStructure?.length || 0) + 1),
       experimentName: '',
       chemicals: [{ chemicalName: '', quantityPerStudent: '10', unit: 'mL' }]
@@ -297,8 +300,19 @@ export default function LabExperimentsPage() {
 
   const handleOpenEditModal = (exp) => {
     setEditingExpId(exp._id || exp.id);
+    const rawSubj = exp.subject || '';
+    let parsedSubj = rawSubj;
+    let parsedCode = exp.labCode || currentLab?.labCode || 'HAP1';
+
+    const match = rawSubj.match(/^(.*?)\s*\((.*?)\)$/);
+    if (match) {
+      parsedSubj = match[1].trim();
+      parsedCode = match[2].trim();
+    }
+
     setNewExp({
-      subject: exp.subject || 'HAP1',
+      subject: parsedSubj || currentLab?.department || 'Human Anatomy & Physiology',
+      labCode: parsedCode,
       experimentNo: String(exp.experimentNo || '1'),
       experimentName: exp.experimentName || '',
       chemicals: exp.chemicals?.length 
@@ -319,28 +333,39 @@ export default function LabExperimentsPage() {
   };
 
   const handleSaveManualExperiment = async () => {
-    if (!newExp.subject || !newExp.experimentName) {
-      alert('Please fill in the subject and experiment name');
+    if (!newExp.subject?.trim()) {
+      alert('Subject Name is required.');
+      return;
+    }
+    if (!newExp.labCode?.trim()) {
+      alert('Lab Code is required.');
+      return;
+    }
+    if (!newExp.experimentName?.trim()) {
+      alert('Experiment Title / Objective is required.');
       return;
     }
     setAddingExp(true);
     try {
+      const subjectFull = `${newExp.subject.trim()} (${newExp.labCode.trim()})`;
+      const payload = {
+        ...newExp,
+        subject: subjectFull,
+        labCode: newExp.labCode.trim(),
+        labId: activeLabId
+      };
+
       if (editingExpId) {
-        await api.put(`/lab/structure/experiment/${editingExpId}`, {
-          ...newExp,
-          labId: activeLabId
-        });
+        await api.put(`/lab/structure/experiment/${editingExpId}`, payload);
       } else {
-        await api.post('/lab/structure/experiment', {
-          ...newExp,
-          labId: activeLabId
-        });
+        await api.post('/lab/structure/experiment', payload);
       }
       setAddOpen(false);
       setEditingExpId(null);
       if (activeLabId) fetchLabStructure(activeLabId);
       setNewExp({
-        subject: 'HAP1',
+        subject: 'Human Anatomy & Physiology',
+        labCode: 'HAP1',
         experimentNo: '1',
         experimentName: '',
         chemicals: [{ chemicalName: '', quantityPerStudent: '10', unit: 'mL' }]
@@ -689,36 +714,84 @@ export default function LabExperimentsPage() {
       {/* Add Single Experiment Modal */}
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title={editingExpId ? "Edit Experiment" : "Add Single Experiment"}>
         <div className="space-y-4 text-left">
-          <div className="grid grid-cols-2 gap-4">
+          {/* Row 1: Subject Name & Lab Code */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-bold text-[#3c4e23] dark:text-[#c8a030] uppercase tracking-wider mb-1 flex items-center gap-1">
+                Subject Name <span className="text-rose-500 font-bold">*</span>
+              </label>
+              <Input 
+                value={newExp.subject} 
+                onChange={(e) => setNewExp({ ...newExp, subject: e.target.value })} 
+                placeholder="e.g. Human Anatomy & Physiology" 
+                required
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-[#3c4e23] dark:text-[#c8a030] uppercase tracking-wider mb-1 flex items-center gap-1">
+                Lab Code <span className="text-rose-500 font-bold">*</span>
+              </label>
+              <Input 
+                value={newExp.labCode} 
+                onChange={(e) => setNewExp({ ...newExp, labCode: e.target.value })} 
+                placeholder="e.g. HAP1 or LAB-001" 
+                required
+              />
+            </div>
+          </div>
+
+          {/* Row 2: Experiment No. & Lab Name */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-bold text-[#3c4e23] dark:text-[#c8a030] uppercase tracking-wider mb-1 flex items-center gap-1">
+                Experiment No. <span className="text-rose-500 font-bold">*</span>
+              </label>
+              <Input 
+                type="number" 
+                min="1"
+                value={newExp.experimentNo} 
+                onChange={(e) => setNewExp({ ...newExp, experimentNo: e.target.value })} 
+                placeholder="e.g. 1" 
+                required
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-[#3c4e23] dark:text-[#c8a030] uppercase tracking-wider mb-1 block">
+                Lab Facility
+              </label>
+              <Input 
+                value={currentLab?.labName || currentLab?.name || 'Pharmaceutics Lab'} 
+                disabled
+                className="bg-gray-100 dark:bg-[#1a1d16] text-gray-500"
+              />
+            </div>
+          </div>
+
+          {/* Row 3: Experiment Title */}
+          <div>
+            <label className="text-xs font-bold text-[#3c4e23] dark:text-[#c8a030] uppercase tracking-wider mb-1 flex items-center gap-1">
+              Experiment Title / Objective <span className="text-rose-500 font-bold">*</span>
+            </label>
             <Input 
-              label="Subject / Lab Code" 
-              value={newExp.subject} 
-              onChange={(e) => setNewExp({ ...newExp, subject: e.target.value })} 
-              placeholder="e.g. HAP1 or Pharmaceutics-I" 
-            />
-            <Input 
-              label="Experiment No." 
-              type="number" 
-              value={newExp.experimentNo} 
-              onChange={(e) => setNewExp({ ...newExp, experimentNo: e.target.value })} 
-              placeholder="e.g. 1" 
+              value={newExp.experimentName} 
+              onChange={(e) => setNewExp({ ...newExp, experimentName: e.target.value })} 
+              placeholder="e.g. Study of Compound Microscope" 
+              required
             />
           </div>
 
-          <Input 
-            label="Experiment Title / Objective" 
-            value={newExp.experimentName} 
-            onChange={(e) => setNewExp({ ...newExp, experimentName: e.target.value })} 
-            placeholder="e.g. Study of Compound Microscope" 
-          />
-
+          {/* Row 4: Required Chemicals */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-[#3c4e23] dark:text-[#c8a030] uppercase tracking-wider">Required Chemicals</label>
+              <label className="text-xs font-bold text-[#3c4e23] dark:text-[#c8a030] uppercase tracking-wider flex items-center gap-1">
+                Required Chemicals <span className="text-rose-500 font-bold">*</span>
+              </label>
               <button 
                 type="button" 
                 onClick={handleAddChemicalRow} 
-                className="text-xs font-semibold text-[#556b2f] hover:underline"
+                className="text-xs font-semibold text-[#556b2f] dark:text-[#c8a030] hover:underline"
               >
                 + Add Chemical
               </button>
@@ -728,25 +801,27 @@ export default function LabExperimentsPage() {
               <div key={idx} className="flex items-center gap-2">
                 <input 
                   type="text" 
-                  placeholder="Chemical Name" 
+                  placeholder="Chemical Name (Required)" 
                   value={chem.chemicalName} 
                   onChange={(e) => {
                     const updated = [...newExp.chemicals];
                     updated[idx].chemicalName = e.target.value;
                     setNewExp({ ...newExp, chemicals: updated });
                   }} 
-                  className="flex-1 rounded-xl border border-[#cfd8bd] px-3 py-1.5 text-xs bg-white dark:bg-[#20251a]" 
+                  className="flex-1 rounded-xl border border-[#cfd8bd] px-3 py-2 text-xs bg-white dark:bg-[#20251a] dark:border-[#4e5d35] outline-none focus:ring-2 focus:ring-[#556b2f]" 
+                  required
                 />
                 <input 
                   type="number" 
                   placeholder="Qty" 
+                  min="0.1"
                   value={chem.quantityPerStudent} 
                   onChange={(e) => {
                     const updated = [...newExp.chemicals];
                     updated[idx].quantityPerStudent = e.target.value;
                     setNewExp({ ...newExp, chemicals: updated });
                   }} 
-                  className="w-20 rounded-xl border border-[#cfd8bd] px-3 py-1.5 text-xs bg-white dark:bg-[#20251a]" 
+                  className="w-20 rounded-xl border border-[#cfd8bd] px-3 py-2 text-xs bg-white dark:bg-[#20251a] dark:border-[#4e5d35] outline-none focus:ring-2 focus:ring-[#556b2f]" 
                 />
                 <input 
                   type="text" 
@@ -757,13 +832,13 @@ export default function LabExperimentsPage() {
                     updated[idx].unit = e.target.value;
                     setNewExp({ ...newExp, chemicals: updated });
                   }} 
-                  className="w-16 rounded-xl border border-[#cfd8bd] px-3 py-1.5 text-xs bg-white dark:bg-[#20251a]" 
+                  className="w-16 rounded-xl border border-[#cfd8bd] px-3 py-2 text-xs bg-white dark:bg-[#20251a] dark:border-[#4e5d35] outline-none focus:ring-2 focus:ring-[#556b2f]" 
                 />
                 {newExp.chemicals.length > 1 && (
                   <button 
                     type="button" 
                     onClick={() => handleRemoveChemicalRow(idx)} 
-                    className="text-rose-500 text-xs font-bold p-1"
+                    className="text-rose-500 text-xs font-bold p-1 hover:bg-rose-50 rounded"
                   >
                     ✕
                   </button>
@@ -775,12 +850,13 @@ export default function LabExperimentsPage() {
           <Button 
             onClick={handleSaveManualExperiment} 
             disabled={addingExp} 
-            className="w-full bg-[#556b2f] text-white font-bold py-2.5 rounded-xl mt-4"
+            className="w-full bg-[#556b2f] hover:bg-[#435525] text-white font-bold py-2.5 rounded-xl mt-4"
           >
             {addingExp ? 'Saving...' : (editingExpId ? 'Save Changes' : 'Save Experiment to Lab Structure')}
           </Button>
         </div>
       </Modal>
+
       {/* Store Request Modal */}
       <Modal open={storeModalOpen} onClose={() => setStoreModalOpen(false)} title="Request Chemical From Central Store">
         <div className="space-y-4 text-left">
