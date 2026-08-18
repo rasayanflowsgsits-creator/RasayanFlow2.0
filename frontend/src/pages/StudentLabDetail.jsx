@@ -26,8 +26,8 @@ export default function StudentLabDetail() {
   const [experiments, setExperiments] = useState([]);
   const [requests, setRequests] = useState([]);
 
-  // Active View Tab: 'inventory' (default real lab chemicals) or 'experiments'
-  const [activeTab, setActiveTab] = useState('inventory');
+  // Active View Tab: 'experiments' ONLY for student practical requisitions
+  const [activeTab, setActiveTab] = useState('experiments');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Requisition Modal State
@@ -344,28 +344,9 @@ export default function StudentLabDetail() {
               </p>
             </div>
 
-            {/* TAB SELECTOR */}
-            <div className="flex bg-[#f0f4e8] dark:bg-[#28301f] p-1 rounded-xl border border-[#dce5cc] dark:border-[#3c452f]">
-              <button
-                onClick={() => setActiveTab('inventory')}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  activeTab === 'inventory'
-                    ? 'bg-[#556b2f] text-white shadow-sm'
-                    : 'text-[#556b2f] dark:text-[#c5d0b5] hover:bg-[#e2ead3] dark:hover:bg-[#343e2a]'
-                }`}
-              >
-                <Beaker size={14} /> Lab Chemicals ({labInventory.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('experiments')}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  activeTab === 'experiments'
-                    ? 'bg-[#556b2f] text-white shadow-sm'
-                    : 'text-[#556b2f] dark:text-[#c5d0b5] hover:bg-[#e2ead3] dark:hover:bg-[#343e2a]'
-                }`}
-              >
-                <FlaskConical size={14} /> Experiments ({experiments.length})
-              </button>
+            {/* BADGE: PRACTICAL EXPERIMENTS ONLY */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#556b2f] text-white text-xs font-bold shadow-sm">
+              <FlaskConical size={15} /> Practical Experiments ({experiments.length})
             </div>
           </div>
         </div>
@@ -373,25 +354,25 @@ export default function StudentLabDetail() {
 
       {/* STAT CARDS (4 CARDS) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {/* Total Lab Chemicals */}
-        <div className="bg-white dark:bg-[#1f2419] p-4 rounded-xl border border-[#e8eadf] dark:border-[#3c452f] shadow-sm flex items-center gap-3">
-          <div className="p-3 bg-[#556b2f]/10 dark:bg-[#c8a030]/10 rounded-xl text-[#556b2f] dark:text-[#c8a030]">
-            <Beaker className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-xs text-[#71805a] dark:text-[#a5b48b] font-medium">Lab Inventory Stock</p>
-            <p className="text-xl font-bold text-[#3c4e23] dark:text-[#eef4e8]">{labInventory.length} Chemicals</p>
-          </div>
-        </div>
-
         {/* Total Experiments */}
         <div className="bg-white dark:bg-[#1f2419] p-4 rounded-xl border border-[#e8eadf] dark:border-[#3c452f] shadow-sm flex items-center gap-3">
           <div className="p-3 bg-[#556b2f]/10 dark:bg-[#c8a030]/10 rounded-xl text-[#556b2f] dark:text-[#c8a030]">
             <FlaskConical className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-xs text-[#71805a] dark:text-[#a5b48b] font-medium">Configured Experiments</p>
+            <p className="text-xs text-[#71805a] dark:text-[#a5b48b] font-medium">Lab Experiments</p>
             <p className="text-xl font-bold text-[#3c4e23] dark:text-[#eef4e8]">{experiments.length}</p>
+          </div>
+        </div>
+
+        {/* Course / Subject */}
+        <div className="bg-white dark:bg-[#1f2419] p-4 rounded-xl border border-[#e8eadf] dark:border-[#3c452f] shadow-sm flex items-center gap-3">
+          <div className="p-3 bg-[#556b2f]/10 dark:bg-[#c8a030]/10 rounded-xl text-[#556b2f] dark:text-[#c8a030]">
+            <Beaker className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs text-[#71805a] dark:text-[#a5b48b] font-medium">Course Program</p>
+            <p className="text-sm font-bold text-[#3c4e23] dark:text-[#eef4e8] truncate max-w-[120px]">{currentLab.courseType || 'B.Pharm'}</p>
           </div>
         </div>
 
@@ -424,7 +405,7 @@ export default function StudentLabDetail() {
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder={activeTab === 'inventory' ? "Search lab chemicals by name, CAS, category..." : "Search experiments..."}
+            placeholder="Search experiments by title, subject..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full rounded-xl border border-[#dce5cc] bg-white pl-10 pr-4 py-2 text-xs text-[#3c4e23] outline-none focus:ring-2 focus:ring-[#556b2f] dark:border-[#3c452f] dark:bg-[#1f2419] dark:text-[#eef4e8]"
@@ -432,109 +413,7 @@ export default function StudentLabDetail() {
         </div>
       </div>
 
-      {/* TAB 1: REAL LAB CHEMICAL INVENTORY */}
-      {activeTab === 'inventory' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-[#3c4e23] dark:text-[#eef4e8] flex items-center gap-2">
-              <Beaker className="w-5 h-5 text-[#556b2f] dark:text-[#c8a030]" />
-              Actual Lab Chemical Stock ({filteredInventory.length})
-            </h2>
-            <span className="text-xs text-[#71805a] dark:text-[#a5b48b]">
-              Added by Lab Admin for {currentLab.labName || currentLab.name}
-            </span>
-          </div>
-
-          {loading ? (
-            <div className="py-16 text-center text-[#71805a] dark:text-[#c5d0b5]">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-[#556b2f] border-t-transparent mb-3" />
-              <p className="text-sm font-medium">Loading lab inventory...</p>
-            </div>
-          ) : filteredInventory.length === 0 ? (
-            <div className="bg-white dark:bg-[#1f2419] border border-dashed border-[#d9e1ca] dark:border-[#414a33] rounded-2xl p-12 text-center my-6 max-w-xl mx-auto shadow-sm">
-              <div className="w-16 h-16 rounded-full bg-[#f4f6ee] dark:bg-[#2a3121] text-[#556b2f] dark:text-[#c8a030] flex items-center justify-center mx-auto mb-4">
-                <Beaker className="w-8 h-8" />
-              </div>
-              <h3 className="text-xl font-bold text-[#3c4e23] dark:text-[#eef4e8] mb-2">No Chemicals Listed Yet</h3>
-              <p className="text-sm text-[#71805a] dark:text-[#c5d0b5] max-w-md mx-auto">
-                {searchQuery ? "No chemicals match your search query." : "Your Lab Admin hasn't added any chemicals to this lab's inventory yet. Please contact your Lab Admin."}
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredInventory.map((item) => {
-                const chemName = item.chemicalName || item.itemName;
-                const qty = item.quantityAvailable !== undefined ? item.quantityAvailable : item.quantity;
-                const unit = item.quantityUnit || 'mL';
-                const isAvailable = qty > 0;
-                const existingReq = requests.find(r => r.experimentName === chemName);
-                const reqStatus = existingReq ? existingReq.overallStatus : null;
-
-                return (
-                  <div 
-                    key={item._id || item.id || item.itemCode}
-                    className="bg-white dark:bg-[#1f2419] rounded-xl shadow-sm p-4 border border-[#e8eadf] dark:border-[#3c452f] flex flex-col justify-between transition-all hover:shadow-md"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between gap-2 mb-1.5">
-                        <span className="inline-block px-2 py-0.5 bg-[#f0f4e8] dark:bg-[#28301f] text-[#556b2f] dark:text-[#c8a030] text-[10px] font-bold rounded uppercase tracking-wider">
-                          {item.category || 'Reagent'}
-                        </span>
-                        {item.casNumber && (
-                          <span className="text-[10px] text-gray-400 font-mono">
-                            CAS: {item.casNumber}
-                          </span>
-                        )}
-                      </div>
-
-                      <h3 className="text-sm font-bold text-[#3c4e23] dark:text-[#eef4e8] mb-1">
-                        {chemName}
-                      </h3>
-
-                      {item.storageLocation && (
-                        <p className="text-[11px] text-gray-500 flex items-center gap-1 mb-3">
-                          <MapPin size={12} className="text-[#556b2f]" /> Location: {item.storageLocation}
-                        </p>
-                      )}
-
-                      <div className="bg-[#fafdf7] dark:bg-[#1a1d16] p-2.5 rounded-lg border border-[#f0ede6] dark:border-[#3c452f] mb-3 text-xs flex justify-between items-center">
-                        <span className="text-gray-500 font-medium">Available Stock:</span>
-                        <span className={`font-bold ${isAvailable ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600'}`}>
-                          {qty} {unit}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="pt-2 border-t border-[#f0f2eb] dark:border-[#3c452f]/60">
-                      {reqStatus === 'Pending' ? (
-                        <div className="flex items-center justify-between text-xs text-amber-600 font-bold">
-                          <span>⏳ Request Pending</span>
-                          <button onClick={() => handleViewDetails(existingReq)} className="underline text-[11px]">View</button>
-                        </div>
-                      ) : reqStatus === 'Approved' ? (
-                        <div className="flex items-center justify-between text-xs text-emerald-600 font-bold">
-                          <span>✅ Approved</span>
-                          <button onClick={() => handleViewDetails(existingReq)} className="underline text-[11px]">Details</button>
-                        </div>
-                      ) : (
-                        <Button 
-                          onClick={() => handleOpenRequestModalForChemical(item)}
-                          disabled={!isAvailable}
-                          className="w-full bg-[#556b2f] hover:bg-[#435525] text-white font-bold py-1.5 rounded-lg shadow-sm text-xs flex items-center justify-center gap-1.5 disabled:opacity-50"
-                        >
-                          📋 Request This Chemical
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* TAB 2: CONFIGURED EXPERIMENTS */}
+      {/* CONFIGURED EXPERIMENTS ONLY */}
       {activeTab === 'experiments' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
