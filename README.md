@@ -158,13 +158,24 @@ sequenceDiagram
 
 ---
 
-## 🛠️ Technology Stack & Aesthetics
+## 🛠️ Technology Stack
 
-- **User Interface Framework**: React 18 with Vite build optimization.
-- **State Governance**: Zustand for predictable, role-aware client state management.
-- **Design Tokens**: Customized Vanilla CSS styling with harmonious HSL sage/emerald color palettes (`#5c6e46`, `#37412a`, `#fdfdf7`), glassmorphism card surfaces, and micro-animations.
-- **Typography & Icons**: Inter / Outfit fonts paired with Lucide React iconography.
-- **Document Generation**: Integrated client-side PDF generation (`jspdf`, `jspdf-autotable`) and CSV data parsing (`papaparse`, `xlsx`).
+RasayanFlow 2.0 is built on a robust, decoupled architecture engineered for high throughput, real-time reactivity, and role-aware security compliance.
+
+| Layer | Technology / Library | Role & Capability |
+| :--- | :--- | :--- |
+| **Frontend Framework** | ![React](https://img.shields.io/badge/React_18-61DAFB?style=flat-square&logo=react&logoColor=black) | Component-driven single-page architecture |
+| **Build System** | ![Vite](https://img.shields.io/badge/Vite_8-646CFF?style=flat-square&logo=vite&logoColor=white) | Instant HMR compilation and production bundling |
+| **State Management** | ![Zustand](https://img.shields.io/badge/Zustand-443e38?style=flat-square&logo=redux&logoColor=white) | Lightweight, predictable role-aware store management |
+| **Design System** | ![CSS3](https://img.shields.io/badge/Vanilla_CSS-1572B6?style=flat-square&logo=css3&logoColor=white) ![Tailwind](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white) | Glassmorphism cards, sage/emerald theme, dark mode |
+| **Icons & UI** | ![Lucide](https://img.shields.io/badge/Lucide_React-F56565?style=flat-square&logo=feather&logoColor=white) | Modern iconography across all role dashboards |
+| **Export Suite** | `jsPDF` • `PapaParse` • `XLSX` | Client-side PDF receipt generation & CSV/Excel processing |
+| **Backend Runtime** | ![Node.js](https://img.shields.io/badge/Node.js_v18+-339933?style=flat-square&logo=nodedotjs&logoColor=white) | Asynchronous event-driven server runtime |
+| **API Framework** | ![Express](https://img.shields.io/badge/Express.js-000000?style=flat-square&logo=express&logoColor=white) | RESTful API service endpoints and middleware pipelines |
+| **Authentication** | ![JWT](https://img.shields.io/badge/JWT_Auth-000000?style=flat-square&logo=jsonwebtokens&logoColor=white) | Encrypted JSON Web Token role-based access control |
+| **Real-Time Engine** | ![Socket.io](https://img.shields.io/badge/Socket.IO-010101?style=flat-square&logo=socketdotio&logoColor=white) | Bi-directional websocket engine for live updates |
+| **Database Engine** | ![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=flat-square&logo=mongodb&logoColor=white) | Document database for inventory models & 30+ year audit logs |
+| **Scientific Data** | ![PubChem](https://img.shields.io/badge/PubChem_API-0275D8?style=flat-square&logo=molecules&logoColor=white) | Automated CAS lookup, SMILES IDs, and molecular structure data |
 
 ---
 
