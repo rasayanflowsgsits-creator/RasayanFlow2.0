@@ -22,7 +22,7 @@
   <b>RasayanFlow 2.0</b> transforms pharmaceutical education and research management. It bridges the gap between central store bulk inventory, departmental research laboratories, practical curriculum execution, and doctoral thesis synthesis in one unified, role-aware digital platform.
 </p>
 
-[✨ Explore Features](#-key-capabilities--spotlight) • [👥 Role Manuals](#-role-operational-manuals) • [🔄 Architecture](#-system-architecture--workflows) • [🛠️ Tech Stack](#%EF%B8%8F-technology-stack) • [🚀 Quick Start](#-quick-start)
+[📊 Graphical Workflows](#-graphical-workflow-diagrams--sequence-flow) • [👥 Role Manuals](#-role-operational-manuals) • [✨ Capabilities](#-key-capabilities--spotlight) • [🛠️ Tech Stack](#%EF%B8%8F-technology-stack) • [🚀 Quick Start](#-quick-start)
 
 </div>
 
@@ -42,14 +42,12 @@
 
 ## 📌 Table of Contents
 - [✨ Executive Overview](#-executive-overview)
-- [🔄 System Architecture & Workflows](#-system-architecture--workflows)
+- [📊 Graphical Workflow Diagrams & Sequence Flow](#-graphical-workflow-diagrams--sequence-flow)
+  - [1. B.Pharm Student Practical Chemical Borrow Workflow](#1-bpharm-student-practical-chemical-borrow-workflow)
+  - [2. PhD Scholar Direct Central Store Requisition Workflow](#2-phd-scholar-direct-central-store-requisition-workflow)
+  - [3. Lab Admin Bulk Store Replenishment & Dispatch Pipeline](#3-lab-admin-bulk-store-replenishment--dispatch-pipeline)
+  - [4. Super Admin System Governance & Provisioning Flow](#4-super-admin-system-governance--provisioning-flow)
 - [👥 Role Operational Manuals](#-role-operational-manuals)
-  - [🛡️ Super Admin (Master Governance)](#%EF%B8%8F-1-super-admin-master-governance)
-  - [🏪 Central Store Manager](#-2-central-store-manager)
-  - [🔬 Lab Admin (Departmental Operations)](#-3-lab-admin-laboratory-in-charge)
-  - [🎓 PhD Research Scholar](#-4-phd-research-scholar)
-  - [🧪 M.Pharm & M.Tech Scholars](#-5-mpharm--mtech-scholars)
-  - [📚 B.Pharm Undergraduate Students](#-6-bpharm-undergraduate-students)
 - [✨ Key Capabilities & Spotlight](#-key-capabilities--spotlight)
 - [🛠️ Technology Stack](#%EF%B8%8F-technology-stack)
 - [🚀 Quick Start](#-quick-start)
@@ -71,65 +69,102 @@ In academic pharmaceutical institutes, managing chemical inventory across centra
 
 ---
 
-## 🔄 System Architecture & Workflows
+## 📊 Graphical Workflow Diagrams & Sequence Flow
 
-### 🌐 System Execution Hierarchy
-
-```mermaid
-flowchart TD
-    subgraph Governance ["🛡️ Institutional Governance"]
-        SA["Super Admin"]
-    end
-
-    subgraph InventoryHub ["📦 Central Store Command"]
-        SM["Central Store Manager"]
-        StoreDB[("Central Store Inventory")]
-    end
-
-    subgraph Laboratories ["🔬 Departmental Research & Teaching Labs"]
-        LA["Lab Admin / Technician"]
-        LabDB[("Lab Stock Inventory")]
-    end
-
-    subgraph Scholars ["🎓 Research & Academic Users"]
-        PhD["PhD Research Scholars"]
-        PG["M.Pharm & M.Tech Scholars"]
-        UG["B.Pharm Undergraduate Students"]
-    end
-
-    SA -->|Provision Facilities & Access| SM
-    SA -->|Assign Lab In-Charges| LA
-
-    SM -->|Inward Vendor Shipments| StoreDB
-    SM -->|Fulfill Bulk Replenishment| LabDB
-    SM -->|Approve Direct Requests & Issue REC-XXXX| PhD
-
-    LA -->|Request Store Replenishment| StoreDB
-    LA -->|Configure Practicals & Approve Borrows| UG
-    LA -->|Dispense Reagents| PG
-
-    PhD -->|Direct Chemical Request| StoreDB
-    UG -->|Group Experiment Borrowing| LabDB
-    PG -->|Thesis Synthesis Requests| LabDB
-```
-
----
-
-### 🧾 Requisition & Receipt Code (`REC-XXXX`) Sequence
+### 1. B.Pharm Student Practical Chemical Borrow Workflow
+> *Illustrates how undergraduate students request chemicals for academic practicals and receive approval from the Lab Admin.*
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor PhD as PhD Scholar / Lab Admin
-    actor SM as Central Store Manager
-    participant Store as Central Store Hub
+    actor Student as 📚 B.Pharm Student
+    actor LabAdmin as 🔬 Lab Admin / Technician
+    participant LabStock as 🧪 Departmental Lab Inventory
 
-    PhD->>SM: Submit Chemical Requisition (CAS Number, Quantity, Purpose)
-    SM->>Store: Check Stock Availability & Hazard Class
-    SM->>Store: Click "Approve Requisition"
-    Store-->>SM: Deduct Central Stock & Log Audit Record
-    Store-->>PhD: Issue Official Store Receipt Code (REC-2026-XXXX)
-    PhD->>SM: Present REC-XXXX Code at Central Store for Physical Pickup
+    Student->>Student: Select Year & Semester Practical (e.g. Synthesis of Aspirin)
+    Student->>LabAdmin: Submit Group Chemical & Glassware Borrow Request
+    LabAdmin->>LabAdmin: Receive Notification & Verify Roll Number / Group Limits
+    LabAdmin->>LabStock: Click "Approve Borrow Request"
+    LabStock-->>LabAdmin: Deduct Lab Chemical Stock & Log Borrow Session
+    LabStock-->>Student: Issue Chemicals & Glasswares for Practical
+    Student->>LabAdmin: Clean & Return Reusable Glasswares After Practical
+```
+
+---
+
+### 2. PhD Scholar Direct Central Store Requisition Workflow
+> *Illustrates how doctoral researchers submit direct requisitions to the Store Manager and receive an official receipt code (`REC-XXXX`).*
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor PhD as 🎓 PhD Research Scholar
+    actor StoreMgr as 🏪 Central Store Manager
+    participant CentralStore as 📦 Central Store Hub
+
+    PhD->>PhD: Fill Direct Request (CAS Number, Quantity, Thesis Title, Guide Name)
+    PhD->>StoreMgr: Submit Requisition (Tagged as PhD Research)
+    StoreMgr->>CentralStore: Review Stock Availability & Hazard Class
+    StoreMgr->>CentralStore: Click "Approve Requisition"
+    CentralStore-->>StoreMgr: Deduct Central Stock & Log Audit Record
+    CentralStore-->>PhD: Issue Official Store Receipt Code (REC-2026-XXXX)
+    PhD->>StoreMgr: Present REC-XXXX Code at Central Store for Physical Pickup
+```
+
+---
+
+### 3. Lab Admin Bulk Store Replenishment & Dispatch Pipeline
+> *Illustrates how a Lab Admin requests bulk stock replenishment from the Central Store Manager when lab inventory runs low.*
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor LabAdmin as 🔬 Lab Admin / In-Charge
+    actor StoreMgr as 🏪 Central Store Manager
+    participant CentralStore as 📦 Central Store Inventory
+    participant LabStock as 🧪 Departmental Lab Inventory
+
+    LabAdmin->>LabAdmin: Low Stock Alert Triggered (<15% Safety Limit)
+    LabAdmin->>StoreMgr: Submit Bulk Store Replenishment Request
+    StoreMgr->>CentralStore: Check Store Balance & Lab Quota Allocation
+    StoreMgr->>CentralStore: Click "Approve & Dispatch Stock"
+    CentralStore-->>StoreMgr: Deduct Central Store Inventory
+    StoreMgr->>LabAdmin: Dispatch Chemical Shipment to Lab
+    LabAdmin->>LabStock: Confirm Receipt -> Departmental Lab Stock Restocked
+```
+
+---
+
+### 4. Super Admin System Governance & Provisioning Flow
+> *Illustrates master governance, facility provisioning, user approval, and compliance logging.*
+
+```mermaid
+flowchart TD
+    subgraph Login ["🛡️ Super Admin Access"]
+        Admin["Super Admin"]
+    end
+
+    subgraph UserMgmt ["👥 User Administration"]
+        Approve["Approve Registrations"]
+        AssignRole["Assign Roles: Lab Admin / Store Manager / Student"]
+    end
+
+    subgraph FacilityMgmt ["🏢 Laboratory Provisioning"]
+        CreateLab["Provision New Lab Facility"]
+        SetLimits["Configure Safety Stock Thresholds"]
+    end
+
+    subgraph AuditLog ["📊 Institutional Audit"]
+        MasterValuation["Monitor Central Store Valuation (₹)"]
+        ExportLogs["Export 30+ Year PDF/CSV Audit Reports"]
+    end
+
+    Admin --> Approve
+    Admin --> CreateLab
+    Approve --> AssignRole
+    CreateLab --> SetLimits
+    SetLimits --> MasterValuation
+    AssignRole --> ExportLogs
 ```
 
 ---
@@ -199,14 +234,6 @@ sequenceDiagram
 ---
 
 ## ✨ Key Capabilities & Spotlight
-
-```carousel
-![Central Store Financial Valuation](https://raw.githubusercontent.com/rasayanflowsgsits-creator/RasayanFlow2.0/main/docs/assets/store_valuation.png)
-<!-- slide -->
-![Direct PhD Requisition Engine](https://raw.githubusercontent.com/rasayanflowsgsits-creator/RasayanFlow2.0/main/docs/assets/phd_requisition.png)
-<!-- slide -->
-![30+ Year Audit Ledger](https://raw.githubusercontent.com/rasayanflowsgsits-creator/RasayanFlow2.0/main/docs/assets/audit_ledger.png)
-```
 
 | Feature Module | Description & Capability |
 | :--- | :--- |
