@@ -1,60 +1,60 @@
-import React, { useState } from 'react';
+import React from 'react';
 import useAuthStore from '../store/authStore';
 import { 
   ShieldCheck, Store, FlaskConical, GraduationCap, BookOpen, 
-  Settings, CheckCircle2, ChevronRight, Sparkles, Layers, ArrowRight, UserCheck
+  Settings, CheckCircle2, Sparkles, Layers, ArrowRight, UserCheck, Check
 } from 'lucide-react';
 
 const ROLE_MANUALS = {
   super_admin: {
     id: 'super_admin',
-    title: 'Super Admin (System Administrator)',
-    badge: 'System Governance',
+    roleName: 'Super Admin',
+    title: 'Super Admin Operational System Manual',
+    badge: 'Master System Governance',
     icon: ShieldCheck,
-    color: 'emerald',
-    overview: 'The Super Admin holds master governance over the entire RasayanFlow ecosystem across all departments, laboratories, store facilities, and user accounts.',
+    overview: 'As Super Admin, you hold master administrative governance over the entire RasayanFlow system across all pharmacy departments, laboratories, central store facilities, and user accounts.',
     capabilities: [
-      'Comprehensive User & Access Governance across all roles',
-      'Creation, allocation, and threshold configuration for all Pharmacy Laboratories',
-      'Master Central Store stock monitoring & financial stock valuation oversight',
-      'System-wide real-time audit logs, security tracking, and activity monitoring',
-      'Global safety hazard thresholds and automated compliance reporting'
+      'Master User Administration & Role Provisioning across all institute departments',
+      'Laboratory Facility Provisioning, Admin Assignment, and Safety Stock Threshold configuration',
+      'Master Central Store Monitoring & Financial Stock Valuation oversight',
+      'System-wide Audit Tracking, Live Monitor Logs, and Automated Security Oversight',
+      'Global Safety Hazard Thresholds and Institution Compliance Reporting'
     ],
     handlingSteps: [
       {
         step: 1,
-        title: 'Access Super Admin Dashboard',
-        desc: 'Log into the master dashboard to review total active laboratories, store inventory valuation, user counts, and pending system alerts.'
+        title: 'Super Admin Dashboard Access',
+        desc: 'Log into the master dashboard to view real-time counts of total active laboratories, central store valuation, active users, and system alert notifications.'
       },
       {
         step: 2,
-        title: 'User & Role Administration',
-        desc: 'Navigate to User Management to approve new user registrations, assign roles (Lab Admin, Store Manager, Faculty, Student), or modify permission access.'
+        title: 'User & Permission Management',
+        desc: 'Navigate to User Management to approve new account registrations, set user roles (Lab Admin, Store Manager, Faculty, Student), or adjust access permissions.'
       },
       {
         step: 3,
-        title: 'Laboratory Facility Provisioning',
-        desc: 'Manage or create new lab facilities under Lab Management. Assign dedicated Lab Admins and define chemical allocation thresholds.'
+        title: 'Laboratory Facility Management',
+        desc: 'Manage or configure new lab facilities under Lab Management. Assign dedicated Lab Admins and set chemical allocation thresholds for each lab.'
       },
       {
         step: 4,
-        title: 'System Audit & Reporting',
-        desc: 'Generate institution-wide audit logs, stock consumption analytics, and PDF/CSV reports for regulatory compliance and annual procurement.'
+        title: 'Institution Audit & Reporting',
+        desc: 'Access system audit logs under History/Reports to view comprehensive stock movement analytics, safety compliance records, and export institutional PDF/CSV reports.'
       }
     ],
     workflowFlowchart: ['Super Admin Login', 'User & Lab Governance', 'Set Safety Thresholds', 'Review Master Audit Logs']
   },
   store_manager: {
     id: 'store_manager',
-    title: 'Central Store Manager',
-    badge: 'Central Inventory & Issue',
+    title: 'Central Store Manager System Manual',
+    roleName: 'Central Store Manager',
+    badge: 'Central Inventory & Issue Authority',
     icon: Store,
-    color: 'amber',
-    overview: 'The Store Manager controls the central chemical and equipment repository, managing bulk vendor receiving, lab stock fulfillment, direct PhD scholar requisitions, and receipt code logging.',
+    overview: 'As Central Store Manager, you control the institute’s primary chemical and equipment repository, managing bulk vendor receiving, lab stock fulfillment, direct PhD scholar requisitions, and receipt code logging.',
     capabilities: [
-      'Central Inventory Management (Pure grade chemicals, analytical solvents, glasswares, apparatus)',
-      'Direct PhD Scholar Requisition approval and direct stock release',
-      'Lab Admin bulk stock request fulfillment & dispatch tracking',
+      'Central Inventory Control (Pure grade chemicals, analytical solvents, glasswares, apparatus)',
+      'Direct PhD Scholar Requisition review, approval, and immediate stock release',
+      'Lab Admin bulk stock replenishment request processing & dispatch tracking',
       'Automated Store Receipt Code generation (REC-2026-XXXX) upon stock approval',
       'Inwarding new stock shipments via manual entry or bulk CSV imports',
       'Stock Valuation, Monthly Inward/Outward history, and Low Stock alerts'
@@ -62,41 +62,41 @@ const ROLE_MANUALS = {
     handlingSteps: [
       {
         step: 1,
-        title: 'Daily Store Operations',
-        desc: 'Open Store Dashboard to review weekly store receipts, active inventory counts, total monetary valuation, and pending store requisitions.'
+        title: 'Daily Store Dashboard Operations',
+        desc: 'Access your Store Dashboard to view weekly stock receipts, active inventory counts, total monetary valuation, and pending store requisitions.'
       },
       {
         step: 2,
-        title: 'Processing Requisitions',
-        desc: 'Go to Store Requisitions. Review incoming requests from Lab Admins and PhD Scholars with details like chemical name, CAS, quantity, and research purpose.'
+        title: 'Reviewing Incoming Requisitions',
+        desc: 'Go to Store Requisitions. Review incoming requests from Lab Admins and PhD Scholars detailing chemical name, CAS number, quantity, and research purpose.'
       },
       {
         step: 3,
-        title: 'Stock Release & Receipt Issuance',
+        title: 'Stock Approval & Receipt Issuance',
         desc: 'Click Approve on a requisition. The system automatically deducts Central Store stock, logs tracking history, and issues a Store Receipt Code (REC-XXXX).'
       },
       {
         step: 4,
-        title: 'Inwarding Vendor Shipments',
+        title: 'Inwarding New Vendor Shipments',
         desc: 'Use Add Inventory or Bulk CSV Import when new chemical shipments arrive from suppliers to update central stock balances.'
       },
       {
         step: 5,
-        title: 'Audit & Stock History',
+        title: 'Audit & Stock Valuation Reports',
         desc: 'Access Store History to view monthly stock inwarding vs. outwarding trends and export financial valuation reports.'
       }
     ],
-    workflowFlowchart: ['Store Manager Login', 'Review PhD & Lab Requisitions', 'Approve Stock & Generate Receipt (REC-XXXX)', 'Inward New Supplier Stock']
+    workflowFlowchart: ['Store Manager Login', 'Review PhD & Lab Requisitions', 'Approve Stock & Generate Receipt (REC-XXXX)', 'Inward Supplier Stock']
   },
   lab_admin: {
     id: 'lab_admin',
-    title: 'Lab Admin (Laboratory Technician / In-Charge)',
+    title: 'Lab Admin Operational System Manual',
+    roleName: 'Lab Admin / Technician',
     badge: 'Departmental Lab Operations',
     icon: FlaskConical,
-    color: 'indigo',
-    overview: 'The Lab Admin oversees daily lab operations, practical experiment setup, student chemical borrow request approvals, and store stock replenishment for their designated lab.',
+    overview: 'As Lab Admin, you oversee daily lab operations, practical experiment setups, student chemical borrow request approvals, and store stock replenishment for your designated lab facility.',
     capabilities: [
-      'Lab-specific Inventory Control (Chemicals, reagents, glasswares allocated to the lab)',
+      'Lab-specific Inventory Control (Chemicals, reagents, glasswares allocated to your lab)',
       'Requisitioning bulk chemical stock replenishment from the Central Store Manager',
       'Practical Experiment & Student Group/Batch configuration',
       'Real-time Student Borrow Request approval during practical sessions',
@@ -105,8 +105,8 @@ const ROLE_MANUALS = {
     handlingSteps: [
       {
         step: 1,
-        title: 'Lab Monitoring',
-        desc: 'View assigned lab dashboard to check available lab chemicals, low-stock warnings, active practical groups, and pending student requests.'
+        title: 'Lab Dashboard Monitoring',
+        desc: 'Open your assigned lab dashboard to check available lab chemicals, low-stock warnings, active practical groups, and pending student requests.'
       },
       {
         step: 2,
@@ -125,7 +125,7 @@ const ROLE_MANUALS = {
       },
       {
         step: 5,
-        title: 'Archiving & History',
+        title: 'Archiving & History Reports',
         desc: 'Use Lab History to filter stock transactions by year/month and export audit reports for departmental records.'
       }
     ],
@@ -133,11 +133,11 @@ const ROLE_MANUALS = {
   },
   phd_scholar: {
     id: 'phd_scholar',
-    title: 'PhD Research Scholar (Higher Research Section)',
-    badge: 'Direct Central Store Requisition',
+    title: 'PhD Scholar Direct Requisition Manual',
+    roleName: 'PhD Research Scholar',
+    badge: 'Direct Central Store Requisition Authority',
     icon: GraduationCap,
-    color: 'purple',
-    overview: 'PhD Scholars carry out independent doctoral research with direct requisition rights to the Central Store Manager, bypassing lab quotas and semester structures.',
+    overview: 'As a PhD Scholar, you hold direct requisition rights to the Central Store Manager for independent doctoral research, bypassing intermediate lab quotas and semester structures.',
     capabilities: [
       'Direct Central Store Requisition access bypassing lab admin approvals',
       'Project & Thesis Title mapping with Supervisor/Guide details',
@@ -148,7 +148,7 @@ const ROLE_MANUALS = {
     handlingSteps: [
       {
         step: 1,
-        title: 'Login & Portal Access',
+        title: 'PhD Scholar Portal Access',
         desc: 'Log into the PhD Research Dashboard. You will see direct access controls and central store stats.'
       },
       {
@@ -158,12 +158,12 @@ const ROLE_MANUALS = {
       },
       {
         step: 3,
-        title: 'Store Manager Processing',
+        title: 'Direct Store Manager Processing',
         desc: 'Your request is routed directly to the Central Store Manager marked with a PhD Research tag.'
       },
       {
         step: 4,
-        title: 'Chemical Collection',
+        title: 'Chemical Collection with Receipt Code',
         desc: 'Once approved by the Store Manager, view your official Store Receipt Code (REC-XXXX) on your card and present it at the Central Store for chemical pickup.'
       }
     ],
@@ -171,11 +171,11 @@ const ROLE_MANUALS = {
   },
   mpharm_scholar: {
     id: 'mpharm_scholar',
-    title: 'M.Pharm Research Scholar (Master of Pharmacy)',
-    badge: 'Post-Graduate Research',
+    title: 'M.Pharm Scholar System Manual',
+    roleName: 'M.Pharm Research Scholar',
+    badge: 'Post-Graduate Departmental Research',
     icon: FlaskConical,
-    color: 'teal',
-    overview: 'M.Pharm Scholars conduct advanced post-graduate thesis research across specialized pharmacy branches (Pharmaceutics, Pharmacology, Pharmaceutical Chemistry, Quality Assurance).',
+    overview: 'As an M.Pharm Scholar, you conduct specialized thesis research across post-graduate pharmacy branches (Pharmaceutics, Pharmacology, Chemistry, QA) utilizing departmental lab inventory.',
     capabilities: [
       'Departmental Research Lab access for specialized synthesis and testing',
       'Requesting high-purity reagents, analytical grade solvents, and specialized equipment',
@@ -208,11 +208,11 @@ const ROLE_MANUALS = {
   },
   mtech_scholar: {
     id: 'mtech_scholar',
-    title: 'M.Tech Research Scholar (Pharm Technology)',
-    badge: 'Process & Pilot Plant Tech',
+    title: 'M.Tech Scholar System Manual',
+    roleName: 'M.Tech Research Scholar',
+    badge: 'Process & Pilot Plant Technology',
     icon: Settings,
-    color: 'blue',
-    overview: 'M.Tech Scholars focus on pharmaceutical engineering, pilot-scale formulation, process optimization, and heavy analytical instrumentation.',
+    overview: 'As an M.Tech Scholar, your focus is on pharmaceutical engineering, pilot-scale formulation, process optimization, and heavy analytical instrumentation.',
     capabilities: [
       'Industrial Pharmaceutical Technology & Pilot Plant Lab access',
       'Bulk formulation material & process chemical requisitions',
@@ -245,11 +245,11 @@ const ROLE_MANUALS = {
   },
   bpharm_student: {
     id: 'bpharm_student',
-    title: 'B.Pharm Student (Bachelor of Pharmacy)',
+    title: 'B.Pharm Student System Manual',
+    roleName: 'B.Pharm Student',
     badge: 'Undergraduate Curriculum Practical',
     icon: BookOpen,
-    color: 'green',
-    overview: 'B.Pharm Students participate in scheduled academic practical coursework, group experiment borrowing, and foundational pharmaceutical lab training.',
+    overview: 'As a B.Pharm Student, you participate in scheduled academic practical coursework, group experiment borrowing, and foundational pharmacy practical training.',
     capabilities: [
       'Year & Semester structured practical schedule (Y1-Y4, Sem 1-8)',
       'Group-based chemical & glassware borrowing for pre-configured practical experiments',
@@ -285,8 +285,8 @@ const ROLE_MANUALS = {
 export default function AboutPage() {
   const { user } = useAuthStore();
 
-  // Determine user default active manual key
-  const getUserDefaultRoleKey = () => {
+  // Determine active role key strictly based on logged-in user's role and course
+  const getActiveUserRoleKey = () => {
     if (!user) return 'bpharm_student';
     const role = user.role || '';
     const course = user.course || '';
@@ -301,89 +301,59 @@ export default function AboutPage() {
     return 'bpharm_student';
   };
 
-  const [activeRoleKey, setActiveRoleKey] = useState(getUserDefaultRoleKey());
-
+  const activeRoleKey = getActiveUserRoleKey();
   const currentManual = ROLE_MANUALS[activeRoleKey] || ROLE_MANUALS.bpharm_student;
   const RoleIcon = currentManual.icon;
 
   return (
     <div className="min-h-screen bg-[#fdfdf7] dark:bg-[#141811] text-[#37412a] dark:text-[#e4e9d8] p-4 md:p-8 space-y-6 font-sans pb-24 text-left">
       
-      {/* Top Banner / Title Header */}
+      {/* Dynamic Header */}
       <div className="border-b border-[#cfd8bd] dark:border-[#38432a] pb-4 space-y-1">
         <div className="flex items-center gap-2">
           <Sparkles className="w-6 h-6 text-[#5c6e46] dark:text-[#a8be8a]" />
           <h1 className="text-2xl sm:text-3xl font-black text-[#37412a] dark:text-[#e4e9d8] tracking-tight">
-            RasayanFlow — Operational System Manual
+            About Your Assigned Role — {currentManual.roleName}
           </h1>
         </div>
         <p className="text-xs sm:text-sm text-[#71805a] dark:text-[#a5b48b] font-semibold">
-          Comprehensive step-by-step functionality, authority permissions, and workflow manual customized for every assigned role.
+          Detailed operational manual, authorized capabilities, and step-by-step system handling guide for your active role.
         </p>
       </div>
 
-      {/* Logged-In User Quick Status Bar */}
-      {user && (
-        <div className="bg-[#fffef8] dark:bg-[#1a1d16] border border-[#cfd8bd] dark:border-[#414a33] rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded bg-[#5c6e46] text-white flex items-center justify-center font-black text-sm uppercase">
-              {user.name ? user.name[0] : 'U'}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-black text-[#37412a] dark:text-[#e4e9d8]">{user.name}</span>
-                <span className="bg-[#f4f6ee] dark:bg-[#20251a] text-[#5c6e46] dark:text-[#a8be8a] border border-[#cfd8bd] dark:border-[#414a33] px-2 py-0.5 rounded text-[10px] font-black uppercase">
-                  {user.role} {user.course ? `• ${user.course}` : ''}
-                </span>
-              </div>
-              <span className="text-xs text-[#71805a] dark:text-[#9fb384] font-semibold">
-                Logged in as active user. Below is your authorized system manual and workflow guide.
+      {/* Logged-In User Profile Card */}
+      <div className="bg-[#fffef8] dark:bg-[#1a1d16] border border-[#cfd8bd] dark:border-[#414a33] rounded-lg p-4 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+        <div className="flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded bg-[#5c6e46] text-white flex items-center justify-center font-black text-base uppercase">
+            {user?.name ? user.name[0] : 'U'}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-base font-black text-[#37412a] dark:text-[#e4e9d8]">{user?.name || 'Authorized User'}</span>
+              <span className="bg-[#5c6e46] text-white border border-[#5c6e46] px-2.5 py-0.5 rounded text-[11px] font-black uppercase tracking-wider">
+                {currentManual.roleName}
               </span>
             </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <UserCheck size={16} className="text-[#5c6e46] dark:text-[#a8be8a]" />
-            <span className="text-xs font-black text-[#5c6e46] dark:text-[#a8be8a]">Active Verified Profile</span>
+            <span className="text-xs text-[#71805a] dark:text-[#9fb384] font-semibold">
+              Authenticated Session • Assigned System Flow: <strong>{currentManual.badge}</strong>
+            </span>
           </div>
         </div>
-      )}
 
-      {/* Role Navigation Tabs (Squarish Segmented Selector) */}
-      <div className="space-y-2">
-        <label className="block text-xs font-black text-[#5c6e46] dark:text-[#a8be8a] uppercase tracking-wider">
-          Select Role Manual to Explore:
-        </label>
-        <div className="flex flex-wrap items-center gap-1.5 bg-[#f4f6ee] dark:bg-[#1a1d16] p-1.5 rounded-lg border border-[#cfd8bd] dark:border-[#414a33]">
-          {Object.values(ROLE_MANUALS).map((manual) => {
-            const Icon = manual.icon;
-            const isActive = activeRoleKey === manual.id;
-            return (
-              <button
-                key={manual.id}
-                onClick={() => setActiveRoleKey(manual.id)}
-                className={`px-3 py-2 rounded text-xs font-black transition-all border flex items-center gap-1.5 ${
-                  isActive
-                    ? 'bg-[#5c6e46] text-white border-[#5c6e46] shadow-2xs'
-                    : 'bg-white text-[#37412a] border-[#cfd8bd] hover:bg-[#e4eed3] dark:bg-[#20251a] dark:text-[#e4e9d8] dark:border-[#414a33]'
-                }`}
-              >
-                <Icon size={14} />
-                <span>{manual.title.split(' ')[0]} {manual.title.split(' ')[1] || ''}</span>
-              </button>
-            );
-          })}
+        <div className="flex items-center gap-2 bg-[#f4f6ee] dark:bg-[#20251a] px-3 py-1.5 rounded border border-[#cfd8bd] dark:border-[#414a33]">
+          <UserCheck size={16} className="text-[#5c6e46] dark:text-[#a8be8a]" />
+          <span className="text-xs font-black text-[#5c6e46] dark:text-[#a8be8a]">Active Role Profile</span>
         </div>
       </div>
 
-      {/* Main Selected Role Manual Card */}
+      {/* Single Role Manual Card */}
       <div className="rounded-lg bg-[#fffef8] dark:bg-[#1a1d16] border-2 border-[#5c6e46] p-5 sm:p-7 shadow-2xs space-y-6">
         
         {/* Manual Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#cfd8bd] dark:border-[#414a33]">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3.5">
             <div className="p-3 rounded border border-[#5c6e46] bg-[#f4f6ee] dark:bg-[#20251a] text-[#5c6e46] dark:text-[#a8be8a]">
-              <RoleIcon className="w-7 h-7" />
+              <RoleIcon className="w-8 h-8" />
             </div>
             <div>
               <span className="px-2.5 py-0.5 rounded bg-[#5c6e46] text-white text-[10px] font-black uppercase tracking-wider">
@@ -399,18 +369,18 @@ export default function AboutPage() {
         {/* Overview Box */}
         <div className="p-4 bg-[#f4f6ee] dark:bg-[#20251a] rounded border border-[#cfd8bd] dark:border-[#414a33]">
           <h3 className="text-xs font-black text-[#5c6e46] dark:text-[#a8be8a] uppercase tracking-wider mb-1">
-            Role Function & Primary Mandate:
+            Role Functionality & Primary Mandate:
           </h3>
           <p className="text-xs sm:text-sm font-bold text-[#37412a] dark:text-[#e4e9d8] leading-relaxed">
             {currentManual.overview}
           </p>
         </div>
 
-        {/* Key Capabilities Section */}
+        {/* Authorized Capabilities Section */}
         <div className="space-y-3">
           <h3 className="text-sm font-black text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2">
             <Layers className="w-4 h-4 text-[#5c6e46] dark:text-[#a8be8a]" />
-            <span>Key Authorized Capabilities & System Actions</span>
+            <span>Authorized System Actions & Capabilities</span>
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
             {currentManual.capabilities.map((cap, idx) => (
@@ -429,7 +399,7 @@ export default function AboutPage() {
         <div className="space-y-3 pt-2">
           <h3 className="text-sm font-black text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2">
             <Settings className="w-4 h-4 text-[#5c6e46] dark:text-[#a8be8a]" />
-            <span>Step-by-Step Operational Handling Guide</span>
+            <span>Step-by-Step System Handling Guide</span>
           </h3>
 
           <div className="grid grid-cols-1 gap-3">
@@ -454,10 +424,10 @@ export default function AboutPage() {
           </div>
         </div>
 
-        {/* Process Flowchart Banner */}
+        {/* Execution Flowchart */}
         <div className="p-4 bg-[#f4f6ee] dark:bg-[#20251a] rounded border border-[#cfd8bd] dark:border-[#414a33] space-y-2">
           <h4 className="text-xs font-black text-[#5c6e46] dark:text-[#a8be8a] uppercase tracking-wider">
-            Execution Flow Summary:
+            Your System Execution Flow:
           </h4>
           <div className="flex flex-wrap items-center gap-2 text-xs font-black text-[#37412a] dark:text-[#e4e9d8]">
             {currentManual.workflowFlowchart.map((node, idx) => (
