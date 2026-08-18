@@ -30,6 +30,8 @@ import { useState, useEffect } from "react";
 import useAuthStore from "../../store/authStore";
 import useAppStore from "../../store/appStore";
 import useStoreManagerMock from "../../store/storeManagerMock";
+import api from "../../services/api";
+import { toFrontendChemical } from "../../utils/storeMapper";
 import { parsePackSize, safeRound, totalStock } from "../../utils/storeHelpers";
 
 const linksMap = {
@@ -103,13 +105,9 @@ export default function Sidebar({ collapsed, isDark, toggleTheme }) {
 
   useEffect(() => {
     if (role === 'store-admin' || role === 'store_admin' || role === 'storeAdmin') {
-      import('../../services/api').then(({ default: api }) => {
-        import('../../utils/storeMapper').then(({ toFrontendChemical }) => {
-          api.get('/store/inventory')
-            .then(res => setStoreInventory((res.data || []).map(toFrontendChemical)))
-            .catch(() => {});
-        });
-      });
+      api.get('/store/inventory')
+        .then(res => setStoreInventory((res.data || []).map(toFrontendChemical)))
+        .catch(() => {});
     }
   }, [role]);
 

@@ -5,6 +5,8 @@ import * as XLSX from 'xlsx';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Modal from '../components/ui/Modal';
+import api from '../services/api';
+import { toBackendChemical } from '../utils/storeMapper';
 import useAppStore from './appStore';
 import useStoreManagerMock, { SHEET_IMPORT_HEADERS, getChemicalStatus } from './storeManagerMock';
 
@@ -187,8 +189,6 @@ export default function StoreImportModal({ open, onClose }) {
     }
 
     try {
-      // Map to backend keys before sending
-      const { toBackendChemical } = await import('../utils/storeMapper');
       const backendChemicals = chemicals.map(toBackendChemical);
       
       const payload = {
@@ -196,7 +196,7 @@ export default function StoreImportModal({ open, onClose }) {
         importMode: mode
       };
       
-      const { data } = await (await import('../services/api')).default.post('/store/inventory/import', payload);
+      const { data } = await api.post('/store/inventory/import', payload);
       
       setToast({ 
         type: 'success', 
