@@ -341,15 +341,13 @@ export default function LabExperimentsPage() {
       alert('Lab Code is required.');
       return;
     }
-    if (!newExp.experimentName?.trim()) {
-      alert('Experiment Title / Objective is required.');
-      return;
-    }
     setAddingExp(true);
     try {
+      const expTitle = newExp.experimentName?.trim() || `Experiment #${newExp.experimentNo || 1}`;
       const subjectFull = `${newExp.subject.trim()} (${newExp.labCode.trim()})`;
       const payload = {
         ...newExp,
+        experimentName: expTitle,
         subject: subjectFull,
         labCode: newExp.labCode.trim(),
         labId: activeLabId
@@ -772,13 +770,12 @@ export default function LabExperimentsPage() {
           {/* Row 3: Experiment Title */}
           <div>
             <label className="text-xs font-bold text-[#3c4e23] dark:text-[#c8a030] uppercase tracking-wider mb-1 flex items-center gap-1">
-              Experiment Title / Objective <span className="text-rose-500 font-bold">*</span>
+              Experiment Title / Objective <span className="text-gray-400 font-normal text-[11px]">(Optional)</span>
             </label>
             <Input 
               value={newExp.experimentName} 
               onChange={(e) => setNewExp({ ...newExp, experimentName: e.target.value })} 
-              placeholder="e.g. Study of Compound Microscope" 
-              required
+              placeholder="e.g. Study of Compound Microscope (Optional)" 
             />
           </div>
 
