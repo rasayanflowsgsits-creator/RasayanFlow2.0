@@ -561,39 +561,84 @@ export default function StudentLabDetail() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredExperiments.map((exp) => (
-                <div 
-                  key={exp._id || exp.id || exp.experimentNo}
-                  className="bg-white dark:bg-[#1f2419] rounded-xl shadow-sm p-4 border border-[#e8eadf] dark:border-[#3c452f] flex flex-col justify-between"
-                >
-                  <div>
-                    <span className="inline-block px-2 py-0.5 bg-[#f0f4e8] dark:bg-[#28301f] text-[#556b2f] dark:text-[#c8a030] text-[10px] font-bold rounded uppercase mb-2">
-                      Exp {exp.experimentNo}
-                    </span>
-                    <h3 className="text-sm font-bold text-[#3c4e23] dark:text-[#eef4e8] mb-2">
-                      {exp.experimentName}
-                    </h3>
-                    <p className="text-xs text-gray-500 mb-3">Subject: {exp.subject || 'Practical'}</p>
+              {filteredExperiments.map((exp) => {
+                const isUnlocked = Boolean(exp.isUnlocked);
+                const hasRequestedToday = (requests || []).some(r => {
+                  const reqDate = new Date(r.requestedAt || r.createdAt || Date.now()).toDateString();
+                  const todayDate = new Date().toDateString();
+                  if (reqDate !== todayDate) return false;
+                  
+                  return (
+                    r.experimentNo == exp.experimentNo ||
+                    (r.notes && r.notes.toLowerCase().includes(`exp ${exp.experimentNo}`)) ||
+                    (r.chemicalsRequested || []).some(cr => 
+                      (exp.chemicals || []).some(ec => ec.chemicalName?.toLowerCase() === cr.chemicalName?.toLowerCase())
+                    )
+                  );
+                });
 
-                    {/* Chemicals List */}
-                    <div className="space-y-1 mb-3">
-                      {(exp.chemicals || []).map((c, i) => (
-                        <div key={i} className="text-xs flex justify-between text-gray-700 dark:text-gray-300">
-                          <span>• {c.chemicalName}</span>
-                          <span className="font-semibold">{c.quantityPerStudent || c.quantity || 1} {c.unit || 'mL'}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <Button 
-                    onClick={() => handleOpenRequestModalForExperiment(exp)}
-                    className="w-full bg-[#556b2f] hover:bg-[#435525] text-white font-bold py-1.5 rounded-lg text-xs"
+                return (
+                  <div 
+                    key={exp._id || exp.id || exp.experimentNo}
+                    className="bg-white dark:bg-[#1f2419] rounded-xl shadow-sm p-4 border border-[#e8eadf] dark:border-[#3c452f] flex flex-col justify-between"
                   >
-                    📋 Request Experiment Chemicals
-                  </Button>
-                </div>
-              ))}
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <span className="inline-block px-2 py-0.5 bg-[#f0f4e8] dark:bg-[#28301f] text-[#556b2f] dark:text-[#c8a030] text-[10px] font-bold rounded uppercase">
+                          Exp {exp.experimentNo}
+                        </span>
+                        
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                          isUnlocked 
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' 
+                            : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                        }`}>
+                          {isUnlocked ? '🔓 Unlocked for Practical' : '🔒 Locked by Admin'}
+                        </span>
+                      </div>
+
+                      <h3 className="text-sm font-bold text-[#3c4e23] dark:text-[#eef4e8] mb-2">
+                        {exp.experimentName}
+                      </h3>
+                      <p className="text-xs text-gray-500 mb-3">Subject: {exp.subject || 'Practical'}</p>
+
+                      {/* Chemicals List */}
+                      <div className="space-y-1 mb-4 p-2 bg-[#fafdf7] dark:bg-[#1a1d16] rounded-lg border border-[#e8eadf] dark:border-[#3c452f]">
+                        <p className="text-[10px] font-bold text-[#71805a] dark:text-[#a5b48b] uppercase tracking-wider mb-1">Required Chemicals:</p>
+                        {(exp.chemicals || []).map((c, i) => (
+                          <div key={i} className="text-xs flex justify-between text-gray-700 dark:text-gray-300">
+                            <span>• {c.chemicalName}</span>
+                            <span className="font-semibold">{c.quantityPerStudent || c.quantity || 1} {c.unit || 'mL'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {!isUnlocked ? (
+                      <Button 
+                        disabled
+                        className="w-full bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 font-bold py-2 rounded-lg text-xs flex items-center justify-center gap-1.5 cursor-not-allowed border border-amber-200 dark:border-amber-800 opacity-80"
+                      >
+                        🔒 Locked (Practical Not Unlocked Yet)
+                      </Button>
+                    ) : hasRequestedToday ? (
+                      <Button 
+                        disabled
+                        className="w-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-bold py-2 rounded-lg text-xs flex items-center justify-center gap-1.5 cursor-not-allowed border border-emerald-200 dark:border-emerald-800 opacity-90"
+                      >
+                        ✅ Requested Once for Today's Session
+                      </Button>
+                    ) : (
+                      <Button 
+                        onClick={() => handleOpenRequestModalForExperiment(exp)}
+                        className="w-full bg-[#556b2f] hover:bg-[#435525] text-white font-bold py-2 rounded-lg text-xs shadow-sm flex items-center justify-center gap-1.5"
+                      >
+                        🧪 Request Experiment Chemicals
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

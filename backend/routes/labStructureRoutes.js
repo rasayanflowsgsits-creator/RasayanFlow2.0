@@ -6,7 +6,9 @@ const {
   getAllStructures,
   addExperiment,
   updateExperiment,
-  deleteExperiment
+  deleteExperiment,
+  toggleExperimentLock,
+  bulkToggleLock
 } = require('../controllers/labStructureController');
 const authMiddleware = require('../middleware/authMiddleware');
 
@@ -22,6 +24,8 @@ router.get('/', getStructure); // Lab Admin & Students
 router.get('/student', getStudentStructure); // Students
 router.get('/student/:labId', getStudentStructure); // Students for specific labId
 router.post('/experiment', addExperiment);
+router.put('/experiment/lock-all', bulkToggleLock);
+router.put('/experiment/:id/lock', toggleExperimentLock);
 router.put('/experiment/:id', updateExperiment);
 router.delete('/experiment/:id', deleteExperiment);
 

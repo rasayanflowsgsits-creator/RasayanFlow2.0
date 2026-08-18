@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Upload, Download, Plus, AlertCircle, FileText, CheckCircle2, XCircle, Search, LayoutGrid, Table as TableIcon, Tag, FlaskConical, Edit3, Trash2 } from 'lucide-react';
+import { Upload, Download, Plus, AlertCircle, FileText, CheckCircle2, XCircle, Search, LayoutGrid, Table as TableIcon, Tag, FlaskConical, Edit3, Trash2, Lock, Unlock } from 'lucide-react';
 import Papa from 'papaparse';
 import useAppStore from '../store/appStore';
 import useAuthStore from '../store/authStore';
@@ -322,6 +322,26 @@ export default function LabExperimentsPage() {
     setAddOpen(true);
   };
 
+  const handleToggleLock = async (expId, currentStatus) => {
+    try {
+      await api.put(`/lab/structure/experiment/${expId}/lock`, { isUnlocked: !currentStatus });
+      if (activeLabId) fetchLabStructure(activeLabId);
+      if (setToast) setToast({ type: 'success', message: `Experiment ${!currentStatus ? 'UNLOCKED 🔓' : 'LOCKED 🔒'} successfully` });
+    } catch (err) {
+      alert(err?.response?.data?.message || 'Failed to toggle experiment lock');
+    }
+  };
+
+  const handleBulkToggleLock = async (targetUnlocked) => {
+    try {
+      await api.put('/lab/structure/experiment/lock-all', { labId: activeLabId, isUnlocked: targetUnlocked });
+      if (activeLabId) fetchLabStructure(activeLabId);
+      if (setToast) setToast({ type: 'success', message: `All experiments ${targetUnlocked ? 'UNLOCKED 🔓' : 'LOCKED 🔒'} for today's session` });
+    } catch (err) {
+      alert(err?.response?.data?.message || 'Failed to bulk toggle experiment locks');
+    }
+  };
+
   const handleDeleteExperiment = async (expId, expName) => {
     if (!window.confirm(`Are you sure you want to delete "${expName}"?`)) return;
     try {
@@ -407,6 +427,35 @@ export default function LabExperimentsPage() {
           </Button>
           <Button variant='outline' onClick={() => { setImportStep(1); setImportOpen(true); }}>
             <Upload size={16} /> Upload CSV Wizard
+          </Button>
+        </div>
+      </div>
+
+      {/* Master Practical Session Lock/Unlock Control Bar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-2xl border border-[#dce5cc] bg-[#fbfdf7] dark:bg-[#1a1d16] dark:border-[#3c452f] shadow-sm mb-4">
+        <div>
+          <h4 className="text-sm font-bold text-[#3c4e23] dark:text-[#eef4e8] flex items-center gap-1.5">
+            <Lock className="w-4 h-4 text-[#556b2f] dark:text-[#c8a030]" />
+            Practical Session Experiment Lock Controls
+          </h4>
+          <p className="text-xs text-[#71805a] dark:text-[#a5b48b] mt-0.5">
+            Locking prevents student chemical requests. Unlocking allows students to request chemicals once for today's session.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => handleBulkToggleLock(true)}
+            className="bg-[#556b2f] hover:bg-[#435525] text-white text-xs font-bold py-2 px-3.5 rounded-xl flex items-center gap-1.5 shadow-sm"
+          >
+            <Unlock size={14} /> 🔓 Unlock All for Today
+          </Button>
+
+          <Button
+            onClick={() => handleBulkToggleLock(false)}
+            className="bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold py-2 px-3.5 rounded-xl flex items-center gap-1.5 shadow-sm"
+          >
+            <Lock size={14} /> 🔒 Lock All
           </Button>
         </div>
       </div>
@@ -515,7 +564,29 @@ export default function LabExperimentsPage() {
               </div>
 
               <div className="pt-3 border-t border-[#e8ece1] dark:border-[#3c452f] flex justify-between items-center text-xs text-[#87996c]">
-                <span className="font-semibold">{exp.chemicals?.length || 0} Ingredients</span>
+                <button
+                  type="button"
+                  onClick={() => handleToggleLock(exp._id || exp.id, exp.isUnlocked)}
+                  className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border transition ${
+                    exp.isUnlocked
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
+                      : 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800 hover:bg-amber-100'
+                  }`}
+                  title={exp.isUnlocked ? "Click to Lock Experiment" : "Click to Unlock for Today's Practical"}
+                >
+                  {exp.isUnlocked ? (
+                    <>
+                      <Unlock size={12} className="text-emerald-600" />
+                      <span>🔓 Unlocked</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock size={12} className="text-amber-600" />
+                      <span>🔒 Locked</span>
+                    </>
+                  )}
+                </button>
+
                 <div className="flex items-center gap-1.5">
                   <button 
                     type="button" 

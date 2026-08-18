@@ -609,6 +609,65 @@ const getAllStructures = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, count: structures.length, data: structures });
 });
 
+// @desc    Toggle lock/unlock status for a single experiment
+// @route   PUT /api/lab/structure/experiment/:id/lock
+// @access  Private (Lab Admin)
+const toggleExperimentLock = asyncHandler(async (req, res) => {
+  const experiment = await LabStructure.findById(req.params.id);
+  if (!experiment) {
+    res.status(404);
+    throw new Error('Experiment not found');
+  }
+
+  const newStatus = typeof req.body.isUnlocked === 'boolean' ? req.body.isUnlocked : !experiment.isUnlocked;
+  experiment.isUnlocked = newStatus;
+  experiment.unlockedAt = newStatus ? new Date() : null;
+  experiment.updatedAt = Date.now();
+  await experiment.save();
+
+  res.status(200).json({
+    success: true,
+    data: experiment,
+    message: `Experiment ${newStatus ? 'UNLOCKED 🔓' : 'LOCKED 🔒'} successfully`
+  });
+});
+
+// @desc    Bulk lock or unlock all experiments in a lab
+// @route   PUT /api/lab/structure/lock-all
+// @access  Private (Lab Admin)
+const bulkToggleLock = asyncHandler(async (req, res) => {
+  const { isUnlocked } = req.body;
+  const lab = await resolveTargetLab(req);
+
+  if (!lab) {
+    res.status(404);
+    throw new Error('No target lab found');
+  }
+
+  const queryIds = getLabIdQuery(lab._id);
+  const targetUnlocked = typeof isUnlocked === 'boolean' ? isUnlocked : true;
+
+  await LabStructure.updateMany(
+    { labId: { $in: queryIds } },
+    {
+      $set: {
+        isUnlocked: targetUnlocked,
+        unlockedAt: targetUnlocked ? new Date() : null,
+        updatedAt: Date.now()
+      }
+    }
+  );
+
+  const updatedDocs = await LabStructure.find({ labId: { $in: queryIds } }).sort({ subject: 1, experimentNo: 1 });
+
+  res.status(200).json({
+    success: true,
+    count: updatedDocs.length,
+    data: updatedDocs,
+    message: `All experiments ${targetUnlocked ? 'UNLOCKED 🔓' : 'LOCKED 🔒'} for today's practical session`
+  });
+});
+
 module.exports = {
   uploadStructure,
   getStructure,
@@ -616,5 +675,7 @@ module.exports = {
   getAllStructures,
   addExperiment,
   updateExperiment,
-  deleteExperiment
+  deleteExperiment,
+  toggleExperimentLock,
+  bulkToggleLock
 };

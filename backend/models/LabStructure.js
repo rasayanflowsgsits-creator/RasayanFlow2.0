@@ -19,6 +19,8 @@ const labStructureSchema = new mongoose.Schema({
   experimentNo: { type: Number, required: true, min: 1 },
   experimentName: { type: String, required: true, trim: true },
   chemicals: { type: [chemicalRequirementSchema], default: [] },
+  isUnlocked: { type: Boolean, default: false },
+  unlockedAt: { type: Date, default: null },
   uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
