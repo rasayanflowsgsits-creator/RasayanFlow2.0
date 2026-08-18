@@ -2,14 +2,14 @@ import { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { 
   ArrowLeft, FlaskConical, Beaker, CheckCircle2, Clock, 
-  XCircle, AlertTriangle, FileText, RefreshCw, Send, Check
+  XCircle, AlertTriangle, FileText, RefreshCw, Send, Check,
+  Search, Filter, Layers, Info, ShieldCheck, Tag, MapPin
 } from 'lucide-react';
 import api from '../services/api';
 import useAuthStore from '../store/authStore';
 import useAppStore from '../store/appStore';
 import Modal from '../components/ui/Modal';
 import Button from '../components/ui/Button';
-import { FIFTEEN_PHARMA_EXPERIMENTS } from './BPharmDashboard';
 
 export default function StudentLabDetail() {
   const { id: routeLabId } = useParams();
@@ -21,13 +21,21 @@ export default function StudentLabDetail() {
   const setToast = useAppStore((state) => state.setToast);
 
   const [loading, setLoading] = useState(true);
-  const [structure, setStructure] = useState([]);
   const [labInfo, setLabInfo] = useState(null);
+  const [labInventory, setLabInventory] = useState([]);
+  const [experiments, setExperiments] = useState([]);
   const [requests, setRequests] = useState([]);
 
-  // Modal States
+  // Active View Tab: 'inventory' (default real lab chemicals) or 'experiments'
+  const [activeTab, setActiveTab] = useState('inventory');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Requisition Modal State
   const [requestModalOpen, setRequestModalOpen] = useState(false);
-  const [selectedExp, setSelectedExp] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [requestedQty, setRequestedQty] = useState(1);
+  const [requestedUnit, setRequestedUnit] = useState('mL');
+  const [studentGroup, setStudentGroup] = useState(user?.group || 'Group A');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -35,72 +43,67 @@ export default function StudentLabDetail() {
   const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
   const [duplicateInfo, setDuplicateInfo] = useState(null);
 
-  // Details Modal State (for Approved / Rejected / Pending view)
+  // Details Modal State
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [activeRequestDetails, setActiveRequestDetails] = useState(null);
 
   const labId = routeLabId || stateLab?._id || stateLab?.id;
 
-  const [experimentsData, setExperimentsData] = useState([]);
-  const [subjectsData, setSubjectsData] = useState({});
-
-  const [totalExperimentsCount, setTotalExperimentsCount] = useState(0);
-
-  const getCurriculumExperimentsFallback = () => {
-    return FIFTEEN_PHARMA_EXPERIMENTS.map((exp, idx) => ({
-      _id: exp.id || `exp-${idx + 1}`,
-      id: exp.id || `exp-${idx + 1}`,
-      experimentNo: String(idx + 1),
-      experimentName: exp.experimentNumber,
-      subject: stateLab?.labName || stateLab?.name || labInfo?.labName || 'Pharmaceutics Lab - I',
-      chemicals: (exp.requiredInventory || []).map((c) => ({
-        chemicalName: c.chemicalName,
-        quantityPerStudent: c.quantity,
-        unit: c.quantityUnit || 'mL',
-        stockStatus: 'In Stock (1000 mL)'
-      }))
-    }));
-  };
-
-  // Fetch Lab Details & Experiments dynamically from API
+  // Fetch Lab Details, Real Lab Chemical Inventory, Experiments, and Student Requests
   const fetchLabData = async () => {
-    setLoading(true);
-
-    if (user?.isPreview || !labId || String(labId).startsWith('preview-')) {
-      const fallbackExps = getCurriculumExperimentsFallback();
-      setStructure(fallbackExps);
-      setExperimentsData(fallbackExps);
-      setTotalExperimentsCount(fallbackExps.length);
+    if (!labId) {
       setLoading(false);
       return;
     }
+    setLoading(true);
 
     try {
-      // PRIMARY: new dedicated endpoint — handles String vs ObjectId correctly
-      let res = await api.get(`/experiments/lab/${labId}`);
-      console.log('[StudentLabDetail] experiments/lab response:', res.data);
-
-      if (res.data && res.data.success) {
-        let exps = res.data.experiments || res.data.data || [];
-
-        // If primary returns 0, try fallback
-        if (exps.length === 0) {
-          exps = getCurriculumExperimentsFallback();
+      // 1. Fetch Lab Metadata
+      try {
+        const labRes = await api.get(`/labs/${labId}`);
+        if (labRes.data?.data || labRes.data?.lab) {
+          setLabInfo(labRes.data.data || labRes.data.lab);
         }
-
-        const total = res.data.totalExperiments ?? exps.length;
-        setStructure(exps);
-        setExperimentsData(exps);
-        setTotalExperimentsCount(total);
-        setLabInfo(res.data.lab || null);
-        setRequests(res.data.studentRequests || []);
+      } catch (e) {
+        console.warn('[StudentLabDetail] Metadata fetch fallback via stateLab');
       }
+
+      // 2. Fetch REAL Lab Chemical Inventory (Added by Lab Admin for this lab)
+      try {
+        const invRes = await api.get(`/inventory?labId=${labId}&limit=500`);
+        if (invRes.data?.data) {
+          setLabInventory(invRes.data.data);
+        } else if (Array.isArray(invRes.data)) {
+          setLabInventory(invRes.data);
+        }
+      } catch (e) {
+        console.error('[StudentLabDetail] Error fetching lab inventory:', e);
+      }
+
+      // 3. Fetch Custom Lab Experiments (configured by Lab Admin)
+      try {
+        const expRes = await api.get(`/experiments/lab/${labId}`);
+        if (expRes.data?.success && Array.isArray(expRes.data?.experiments)) {
+          setExperiments(expRes.data.experiments);
+        } else if (expRes.data?.data && Array.isArray(expRes.data.data)) {
+          setExperiments(expRes.data.data);
+        }
+      } catch (e) {
+        console.warn('[StudentLabDetail] No custom experiments for lab');
+      }
+
+      // 4. Fetch Student's Requests for this Lab
+      try {
+        const reqRes = await api.get(`/student/requests/lab/${labId}`);
+        if (reqRes.data?.data && Array.isArray(reqRes.data.data)) {
+          setRequests(reqRes.data.data);
+        }
+      } catch (e) {
+        console.warn('[StudentLabDetail] Error fetching student requests');
+      }
+
     } catch (err) {
-      console.error('[StudentLabDetail] Error fetching lab experiments:', err);
-      const fallbackExps = getCurriculumExperimentsFallback();
-      setStructure(fallbackExps);
-      setExperimentsData(fallbackExps);
-      setTotalExperimentsCount(fallbackExps.length);
+      console.error('[StudentLabDetail] Error loading lab details:', err);
     } finally {
       setLoading(false);
     }
@@ -117,45 +120,37 @@ export default function StudentLabDetail() {
     return {
       _id: labId,
       id: labId,
-      name: 'HAP1',
-      labName: 'HAP1',
-      labCode: '0001',
+      name: 'Pharmacy Laboratory',
+      labName: 'Pharmacy Laboratory',
+      labCode: 'LAB-001',
       courseType: 'B.Pharm',
-      admin: 'Unassigned',
-      adminEmail: '',
-      department: 'Pharmaceutics'
+      admin: 'Lab Admin',
+      department: 'Pharmaceutical Sciences'
     };
   }, [labInfo, stateLab, labId]);
 
-  // Unique chemicals count
-  const uniqueChemicalsCount = useMemo(() => {
-    const set = new Set();
-    structure.forEach((exp) => {
-      (exp.chemicals || []).forEach((c) => {
-        if (c.chemicalName) set.add(c.chemicalName.toLowerCase().trim());
-      });
-    });
-    return set.size;
-  }, [structure]);
-
-  // Group experiments by subject
-  const groupedExperiments = useMemo(() => {
-    const groups = {};
-    structure.forEach((exp) => {
-      const subj = exp.subject || exp.labName || 'HAP - I (Human Anatomy & Physiology 1)';
-      if (!groups[subj]) groups[subj] = [];
-      groups[subj].push(exp);
-    });
-    return groups;
-  }, [structure]);
-
-  // Find latest student request for a specific experiment
-  const getExperimentRequest = (exp) => {
-    return requests.find((r) => 
-      Number(r.experimentNo) === Number(exp.experimentNo) || 
-      (r.experimentName && exp.experimentName && r.experimentName.toLowerCase().trim() === exp.experimentName.toLowerCase().trim())
+  // Filtered Inventory (Real Chemicals added by Lab Admin)
+  const filteredInventory = useMemo(() => {
+    if (!searchQuery.trim()) return labInventory;
+    const q = searchQuery.toLowerCase().trim();
+    return labInventory.filter((item) => 
+      (item.chemicalName || item.itemName || '').toLowerCase().includes(q) ||
+      (item.casNumber || '').toLowerCase().includes(q) ||
+      (item.category || '').toLowerCase().includes(q) ||
+      (item.storageLocation || '').toLowerCase().includes(q)
     );
-  };
+  }, [labInventory, searchQuery]);
+
+  // Filtered Experiments
+  const filteredExperiments = useMemo(() => {
+    if (!searchQuery.trim()) return experiments;
+    const q = searchQuery.toLowerCase().trim();
+    return experiments.filter((exp) =>
+      (exp.experimentName || '').toLowerCase().includes(q) ||
+      (exp.subject || '').toLowerCase().includes(q) ||
+      (exp.experimentNo || '').toString().includes(q)
+    );
+  }, [experiments, searchQuery]);
 
   // Stat Card Counts
   const pendingRequestsCount = useMemo(() => 
@@ -166,9 +161,44 @@ export default function StudentLabDetail() {
     requests.filter((r) => r.overallStatus === 'Approved' || r.overallStatus === 'Partial').length,
   [requests]);
 
-  // Open Request Modal
-  const handleOpenRequestModal = (exp) => {
-    // Check if there is already a PENDING request locally
+  // Open Requisition Modal for a specific Real Chemical
+  const handleOpenRequestModalForChemical = (chem) => {
+    // Check if there is already a PENDING request for this chemical
+    const existingPending = requests.find((r) => 
+      (r.experimentName === (chem.chemicalName || chem.itemName)) && r.overallStatus === 'Pending'
+    );
+
+    if (existingPending) {
+      const formattedDate = new Date(existingPending.requestedAt).toLocaleDateString('en-GB', { 
+        day: 'numeric', month: 'long', year: 'numeric' 
+      });
+      setDuplicateInfo({
+        requestId: existingPending.requestId || 'STU-REQ-PENDING',
+        submittedAt: formattedDate
+      });
+      setDuplicateModalOpen(true);
+      return;
+    }
+
+    setSelectedItem({
+      type: 'chemical',
+      chemicalName: chem.chemicalName || chem.itemName,
+      itemName: chem.itemName || chem.chemicalName,
+      quantityAvailable: chem.quantityAvailable !== undefined ? chem.quantityAvailable : chem.quantity,
+      quantityUnit: chem.quantityUnit || 'mL',
+      casNumber: chem.casNumber || '',
+      category: chem.category || 'General Reagent',
+      storageLocation: chem.storageLocation || 'Shelf A'
+    });
+    setRequestedQty(1);
+    setRequestedUnit(chem.quantityUnit || 'mL');
+    setStudentGroup(user?.group || 'Group A');
+    setNotes('');
+    setRequestModalOpen(true);
+  };
+
+  // Open Requisition Modal for an Experiment
+  const handleOpenRequestModalForExperiment = (exp) => {
     const existingPending = requests.find((r) => 
       (Number(r.experimentNo) === Number(exp.experimentNo) || r.experimentName === exp.experimentName) &&
       r.overallStatus === 'Pending'
@@ -179,50 +209,86 @@ export default function StudentLabDetail() {
         day: 'numeric', month: 'long', year: 'numeric' 
       });
       setDuplicateInfo({
-        requestId: existingPending.requestId || 'STU-REQ-123',
+        requestId: existingPending.requestId || 'STU-REQ-PENDING',
         submittedAt: formattedDate
       });
       setDuplicateModalOpen(true);
       return;
     }
 
-    setSelectedExp(exp);
+    setSelectedItem({
+      type: 'experiment',
+      experimentNo: exp.experimentNo || 1,
+      experimentName: exp.experimentName || 'Practical Experiment',
+      subject: exp.subject || 'Lab Practical',
+      chemicals: (exp.chemicals || []).map(c => ({
+        chemicalName: c.chemicalName || c.name,
+        quantityRequested: Number(c.quantityPerStudent || c.quantity || 1),
+        unit: c.unit || c.quantityUnit || 'mL'
+      }))
+    });
+    setRequestedQty(1);
+    setRequestedUnit('mL');
+    setStudentGroup(user?.group || 'Group A');
     setNotes('');
     setRequestModalOpen(true);
   };
 
-  // Submit Chemical Request
+  // Submit Chemical Request safely without site crashes
   const handleConfirmRequest = async () => {
-    if (!selectedExp) return;
+    if (!selectedItem) return;
     setSubmitting(true);
+
     try {
-      const payload = {
-        labId: currentLab._id || currentLab.id || labId,
-        labName: currentLab.labName || currentLab.name || 'HAP1',
-        year: currentLab.year || user?.year || '1',
-        semester: currentLab.semester || user?.semester || '1',
-        subject: selectedExp.subject || 'HAP - I',
-        experimentNo: selectedExp.experimentNo,
-        experimentName: selectedExp.experimentName,
-        chemicalsRequested: (selectedExp.chemicals || []).map((c) => ({
-          chemicalName: c.chemicalName,
-          quantityRequested: Number(c.quantityPerStudent || c.quantity || 1),
-          unit: c.unit || 'mL'
-        })),
-        notes: notes.trim()
-      };
+      let payload = {};
+
+      if (selectedItem.type === 'chemical') {
+        payload = {
+          labId: currentLab._id || currentLab.id || labId,
+          labName: currentLab.labName || currentLab.name || 'Lab',
+          year: currentLab.year || user?.year || '1',
+          semester: currentLab.semester || user?.semester || '1',
+          subject: selectedItem.category || 'Lab Requisition',
+          experimentNo: 1,
+          experimentName: selectedItem.chemicalName,
+          chemicalsRequested: [
+            {
+              chemicalName: selectedItem.chemicalName,
+              quantityRequested: Number(requestedQty || 1),
+              unit: requestedUnit || selectedItem.quantityUnit || 'mL'
+            }
+          ],
+          group: studentGroup || user?.group || 'Group A',
+          notes: notes.trim()
+        };
+      } else {
+        payload = {
+          labId: currentLab._id || currentLab.id || labId,
+          labName: currentLab.labName || currentLab.name || 'Lab',
+          year: currentLab.year || user?.year || '1',
+          semester: currentLab.semester || user?.semester || '1',
+          subject: selectedItem.subject || 'Practical Session',
+          experimentNo: Number(selectedItem.experimentNo || 1),
+          experimentName: selectedItem.experimentName,
+          chemicalsRequested: (selectedItem.chemicals || []).map(c => ({
+            chemicalName: c.chemicalName,
+            quantityRequested: Number(c.quantityRequested || 1),
+            unit: c.unit || 'mL'
+          })),
+          group: studentGroup || user?.group || 'Group A',
+          notes: notes.trim()
+        };
+      }
 
       const res = await api.post('/student/requests', payload);
 
-      if (res.data.success) {
+      if (res.data && (res.data.success || res.status === 201)) {
         setToast({ 
           type: 'success', 
           message: '✅ Request submitted! Lab Admin will review shortly.' 
         });
         setRequestModalOpen(false);
-        // Immediately add/update request in local state without full page refresh
-        const newReq = res.data.data;
-        setRequests((prev) => [newReq, ...prev.filter((r) => r.requestId !== newReq.requestId)]);
+        fetchLabData();
       }
     } catch (err) {
       if (err.response?.status === 409 || err.response?.data?.isDuplicate) {
@@ -230,10 +296,10 @@ export default function StudentLabDetail() {
         const dup = err.response?.data?.data;
         const formattedDate = dup?.requestedAt 
           ? new Date(dup.requestedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-          : '31 July 2026';
+          : 'Today';
 
         setDuplicateInfo({
-          requestId: dup?.requestId || 'STU-REQ-123',
+          requestId: dup?.requestId || 'STU-REQ-PENDING',
           submittedAt: formattedDate
         });
         setDuplicateModalOpen(true);
@@ -248,7 +314,6 @@ export default function StudentLabDetail() {
     }
   };
 
-  // View Details Modal
   const handleViewDetails = (req) => {
     setActiveRequestDetails(req);
     setDetailsModalOpen(true);
@@ -264,7 +329,7 @@ export default function StudentLabDetail() {
             onClick={() => navigate(-1)} 
             className="self-start inline-flex items-center gap-1.5 text-sm font-semibold text-[#556b2f] hover:text-[#3c4e23] dark:text-[#c8a030] dark:hover:text-[#e5ba45] hover:underline transition-all mb-1"
           >
-            <ArrowLeft size={16} /> Back to My Labs
+            <ArrowLeft size={16} /> Back to My Dashboard
           </button>
           
           {/* Lab Title Header */}
@@ -272,11 +337,35 @@ export default function StudentLabDetail() {
             <div>
               <h1 className="text-2xl font-bold text-[#3c4e23] dark:text-[#eef4e8] flex items-center gap-2">
                 <Beaker className="w-6 h-6 text-[#556b2f] dark:text-[#c8a030]" />
-                {currentLab.labName || currentLab.name || 'HAP1'}
+                {currentLab.labName || currentLab.name || 'Pharmacy Lab'}
               </h1>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Lab Code: <span className="font-semibold text-gray-700 dark:text-gray-300">{currentLab.labCode || '0001'}</span> • Course: <span className="font-semibold text-gray-700 dark:text-gray-300">{currentLab.courseType || 'B.Pharm'}</span> • Admins: <span className="font-semibold text-gray-700 dark:text-gray-300">{currentLab.admin || 'Unassigned'}{currentLab.adminEmail ? ` (${currentLab.adminEmail})` : ''}</span>
+                Lab Code: <span className="font-semibold text-gray-700 dark:text-gray-300">{currentLab.labCode || 'LAB-001'}</span> • Course: <span className="font-semibold text-gray-700 dark:text-gray-300">{currentLab.courseType || 'B.Pharm'}</span> • Lab Admin: <span className="font-semibold text-gray-700 dark:text-gray-300">{currentLab.admin || 'Assigned In-Charge'}</span>
               </p>
+            </div>
+
+            {/* TAB SELECTOR */}
+            <div className="flex bg-[#f0f4e8] dark:bg-[#28301f] p-1 rounded-xl border border-[#dce5cc] dark:border-[#3c452f]">
+              <button
+                onClick={() => setActiveTab('inventory')}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  activeTab === 'inventory'
+                    ? 'bg-[#556b2f] text-white shadow-sm'
+                    : 'text-[#556b2f] dark:text-[#c5d0b5] hover:bg-[#e2ead3] dark:hover:bg-[#343e2a]'
+                }`}
+              >
+                <Beaker size={14} /> Lab Chemicals ({labInventory.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('experiments')}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  activeTab === 'experiments'
+                    ? 'bg-[#556b2f] text-white shadow-sm'
+                    : 'text-[#556b2f] dark:text-[#c5d0b5] hover:bg-[#e2ead3] dark:hover:bg-[#343e2a]'
+                }`}
+              >
+                <FlaskConical size={14} /> Experiments ({experiments.length})
+              </button>
             </div>
           </div>
         </div>
@@ -284,14 +373,25 @@ export default function StudentLabDetail() {
 
       {/* STAT CARDS (4 CARDS) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {/* Total Lab Chemicals */}
+        <div className="bg-white dark:bg-[#1f2419] p-4 rounded-xl border border-[#e8eadf] dark:border-[#3c452f] shadow-sm flex items-center gap-3">
+          <div className="p-3 bg-[#556b2f]/10 dark:bg-[#c8a030]/10 rounded-xl text-[#556b2f] dark:text-[#c8a030]">
+            <Beaker className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs text-[#71805a] dark:text-[#a5b48b] font-medium">Lab Inventory Stock</p>
+            <p className="text-xl font-bold text-[#3c4e23] dark:text-[#eef4e8]">{labInventory.length} Chemicals</p>
+          </div>
+        </div>
+
         {/* Total Experiments */}
         <div className="bg-white dark:bg-[#1f2419] p-4 rounded-xl border border-[#e8eadf] dark:border-[#3c452f] shadow-sm flex items-center gap-3">
           <div className="p-3 bg-[#556b2f]/10 dark:bg-[#c8a030]/10 rounded-xl text-[#556b2f] dark:text-[#c8a030]">
             <FlaskConical className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-xs text-[#71805a] dark:text-[#a5b48b] font-medium">Total Experiments</p>
-            <p className="text-xl font-bold text-[#3c4e23] dark:text-[#eef4e8]">{structure.length}</p>
+            <p className="text-xs text-[#71805a] dark:text-[#a5b48b] font-medium">Configured Experiments</p>
+            <p className="text-xl font-bold text-[#3c4e23] dark:text-[#eef4e8]">{experiments.length}</p>
           </div>
         </div>
 
@@ -316,216 +416,186 @@ export default function StudentLabDetail() {
             <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{approvedRequestsCount}</p>
           </div>
         </div>
+      </div>
 
-        {/* Chemicals Available */}
-        <div className="bg-white dark:bg-[#1f2419] p-4 rounded-xl border border-[#e8eadf] dark:border-[#3c452f] shadow-sm flex items-center gap-3">
-          <div className="p-3 bg-[#556b2f]/10 dark:bg-[#c8a030]/10 rounded-xl text-[#556b2f] dark:text-[#c8a030]">
-            <Beaker className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-xs text-[#71805a] dark:text-[#a5b48b] font-medium">Chemicals Available</p>
-            <p className="text-xl font-bold text-[#3c4e23] dark:text-[#eef4e8]">{uniqueChemicalsCount}</p>
-          </div>
+      {/* SEARCH & FILTER BAR */}
+      <div className="mb-6 flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder={activeTab === 'inventory' ? "Search lab chemicals by name, CAS, category..." : "Search experiments..."}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full rounded-xl border border-[#dce5cc] bg-white pl-10 pr-4 py-2 text-xs text-[#3c4e23] outline-none focus:ring-2 focus:ring-[#556b2f] dark:border-[#3c452f] dark:bg-[#1f2419] dark:text-[#eef4e8]"
+          />
         </div>
       </div>
 
-      {/* SUBJECTS AND EXPERIMENTS SECTION */}
-      {loading ? (
-        <div className="py-16 text-center text-[#71805a] dark:text-[#c5d0b5]">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-[#556b2f] border-t-transparent mb-3" />
-          <p className="text-sm font-medium">Loading lab experiments...</p>
-        </div>
-      ) : (totalExperimentsCount === 0 && structure.length === 0) ? (
-        /* IF NO EXPERIMENTS UPLOADED */
-        <div className="bg-white dark:bg-[#1f2419] border border-dashed border-[#d9e1ca] dark:border-[#414a33] rounded-2xl p-12 text-center my-6 max-w-xl mx-auto shadow-sm">
-          <div className="w-16 h-16 rounded-full bg-[#f4f6ee] dark:bg-[#2a3121] text-[#556b2f] dark:text-[#c8a030] flex items-center justify-center mx-auto mb-4">
-            <FlaskConical className="w-8 h-8" />
+      {/* TAB 1: REAL LAB CHEMICAL INVENTORY */}
+      {activeTab === 'inventory' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-[#3c4e23] dark:text-[#eef4e8] flex items-center gap-2">
+              <Beaker className="w-5 h-5 text-[#556b2f] dark:text-[#c8a030]" />
+              Actual Lab Chemical Stock ({filteredInventory.length})
+            </h2>
+            <span className="text-xs text-[#71805a] dark:text-[#a5b48b]">
+              Added by Lab Admin for {currentLab.labName || currentLab.name}
+            </span>
           </div>
-          <h3 className="text-xl font-bold text-[#3c4e23] dark:text-[#eef4e8] mb-2">No Experiments Yet</h3>
-          <p className="text-sm text-[#71805a] dark:text-[#c5d0b5] max-w-md mx-auto">
-            Your Lab Admin hasn't uploaded any experiments for this lab yet. Please check back later or contact your Lab Admin.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-10">
-          {Object.entries(groupedExperiments).map(([subjectName, exps]) => (
-            <div key={subjectName} className="space-y-5">
-              {/* SUBJECT SECTION HEADER */}
-              <div className="border-b-2 border-[#e8f0dc] dark:border-[#3c452f] pb-2 mb-4 flex items-center gap-2">
-                <FlaskConical className="w-5 h-5 text-[#556b2f] dark:text-[#c8a030]" />
-                <h2 className="text-lg font-semibold text-[#556b2f] dark:text-[#c8a030]">
-                  Subject: {subjectName}
-                </h2>
+
+          {loading ? (
+            <div className="py-16 text-center text-[#71805a] dark:text-[#c5d0b5]">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-[#556b2f] border-t-transparent mb-3" />
+              <p className="text-sm font-medium">Loading lab inventory...</p>
+            </div>
+          ) : filteredInventory.length === 0 ? (
+            <div className="bg-white dark:bg-[#1f2419] border border-dashed border-[#d9e1ca] dark:border-[#414a33] rounded-2xl p-12 text-center my-6 max-w-xl mx-auto shadow-sm">
+              <div className="w-16 h-16 rounded-full bg-[#f4f6ee] dark:bg-[#2a3121] text-[#556b2f] dark:text-[#c8a030] flex items-center justify-center mx-auto mb-4">
+                <Beaker className="w-8 h-8" />
               </div>
+              <h3 className="text-xl font-bold text-[#3c4e23] dark:text-[#eef4e8] mb-2">No Chemicals Listed Yet</h3>
+              <p className="text-sm text-[#71805a] dark:text-[#c5d0b5] max-w-md mx-auto">
+                {searchQuery ? "No chemicals match your search query." : "Your Lab Admin hasn't added any chemicals to this lab's inventory yet. Please contact your Lab Admin."}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredInventory.map((item) => {
+                const chemName = item.chemicalName || item.itemName;
+                const qty = item.quantityAvailable !== undefined ? item.quantityAvailable : item.quantity;
+                const unit = item.quantityUnit || 'mL';
+                const isAvailable = qty > 0;
+                const existingReq = requests.find(r => r.experimentName === chemName);
+                const reqStatus = existingReq ? existingReq.overallStatus : null;
 
-              {/* EXPERIMENT CARDS GRID */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {exps.map((exp) => {
-                  const existingReq = getExperimentRequest(exp);
-                  const status = existingReq ? existingReq.overallStatus : 'NOT_REQUESTED';
-
-                  // Card border colors based on state
-                  let cardBorderClass = 'border-l-4 border-l-gray-300 dark:border-l-gray-600';
-                  if (status === 'Pending') cardBorderClass = 'border-l-4 border-l-[#f0c040]';
-                  else if (status === 'Approved' || status === 'Partial') cardBorderClass = 'border-l-4 border-l-[#4a9a4a]';
-                  else if (status === 'Rejected') cardBorderClass = 'border-l-4 border-l-[#c04040]';
-
-                  return (
-                    <div 
-                      key={exp._id || exp.id || exp.experimentNo}
-                      className={`bg-white dark:bg-[#1f2419] rounded-xl shadow-sm p-3.5 border border-[#e8eadf] dark:border-[#3c452f] ${cardBorderClass} flex flex-col justify-between transition-all duration-200 hover:shadow-md`}
-                    >
-                      <div>
-                        {/* Exp No & Title */}
-                        <div className="flex items-center justify-between gap-2 mb-1.5">
-                          <span className="inline-block px-2 py-0.5 bg-[#f0f4e8] dark:bg-[#28301f] text-[#556b2f] dark:text-[#c8a030] text-[10px] font-bold rounded uppercase tracking-wider">
-                            Exp {String(exp.experimentNo).padStart(2, '0')}
+                return (
+                  <div 
+                    key={item._id || item.id || item.itemCode}
+                    className="bg-white dark:bg-[#1f2419] rounded-xl shadow-sm p-4 border border-[#e8eadf] dark:border-[#3c452f] flex flex-col justify-between transition-all hover:shadow-md"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <span className="inline-block px-2 py-0.5 bg-[#f0f4e8] dark:bg-[#28301f] text-[#556b2f] dark:text-[#c8a030] text-[10px] font-bold rounded uppercase tracking-wider">
+                          {item.category || 'Reagent'}
+                        </span>
+                        {item.casNumber && (
+                          <span className="text-[10px] text-gray-400 font-mono">
+                            CAS: {item.casNumber}
                           </span>
-                        </div>
-                        
-                        <h3 className="text-xs sm:text-sm font-bold text-[#3c4e23] dark:text-[#eef4e8] mb-2.5 line-clamp-2">
-                          {exp.experimentName}
-                        </h3>
-
-                        {/* Chemicals Required Table */}
-                        <div className="mb-3">
-                          <p className="text-[10px] font-bold text-[#71805a] dark:text-[#a5b48b] mb-1 uppercase tracking-wider">
-                            Chemicals / Reagents Required:
-                          </p>
-                          <div className="overflow-hidden rounded-lg border border-[#f0ede6] dark:border-[#3c452f]">
-                            <table className="w-full text-[11px] text-left">
-                              <thead className="bg-[#f4f6ee] dark:bg-[#28301f] text-[#3c4e23] dark:text-[#eef4e8] font-bold text-[10px]">
-                                <tr>
-                                  <th className="px-2 py-1 border-b border-[#f0ede6] dark:border-[#3c452f]">Chemical Name</th>
-                                  <th className="px-1.5 py-1 border-b border-[#f0ede6] dark:border-[#3c452f] w-10 text-center">Qty</th>
-                                  <th className="px-1.5 py-1 border-b border-[#f0ede6] dark:border-[#3c452f] w-10">Unit</th>
-                                  <th className="px-2 py-1 border-b border-[#f0ede6] dark:border-[#3c452f]">Stock Status</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {(exp.chemicals || []).map((chem, idx) => {
-                                  const statusText = chem.stockStatus || 'Not in Stock';
-                                  const isAvailable = statusText.includes('In Stock');
-                                  const isLow = statusText.includes('Low Stock');
-                                  return (
-                                    <tr 
-                                      key={idx} 
-                                      className={`${idx % 2 === 0 ? 'bg-white dark:bg-[#1a1d16]' : 'bg-[#fafdf7] dark:bg-[#20251a]'} border-b last:border-none border-[#f0ede6] dark:border-[#3c452f]`}
-                                    >
-                                      <td className="px-2 py-1 font-medium text-gray-800 dark:text-gray-200">
-                                        {chem.chemicalName}
-                                      </td>
-                                      <td className="px-1.5 py-1 text-gray-600 dark:text-gray-400 font-semibold text-center">
-                                        {chem.quantityPerStudent || chem.quantity || 1}
-                                      </td>
-                                      <td className="px-1.5 py-1 text-gray-500 font-medium">
-                                        {chem.unit || 'mL'}
-                                      </td>
-                                      <td className="px-2 py-1">
-                                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                          isAvailable ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' :
-                                          isLow ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' :
-                                          'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300'
-                                        }`}>
-                                          {isAvailable ? '✅ ' : isLow ? '⚠️ ' : '❌ '}
-                                          {statusText}
-                                        </span>
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                                {(!exp.chemicals || exp.chemicals.length === 0) && (
-                                  <tr>
-                                    <td colSpan="4" className="px-2 py-1 text-gray-400 italic text-center">
-                                      No chemicals configured
-                                    </td>
-                                  </tr>
-                                )}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
+                        )}
                       </div>
 
-                      {/* CARD FOOTER & ACTIONS BASED ON STATE */}
-                      <div className="pt-2.5 border-t border-[#f0f2eb] dark:border-[#3c452f]/60">
-                        {/* STATE 1: NOT REQUESTED */}
-                        {(!existingReq || status === 'NOT_REQUESTED') && (
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium">
-                              <span>Status: <strong className="text-gray-700 dark:text-gray-300">Not Requested</strong></span>
-                            </div>
-                            <Button 
-                              onClick={() => handleOpenRequestModal(exp)}
-                              className="w-full bg-[#556b2f] hover:bg-[#435525] text-white font-bold py-1.5 rounded-lg shadow-sm text-xs flex items-center justify-center gap-1.5"
-                            >
-                              📋 Request These Chemicals
-                            </Button>
-                          </div>
-                        )}
+                      <h3 className="text-sm font-bold text-[#3c4e23] dark:text-[#eef4e8] mb-1">
+                        {chemName}
+                      </h3>
 
-                        {/* STATE 2: PENDING */}
-                        {status === 'Pending' && (
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between text-[11px] text-[#f0c040] font-bold">
-                              <span className="flex items-center gap-1">⏳ Request Pending</span>
-                              <span className="text-[10px] text-gray-400 font-mono">ID: {existingReq.requestId}</span>
-                            </div>
-                            <button 
-                              onClick={() => handleViewDetails(existingReq)}
-                              className="w-full border-2 border-[#f0c040] text-[#b88c14] dark:text-[#f0c040] hover:bg-[#f0c040]/10 font-bold py-1.5 rounded-lg text-xs transition-colors flex items-center justify-center gap-1.5"
-                            >
-                              View Request Status
-                            </button>
-                          </div>
-                        )}
+                      {item.storageLocation && (
+                        <p className="text-[11px] text-gray-500 flex items-center gap-1 mb-3">
+                          <MapPin size={12} className="text-[#556b2f]" /> Location: {item.storageLocation}
+                        </p>
+                      )}
 
-                        {/* STATE 3: APPROVED */}
-                        {(status === 'Approved' || status === 'Partial') && (
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between text-[11px] text-[#4a9a4a] font-bold">
-                              <span className="flex items-center gap-1">✅ Chemicals Approved</span>
-                              {existingReq.approvedAt && (
-                                <span className="text-[10px] text-gray-400 font-normal">
-                                  {new Date(existingReq.approvedAt).toLocaleDateString()}
-                                </span>
-                              )}
-                            </div>
-                            <button 
-                              onClick={() => handleViewDetails(existingReq)}
-                              className="w-full border-2 border-[#4a9a4a] text-[#4a9a4a] hover:bg-[#4a9a4a]/10 font-bold py-1.5 rounded-lg text-xs transition-colors flex items-center justify-center gap-1.5"
-                            >
-                              View Details
-                            </button>
-                          </div>
-                        )}
-
-                        {/* STATE 4: REJECTED */}
-                        {status === 'Rejected' && (
-                          <div className="space-y-1.5">
-                            <div className="text-[11px] text-[#c04040]">
-                              <div className="font-bold flex items-center gap-1">❌ Request Rejected</div>
-                              {existingReq.rejectionReason && (
-                                <p className="text-[10px] text-rose-600 dark:text-rose-400 mt-0.5 line-clamp-1">
-                                  Reason: {existingReq.rejectionReason}
-                                </p>
-                              )}
-                            </div>
-                            <button 
-                              onClick={() => handleOpenRequestModal(exp)}
-                              className="w-full border-2 border-[#c04040] text-[#c04040] hover:bg-[#c04040]/10 font-bold py-1.5 rounded-lg text-xs transition-colors flex items-center justify-center gap-1.5"
-                            >
-                              🔄 Request Again
-                            </button>
-                          </div>
-                        )}
+                      <div className="bg-[#fafdf7] dark:bg-[#1a1d16] p-2.5 rounded-lg border border-[#f0ede6] dark:border-[#3c452f] mb-3 text-xs flex justify-between items-center">
+                        <span className="text-gray-500 font-medium">Available Stock:</span>
+                        <span className={`font-bold ${isAvailable ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600'}`}>
+                          {qty} {unit}
+                        </span>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+
+                    <div className="pt-2 border-t border-[#f0f2eb] dark:border-[#3c452f]/60">
+                      {reqStatus === 'Pending' ? (
+                        <div className="flex items-center justify-between text-xs text-amber-600 font-bold">
+                          <span>⏳ Request Pending</span>
+                          <button onClick={() => handleViewDetails(existingReq)} className="underline text-[11px]">View</button>
+                        </div>
+                      ) : reqStatus === 'Approved' ? (
+                        <div className="flex items-center justify-between text-xs text-emerald-600 font-bold">
+                          <span>✅ Approved</span>
+                          <button onClick={() => handleViewDetails(existingReq)} className="underline text-[11px]">Details</button>
+                        </div>
+                      ) : (
+                        <Button 
+                          onClick={() => handleOpenRequestModalForChemical(item)}
+                          disabled={!isAvailable}
+                          className="w-full bg-[#556b2f] hover:bg-[#435525] text-white font-bold py-1.5 rounded-lg shadow-sm text-xs flex items-center justify-center gap-1.5 disabled:opacity-50"
+                        >
+                          📋 Request This Chemical
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          ))}
+          )}
+        </div>
+      )}
+
+      {/* TAB 2: CONFIGURED EXPERIMENTS */}
+      {activeTab === 'experiments' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-[#3c4e23] dark:text-[#eef4e8] flex items-center gap-2">
+              <FlaskConical className="w-5 h-5 text-[#556b2f] dark:text-[#c8a030]" />
+              Lab Experiments ({filteredExperiments.length})
+            </h2>
+          </div>
+
+          {loading ? (
+            <div className="py-16 text-center text-[#71805a] dark:text-[#c5d0b5]">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-[#556b2f] border-t-transparent mb-3" />
+              <p className="text-sm font-medium">Loading experiments...</p>
+            </div>
+          ) : filteredExperiments.length === 0 ? (
+            <div className="bg-white dark:bg-[#1f2419] border border-dashed border-[#d9e1ca] dark:border-[#414a33] rounded-2xl p-12 text-center my-6 max-w-xl mx-auto shadow-sm">
+              <div className="w-16 h-16 rounded-full bg-[#f4f6ee] dark:bg-[#2a3121] text-[#556b2f] dark:text-[#c8a030] flex items-center justify-center mx-auto mb-4">
+                <FlaskConical className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-bold text-[#3c4e23] dark:text-[#eef4e8] mb-2">No Experiments Configured</h3>
+              <p className="text-sm text-[#71805a] dark:text-[#c5d0b5] max-w-md mx-auto">
+                Your Lab Admin hasn't configured custom practical experiments for this lab yet. You can request chemicals directly from the <button onClick={() => setActiveTab('inventory')} className="text-[#556b2f] font-bold underline">Lab Chemicals</button> tab.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredExperiments.map((exp) => (
+                <div 
+                  key={exp._id || exp.id || exp.experimentNo}
+                  className="bg-white dark:bg-[#1f2419] rounded-xl shadow-sm p-4 border border-[#e8eadf] dark:border-[#3c452f] flex flex-col justify-between"
+                >
+                  <div>
+                    <span className="inline-block px-2 py-0.5 bg-[#f0f4e8] dark:bg-[#28301f] text-[#556b2f] dark:text-[#c8a030] text-[10px] font-bold rounded uppercase mb-2">
+                      Exp {exp.experimentNo}
+                    </span>
+                    <h3 className="text-sm font-bold text-[#3c4e23] dark:text-[#eef4e8] mb-2">
+                      {exp.experimentName}
+                    </h3>
+                    <p className="text-xs text-gray-500 mb-3">Subject: {exp.subject || 'Practical'}</p>
+
+                    {/* Chemicals List */}
+                    <div className="space-y-1 mb-3">
+                      {(exp.chemicals || []).map((c, i) => (
+                        <div key={i} className="text-xs flex justify-between text-gray-700 dark:text-gray-300">
+                          <span>• {c.chemicalName}</span>
+                          <span className="font-semibold">{c.quantityPerStudent || c.quantity || 1} {c.unit || 'mL'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Button 
+                    onClick={() => handleOpenRequestModalForExperiment(exp)}
+                    className="w-full bg-[#556b2f] hover:bg-[#435525] text-white font-bold py-1.5 rounded-lg text-xs"
+                  >
+                    📋 Request Experiment Chemicals
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -533,83 +603,92 @@ export default function StudentLabDetail() {
       <Modal 
         open={requestModalOpen} 
         onClose={() => setRequestModalOpen(false)} 
-        title="Request Chemicals"
+        title="Request Chemical from Lab Admin"
       >
-        {selectedExp && (
+        {selectedItem && (
           <div className="space-y-5 text-left">
             <div>
               <p className="text-sm font-bold text-[#556b2f] dark:text-[#c8a030]">
-                Exp {String(selectedExp.experimentNo).padStart(2, '0')} — {selectedExp.experimentName}
+                {selectedItem.type === 'chemical' ? selectedItem.chemicalName : selectedItem.experimentName}
               </p>
               <p className="text-xs text-gray-500 mt-0.5">
-                Lab: {currentLab.labName || currentLab.name || 'HAP1'}
+                Lab: {currentLab.labName || currentLab.name} • Student: {user?.name} ({user?.rollNumber || 'RN-1001'})
               </p>
             </div>
 
-            {/* Chemicals Table */}
-            <div>
-              <label className="text-xs font-bold text-[#3c4e23] dark:text-[#c8a030] uppercase tracking-wider mb-1.5 block">
-                Required Chemicals
-              </label>
-              <div className="overflow-hidden rounded-xl border border-[#cfd8bd] dark:border-[#4e5d35]">
-                <table className="w-full text-xs text-left">
-                  <thead className="bg-[#f4f6ee] dark:bg-[#28301f] text-[#3c4e23] dark:text-[#eef4e8] font-bold">
-                    <tr>
-                      <th className="px-3 py-2 border-b border-[#cfd8bd] dark:border-[#4e5d35]">Chemical Name</th>
-                      <th className="px-3 py-2 border-b border-[#cfd8bd] dark:border-[#4e5d35] w-16">Qty</th>
-                      <th className="px-3 py-2 border-b border-[#cfd8bd] dark:border-[#4e5d35] w-16">Unit</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(selectedExp.chemicals || []).map((c, i) => (
-                      <tr key={i} className="border-b last:border-none border-[#e8eadf] dark:border-[#3c452f] bg-white dark:bg-[#1a1d16]">
-                        <td className="px-3 py-2 font-medium text-gray-800 dark:text-gray-200">{c.chemicalName}</td>
-                        <td className="px-3 py-2 font-semibold text-gray-600 dark:text-gray-400">{c.quantityPerStudent || c.quantity || 1}</td>
-                        <td className="px-3 py-2 text-gray-500">{c.unit || 'mL'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {/* CHEMICAL QUANTITY & UNIT SELECTOR */}
+            {selectedItem.type === 'chemical' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-[#3c4e23] dark:text-[#c8a030] uppercase tracking-wider mb-1 block">
+                    Requested Quantity
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={requestedQty}
+                    onChange={(e) => setRequestedQty(Math.max(1, Number(e.target.value)))}
+                    className="w-full rounded-xl border border-[#cfd8bd] bg-white px-3 py-2 text-xs font-bold text-[#3c4e23] outline-none focus:ring-2 focus:ring-[#556b2f] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-[#3c4e23] dark:text-[#c8a030] uppercase tracking-wider mb-1 block">
+                    Unit
+                  </label>
+                  <select
+                    value={requestedUnit}
+                    onChange={(e) => setRequestedUnit(e.target.value)}
+                    className="w-full rounded-xl border border-[#cfd8bd] bg-white px-3 py-2 text-xs font-bold text-[#3c4e23] outline-none focus:ring-2 focus:ring-[#556b2f] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]"
+                  >
+                    <option value="mL">mL (Milliliters)</option>
+                    <option value="L">L (Liters)</option>
+                    <option value="g">g (Grams)</option>
+                    <option value="kg">kg (Kilograms)</option>
+                    <option value="mg">mg (Milligrams)</option>
+                    <option value="units">units (Apparatus/Items)</option>
+                  </select>
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Student Details Card */}
-            <div className="bg-[#fdfdf7] dark:bg-[#1f2419] p-3.5 rounded-xl border border-[#e8eadf] dark:border-[#3c452f] text-xs space-y-1">
-              <p className="font-bold text-[#3c4e23] dark:text-[#eef4e8]">Student Requisition Details:</p>
-              <div className="grid grid-cols-2 gap-2 pt-1 text-gray-600 dark:text-gray-300">
-                <p>Name: <strong className="text-gray-800 dark:text-gray-100">{user?.name || 'Harsh Parmar'}</strong></p>
-                <p>Roll No: <strong className="text-gray-800 dark:text-gray-100">{user?.rollNumber || 'RN-1001'}</strong></p>
-                <p>Group: <strong className="text-gray-800 dark:text-gray-100">{user?.group || 'Group A'}</strong></p>
-                <p>Lab: <strong className="text-gray-800 dark:text-gray-100">{currentLab.labName || currentLab.name || 'HAP1'}</strong></p>
-              </div>
-            </div>
-
-            {/* Notes Textarea */}
+            {/* GROUP SELECTOR */}
             <div>
               <label className="text-xs font-bold text-[#3c4e23] dark:text-[#c8a030] uppercase tracking-wider mb-1 block">
-                Additional Notes (Optional)
+                Student Group
+              </label>
+              <select
+                value={studentGroup}
+                onChange={(e) => setStudentGroup(e.target.value)}
+                className="w-full rounded-xl border border-[#cfd8bd] bg-white px-3 py-2 text-xs text-[#3c4e23] outline-none focus:ring-2 focus:ring-[#556b2f] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]"
+              >
+                <option value="Group A">Group A</option>
+                <option value="Group B">Group B</option>
+                <option value="Group C">Group C</option>
+                <option value="Group D">Group D</option>
+              </select>
+            </div>
+
+            {/* NOTES / INSTRUCTIONS */}
+            <div>
+              <label className="text-xs font-bold text-[#3c4e23] dark:text-[#c8a030] uppercase tracking-wider mb-1 block">
+                Purpose / Practical Instructions
               </label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Additional notes for Lab Admin..."
-                className="w-full rounded-xl border border-[#cfd8bd] bg-white px-3 py-2 text-xs text-[#3c4e23] outline-none focus:ring-2 focus:ring-[#6f7d45] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8] h-20 resize-none"
+                placeholder="E.g., Synthesis practical session, titration experiment..."
+                className="w-full rounded-xl border border-[#cfd8bd] bg-white px-3 py-2 text-xs text-[#3c4e23] outline-none focus:ring-2 focus:ring-[#556b2f] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8] h-20 resize-none"
               />
             </div>
 
-            {/* Action Buttons */}
             <div className="flex gap-3 pt-2">
-              <Button 
-                variant="outline" 
-                onClick={() => setRequestModalOpen(false)}
-                className="flex-1 py-2.5"
-              >
+              <Button variant="outline" onClick={() => setRequestModalOpen(false)} className="flex-1 py-2">
                 Cancel
               </Button>
               <Button 
                 onClick={handleConfirmRequest} 
                 disabled={submitting}
-                className="flex-1 bg-[#556b2f] hover:bg-[#435525] text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5"
+                className="flex-1 bg-[#556b2f] hover:bg-[#435525] text-white font-bold py-2 rounded-xl"
               >
                 {submitting ? 'Submitting...' : '✅ Confirm Request'}
               </Button>
@@ -622,7 +701,7 @@ export default function StudentLabDetail() {
       <Modal
         open={duplicateModalOpen}
         onClose={() => setDuplicateModalOpen(false)}
-        title="Duplicate Request Warning"
+        title="Duplicate Request Notice"
       >
         <div className="space-y-4 text-center py-2">
           <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
@@ -630,7 +709,7 @@ export default function StudentLabDetail() {
           </div>
           <div className="space-y-1">
             <h4 className="font-bold text-base text-gray-800 dark:text-gray-100">
-              You already have a pending request for this experiment!
+              You already have a pending request for this chemical!
             </h4>
             {duplicateInfo && (
               <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 p-3 rounded-xl text-xs font-mono border border-amber-200 dark:border-amber-800/40 mt-3 text-left space-y-1">
@@ -639,10 +718,7 @@ export default function StudentLabDetail() {
               </div>
             )}
           </div>
-          <Button 
-            onClick={() => setDuplicateModalOpen(false)}
-            className="w-full bg-[#556b2f] text-white font-bold py-2.5 rounded-xl mt-4"
-          >
+          <Button onClick={() => setDuplicateModalOpen(false)} className="w-full bg-[#556b2f] text-white font-bold py-2 rounded-xl mt-4">
             OK
           </Button>
         </div>
@@ -681,12 +757,6 @@ export default function StudentLabDetail() {
                 ))}
               </div>
             </div>
-
-            {activeRequestDetails.rejectionReason && (
-              <div className="p-3 bg-rose-50 text-rose-800 rounded-xl border border-rose-200">
-                <strong>Rejection Reason:</strong> {activeRequestDetails.rejectionReason}
-              </div>
-            )}
 
             <Button onClick={() => setDetailsModalOpen(false)} className="w-full bg-[#556b2f] text-white font-bold py-2 mt-2">
               Close
