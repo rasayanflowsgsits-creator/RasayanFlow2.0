@@ -1,177 +1,238 @@
 <div align="center">
 
-# 🧪 RasayanFlow 2.0
-### *Next-Generation Pharmacy Laboratory & Central Store Intelligence Ecosystem*
+```text
+  ____                                      _____ _               ____    ___  
+ |  _ \ __ _ ___  __ _ _   _  __ _ _ __    |  ___| | _____      _|___ \  / _ \ 
+ | |_) / _` / __|/ _` | | | |/ _` | '_ \   | |_  | |/ _ \ \ /\ / / __) || | | |
+ |  _ < (_| \__ \ (_| | |_| | (_| | | | |  |  _| | | (_) \ V  V / / __/ | |_| |
+ |_| \_\__,_|___/\__,_|\__, |\__,_|_| |_|  |_|   |_|\___/ \_/\_/ |_____(_)___/ 
+                       |___/                                                   
+```
 
-[![Pharmacy System](https://img.shields.io/badge/Domain-Pharmaceutical%20Science-5c6e46?style=for-the-badge&logo=flask)](https://github.com)
-[![Role Governance](https://img.shields.io/badge/Access-Multi--Role%20Governance-37412a?style=for-the-badge&logo=shield)](https://github.com)
-[![Chemical Data](https://img.shields.io/badge/Chemical%20Data-PubChem%20Enriched-71805a?style=for-the-badge&logo=molecules)](https://github.com)
-[![Archival Support](https://img.shields.io/badge/Ledger-30%2B%20Years%20Archival-556b2f?style=for-the-badge&logo=database)](https://github.com)
+### 🧪 *Smart Pharmacy Laboratory & Central Store Intelligence Ecosystem*
+
+[![Pharmacy Domain](https://img.shields.io/badge/Domain-Pharmaceutical%20Science-5c6e46?style=for-the-badge&logo=flask&logoColor=white)](https://github.com)
+[![Role Governance](https://img.shields.io/badge/Security-Multi--Role%20Governance-37412a?style=for-the-badge&logo=shield&logoColor=white)](https://github.com)
+[![PubChem API](https://img.shields.io/badge/Enrichment-PubChem%20PUG%20REST-71805a?style=for-the-badge&logo=molecules&logoColor=white)](https://github.com)
+[![Ledger Scale](https://img.shields.io/badge/Archival-30%2B%20Years%20Ledger%20(2026--2056)-556b2f?style=for-the-badge&logo=database&logoColor=white)](https://github.com)
 
 ---
 
 <p align="center">
-  <b>RasayanFlow 2.0</b> is an enterprise-grade academic pharmacy management ecosystem designed specifically for pharmaceutical institutes. It unifies central store bulk inventory, departmental research laboratories, practical curriculum coursework, and doctoral thesis requisitions into a single, seamless, role-aware digital platform.
+  <b>RasayanFlow 2.0</b> transforms pharmaceutical education and research management. It bridges the gap between central store bulk inventory, departmental research laboratories, practical curriculum execution, and doctoral thesis synthesis in one unified, role-aware digital platform.
 </p>
+
+[✨ Explore Features](#-key-capabilities--spotlight) • [👥 Role Manuals](#-role-operational-manuals) • [🔄 Architecture](#-system-architecture--workflows) • [🛠️ Tech Stack](#%EF%B8%8F-technology-stack) • [🚀 Quick Start](#-quick-start)
 
 </div>
 
 ---
 
-## 🌟 Executive Summary
+## ⚡ Quick Metrics & Highlights
 
-Traditional pharmacy laboratories face critical operational challenges, including untracked chemical consumption, manual store receipts, safety threshold oversights, and complex multi-department borrowing workflows. 
+<div align="center">
 
-**RasayanFlow 2.0** resolves these challenges by introducing:
-- **Central Store Operations**: Real-time monetary valuation, vendor bulk receiving, and low-stock alerts.
-- **Direct PhD Scholar Requisitions**: Independent store access bypassing intermediate lab queues, backed by automated **Store Receipt Code (`REC-2026-XXXX`)** generation.
-- **Departmental Lab Governance**: Comprehensive practical experiment setup, group-based chemical borrowing, and student request approvals.
-- **Academic Hierarchy Support**: Tailored interfaces for B.Pharm, M.Pharm, M.Tech, PhD Scholars, Lab Technicians, Store Managers, and Super Administrators.
-- **30+ Year Historical Ledger**: Complete historical audit tracking from 2026 through 2056 with full PDF and CSV export capabilities.
+| 📦 Inventory Capitalization | 🧾 Verification Engine | 🎓 Research Requisitions | 📅 Archival Scale |
+| :---: | :---: | :---: | :---: |
+| **Real-time Valuation (₹)** | **Instant Receipt Codes (`REC-XXXX`)** | **Direct PhD Store Access** | **30+ Years Ledger (2026–2056)** |
+
+</div>
 
 ---
 
-## 🔄 System Architecture & Operational Workflow
+## 📌 Table of Contents
+- [✨ Executive Overview](#-executive-overview)
+- [🔄 System Architecture & Workflows](#-system-architecture--workflows)
+- [👥 Role Operational Manuals](#-role-operational-manuals)
+  - [🛡️ Super Admin (Master Governance)](#%EF%B8%8F-1-super-admin-master-governance)
+  - [🏪 Central Store Manager](#-2-central-store-manager)
+  - [🔬 Lab Admin (Departmental Operations)](#-3-lab-admin-laboratory-in-charge)
+  - [🎓 PhD Research Scholar](#-4-phd-research-scholar)
+  - [🧪 M.Pharm & M.Tech Scholars](#-5-mpharm--mtech-scholars)
+  - [📚 B.Pharm Undergraduate Students](#-6-bpharm-undergraduate-students)
+- [✨ Key Capabilities & Spotlight](#-key-capabilities--spotlight)
+- [🛠️ Technology Stack](#%EF%B8%8F-technology-stack)
+- [🚀 Quick Start](#-quick-start)
+
+---
+
+## ✨ Executive Overview
+
+In academic pharmaceutical institutes, managing chemical inventory across central stores and multiple departmental laboratories presents severe challenges:
+1. **Unmonitored Chemical Depletion**: Absence of real-time safety thresholds leads to sudden practical session cancellations.
+2. **Requisition Bottlenecks**: Doctoral scholars face delayed lab approvals for high-priority thesis synthesis.
+3. **Paper Receipts & Audit Deficits**: Inability to verify physical chemical collections or generate instant regulatory reports.
+
+**RasayanFlow 2.0** solves these challenges through:
+- **Central Store Capitalization**: Live tracking of pure-grade chemicals, analytical solvents, and apparatus with financial valuation in INR (₹).
+- **Automated Store Receipt Codes**: Every approved request instantly emits a unique, verifiable **`REC-2026-XXXX`** code for physical pickup.
+- **Direct PhD Requisitions**: Doctoral researchers bypass intermediate lab queues to request directly from the Central Store Manager.
+- **30+ Year Historical Ledger**: Full transaction auditing spanning **2026 through 2056** with instant PDF & CSV export suites.
+
+---
+
+## 🔄 System Architecture & Workflows
+
+### 🌐 System Execution Hierarchy
 
 ```mermaid
 flowchart TD
-    %% Roles
-    SA["🛡️ Super Admin"]
-    SM["🏪 Central Store Manager"]
-    LA["🔬 Lab Admin / Technician"]
-    PhD["🎓 PhD Research Scholar"]
-    PG["🧪 M.Pharm / M.Tech Scholar"]
-    UG["📚 B.Pharm Student"]
+    subgraph Governance ["🛡️ Institutional Governance"]
+        SA["Super Admin"]
+    end
 
-    %% Core System Hubs
-    CentralStore[("📦 Central Store Repository")]
-    LabStore[("🧪 Departmental Lab Inventory")]
-    
-    %% Workflows
-    SA -->|Master Governance & Provisioning| CentralStore
-    SA -->|Lab Facility & Role Assignment| LabStore
+    subgraph InventoryHub ["📦 Central Store Command"]
+        SM["Central Store Manager"]
+        StoreDB[("Central Store Inventory")]
+    end
 
-    SM -->|Bulk Vendor Inwarding| CentralStore
-    SM -->|Fulfill Bulk Replenishment| LabStore
-    SM -->|Approve Direct Requisitions| PhD
+    subgraph Laboratories ["🔬 Departmental Research & Teaching Labs"]
+        LA["Lab Admin / Technician"]
+        LabDB[("Lab Stock Inventory")]
+    end
 
-    PhD -->|Direct Chemical Request| CentralStore
-    PhD -->|Generates Receipt REC-XXXX| CentralStore
+    subgraph Scholars ["🎓 Research & Academic Users"]
+        PhD["PhD Research Scholars"]
+        PG["M.Pharm & M.Tech Scholars"]
+        UG["B.Pharm Undergraduate Students"]
+    end
 
-    LA -->|Requisition Replenishment| CentralStore
-    LA -->|Configure Practicals & Approve| UG
+    SA -->|Provision Facilities & Access| SM
+    SA -->|Assign Lab In-Charges| LA
+
+    SM -->|Inward Vendor Shipments| StoreDB
+    SM -->|Fulfill Bulk Replenishment| LabDB
+    SM -->|Approve Direct Requests & Issue REC-XXXX| PhD
+
+    LA -->|Request Store Replenishment| StoreDB
+    LA -->|Configure Practicals & Approve Borrows| UG
     LA -->|Dispense Reagents| PG
 
-    UG -->|Group Chemical Borrowing| LabStore
-    PG -->|Thesis Research Requests| LabStore
+    PhD -->|Direct Chemical Request| StoreDB
+    UG -->|Group Experiment Borrowing| LabDB
+    PG -->|Thesis Synthesis Requests| LabDB
 ```
 
 ---
 
-## 📋 Role-Aware System Manual & Operational Flow
-
-RasayanFlow 2.0 automatically tailors its interface and operational workflow based on the active user's authenticated role and academic program.
-
-### 🛡️ 1. Super Admin (Master Governance)
-- **Primary Mandate**: Oversees institutional system configuration, user role allocations, laboratory provisioning, central store financial metrics, and audit compliance.
-- **Key Capabilities**:
-  - Provisioning new pharmacy laboratories (*e.g., Organic Chemistry, Pharmaceutics, Pharmacology*).
-  - Setting safety stock threshold limits and assigning dedicated Lab Admins.
-  - Institutional user approval, password resets, and role modifications.
-  - Live activity monitoring and regulatory compliance reporting.
-
----
-
-### 🏪 2. Central Store Manager
-- **Primary Mandate**: Manages the institute’s primary chemical and equipment repository, vendor shipments, lab stock dispatches, and PhD scholar requisitions.
-- **Key Capabilities**:
-  - Inwarding new chemical shipments manually or via **Bulk CSV/Spreadsheet Imports**.
-  - Reviewing and approving direct chemical requests from PhD Scholars.
-  - Automated **Store Receipt Code (`REC-2026-XXXX`)** generation upon stock release.
-  - Fulfilling bulk lab stock replenishment requests submitted by Lab Admins.
-  - Real-time stock valuation monitoring and reorder level alerts.
+### 🧾 Requisition & Receipt Code (`REC-XXXX`) Sequence
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor PhD as PhD Scholar / Lab Admin
     actor SM as Central Store Manager
-    participant Store as Central Inventory Hub
+    participant Store as Central Store Hub
 
-    PhD->>SM: Submit Chemical Requisition (CAS, Quantity, Purpose)
-    SM->>Store: Review Stock Availability & Hazard Class
+    PhD->>SM: Submit Chemical Requisition (CAS Number, Quantity, Purpose)
+    SM->>Store: Check Stock Availability & Hazard Class
     SM->>Store: Click "Approve Requisition"
-    Store-->>SM: Deduct Inventory & Update Valuation
-    Store-->>PhD: Issue Official Receipt Code (REC-2026-XXXX)
+    Store-->>SM: Deduct Central Stock & Log Audit Record
+    Store-->>PhD: Issue Official Store Receipt Code (REC-2026-XXXX)
     PhD->>SM: Present REC-XXXX Code at Central Store for Physical Pickup
 ```
 
 ---
 
-### 🔬 3. Lab Admin (Laboratory In-Charge)
-- **Primary Mandate**: Manages specific departmental lab facilities, practical experiment setups, student chemical borrow approvals, and store stock replenishment.
+## 👥 Role Operational Manuals
+
+### 🛡️ 1. Super Admin (Master Governance)
+> **Mandate**: Holds master governance over system configuration, user role allocations, laboratory provisioning, central store financial oversight, and compliance auditing.
+
 - **Key Capabilities**:
-  - Configuring practical experiment sessions and group chemical allocation limits.
-  - Reviewing and approving real-time student borrow requests during lab practicals.
-  - Submitting bulk chemical replenishment requests to the Central Store Manager.
-  - Monthly and yearly lab history archiving with CSV and PDF export options.
+  - **User & Permission Provisioning**: Approve account registrations and assign roles across departments.
+  - **Facility Setup**: Provision new laboratories (*e.g., Pharmaceutics, Organic Chemistry*), set chemical thresholds, and assign lab in-charges.
+  - **Master Audit Trail**: Inspect live security logs, active logins, and institutional compliance metrics.
+
+---
+
+### 🏪 2. Central Store Manager
+> **Mandate**: Controls the institute's central chemical and equipment repository, bulk vendor receiving, lab stock fulfillment, and direct PhD scholar requisitions.
+
+- **Key Capabilities**:
+  - **Bulk Inwarding**: Upload new supplier chemical shipments via **Bulk CSV/Spreadsheet Imports** or manual entry.
+  - **PhD Direct Approvals**: Review doctoral chemical requisitions and issue official **`REC-2026-XXXX`** Store Receipt Codes.
+  - **Lab Dispatch**: Process bulk chemical replenishment requests submitted by Lab Admins.
+  - **Financial Metrics**: Track total inventory capitalization, released stock value, and low-stock warnings.
+
+---
+
+### 🔬 3. Lab Admin (Laboratory In-Charge)
+> **Mandate**: Oversees daily lab operations, practical experiment setups, student chemical borrow request approvals, and store stock replenishment.
+
+- **Key Capabilities**:
+  - **Practical Setup**: Configure practical sessions (*e.g., Synthesis of Aspirin*), assign group chemical limits, and publish to students.
+  - **Borrow Approvals**: Review and approve student chemical borrow requests during practical hours.
+  - **Store Replenishment**: Requisition bulk chemical stock replenishment from the Central Store Manager.
+  - **Archiving & Audit**: Filter stock movement by year/month and export PDF/CSV audit reports.
 
 ---
 
 ### 🎓 4. PhD Research Scholar
-- **Primary Mandate**: Conducts independent doctoral research with direct requisition rights to the Central Store Manager.
+> **Mandate**: Conducts independent doctoral research with direct requisition rights to the Central Store Manager.
+
 - **Key Capabilities**:
-  - Bypassing intermediate lab quotas with **Direct Central Store Requisition** rights.
-  - Mapping requisitions with Thesis Title, Guide/Supervisor Name, and Reaction Objectives.
-  - Real-time **Store Receipt Code (`REC-XXXX`)** tracking for physical chemical pickup.
+  - **Direct Store Access**: Submit chemical requisitions directly to the Central Store Manager, bypassing lab quotas.
+  - **Thesis Mapping**: Map requests with Thesis Project Title, Supervisor/Guide Name, and Reaction Objectives.
+  - **Receipt Tracking**: Receive instant **`REC-XXXX`** Store Receipt Codes on approved requests for chemical pickup.
 
 ---
 
-### 🧪 5. M.Pharm & M.Tech Research Scholars
-- **Primary Mandate**: Performs post-graduate thesis research, pilot-scale formulation, process optimization, and heavy analytical testing.
+### 🧪 5. M.Pharm & M.Tech Scholars
+> **Mandate**: Conducts post-graduate thesis research, pilot-scale formulation, process optimization, and analytical testing.
+
 - **Key Capabilities**:
   - Requisitioning high-purity reagents and analytical grade solvents.
-  - Reserving time slots for heavy analytical equipment (*HPLC, Lyophilizer, UV-Vis Spectrophotometers*).
-  - Logging synthesis yield parameters and reconciling raw material consumption.
+  - Slotting heavy analytical machinery (*HPLC, Lyophilizers, UV-Vis Spectrophotometers*).
+  - Logging synthesis yield parameters and reconciling raw material usage.
 
 ---
 
 ### 📚 6. B.Pharm Undergraduate Students
-- **Primary Mandate**: Participates in scheduled academic practical coursework and group experiment borrowing.
+> **Mandate**: Participates in scheduled academic practical coursework and group experiment borrowing.
+
 - **Key Capabilities**:
   - Accessing Year & Semester structured practical schedules (Y1–Y4, Sem 1–8).
-  - Submitting group-based chemical and glassware borrow requests for pre-configured practicals.
-  - Viewing experiment safety protocols, required chemical lists, and return history.
+  - Submitting group chemical borrow requests for pre-configured practical experiments.
+  - Viewing safety protocols, required chemical lists, and glassware return statuses.
 
 ---
 
-## ✨ Key Features & Technical Highlights
+## ✨ Key Capabilities & Spotlight
+
+```carousel
+![Central Store Financial Valuation](https://raw.githubusercontent.com/rasayanflowsgsits-creator/RasayanFlow2.0/main/docs/assets/store_valuation.png)
+<!-- slide -->
+![Direct PhD Requisition Engine](https://raw.githubusercontent.com/rasayanflowsgsits-creator/RasayanFlow2.0/main/docs/assets/phd_requisition.png)
+<!-- slide -->
+![30+ Year Audit Ledger](https://raw.githubusercontent.com/rasayanflowsgsits-creator/RasayanFlow2.0/main/docs/assets/audit_ledger.png)
+```
 
 | Feature Module | Description & Capability |
 | :--- | :--- |
-| 🧪 **PubChem Chemical Integration** | Auto-completes CAS numbers, molecular formulas, SMILES strings, and safety hazard classes directly from chemical databases. |
-| 🏷️ **Store Receipt Code System** | Generates unique, verifiable receipt codes (`REC-2026-XXXX`) for authorized stock collection and audit tracking. |
-| 📊 **Financial Inventory Valuation** | Calculates live monetary capitalization of inventory, released lab stock value, and stockout opportunity losses in Indian Rupees (₹). |
-| 📜 **30+ Year Historical Ledger** | Scalable historical architecture supporting monthly and annual archival records from **2026 through 2056**. |
-| 📱 **Responsive Aesthetic Design** | Glassmorphism UI components, sage/emerald color system, custom dark mode, and full mobile optimization. |
-| 📄 **One-Click Export Suite** | Instantly export inventory catalogs, audit trails, store receipts, and monthly ledgers into formatted **PDF** and **CSV** files. |
+| 🧪 **PubChem Chemical Integration** | Auto-completes CAS numbers, molecular formulas, SMILES identifiers, and hazard classes. |
+| 🏷️ **Store Receipt Code System** | Generates unique, verifiable receipt codes (`REC-2026-XXXX`) for physical stock collection. |
+| 📊 **Financial Inventory Valuation** | Calculates live monetary inventory value, released lab stock value, and stockout deficit in INR (₹). |
+| 📜 **30+ Year Historical Ledger** | Scalable historical architecture supporting monthly and annual records from **2026 to 2056**. |
+| 📱 **Responsive Aesthetic Design** | Glassmorphism UI cards, sage/emerald color system, custom dark mode, and full mobile support. |
+| 📄 **One-Click Export Suite** | Export inventory catalogs, audit logs, store receipts, and monthly ledgers into formatted **PDF** and **CSV** files. |
 
 ---
 
 ## 🛠️ Technology Stack
 
-RasayanFlow 2.0 is built on a robust, decoupled architecture engineered for high throughput, real-time reactivity, and role-aware security compliance.
+RasayanFlow 2.0 is built on a modern, decoupled architecture designed for reactivity, scalability, and security compliance.
 
 | Layer | Technology / Library | Role & Capability |
 | :--- | :--- | :--- |
-| **Frontend Framework** | ![React](https://img.shields.io/badge/React_18-61DAFB?style=flat-square&logo=react&logoColor=black) | Component-driven single-page architecture |
-| **Build System** | ![Vite](https://img.shields.io/badge/Vite_8-646CFF?style=flat-square&logo=vite&logoColor=white) | Instant HMR compilation and production bundling |
-| **State Management** | ![Zustand](https://img.shields.io/badge/Zustand-443e38?style=flat-square&logo=redux&logoColor=white) | Lightweight, predictable role-aware store management |
-| **Design System** | ![CSS3](https://img.shields.io/badge/Vanilla_CSS-1572B6?style=flat-square&logo=css3&logoColor=white) ![Tailwind](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white) | Glassmorphism cards, sage/emerald theme, dark mode |
-| **Icons & UI** | ![Lucide](https://img.shields.io/badge/Lucide_React-F56565?style=flat-square&logo=feather&logoColor=white) | Modern iconography across all role dashboards |
+| **Frontend Framework** | ![React](https://img.shields.io/badge/React_18-61DAFB?style=flat-square&logo=react&logoColor=black) | Component-driven single-page application |
+| **Build Engine** | ![Vite](https://img.shields.io/badge/Vite_8-646CFF?style=flat-square&logo=vite&logoColor=white) | Instant HMR compilation and production bundling |
+| **State Management** | ![Zustand](https://img.shields.io/badge/Zustand-443e38?style=flat-square&logo=redux&logoColor=white) | Centralized, lightweight role-aware store management |
+| **Design System** | ![CSS3](https://img.shields.io/badge/Vanilla_CSS-1572B6?style=flat-square&logo=css3&logoColor=white) ![Tailwind](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white) | Glassmorphism cards, sage/emerald palette, dark mode |
+| **Icons & UI** | ![Lucide](https://img.shields.io/badge/Lucide_React-F56565?style=flat-square&logo=feather&logoColor=white) | Modern iconography across all dashboards |
 | **Export Suite** | `jsPDF` • `PapaParse` • `XLSX` | Client-side PDF receipt generation & CSV/Excel processing |
 | **Backend Runtime** | ![Node.js](https://img.shields.io/badge/Node.js_v18+-339933?style=flat-square&logo=nodedotjs&logoColor=white) | Asynchronous event-driven server runtime |
-| **API Framework** | ![Express](https://img.shields.io/badge/Express.js-000000?style=flat-square&logo=express&logoColor=white) | RESTful API service endpoints and middleware pipelines |
+| **API Framework** | ![Express](https://img.shields.io/badge/Express.js-000000?style=flat-square&logo=express&logoColor=white) | RESTful API service endpoints and middleware |
 | **Authentication** | ![JWT](https://img.shields.io/badge/JWT_Auth-000000?style=flat-square&logo=jsonwebtokens&logoColor=white) | Encrypted JSON Web Token role-based access control |
 | **Real-Time Engine** | ![Socket.io](https://img.shields.io/badge/Socket.IO-010101?style=flat-square&logo=socketdotio&logoColor=white) | Bi-directional websocket engine for live updates |
 | **Database Engine** | ![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=flat-square&logo=mongodb&logoColor=white) | Document database for inventory models & 30+ year audit logs |
@@ -179,28 +240,28 @@ RasayanFlow 2.0 is built on a robust, decoupled architecture engineered for high
 
 ---
 
-## 🚀 Quick Setup & Local Development
+## 🚀 Quick Start
 
 ### Prerequisites
-- **Node.js** (v18.0.0 or higher)
-- **npm** (v9.0.0 or higher)
+- **Node.js**: v18.0.0 or higher
+- **npm**: v9.0.0 or higher
 
-### Installation Steps
+### Installation & Launch
 
-1. **Clone the Repository**:
+1. **Clone Repository**:
    ```bash
    git clone https://github.com/rasayanflowsgsits-creator/RasayanFlow2.0.git
    cd RasayanFlow2.0
    ```
 
-2. **Frontend Setup**:
+2. **Frontend Development Setup**:
    ```bash
    cd frontend
    npm install
    npm run dev
    ```
 
-3. **Production Verification Build**:
+3. **Production Build Validation**:
    ```bash
    npm run build
    ```
@@ -210,7 +271,7 @@ RasayanFlow 2.0 is built on a robust, decoupled architecture engineered for high
 <div align="center">
 
 ### 🏛️ Institutional Compliance & Safety Governance
-*Designed for Pharmacy Colleges, Research Institutions, and Industrial Training Laboratories.*
+*Engineered for Pharmacy Colleges, Research Institutions, and Industrial Training Laboratories.*
 
 **RasayanFlow 2.0** • *Building the Future of Pharmaceutical Laboratory Intelligence*
 
