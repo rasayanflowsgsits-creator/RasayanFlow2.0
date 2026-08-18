@@ -80,16 +80,28 @@ export default function StudentLabDetail() {
         console.error('[StudentLabDetail] Error fetching lab inventory:', e);
       }
 
-      // 3. Fetch Custom Lab Experiments (configured by Lab Admin)
+      // 3. Fetch Custom Lab Experiments & Real-time Lock Status (configured by Lab Admin)
       try {
-        const expRes = await api.get(`/experiments/lab/${labId}`);
-        if (expRes.data?.success && Array.isArray(expRes.data?.experiments)) {
+        const expRes = await api.get(`/lab/structure/student/${labId}`);
+        if (expRes.data?.experiments && Array.isArray(expRes.data.experiments)) {
           setExperiments(expRes.data.experiments);
         } else if (expRes.data?.data && Array.isArray(expRes.data.data)) {
           setExperiments(expRes.data.data);
+        } else {
+          // Fallback to /experiments/lab/${labId}
+          const fallbackRes = await api.get(`/experiments/lab/${labId}`);
+          if (fallbackRes.data?.experiments) {
+            setExperiments(fallbackRes.data.experiments);
+          }
         }
       } catch (e) {
-        console.warn('[StudentLabDetail] No custom experiments for lab');
+        console.warn('[StudentLabDetail] Error fetching lab structure, using fallback');
+        try {
+          const fallbackRes = await api.get(`/experiments/lab/${labId}`);
+          if (fallbackRes.data?.experiments) {
+            setExperiments(fallbackRes.data.experiments);
+          }
+        } catch (err2) { /* non-fatal */ }
       }
 
       // 4. Fetch Student's Requests for this Lab

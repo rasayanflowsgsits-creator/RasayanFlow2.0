@@ -356,6 +356,9 @@ const getStudentStructure = asyncHandler(async (req, res) => {
   const enriched = experiments.map(exp => {
     let allAvailable = true;
     let anyAvailable = false;
+    const expUnlocked = Boolean(exp.isUnlocked);
+    exp.isUnlocked = expUnlocked;
+
     exp.chemicals = (exp.chemicals || []).map(chem => {
       const invItem = inventory.find(i => i.chemicalName?.toLowerCase() === chem.chemicalName?.toLowerCase());
       const stock = invItem ? invItem.quantity : 0;
@@ -371,7 +374,12 @@ const getStudentStructure = asyncHandler(async (req, res) => {
       } else {
         allAvailable = false;
       }
-      return { ...chem, stock, stockStatus };
+      return { 
+        ...chem, 
+        stock, 
+        stockStatus,
+        isUnlocked: typeof chem.isUnlocked === 'boolean' ? chem.isUnlocked : expUnlocked
+      };
     });
     exp.status = exp.chemicals.length === 0 || allAvailable ? 'Available' : anyAvailable ? 'Low' : 'Out';
     return exp;
