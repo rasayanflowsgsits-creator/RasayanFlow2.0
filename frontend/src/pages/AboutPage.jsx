@@ -2,7 +2,7 @@ import React from 'react';
 import useAuthStore from '../store/authStore';
 import { 
   ShieldCheck, Store, FlaskConical, GraduationCap, BookOpen, 
-  Settings, CheckCircle2, Sparkles, Layers, ArrowRight, UserCheck, Check
+  Settings, CheckCircle2, Sparkles, Layers, ArrowRight, UserCheck
 } from 'lucide-react';
 
 const ROLE_MANUALS = {
@@ -285,19 +285,40 @@ const ROLE_MANUALS = {
 export default function AboutPage() {
   const { user } = useAuthStore();
 
-  // Determine active role key strictly based on logged-in user's role and course
+  // Robust Normalized Role Resolver supporting hyphenated, camelCase, snake_case, and spaced strings
   const getActiveUserRoleKey = () => {
     if (!user) return 'bpharm_student';
-    const role = user.role || '';
-    const course = user.course || '';
-
-    if (role === 'super_admin' || role === 'admin') return 'super_admin';
-    if (role === 'store_manager' || role === 'store_admin') return 'store_manager';
-    if (role === 'lab_admin') return 'lab_admin';
     
-    if (course === 'PhD' || user.isPhD) return 'phd_scholar';
-    if (course === 'M.Pharm') return 'mpharm_scholar';
-    if (course === 'M.Tech') return 'mtech_scholar';
+    // Normalize role string: convert to lowercase and replace hyphens/spaces with underscores
+    const rawRole = (user.role || '').toLowerCase().trim().replace(/[- ]/g, '_');
+    const course = (user.course || '').trim();
+
+    // 1. Super Admin
+    if (rawRole === 'super_admin' || rawRole === 'superadmin' || rawRole === 'admin') {
+      return 'super_admin';
+    }
+
+    // 2. Store Manager / Store Admin
+    if (rawRole === 'store_manager' || rawRole === 'storemanager' || rawRole === 'store_admin' || rawRole === 'storeadmin') {
+      return 'store_manager';
+    }
+
+    // 3. Lab Admin / Technician
+    if (rawRole === 'lab_admin' || rawRole === 'labadmin' || rawRole === 'technician') {
+      return 'lab_admin';
+    }
+
+    // 4. Student / Scholar Sub-Types based on Course / isPhD
+    if (course === 'PhD' || user.isPhD || rawRole === 'phd' || rawRole === 'phd_scholar') {
+      return 'phd_scholar';
+    }
+    if (course === 'M.Pharm' || rawRole === 'mpharm' || rawRole === 'm_pharm') {
+      return 'mpharm_scholar';
+    }
+    if (course === 'M.Tech' || rawRole === 'mtech' || rawRole === 'm_tech') {
+      return 'mtech_scholar';
+    }
+
     return 'bpharm_student';
   };
 
@@ -406,7 +427,7 @@ export default function AboutPage() {
             {currentManual.handlingSteps.map((item) => (
               <div 
                 key={item.step}
-                className="p-4 bg-white dark:bg-[#20251a] rounded border border-[#cfd8bd] dark:border-[#414a33] shadow-2xs flex items-start gap-3.5"
+                className="p-4 bg-[#fdfdf7] dark:bg-[#20251a] rounded border border-[#cfd8bd] dark:border-[#414a33] shadow-2xs flex items-start gap-3.5"
               >
                 <div className="w-7 h-7 rounded bg-[#5c6e46] text-white flex items-center justify-center shrink-0 font-black text-xs">
                   {item.step}
