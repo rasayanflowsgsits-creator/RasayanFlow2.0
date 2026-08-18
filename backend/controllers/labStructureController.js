@@ -286,59 +286,18 @@ const getStudentStructure = asyncHandler(async (req, res) => {
     });
   }
 
-  const queryOr = [];
-  if (lab) {
-    const labObjectId = new mongoose.Types.ObjectId(lab._id);
-    queryOr.push({ labId: labObjectId });
-    queryOr.push({ labId: labObjectId.toString() });
-    if (lab.labName || lab.name) {
-      queryOr.push({ labName: new RegExp('^' + (lab.labName || lab.name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') });
-    }
-    if (lab.admins && Array.isArray(lab.admins) && lab.admins.length > 0) {
-      const adminIds = lab.admins.map(a => (typeof a === 'object' && a._id ? a._id : a));
-      queryOr.push({ uploadedBy: { $in: adminIds } });
-    }
-  }
-  if (labIdParam && mongoose.Types.ObjectId.isValid(labIdParam)) {
-    const pObjectId = new mongoose.Types.ObjectId(labIdParam);
-    queryOr.push({ labId: pObjectId });
-    queryOr.push({ labId: labIdParam });
-  }
+  const queryIds = getLabIdQuery(lab._id);
 
-  let experiments = [];
-  if (queryOr.length > 0) {
-    experiments = await LabStructure.find({ $or: queryOr }).lean().sort({ subject: 1, experimentNo: 1 });
-  }
+  // Clean up any legacy synthetic records that were auto-seeded with unassigned labId
+  try {
+    await LabStructure.deleteMany({
+      labName: lab.labName || lab.name,
+      labId: { $nin: queryIds }
+    });
+  } catch (e) { /* non-fatal */ }
 
-  // Fallback: Check Experiment collection if LabStructure gave 0
-  if (experiments.length === 0 && lab) {
-    const labObjectId = new mongoose.Types.ObjectId(lab._id);
-    const expOr = [{ labId: labObjectId }, { labId: lab._id.toString() }];
-    if (lab.admins && Array.isArray(lab.admins) && lab.admins.length > 0) {
-      const adminIds = lab.admins.map(a => (typeof a === 'object' && a._id ? a._id : a));
-      expOr.push({ createdBy: { $in: adminIds } });
-    }
-    const expDocs = await Experiment.find({ $or: expOr }).lean();
-    if (expDocs.length > 0) {
-      experiments = expDocs.map((e, idx) => ({
-        _id: e._id,
-        labId: e.labId,
-        subject: e.subject || e.department || lab.labName || 'General',
-        experimentNo: parseInt(String(e.experimentNumber).replace(/\D/g, ''), 10) || (idx + 1),
-        experimentName: e.experimentObject || e.experimentNumber,
-        chemicals: (e.requiredInventory || []).map(c => ({
-          chemicalName: c.chemicalName,
-          quantityPerStudent: c.quantity || 1,
-          unit: c.quantityUnit || 'mL'
-        }))
-      }));
-    }
-  }
-
-  // Debug log always
-  console.log('labId searched:', labIdParam);
-  console.log('experiments found:', experiments.length);
-  console.log('sample doc labId type:', experiments[0]?.labId, typeof experiments[0]?.labId);
+  // Query STRICTLY by target lab ID (exact match with Lab Admin view)
+  let experiments = await LabStructure.find({ labId: { $in: queryIds } }).lean().sort({ subject: 1, experimentNo: 1 });
 
   // Inventory lookup for stock status
   const inventory = await Inventory.find({}).lean();
