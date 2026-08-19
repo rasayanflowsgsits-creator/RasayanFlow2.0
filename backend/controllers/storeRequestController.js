@@ -49,13 +49,25 @@ const createRequest = asyncHandler(async (req, res) => {
   if (req.user?.labId) {
     requestData.labId = req.user.labId;
   }
-  requestData.studentId = req.user?._id;
-  requestData.studentName = req.user?.name || req.user?.email || 'PhD Scholar';
+  requestData.studentId = req.user?._id || req.user?.id;
+  requestData.studentName = req.user?.name || req.user?.email || 'User';
 
-  if (req.body.isPhD || req.body.requestType === 'PhD Research' || req.user?.course === 'PhD' || req.body.isPhDRequest) {
+  const userCourse = req.user?.course || req.body?.course;
+  const isPhD = req.body.isPhD || req.body.requestType === 'PhD Research' || userCourse === 'PhD' || req.body.isPhDRequest;
+  const isMPharm = req.body.isMPharm || req.body.requestType === 'M.Pharm Research' || userCourse === 'M.Pharm' || req.body.isMPharmRequest;
+
+  if (isPhD) {
     requestData.requestType = 'PhD Research';
     requestData.course = 'PhD';
     requestData.labName = requestData.labName || 'PhD Research Scholar';
+  } else if (isMPharm) {
+    requestData.requestType = 'M.Pharm Research';
+    requestData.course = 'M.Pharm';
+    requestData.labName = requestData.labName || 'M.Pharm Research Scholar';
+  } else if (req.user?.role === 'labAdmin' || req.user?.role === 'lab-admin') {
+    requestData.requestType = 'Lab Requisition';
+    requestData.course = requestData.course || 'B.Pharm';
+    requestData.labName = requestData.labName || req.user?.labName || 'Pharmacy Lab';
   }
 
   const newRequest = await StoreRequest.create(requestData);
@@ -297,11 +309,12 @@ const approveRequest = asyncHandler(async (req, res) => {
 
     const uniqueUserIds = Array.from(new Set(notifUsers.map(id => String(id))));
     if (uniqueUserIds.length > 0) {
+      const typeLabel = request.requestType || 'Requisition';
       const notifications = uniqueUserIds.map(uId => ({
         userId: uId,
         labId: request.labId,
         type: "request_approved",
-        message: `PhD Direct Requisition for ${request.chemicalName} (${request.quantityRequested}${request.unit}) approved by Store Manager`,
+        message: `${typeLabel} for ${request.chemicalName} (${request.quantityRequested} ${request.unit}) approved by Central Store Manager`,
         chemicalName: request.chemicalName,
         quantity: request.quantityRequested,
         unit: request.unit,

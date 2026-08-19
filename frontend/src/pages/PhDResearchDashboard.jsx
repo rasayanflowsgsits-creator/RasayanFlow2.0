@@ -47,10 +47,12 @@ export default function PhDResearchDashboard() {
       ]);
       
       const allReqs = reqRes.data || [];
-      // Filter requests relevant to this PhD student
+      // Filter requests relevant to this PhD or M.Pharm scholar
       const myReqs = allReqs.filter(r => 
         r.requestType === 'PhD Research' || 
+        r.requestType === 'M.Pharm Research' ||
         r.course === 'PhD' || 
+        r.course === 'M.Pharm' ||
         r.studentId === user?._id ||
         (r.studentName && user?.name && r.studentName.toLowerCase().includes(user.name.toLowerCase()))
       );
@@ -124,6 +126,9 @@ export default function PhDResearchDashboard() {
 
     setIsSubmitting(true);
     try {
+      const userCourse = user?.course || 'PhD';
+      const isMPharm = userCourse === 'M.Pharm';
+
       const payload = {
         chemicalName: formData.chemicalName,
         casNumber: formData.casNumber,
@@ -132,10 +137,11 @@ export default function PhDResearchDashboard() {
         reason: formData.reason,
         projectThesisName: formData.projectThesisName,
         supervisorName: formData.supervisorName,
-        requestType: 'PhD Research',
-        course: 'PhD',
-        labName: 'PhD Research Scholar',
-        isPhDRequest: true
+        requestType: isMPharm ? 'M.Pharm Research' : 'PhD Research',
+        course: userCourse,
+        labName: isMPharm ? 'M.Pharm Research Scholar' : 'PhD Research Scholar',
+        isPhDRequest: !isMPharm,
+        isMPharmRequest: isMPharm
       };
 
       await api.post('/store/requests', payload);

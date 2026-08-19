@@ -25,10 +25,10 @@ const storeRequestSchema = new mongoose.Schema({
   supervisorName: { type: String },
   requestType: {
     type: String,
-    enum: ["Lab Requisition", "PhD Research", "Higher Scholar"],
+    enum: ["Lab Requisition", "PhD Research", "M.Pharm Research", "Higher Scholar"],
     default: "Lab Requisition"
   },
-  course: { type: String, default: "PhD" },
+  course: { type: String, default: "B.Pharm" },
   requiredBy: { type: Date },
   status: {
     type: String,

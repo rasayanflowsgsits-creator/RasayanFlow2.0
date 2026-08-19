@@ -392,12 +392,26 @@ export default function StoreDashboard() {
                 <div key={entry.id} className='rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-900/20'>
                   <div className='flex items-start justify-between gap-3'>
                     <div className='flex-1'>
-                      <p className='font-medium text-[#3c4e23] dark:text-[#eef4e8]'>{entry.itemName} ({entry.itemCode})</p>
-                      <p className='mt-1 text-sm text-[#71805a] dark:text-[#c5d0b5]'>Requested by {entry.studentName} ({entry.studentEmail})</p>
-                      <p className='mt-1 text-sm text-[#71805a] dark:text-[#c5d0b5]'>Quantity: <span className='font-semibold'>{entry.quantity} {entry.quantityUnit}</span></p>
-                      {entry.dueDate && <p className='mt-1 text-sm text-[#71805a] dark:text-[#c5d0b5]'>Return by: {new Date(entry.dueDate).toLocaleDateString()}</p>}
-                      {entry.purpose && <p className='mt-2 text-sm text-slate-600 dark:text-slate-300'>Purpose: {entry.purpose}</p>}
-                      {entry.requestNotes && <p className='mt-1 text-sm italic text-slate-500 dark:text-slate-400'>Notes: {entry.requestNotes}</p>}
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider ${
+                          entry.requestType === 'PhD Research' ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300' :
+                          entry.requestType === 'M.Pharm Research' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-300' :
+                          'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300'
+                        }`}>
+                          {entry.requestType || 'Lab Requisition'}
+                        </span>
+                        {entry.course && (
+                          <span className="text-[10px] font-bold text-gray-600 bg-white dark:bg-[#1a1d16] dark:text-gray-300 px-2 py-0.5 rounded border border-gray-300 dark:border-gray-700">
+                            {entry.course}
+                          </span>
+                        )}
+                      </div>
+                      <p className='font-bold text-[#3c4e23] dark:text-[#eef4e8]'>{entry.itemName || entry.chemicalName} ({entry.itemCode || entry.requestId})</p>
+                      <p className='mt-1 text-xs font-semibold text-[#71805a] dark:text-[#c5d0b5]'>Requester: <span className="font-bold text-gray-800 dark:text-gray-200">{entry.studentName || entry.labName}</span> ({entry.studentEmail || entry.labName})</p>
+                      <p className='mt-1 text-xs text-[#71805a] dark:text-[#c5d0b5]'>Quantity: <span className='font-bold text-[#3c4e23] dark:text-[#eef4e8]'>{entry.quantity || entry.quantityRequested} {entry.quantityUnit || entry.unit}</span></p>
+                      {entry.dueDate && <p className='mt-1 text-xs text-[#71805a] dark:text-[#c5d0b5]'>Return by: {new Date(entry.dueDate).toLocaleDateString()}</p>}
+                      {(entry.purpose || entry.reason) && <p className='mt-2 text-xs font-medium text-slate-700 dark:text-slate-300 bg-white/70 dark:bg-[#1a1d16]/70 p-2 rounded border border-amber-200/60'>Purpose: {entry.purpose || entry.reason}</p>}
+                      {entry.requestNotes && <p className='mt-1 text-xs italic text-slate-500 dark:text-slate-400'>Notes: {entry.requestNotes}</p>}
                     </div>
                     <div className='flex gap-2'>
                       <Button
