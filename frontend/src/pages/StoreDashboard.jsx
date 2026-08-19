@@ -14,6 +14,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import ImportModal from '../components/ImportModal';
 import ChemicalIntakeModal from '../components/ChemicalIntakeModal';
+import StoreRequestReceiptModal from '../components/StoreRequestReceiptModal';
 
 const CATEGORY_OPTIONS = ['Glassware', 'Chemical'];
 const CHEMICAL_UNITS = ['mL', 'L', 'uL', 'mg', 'g', 'kg'];
@@ -75,6 +76,7 @@ export default function StoreDashboard() {
   const [intakeOpen, setIntakeOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [previewReceipt, setPreviewReceipt] = useState(null);
   const [newItem, setNewItem] = useState(EMPTY_STORE_ITEM);
   const [editItem, setEditItem] = useState(EMPTY_STORE_ITEM);
   const [allotmentForm, setAllotmentForm] = useState(EMPTY_ALLOTMENT);
@@ -764,6 +766,15 @@ export default function StoreDashboard() {
                               </button>
                             </div>
                           )}
+
+                          {isApproved && (
+                            <button
+                              onClick={() => setPreviewReceipt(entry)}
+                              className="px-3.5 py-1.5 bg-white dark:bg-[#20251a] hover:bg-[#f4f6ee] border border-[#5c6e46] text-[#5c6e46] dark:text-[#a8be8a] font-black text-xs rounded transition-all shadow-2xs flex items-center gap-1.5"
+                            >
+                              <FileText size={14} /> View Official Bill Voucher
+                            </button>
+                          )}
                         </div>
                       </div>
 
@@ -1088,6 +1099,14 @@ export default function StoreDashboard() {
         onClose={() => setIntakeOpen(false)}
         onSuccess={fetchStoreItems}
         isStoreAdmin={true}
+      />
+
+      {/* OFFICIAL AUTHORIZED SIGNATURE REQUISITION BILL MODAL */}
+      <StoreRequestReceiptModal
+        open={Boolean(previewReceipt)}
+        onClose={() => setPreviewReceipt(null)}
+        request={previewReceipt}
+        storeManagerName={user?.name || 'Store Manager'}
       />
     </div>
   );

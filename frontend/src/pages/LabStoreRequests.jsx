@@ -4,6 +4,7 @@ import useAuthStore from '../store/authStore';
 import api from '../services/api';
 import useAppStore from '../store/appStore';
 import { toFrontendRequest } from '../utils/storeMapper';
+import StoreRequestReceiptModal from '../components/StoreRequestReceiptModal';
 
 const UNIT_OPTIONS = ['ml', 'L', 'g', 'kg', 'mg', 'pcs', 'bottles', 'boxes', 'vials', 'packs', 'UNT'];
 
@@ -558,50 +559,12 @@ export default function LabStoreRequests() {
         </div>
       )}
 
-      {/* Receipt Modal */}
-      {previewReceipt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="bg-[#fffef8] dark:bg-[#20251a] rounded-3xl w-full max-w-md p-6 border border-[#d9e1ca] dark:border-[#414a33] shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-[#e8efd9] pb-3 dark:border-[#2e3d19]">
-              <div>
-                <h3 className="text-base font-black text-[#37412a] dark:text-[#e4e9d8]">Store Receipt #{previewReceipt.receiptNumber || previewReceipt.id}</h3>
-                <p className="text-xs text-[#71805a] font-semibold">{previewReceipt.lab}</p>
-              </div>
-              <button onClick={() => setPreviewReceipt(null)} className="text-[#71805a] hover:text-[#37412a]">
-                <XCircle size={20} />
-              </button>
-            </div>
-            
-            <div className="space-y-2 text-xs font-semibold text-[#37412a] dark:text-[#e4e9d8]">
-              <div className="flex justify-between py-1 border-b border-dashed border-[#d9e1ca] dark:border-[#414a33]">
-                <span className="text-[#71805a]">Chemical Name:</span>
-                <span className="font-extrabold">{previewReceipt.chemicalName}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-dashed border-[#d9e1ca] dark:border-[#414a33]">
-                <span className="text-[#71805a]">CAS Number:</span>
-                <span className="font-mono">{previewReceipt.casNumber || 'N/A'}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-dashed border-[#d9e1ca] dark:border-[#414a33]">
-                <span className="text-[#71805a]">Quantity Transferred:</span>
-                <span className="font-bold">{previewReceipt.quantity} {previewReceipt.unit}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-dashed border-[#d9e1ca] dark:border-[#414a33]">
-                <span className="text-[#71805a]">Approval Date:</span>
-                <span>{new Date(previewReceipt.date).toLocaleString()}</span>
-              </div>
-            </div>
-
-            <div className="pt-2 flex justify-end">
-              <button 
-                onClick={() => setPreviewReceipt(null)} 
-                className="bg-[#5c6e46] text-white px-4 py-2 rounded-xl text-xs font-extrabold"
-              >
-                Close Receipt
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Official Authorized Signature Store Receipt Modal */}
+      <StoreRequestReceiptModal
+        open={Boolean(previewReceipt)}
+        onClose={() => setPreviewReceipt(null)}
+        request={previewReceipt}
+      />
     </div>
   );
 }
