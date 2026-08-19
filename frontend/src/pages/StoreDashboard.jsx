@@ -81,6 +81,7 @@ export default function StoreDashboard() {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [previewReceipt, setPreviewReceipt] = useState(null);
+  const [viewingItem, setViewingItem] = useState(null);
   const [newItem, setNewItem] = useState(EMPTY_STORE_ITEM);
   const [editItem, setEditItem] = useState(EMPTY_STORE_ITEM);
   const [allotmentForm, setAllotmentForm] = useState(EMPTY_ALLOTMENT);
@@ -581,30 +582,48 @@ export default function StoreDashboard() {
           </div>
         </div>
 
-        {/* TAB 1: STORE INVENTORY CATALOG */}
+        {/* TAB 1: STORE INVENTORY CATALOG / CHEMICALS TABLE */}
         {activeTab === 'inventory' && (
           <div className="space-y-4">
             
-            {/* Search & Category Filter Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="relative flex-1 min-w-[240px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#87996c]" />
+            {/* Section Header Card */}
+            <div className="bg-white dark:bg-[#1a1d16] p-4 rounded-xl border border-[#cfd8bd] dark:border-[#414a33] shadow-2xs space-y-1">
+              <h3 className="text-base sm:text-lg font-black text-[#2e3d19] dark:text-[#eef4e8]">
+                Chemicals Table
+              </h3>
+              <p className="text-xs font-semibold text-[#71805a] dark:text-[#a5b48b]">
+                View, edit, or remove chemicals from the store inventory.
+              </p>
+            </div>
+
+            {/* High-Prominence Search & Category Filter Header Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-[#1a1d16] p-3.5 rounded-xl border-2 border-[#5c6e46] shadow-xs">
+              <div className="relative flex-1 min-w-[260px]">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5c6e46] dark:text-[#a8be8a]" />
                 <input
                   type="text"
-                  placeholder="Search chemical by name, chemical ID, CAS, location..."
+                  placeholder="🔍 Search chemicals by Chemical Name, Chemical ID, CAS Number, Synonyms, Location..."
                   value={inventorySearch}
                   onChange={(e) => setInventorySearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-white dark:bg-[#20251a] border border-[#cfd8bd] dark:border-[#414a33] rounded text-xs font-bold outline-none focus:border-[#5c6e46]"
+                  className="w-full pl-10 pr-9 py-2.5 bg-[#fdfdf7] dark:bg-[#20251a] border border-[#cfd8bd] dark:border-[#414a33] rounded-lg text-xs font-bold outline-none focus:border-[#5c6e46] text-[#37412a] dark:text-[#e4e9d8]"
                 />
+                {inventorySearch && (
+                  <button 
+                    onClick={() => setInventorySearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 hover:text-gray-600 rounded-full"
+                  >
+                    <XCircle className="w-4 h-4" />
+                  </button>
+                )}
               </div>
 
-              <div className="flex items-center gap-2 overflow-x-auto">
+              <div className="flex items-center gap-2 overflow-x-auto shrink-0">
                 <span className="text-[10px] font-black uppercase text-[#5c6e46] dark:text-[#a8be8a] shrink-0">Category:</span>
                 {['All', 'Chemical', 'Glassware'].map(cat => (
                   <button
                     key={cat}
                     onClick={() => setCategoryFilter(cat)}
-                    className={`px-2.5 py-1 rounded text-xs font-bold transition-all border ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
                       categoryFilter === cat
                         ? 'bg-[#5c6e46] text-white border-[#5c6e46]'
                         : 'bg-white text-[#5c6e46] border-[#cfd8bd] dark:bg-[#20251a] dark:text-[#a8be8a] dark:border-[#414a33]'
@@ -619,7 +638,7 @@ export default function StoreDashboard() {
                   <button
                     key={st}
                     onClick={() => setStatusFilter(st)}
-                    className={`px-2.5 py-1 rounded text-xs font-bold transition-all border ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
                       statusFilter === st
                         ? 'bg-[#5c6e46] text-white border-[#5c6e46]'
                         : 'bg-white text-[#5c6e46] border-[#cfd8bd] dark:bg-[#20251a] dark:text-[#a8be8a] dark:border-[#414a33]'
@@ -631,26 +650,25 @@ export default function StoreDashboard() {
               </div>
             </div>
 
-            {/* Inventory Table */}
-            <div className="bg-white dark:bg-[#1a1d16] border border-[#cfd8bd] dark:border-[#414a33] rounded overflow-hidden">
+            {/* Inventory / Chemicals Table */}
+            <div className="bg-white dark:bg-[#1a1d16] border border-[#cfd8bd] dark:border-[#414a33] rounded-xl overflow-hidden shadow-2xs">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-[#f4f6ee] dark:bg-[#20251a] border-b border-[#cfd8bd] dark:border-[#414a33] text-[#5c6e46] dark:text-[#a8be8a] font-black uppercase tracking-wider">
-                      <th className="p-3">Chemical ID</th>
-                      <th className="p-3">Item / Chemical Name</th>
-                      <th className="p-3">Category</th>
-                      <th className="p-3">Sub-Category</th>
-                      <th className="p-3">Available Qty</th>
-                      <th className="p-3">Storage Location</th>
-                      <th className="p-3 text-right">Actions</th>
+                      <th className="p-3.5">CHEMICAL ID</th>
+                      <th className="p-3.5">CHEMICAL NAME</th>
+                      <th className="p-3.5">CAS NUMBER</th>
+                      <th className="p-3.5">SYNONYMS / FORMULA</th>
+                      <th className="p-3.5">AVAILABLE QTY</th>
+                      <th className="p-3.5 text-center">ACTIONS</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#e4eed3] dark:divide-[#2e3722] font-semibold">
                     {filteredStoreItems.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="p-8 text-center text-xs font-bold text-[#71805a]">
-                          No store inventory items match your search filter.
+                        <td colSpan={6} className="p-10 text-center text-xs font-bold text-[#71805a]">
+                          No chemical or store items found matching search "{inventorySearch}".
                         </td>
                       </tr>
                     ) : (
@@ -660,49 +678,47 @@ export default function StoreDashboard() {
                         const isOut = qty <= 0;
 
                         return (
-                          <tr key={item.id || item._id} className="hover:bg-[#f4f6ee]/50 dark:hover:bg-[#20251a]/50">
-                            <td className="p-3 font-mono font-bold text-[#5c6e46] dark:text-[#a8be8a]">
-                              {item.itemCode || 'SKU-001'}
+                          <tr key={item.id || item._id} className="hover:bg-[#f4f6ee]/60 dark:hover:bg-[#20251a]/60">
+                            <td className="p-3.5 font-mono font-bold text-[#5c6e46] dark:text-[#a8be8a]">
+                              {item.itemCode || item.chemicalId || 'SKU-001'}
                             </td>
-                            <td className="p-3 font-bold text-[#37412a] dark:text-[#e4e9d8]">
-                              {item.itemName}
-                              {item.description && (
-                                <p className="text-[10px] text-[#71805a] font-normal truncate max-w-xs">{item.description}</p>
-                              )}
+                            <td className="p-3.5 font-black text-[#37412a] dark:text-[#e4e9d8]">
+                              {item.itemName || item.name}
                             </td>
-                            <td className="p-3">
-                              <span className="px-2 py-0.5 rounded bg-[#f4f6ee] dark:bg-[#20251a] border border-[#cfd8bd] text-[10px] font-bold text-[#5c6e46] dark:text-[#a8be8a]">
-                                {item.category}
-                              </span>
+                            <td className="p-3.5 font-mono text-[#71805a] dark:text-[#a5b48b]">
+                              {item.cas || item.casNumber || 'N/A'}
                             </td>
-                            <td className="p-3 text-[#71805a] dark:text-[#a5b48b]">
-                              {item.subCategory || 'General'}
+                            <td className="p-3.5 text-[#71805a] dark:text-[#a5b48b]">
+                              {item.description || item.subCategory || 'Reagent Grade'}
                             </td>
-                            <td className="p-3 font-mono font-black">
-                              <span className={`px-2 py-0.5 rounded text-xs ${
+                            <td className="p-3.5 font-mono font-black">
+                              <span className={`px-2.5 py-1 rounded-md text-xs ${
                                 isOut ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300' :
                                 isLow ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300' :
-                                'bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                'bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200'
                               }`}>
                                 {qty} {item.category === 'Glassware' ? 'pcs' : item.quantityUnit || 'units'}
                               </span>
                             </td>
-                            <td className="p-3 text-[#71805a] dark:text-[#a5b48b]">
-                              📍 {item.storageLocation || 'Central Cabinet'}
-                            </td>
-                            <td className="p-3 text-right">
-                              <div className="flex items-center justify-end gap-1.5">
+                            <td className="p-3.5 text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => setViewingItem(item)}
+                                  className="px-3 py-1.5 bg-white dark:bg-[#20251a] hover:bg-[#f4f6ee] border border-[#cfd8bd] dark:border-[#414a33] text-[#5c6e46] dark:text-[#a8be8a] font-bold rounded-lg text-xs transition-all shadow-2xs flex items-center gap-1"
+                                >
+                                  <span>👁️ View</span>
+                                </button>
                                 <button
                                   onClick={() => openEditModal(item)}
-                                  className="px-2.5 py-1 bg-white dark:bg-[#20251a] hover:bg-[#f4f6ee] border border-[#cfd8bd] dark:border-[#414a33] text-[#5c6e46] dark:text-[#a8be8a] font-bold rounded text-[11px] flex items-center gap-1"
+                                  className="px-3 py-1.5 bg-white dark:bg-[#20251a] hover:bg-[#f4f6ee] border border-[#cfd8bd] dark:border-[#414a33] text-[#5c6e46] dark:text-[#a8be8a] font-bold rounded-lg text-xs transition-all shadow-2xs flex items-center gap-1"
                                 >
-                                  <Pencil size={12} /> Edit / Top-up
+                                  <span>✏️ Edit</span>
                                 </button>
                                 <button
                                   onClick={() => setDeleteTarget(item)}
-                                  className="p-1 text-rose-600 hover:bg-rose-50 rounded"
+                                  className="px-3 py-1.5 bg-white dark:bg-[#20251a] hover:bg-rose-50 border border-rose-300 text-rose-600 dark:text-rose-400 font-bold rounded-lg text-xs transition-all shadow-2xs flex items-center gap-1"
                                 >
-                                  <Trash2 size={14} />
+                                  <span>🗑️ Delete</span>
                                 </button>
                               </div>
                             </td>
@@ -1325,6 +1341,50 @@ export default function StoreDashboard() {
         request={previewReceipt}
         storeManagerName={user?.name || 'Store Manager'}
       />
+
+      {/* VIEW CHEMICAL DETAIL MODAL */}
+      <Modal open={Boolean(viewingItem)} onClose={() => setViewingItem(null)} title="Chemical Record Details">
+        {viewingItem && (
+          <div className="space-y-4 text-xs font-bold text-[#37412a] dark:text-[#e4e9d8]">
+            <div className="p-3.5 bg-[#f4f6ee] dark:bg-[#20251a] rounded-xl border border-[#cfd8bd] dark:border-[#414a33] space-y-2">
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="font-mono text-[10px] font-bold text-[#5c6e46] dark:text-[#a8be8a]">CHEMICAL ID: {viewingItem.itemCode || viewingItem.chemicalId || 'N/A'}</span>
+                  <h3 className="text-base font-black text-[#2e3d19] dark:text-[#eef4e8] mt-0.5">{viewingItem.itemName || viewingItem.name}</h3>
+                </div>
+                <span className="px-2.5 py-1 rounded bg-[#5c6e46] text-white text-[10px] font-black uppercase">
+                  {viewingItem.category || 'Chemical'}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 bg-white dark:bg-[#1a1d16] border border-[#cfd8bd] dark:border-[#414a33] rounded-lg">
+                <span className="text-[10px] font-black uppercase text-[#5c6e46] block">CAS Registry Number</span>
+                <span className="font-mono text-sm font-bold text-[#37412a] dark:text-[#e4e9d8] mt-0.5 block">{viewingItem.cas || viewingItem.casNumber || 'N/A'}</span>
+              </div>
+              <div className="p-3 bg-white dark:bg-[#1a1d16] border border-[#cfd8bd] dark:border-[#414a33] rounded-lg">
+                <span className="text-[10px] font-black uppercase text-[#5c6e46] block">Available Stock Qty</span>
+                <span className="font-mono text-sm font-black text-[#37412a] dark:text-[#e4e9d8] mt-0.5 block">{viewingItem.quantity || viewingItem.availableQty || 0} {viewingItem.quantityUnit || viewingItem.unit || 'units'}</span>
+              </div>
+            </div>
+
+            <div className="p-3 bg-white dark:bg-[#1a1d16] border border-[#cfd8bd] dark:border-[#414a33] rounded-lg space-y-1">
+              <span className="text-[10px] font-black uppercase text-[#5c6e46] block">Synonyms & Description</span>
+              <p className="text-xs font-normal text-[#71805a] dark:text-[#a5b48b] leading-relaxed">{viewingItem.description || viewingItem.subCategory || 'No additional synonyms listed.'}</p>
+            </div>
+
+            <div className="p-3 bg-white dark:bg-[#1a1d16] border border-[#cfd8bd] dark:border-[#414a33] rounded-lg">
+              <span className="text-[10px] font-black uppercase text-[#5c6e46] block">Storage Location</span>
+              <p className="text-xs font-bold text-[#37412a] dark:text-[#e4e9d8] mt-0.5">📍 {viewingItem.storageLocation || 'Central Store Repository'}</p>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button className="bg-[#5c6e46] text-white font-black" onClick={() => setViewingItem(null)}>Close</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
