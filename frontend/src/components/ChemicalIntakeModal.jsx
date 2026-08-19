@@ -89,9 +89,9 @@ export default function ChemicalIntakeModal({
 
     try {
       if (isStoreAdmin) {
-        // Save to Central Store Inventory
+        // Save to Central Store Inventory (Auto-matches existing chemical by Name/CAS/Code and adds quantity)
         await api.post('/store/inventory', {
-          itemCode: formData.itemCode || `CHEM-${Date.now().toString().slice(-6)}`,
+          itemCode: formData.itemCode,
           itemName: formData.chemicalName,
           category: formData.category,
           subCategory: formData.subCategory || 'General',
@@ -100,6 +100,22 @@ export default function ChemicalIntakeModal({
           storageLocation: formData.storageLocation,
           description: `Batch/Lot: ${formData.lotNumber || 'N/A'} • Mfg: ${formData.manufacturingCompany || 'N/A'} • Formula: ${formData.chemicalFormula || 'N/A'}`
         });
+
+        // Also update StoreInventory table & generate tracking log
+        try {
+          await api.post('/store-inventory', {
+            chemicalId: formData.itemCode,
+            name: formData.chemicalName,
+            cas: formData.casNumber,
+            quantity: Number(formData.quantity),
+            quantityUnit: formData.quantityUnit,
+            packSize: `${formData.quantity}${formData.quantityUnit}`,
+            storageLocation: formData.storageLocation,
+            supplier: formData.manufacturingCompany
+          });
+        } catch (e) {
+          // Ignore secondary sync error
+        }
       } else {
         // Save to Lab Inventory
         await api.post('/inventory', {

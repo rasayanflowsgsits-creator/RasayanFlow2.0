@@ -171,9 +171,84 @@ const deleteChemical = asyncHandler(async (req, res) => {
   res.status(200).json({ id: req.params.id });
 });
 
+const addSingleChemical = asyncHandler(async (req, res) => {
+  const { chemicalId, name, cas, quantity, quantityUnit, packSize, unitPrice, storageLocation, grade, supplier } = req.body;
+  const cleanName = (name || '').trim();
+  const cleanCode = (chemicalId || '').trim();
+  const addQty = Number(quantity) || 0;
+
+  const orConditions = [];
+  if (cleanCode) orConditions.push({ chemicalId: cleanCode });
+  if (cleanName) {
+    orConditions.push({ name: new RegExp('^' + cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') });
+  }
+  if (cas) orConditions.push({ cas: cas.trim() });
+
+  let existing = null;
+  if (orConditions.length > 0) {
+    existing = await StoreInventory.findOne({ $or: orConditions });
+  }
+
+  if (existing) {
+    const previousQty = existing.availableQty || 0;
+    const previousPrice = existing.unitPrice || 0;
+
+    existing.availableQty = safeRound((existing.availableQty || 0) + addQty);
+    existing.receivedQty = safeRound((existing.receivedQty || 0) + addQty);
+    if (storageLocation) existing.storageLocation = storageLocation.trim();
+    if (unitPrice) existing.unitPrice = Number(unitPrice);
+
+    existing.status = calculateStatus(existing.availableQty, existing.reorderLevel);
+    existing.totalValue = safeRound((existing.unitPrice || 0) * existing.availableQty);
+    existing.updatedAt = Date.now();
+
+    const saved = await existing.save();
+    await createTrackingLog(saved, 'Stock Restock (Quantity Added)', previousQty, previousPrice, saved.availableQty, saved.unitPrice);
+
+    return res.status(200).json({
+      success: true,
+      data: saved,
+      restocked: true,
+      message: `Added +${addQty} to existing chemical ${saved.name} (ID: ${saved.chemicalId}). Total available: ${saved.availableQty}`
+    });
+  }
+
+  const newQty = safeRound(addQty);
+  const reorderLevel = req.body.reorderLevel || 2;
+  const status = calculateStatus(newQty, reorderLevel);
+  const uPrice = Number(unitPrice) || 0;
+
+  const newChem = await StoreInventory.create({
+    chemicalId: cleanCode || `CHEM-${Date.now().toString().slice(-6)}`,
+    name: cleanName,
+    cas: cas || '',
+    grade: grade || 'LR',
+    packSize: packSize || `${addQty}${quantityUnit || 'g'}`,
+    unit: quantityUnit || 'g',
+    unitPrice: uPrice,
+    receivedQty: newQty,
+    availableQty: newQty,
+    storageLocation: storageLocation || '',
+    supplier: supplier || '',
+    status,
+    totalValue: safeRound(uPrice * newQty),
+    reorderLevel
+  });
+
+  await createTrackingLog(newChem, 'Added New Chemical', 0, 0, newChem.availableQty, newChem.unitPrice);
+
+  res.status(201).json({
+    success: true,
+    data: newChem,
+    restocked: false,
+    message: `Added new chemical ${newChem.name} (ID: ${newChem.chemicalId}) with ${newChem.availableQty} ${newChem.unit}`
+  });
+});
+
 module.exports = {
   getAllChemicals,
   importChemicals,
+  addSingleChemical,
   updateChemical,
   deleteChemical
 };

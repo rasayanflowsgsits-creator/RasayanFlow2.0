@@ -86,19 +86,49 @@ const createStoreItem = asyncHandler(async (req, res) => {
   const normalizedUnit = normalizeStoreUnit(normalizedCategory, quantityUnit);
   validateStorePayload({ category: normalizedCategory, quantityUnit: normalizedUnit });
 
-  const normalizedCode = itemCode.trim().toUpperCase();
-  const existingItem = await StoreItem.findOne({ itemCode: normalizedCode });
+  const cleanName = (itemName || '').trim();
+  const normalizedCode = (itemCode || '').trim().toUpperCase();
+
+  // Search if item already exists by code or by name
+  const existingItem = await StoreItem.findOne({
+    $or: [
+      { itemCode: normalizedCode },
+      { itemName: new RegExp('^' + cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') }
+    ]
+  });
+
+  const addQty = Number(quantity) || 0;
+
   if (existingItem) {
-    res.status(409);
-    throw new Error('This store item is already listed.');
+    const previousQty = existingItem.quantity || 0;
+    existingItem.quantity = Math.round(((existingItem.quantity || 0) + addQty) * 100) / 100;
+    if (storageLocation) existingItem.storageLocation = storageLocation.trim();
+    if (description) existingItem.description = description.trim();
+    existingItem.lastUpdated = new Date();
+    await existingItem.save();
+
+    await createStoreLog({
+      userId: req.user._id,
+      action: 'restock_store_item',
+      details: `Restocked chemical ${existingItem.itemName} (${existingItem.itemCode}): Added +${addQty} ${existingItem.quantityUnit}. New total: ${existingItem.quantity}`,
+      entityId: existingItem._id,
+      metadata: { before: { quantity: previousQty }, after: buildStoreSnapshot(existingItem) },
+    });
+
+    return res.status(200).json({ 
+      success: true, 
+      data: existingItem, 
+      restocked: true,
+      message: `Stock added to existing item ${existingItem.itemName} (${existingItem.itemCode}). Added +${addQty} ${existingItem.quantityUnit}. New total: ${existingItem.quantity}` 
+    });
   }
 
   const item = await StoreItem.create({
-    itemCode: normalizedCode,
-    itemName: itemName.trim(),
+    itemCode: normalizedCode || `CHEM-${Date.now().toString().slice(-6)}`,
+    itemName: cleanName,
     category: normalizedCategory,
-    subCategory: subCategory.trim(),
-    quantity,
+    subCategory: (subCategory || 'General').trim(),
+    quantity: addQty,
     quantityUnit: normalizedUnit,
     storageLocation: storageLocation?.trim() || '',
     description: description?.trim() || '',
@@ -110,12 +140,12 @@ const createStoreItem = asyncHandler(async (req, res) => {
   await createStoreLog({
     userId: req.user._id,
     action: 'create_store_item',
-    details: `Created store item ${item.itemName} (${item.itemCode})`,
+    details: `Created store item ${item.itemName} (${item.itemCode}) with ${item.quantity} ${item.quantityUnit}`,
     entityId: item._id,
     metadata: { after: buildStoreSnapshot(item) },
   });
 
-  res.status(201).json({ success: true, data: item });
+  res.status(201).json({ success: true, data: item, restocked: false });
 });
 
 const updateStoreItem = asyncHandler(async (req, res) => {

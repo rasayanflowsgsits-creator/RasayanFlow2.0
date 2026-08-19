@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { 
   Pencil, Plus, Send, Trash2, FileSpreadsheet, Sparkles, 
   PackageCheck, Boxes, Clock, AlertTriangle, ShieldAlert, 
-  Search, CheckCircle2, XCircle, Award, RefreshCw, UserCheck, UserX 
+  Search, CheckCircle2, XCircle, Award, RefreshCw, UserCheck, UserX, BarChart3 
 } from 'lucide-react';
 import useAppStore from '../store/appStore';
 import useAuthStore from '../store/authStore';
 import socket from '../services/socket';
+import api from '../services/api';
 import Card from '../components/ui/Card';
 import Table from '../components/ui/Table';
 import Modal from '../components/ui/Modal';
@@ -47,7 +48,6 @@ export default function StoreDashboard() {
     fetchStoreItems,
     fetchStoreAllotments,
     fetchUsers,
-    createStoreItem,
     updateStoreItem,
     deleteStoreItem,
     createStoreAllotment,
@@ -61,7 +61,7 @@ export default function StoreDashboard() {
   const user = useAuthStore((state) => state.user);
 
   // Tab State
-  const [activeTab, setActiveTab] = useState('inventory'); // 'inventory', 'requests', 'allotments', 'lowstock', 'access'
+  const [activeTab, setActiveTab] = useState('inventory'); // 'inventory', 'requests', 'allotments', 'lowstock', 'reports', 'access'
   const [inventorySearch, setInventorySearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -69,6 +69,10 @@ export default function StoreDashboard() {
   // Request Filter State
   const [requestStatusFilter, setRequestStatusFilter] = useState('Pending');
   const [requestSearch, setRequestSearch] = useState('');
+
+  // Report Tracking Log State
+  const [trackingLogs, setTrackingLogs] = useState([]);
+  const [trackingSearch, setTrackingSearch] = useState('');
 
   // Modal States
   const [createOpen, setCreateOpen] = useState(false);
@@ -86,10 +90,20 @@ export default function StoreDashboard() {
   const [reviewingRequestId, setReviewingRequestId] = useState('');
   const [blockingUserId, setBlockingUserId] = useState('');
 
+  const fetchTrackingLogs = async () => {
+    try {
+      const res = await api.get('/store/tracking');
+      setTrackingLogs(res.data || []);
+    } catch (err) {
+      console.error('Failed to fetch tracking logs:', err);
+    }
+  };
+
   useEffect(() => {
     fetchStoreItems();
     fetchStoreAllotments();
     fetchUsers();
+    fetchTrackingLogs();
 
     // Set up real-time socket listeners
     socket.on('store:new_request', () => {
@@ -99,6 +113,7 @@ export default function StoreDashboard() {
     socket.on('store:request_approved', () => {
       fetchStoreAllotments();
       fetchStoreItems();
+      fetchTrackingLogs();
     });
 
     socket.on('store:request_rejected', () => {
@@ -112,13 +127,18 @@ export default function StoreDashboard() {
     };
   }, [fetchStoreAllotments, fetchStoreItems, fetchUsers]);
 
-  const duplicateCodeExists = useMemo(
-    () => storeItems.some((item) => item.itemCode?.toUpperCase() === newItem.itemCode.trim().toUpperCase()),
-    [newItem.itemCode, storeItems]
-  );
+  // Find if user input matches existing chemical by Name or Code
+  const matchedExistingItem = useMemo(() => {
+    const codeQuery = newItem.itemCode.trim().toUpperCase();
+    const nameQuery = newItem.itemName.trim().toLowerCase();
+    if (!codeQuery && !nameQuery) return null;
+    return storeItems.find((item) => 
+      (codeQuery && item.itemCode?.toUpperCase() === codeQuery) ||
+      (nameQuery && (item.itemName?.toLowerCase() === nameQuery || item.name?.toLowerCase() === nameQuery))
+    );
+  }, [newItem.itemCode, newItem.itemName, storeItems]);
 
   const categoryCount = new Set(storeItems.map((item) => item.category)).size;
-  const subCategoryCount = new Set(storeItems.map((item) => `${item.category}:${item.subCategory}`)).size;
   const lowStockItems = storeItems.filter((item) => Number(item.quantity || 0) <= 5);
   const students = users.filter((user) => user.role === 'student');
   const pendingStoreRequests = storeAllotments.filter((entry) => entry.status === 'pending' || entry.status === 'Pending');
@@ -164,6 +184,18 @@ export default function StoreDashboard() {
     });
   }, [storeAllotments, requestSearch, requestStatusFilter]);
 
+  // Filtered Stock Intake & Restock Tracking Logs
+  const filteredTrackingLogs = useMemo(() => {
+    return trackingLogs.filter(log => {
+      const q = trackingSearch.toLowerCase().trim();
+      return !q ||
+        (log.chemicalName || '').toLowerCase().includes(q) ||
+        (log.chemicalId || '').toLowerCase().includes(q) ||
+        (log.casNumber || '').toLowerCase().includes(q) ||
+        (log.updateType || '').toLowerCase().includes(q);
+    });
+  }, [trackingLogs, trackingSearch]);
+
   const applyCategoryRules = (item) => {
     if (item.category === 'Glassware') {
       return { ...item, quantityUnit: 'pieces' };
@@ -189,39 +221,55 @@ export default function StoreDashboard() {
     setEditOpen(true);
   };
 
+  // Smart Save Item: Auto-topup if chemical already exists on Chemical ID
   const saveNewItem = async () => {
-    if (!newItem.itemCode.trim() || !newItem.itemName.trim() || !newItem.subCategory.trim() || !newItem.quantity) return;
-    if (duplicateCodeExists) {
-      setToast({ type: 'error', message: 'This store item is already listed.' });
+    if (!newItem.itemName.trim() || !newItem.quantity) {
+      setToast({ type: 'error', message: 'Chemical Name and Quantity are required.' });
       return;
     }
 
     setSaving(true);
     try {
       const payload = applyCategoryRules(newItem);
-      const created = await createStoreItem({
-        itemCode: payload.itemCode.trim().toUpperCase(),
+      const res = await api.post('/store/inventory', {
+        itemCode: payload.itemCode.trim().toUpperCase() || matchedExistingItem?.itemCode,
         itemName: payload.itemName.trim(),
         category: payload.category,
-        subCategory: payload.subCategory.trim(),
+        subCategory: payload.subCategory.trim() || 'General',
         quantity: Number(payload.quantity),
         quantityUnit: payload.quantityUnit,
         storageLocation: payload.storageLocation.trim(),
         description: payload.description.trim(),
       });
-      setToast({ type: 'success', message: `${created.itemName} added to store.` });
-      setHighlight(created.id);
+
+      const resData = res.data?.data || res.data;
+      const isRestocked = res.data?.restocked;
+
+      if (isRestocked) {
+        setToast({ 
+          type: 'success', 
+          message: `⚡ Stock top-up successful! Added +${payload.quantity} ${payload.quantityUnit} to ${resData.itemName} (${resData.itemCode}). New Total: ${resData.quantity} ${payload.quantityUnit}.` 
+        });
+      } else {
+        setToast({ 
+          type: 'success', 
+          message: `${resData.itemName} (${resData.itemCode}) registered in store inventory.` 
+        });
+      }
+
+      await fetchStoreItems();
+      await fetchTrackingLogs();
       setCreateOpen(false);
       setNewItem(EMPTY_STORE_ITEM);
     } catch (error) {
-      setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to create store item.' });
+      setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to save store item.' });
     } finally {
       setSaving(false);
     }
   };
 
   const saveEditedItem = async () => {
-    if (!editItem.id || !editItem.itemCode.trim() || !editItem.itemName.trim() || !editItem.subCategory.trim() || !editItem.quantity) return;
+    if (!editItem.id || !editItem.itemName.trim() || !editItem.quantity) return;
 
     setSaving(true);
     try {
@@ -236,8 +284,9 @@ export default function StoreDashboard() {
         storageLocation: payload.storageLocation.trim(),
         description: payload.description.trim(),
       });
-      setToast({ type: 'success', message: `${updated.itemName} updated.` });
-      setHighlight(updated.id);
+      setToast({ type: 'success', message: `${updated.itemName} updated successfully.` });
+      await fetchStoreItems();
+      await fetchTrackingLogs();
       setEditOpen(false);
       setEditItem(EMPTY_STORE_ITEM);
     } catch (error) {
@@ -288,7 +337,7 @@ export default function StoreDashboard() {
     setReviewingRequestId(requestId);
     try {
       await approveStoreRequest(requestId);
-      await Promise.all([fetchStoreItems(), fetchStoreAllotments()]);
+      await Promise.all([fetchStoreItems(), fetchStoreAllotments(), fetchTrackingLogs()]);
       setToast({ type: 'success', message: 'Store request approved successfully!' });
     } catch (error) {
       setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to approve store request.' });
@@ -325,6 +374,35 @@ export default function StoreDashboard() {
     } finally {
       setBlockingUserId('');
     }
+  };
+
+  // Export Stock Addition Report as CSV
+  const handleExportStockReportCSV = () => {
+    if (!filteredTrackingLogs.length) return;
+    const headers = ['Timestamp', 'Chemical ID', 'Chemical Name', 'CAS Number', 'Grade', 'Pack Size', 'Previous Qty', 'New Qty', 'Qty Change', 'Total Volume', 'Total Value (INR)', 'Update Type'];
+    const rows = filteredTrackingLogs.map(log => [
+      new Date(log.timestamp).toLocaleString(),
+      log.chemicalId || 'N/A',
+      `"${log.chemicalName || ''}"`,
+      log.casNumber || 'N/A',
+      log.grade || 'LR',
+      log.packSize || 'N/A',
+      log.previousQty,
+      log.newQty,
+      log.qtyChange > 0 ? `+${log.qtyChange}` : log.qtyChange,
+      `"${log.totalChemical || ''}"`,
+      log.totalPrice || log.totalValue || 0,
+      log.updateType || 'Intake'
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `RasayanFlow_Stock_Addition_Report_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const currentDate = new Date().toLocaleDateString('en-US', {
@@ -375,7 +453,7 @@ export default function StoreDashboard() {
             className="px-3.5 py-2.5 bg-white dark:bg-[#20251a] hover:bg-[#f4f6ee] dark:hover:bg-[#28301f] text-[#37412a] dark:text-[#e4e9d8] border border-[#cfd8bd] dark:border-[#414a33] font-extrabold text-xs rounded-lg transition-all shadow-2xs flex items-center gap-1.5"
           >
             <Plus className="w-4 h-4 text-[#5c6e46]" />
-            <span>Add SKU</span>
+            <span>Add Chemical / SKU</span>
           </button>
         </div>
       </div>
@@ -476,6 +554,7 @@ export default function StoreDashboard() {
               { id: 'requests', label: '⏳ Requisition Requests', count: pendingStoreRequests.length, badge: pendingStoreRequests.length > 0 },
               { id: 'allotments', label: '📤 Direct Student Allotment' },
               { id: 'lowstock', label: '⚠️ Low Stock Refill Alert', count: lowStockItems.length, danger: lowStockItems.length > 0 },
+              { id: 'reports', label: '📊 Stock Intake & Restock Reports', count: trackingLogs.length },
               { id: 'access', label: '🛡️ Student Access Control' }
             ].map(tb => (
               <button
@@ -512,7 +591,7 @@ export default function StoreDashboard() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#87996c]" />
                 <input
                   type="text"
-                  placeholder="Search store inventory by name, code, category, location..."
+                  placeholder="Search chemical by name, chemical ID, CAS, location..."
                   value={inventorySearch}
                   onChange={(e) => setInventorySearch(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 bg-white dark:bg-[#20251a] border border-[#cfd8bd] dark:border-[#414a33] rounded text-xs font-bold outline-none focus:border-[#5c6e46]"
@@ -558,7 +637,7 @@ export default function StoreDashboard() {
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-[#f4f6ee] dark:bg-[#20251a] border-b border-[#cfd8bd] dark:border-[#414a33] text-[#5c6e46] dark:text-[#a8be8a] font-black uppercase tracking-wider">
-                      <th className="p-3">SKU Code</th>
+                      <th className="p-3">Chemical ID</th>
                       <th className="p-3">Item / Chemical Name</th>
                       <th className="p-3">Category</th>
                       <th className="p-3">Sub-Category</th>
@@ -617,7 +696,7 @@ export default function StoreDashboard() {
                                   onClick={() => openEditModal(item)}
                                   className="px-2.5 py-1 bg-white dark:bg-[#20251a] hover:bg-[#f4f6ee] border border-[#cfd8bd] dark:border-[#414a33] text-[#5c6e46] dark:text-[#a8be8a] font-bold rounded text-[11px] flex items-center gap-1"
                                 >
-                                  <Pencil size={12} /> Edit
+                                  <Pencil size={12} /> Edit / Top-up
                                 </button>
                                 <button
                                   onClick={() => setDeleteTarget(item)}
@@ -772,7 +851,7 @@ export default function StoreDashboard() {
                               onClick={() => setPreviewReceipt(entry)}
                               className="px-3.5 py-1.5 bg-white dark:bg-[#20251a] hover:bg-[#f4f6ee] border border-[#5c6e46] text-[#5c6e46] dark:text-[#a8be8a] font-black text-xs rounded transition-all shadow-2xs flex items-center gap-1.5"
                             >
-                              <FileText size={14} /> View Official Bill Voucher
+                              <FileSpreadsheet size={14} /> View Official Bill Voucher
                             </button>
                           )}
                         </div>
@@ -964,7 +1043,115 @@ export default function StoreDashboard() {
           </div>
         )}
 
-        {/* TAB 5: STUDENT ACCESS CONTROL */}
+        {/* TAB 5: STOCK INTAKE & RESTOCK REPORTS */}
+        {activeTab === 'reports' && (
+          <div className="space-y-4">
+            
+            {/* Header & Export Controls */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-[#1a1d16] p-4 rounded border border-[#cfd8bd] dark:border-[#414a33]">
+              <div>
+                <h3 className="text-base font-black text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-2">
+                  <FileSpreadsheet className="w-5 h-5 text-[#5c6e46]" /> Stock Intake & Inventory Restock Audit Report
+                </h3>
+                <p className="text-xs font-semibold text-[#71805a] mt-0.5">
+                  Complete chronological report of all chemical additions, PubChem intakes, and quantity restocks with exact timestamps.
+                </p>
+              </div>
+
+              <button
+                onClick={handleExportStockReportCSV}
+                className="px-4 py-2.5 bg-[#5c6e46] hover:bg-[#475735] text-white font-black text-xs rounded transition-all shadow-2xs flex items-center gap-2 uppercase tracking-wider shrink-0"
+              >
+                <FileSpreadsheet size={15} /> Export Report (CSV)
+              </button>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="relative flex-1 min-w-[240px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#87996c]" />
+                <input
+                  type="text"
+                  placeholder="Search report by chemical name, CAS, chemical ID, update type..."
+                  value={trackingSearch}
+                  onChange={(e) => setTrackingSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-white dark:bg-[#20251a] border border-[#cfd8bd] dark:border-[#414a33] rounded text-xs font-bold outline-none focus:border-[#5c6e46]"
+                />
+              </div>
+            </div>
+
+            {/* Stock Intakes Report Table */}
+            <div className="bg-white dark:bg-[#1a1d16] border border-[#cfd8bd] dark:border-[#414a33] rounded overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-[#f4f6ee] dark:bg-[#20251a] border-b border-[#cfd8bd] dark:border-[#414a33] text-[#5c6e46] dark:text-[#a8be8a] font-black uppercase tracking-wider">
+                      <th className="p-3">Date & Time</th>
+                      <th className="p-3">Chemical ID</th>
+                      <th className="p-3">Chemical Name</th>
+                      <th className="p-3">Pack Size</th>
+                      <th className="p-3">Previous Stock</th>
+                      <th className="p-3">Qty Added / Change</th>
+                      <th className="p-3">New Total Stock</th>
+                      <th className="p-3">Update Type</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#e4eed3] dark:divide-[#2e3722] font-semibold">
+                    {filteredTrackingLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="p-8 text-center text-xs font-bold text-[#71805a]">
+                          No stock intake or restock logs found in tracking history.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredTrackingLogs.map((log, idx) => (
+                        <tr key={log.id || log._id || idx} className="hover:bg-[#f4f6ee]/50 dark:hover:bg-[#20251a]/50">
+                          <td className="p-3 font-mono text-[11px] text-[#71805a]">
+                            {new Date(log.timestamp).toLocaleString()}
+                          </td>
+                          <td className="p-3 font-mono font-bold text-[#5c6e46] dark:text-[#a8be8a]">
+                            {log.chemicalId || 'SKU-001'}
+                          </td>
+                          <td className="p-3 font-black text-[#37412a] dark:text-[#e4e9d8]">
+                            {log.chemicalName}
+                            {log.casNumber && <span className="font-mono text-[10px] text-[#71805a] block">CAS: {log.casNumber}</span>}
+                          </td>
+                          <td className="p-3 text-[#71805a]">
+                            {log.packSize || 'Standard'}
+                          </td>
+                          <td className="p-3 font-mono text-[#71805a]">
+                            {log.previousQty} UNT
+                          </td>
+                          <td className="p-3 font-mono font-black">
+                            <span className={`px-2 py-0.5 rounded text-xs ${
+                              log.qtyChange > 0 
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-extrabold' 
+                                : log.qtyChange < 0 
+                                ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 font-extrabold' 
+                                : 'bg-[#f4f6ee] text-[#5c6e46]'
+                            }`}>
+                              {log.qtyChange > 0 ? `+${log.qtyChange}` : log.qtyChange} UNT
+                            </span>
+                          </td>
+                          <td className="p-3 font-mono font-black text-[#37412a] dark:text-[#e4e9d8]">
+                            {log.newQty} UNT <span className="text-[10px] text-[#71805a] font-normal">({log.totalChemical || ''})</span>
+                          </td>
+                          <td className="p-3">
+                            <span className="px-2 py-0.5 rounded bg-[#f4f6ee] dark:bg-[#20251a] border border-[#cfd8bd] text-[10px] font-bold text-[#5c6e46] dark:text-[#a8be8a]">
+                              {log.updateType || 'Stock Intake'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 6: STUDENT ACCESS CONTROL */}
         {activeTab === 'access' && (
           <div className="space-y-4">
             <div className="bg-white dark:bg-[#1a1d16] border border-[#cfd8bd] dark:border-[#414a33] rounded p-4 space-y-3">
@@ -1012,11 +1199,38 @@ export default function StoreDashboard() {
       </div>
 
       {/* CREATE ITEM MODAL */}
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Add Store SKU Item">
+      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Add Chemical Stock / SKU Item">
         <div className="space-y-4 text-xs font-bold">
-          <Input label="Item Code *" value={newItem.itemCode} onChange={(e) => setNewItem((state) => ({ ...state, itemCode: e.target.value.toUpperCase() }))} placeholder="e.g. CHEM-001" />
-          {newItem.itemCode.trim() && duplicateCodeExists ? <p className="text-xs text-rose-600">This SKU item code is already listed.</p> : null}
-          <Input label="Item Name *" value={newItem.itemName} onChange={(e) => setNewItem((state) => ({ ...state, itemName: e.target.value }))} placeholder="e.g. Silver Nitrate IP" />
+          
+          {/* Smart Auto-match Indicator */}
+          {matchedExistingItem ? (
+            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-lg text-emerald-800 dark:text-emerald-300 text-xs font-bold flex items-start gap-2">
+              <Sparkles className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              <div>
+                <p>✨ Existing Chemical Matched: <strong>{matchedExistingItem.itemName} ({matchedExistingItem.itemCode})</strong></p>
+                <p className="text-[11px] font-normal text-emerald-700 dark:text-emerald-300 mt-0.5">Current Stock: {matchedExistingItem.quantity} {matchedExistingItem.quantityUnit}. Entering quantity will top-up stock on this Chemical ID!</p>
+              </div>
+            </div>
+          ) : (
+            <div className="p-2.5 bg-[#f4f6ee] dark:bg-[#20251a] rounded border border-[#cfd8bd] text-[#5c6e46] text-[11px]">
+              💡 <strong>Smart Chemical Match:</strong> Type an existing Chemical Name or SKU Code to automatically add/increment quantity on that Chemical ID.
+            </div>
+          )}
+
+          <Input 
+            label="Item / SKU Code (Optional)" 
+            value={newItem.itemCode} 
+            onChange={(e) => setNewItem((state) => ({ ...state, itemCode: e.target.value.toUpperCase() }))} 
+            placeholder="Auto-generated e.g. CHEM-101" 
+          />
+          
+          <Input 
+            label="Chemical Name *" 
+            value={newItem.itemName} 
+            onChange={(e) => setNewItem((state) => ({ ...state, itemName: e.target.value }))} 
+            placeholder="e.g. Silver Nitrate IP, Acetone, Hydrochloric Acid..." 
+          />
+          
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block text-xs font-black text-[#5c6e46]">
               Category
@@ -1032,8 +1246,9 @@ export default function StoreDashboard() {
             </label>
             <Input label="Sub Category" value={newItem.subCategory} onChange={(e) => setNewItem((state) => ({ ...state, subCategory: e.target.value }))} placeholder="e.g. Reagents / Solvents" />
           </div>
+          
           <div className="grid gap-3 sm:grid-cols-2">
-            <Input label="Quantity *" type="number" value={newItem.quantity} onChange={(e) => setNewItem((state) => ({ ...state, quantity: e.target.value }))} placeholder="500" />
+            <Input label="Quantity to Add *" type="number" value={newItem.quantity} onChange={(e) => setNewItem((state) => ({ ...state, quantity: e.target.value }))} placeholder="e.g. 50" />
             {newItem.category === 'Chemical' ? (
               <label className="block text-xs font-black text-[#5c6e46]">
                 Quantity Unit
@@ -1051,15 +1266,17 @@ export default function StoreDashboard() {
               <Input label="Quantity Unit" value="pieces" readOnly className="bg-[#f4f6ee]" />
             )}
           </div>
-          <Input label="Storage Location" value={newItem.storageLocation} onChange={(e) => setNewItem((state) => ({ ...state, storageLocation: e.target.value }))} placeholder="e.g. Cabinet B-1" />
-          <Button className="w-full bg-[#5c6e46] text-white font-black" onClick={saveNewItem} disabled={saving || duplicateCodeExists}>
-            {saving ? 'Saving...' : 'Save Store SKU'}
+          
+          <Input label="Storage Location" value={newItem.storageLocation} onChange={(e) => setNewItem((state) => ({ ...state, storageLocation: e.target.value }))} placeholder="e.g. Cabinet B-1, Shelf 2" />
+          
+          <Button className="w-full bg-[#5c6e46] text-white font-black" onClick={saveNewItem} disabled={saving}>
+            {saving ? 'Saving Stock...' : matchedExistingItem ? `⚡ Top-Up +${newItem.quantity || 0} ${newItem.quantityUnit} to ${matchedExistingItem.itemCode}` : 'Save Store SKU'}
           </Button>
         </div>
       </Modal>
 
       {/* EDIT ITEM MODAL */}
-      <Modal open={editOpen} onClose={() => setEditOpen(false)} title="Edit Store SKU Item">
+      <Modal open={editOpen} onClose={() => setEditOpen(false)} title="Edit Store Chemical / SKU Item">
         <div className="space-y-4 text-xs font-bold">
           <Input label="Item Code" value={editItem.itemCode} onChange={(e) => setEditItem((state) => ({ ...state, itemCode: e.target.value.toUpperCase() }))} />
           <Input label="Item Name" value={editItem.itemName} onChange={(e) => setEditItem((state) => ({ ...state, itemName: e.target.value }))} />
@@ -1090,14 +1307,14 @@ export default function StoreDashboard() {
       <ImportModal 
         open={importOpen} 
         onClose={() => setImportOpen(false)} 
-        onImportSuccess={fetchStoreItems} 
+        onImportSuccess={() => { fetchStoreItems(); fetchTrackingLogs(); }} 
       />
 
       {/* CHEMICAL INTAKE WIZARD MODAL */}
       <ChemicalIntakeModal
         open={intakeOpen}
         onClose={() => setIntakeOpen(false)}
-        onSuccess={fetchStoreItems}
+        onSuccess={() => { fetchStoreItems(); fetchTrackingLogs(); }}
         isStoreAdmin={true}
       />
 
