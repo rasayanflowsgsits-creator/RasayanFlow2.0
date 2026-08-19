@@ -1,4 +1,4 @@
-import { Eye, FileDown, FileSpreadsheet, Pencil, Plus, Trash2, Upload, X } from 'lucide-react';
+import { Eye, FileDown, FileSpreadsheet, Pencil, Plus, Trash2, Upload, X, Search } from 'lucide-react';
 import { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import * as XLSX from 'xlsx';
@@ -44,11 +44,10 @@ function SectionHeading({ title }) {
   );
 }
 
-
-
 export default function StoreInventory() {
   const [chemicals, setChemicals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   
   const setToast = useAppStore((state) => state.setToast);
 
@@ -59,8 +58,7 @@ export default function StoreInventory() {
   const [viewTarget, setViewTarget] = useState(null);
   const [activeTab, setActiveTab] = useState('details');
   const [chemicalForm, setChemicalForm] = useState(EMPTY_CHEMICAL);
-  // Tracking history could be fetched separately, for now we will just show empty or mock
-  const trackingLogs = []; // Placeholder or you could fetch it if a history endpoint exists
+  const trackingLogs = [];
 
   const fetchInventory = async () => {
     try {
@@ -78,7 +76,23 @@ export default function StoreInventory() {
     fetchInventory();
   }, []);
 
-  const rows = useMemo(() => chemicals.map((chemical) => ({ ...chemical })), [chemicals]);
+  const filteredChemicals = useMemo(() => {
+    return chemicals.filter(chem => {
+      const q = searchTerm.trim().toLowerCase();
+      if (!q) return true;
+      return (
+        (chem['Chemical ID'] || '').toLowerCase().includes(q) ||
+        (chem['Chemical Name'] || '').toLowerCase().includes(q) ||
+        (chem['CAS Number'] || '').toLowerCase().includes(q) ||
+        (chem['Synonyms'] || '').toLowerCase().includes(q) ||
+        (chem['Molecular Formula'] || '').toLowerCase().includes(q) ||
+        (chem['Supplier'] || '').toLowerCase().includes(q) ||
+        (chem['Grade'] || '').toLowerCase().includes(q)
+      );
+    });
+  }, [chemicals, searchTerm]);
+
+  const rows = useMemo(() => filteredChemicals.map((chemical) => ({ ...chemical })), [filteredChemicals]);
 
   const closeAdd = () => {
     setAddOpen(false);
@@ -301,6 +315,33 @@ export default function StoreInventory() {
       }
     >
       <Card title='Chemicals Table' subtitle='View, edit, or remove chemicals from the store inventory.'>
+        {/* Prominent Live Search Bar */}
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#fdfdf7] dark:bg-[#1a1d16] p-3 rounded-xl border-2 border-[#556b2f] dark:border-[#a8be8a] shadow-xs">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#556b2f] dark:text-[#a8be8a]" />
+            <input
+              type="text"
+              placeholder="🔍 Search chemicals by Chemical Name, Chemical ID, CAS Number, Synonyms..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-9 py-2 bg-white dark:bg-[#20251a] border border-[#cfd8bd] dark:border-[#414a33] rounded-lg text-xs font-bold outline-none focus:border-[#556b2f] text-[#37412a] dark:text-[#e4e9d8]"
+            />
+            {searchTerm && (
+              <button 
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 hover:text-gray-600 rounded-full"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          {searchTerm && (
+            <span className="text-xs font-extrabold text-[#556b2f] dark:text-[#a8be8a] shrink-0">
+              Showing {filteredChemicals.length} matching result(s)
+            </span>
+          )}
+        </div>
+
         <div className="inventory-table-container relative overflow-hidden w-full max-w-full">
           <style>{`
             .inventory-table-container table {
