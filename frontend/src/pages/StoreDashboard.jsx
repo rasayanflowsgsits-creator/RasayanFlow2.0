@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pencil, Plus, Send, Trash2, ChevronDown, ChevronRight, FileSpreadsheet } from 'lucide-react';
+import { Pencil, Plus, Send, Trash2, ChevronDown, ChevronRight, FileSpreadsheet, Sparkles, PackageCheck } from 'lucide-react';
 import useAppStore from '../store/appStore';
 import socket from '../services/socket';
 import Card from '../components/ui/Card';
@@ -8,6 +8,7 @@ import Modal from '../components/ui/Modal';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import ImportModal from '../components/ImportModal';
+import ChemicalIntakeModal from '../components/ChemicalIntakeModal';
 
 const CATEGORY_OPTIONS = ['Glassware', 'Chemical'];
 const CHEMICAL_UNITS = ['mL', 'L', 'uL', 'mg', 'g', 'kg'];
@@ -52,6 +53,7 @@ export default function StoreDashboard() {
   } = useAppStore();
   const [createOpen, setCreateOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [intakeOpen, setIntakeOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [newItem, setNewItem] = useState(EMPTY_STORE_ITEM);
@@ -331,6 +333,13 @@ export default function StoreDashboard() {
             <p className='mt-1 text-sm text-slate-600 dark:text-slate-300'>Manage all store items - Add, Edit, Delete inventory</p>
           </div>
           <div className='flex items-center gap-3'>
+            <button 
+              onClick={() => setIntakeOpen(true)} 
+              className='px-4 py-2 bg-[#5c6e46] hover:bg-[#475735] text-white font-black text-xs sm:text-sm rounded-lg transition-all shadow-sm flex items-center gap-2 uppercase tracking-wider'
+            >
+              <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+              <span>Add Arrived Chemical (PubChem)</span>
+            </button>
             <Button variant='outline' onClick={() => setImportOpen(true)} className='text-sm bg-white dark:bg-[#20251a]'>
               <FileSpreadsheet size={16} className='mr-1 text-[#4e5d35] dark:text-[#a3b87a]' /> Import
             </Button>
@@ -666,6 +675,13 @@ export default function StoreDashboard() {
         open={importOpen} 
         onClose={() => setImportOpen(false)} 
         onImportSuccess={fetchStoreItems} 
+      />
+
+      <ChemicalIntakeModal
+        open={intakeOpen}
+        onClose={() => setIntakeOpen(false)}
+        onSuccess={fetchStoreItems}
+        isStoreAdmin={true}
       />
     </div>
   );

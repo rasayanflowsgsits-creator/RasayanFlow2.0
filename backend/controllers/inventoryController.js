@@ -3,7 +3,7 @@ const Inventory = require('../models/Inventory');
 const ActivityLog = require('../models/ActivityLog');
 const { getIo } = require('../sockets');
 const { getChemicalAbstract } = require('../utils/pubmedService');
-const { fetchChemicalDataByCas } = require('../utils/pubchemService');
+const { fetchChemicalDataByCas, fetchChemicalDataByQuery } = require('../utils/pubchemService');
 const { decorateInventoryAbstract } = require('../utils/abstractFallbackService');
 
 const buildGeneratedCode = (chemicalName, casNumber = '', manufacturingCompany = '') => {
@@ -329,14 +329,15 @@ const fetchChemicalAbstractForInventory = asyncHandler(async (req, res) => {
 });
 
 const fetchChemicalDataForInventory = asyncHandler(async (req, res) => {
-  const { casNumber } = req.body;
+  const { casNumber, query, chemicalName } = req.body;
+  const searchTerm = query || casNumber || chemicalName;
 
-  if (!casNumber || casNumber.trim().length === 0) {
+  if (!searchTerm || searchTerm.trim().length === 0) {
     res.status(400);
-    throw new Error('CAS number is required');
+    throw new Error('Chemical Name, CAS number, or PubChem CID is required');
   }
 
-  const chemicalData = await fetchChemicalDataByCas(casNumber.trim());
+  const chemicalData = await fetchChemicalDataByQuery(searchTerm.trim());
   res.json({ success: true, data: chemicalData });
 });
 

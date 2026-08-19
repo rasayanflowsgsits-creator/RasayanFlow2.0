@@ -14,6 +14,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import { parseCsv } from '../utils/csv';
 import LabImportModal from '../components/LabImportModal';
+import ChemicalIntakeModal from '../components/ChemicalIntakeModal';
 
 const UNIT_OPTIONS = ['mg', 'g', 'kg', 'mcg', 'mL', 'L', 'uL', 'tablets', 'capsules', 'bottles', 'boxes', 'packs', 'vials', 'ampoules', 'units'];
 const getTodayDate = () => new Date().toISOString().slice(0, 10);
@@ -98,6 +99,7 @@ export default function LabAdminDashboard() {
   const [editCasLookupMessage, setEditCasLookupMessage] = useState('');
   const [editCasLookupType, setEditCasLookupType] = useState('');
   const [importOpen, setImportOpen] = useState(false);
+  const [intakeOpen, setIntakeOpen] = useState(false);
 
   const [storeModalOpen, setStoreModalOpen] = useState(false);
   const [storeModalData, setStoreModalData] = useState({ chemicalName: '', quantityRequested: '100', unit: 'mL', reason: '' });
@@ -488,6 +490,14 @@ export default function LabAdminDashboard() {
           </div>
 
           <div className='flex flex-wrap items-center gap-2 shrink-0'>
+            <button 
+              type="button"
+              onClick={() => setIntakeOpen(true)}
+              className="px-3.5 py-2 text-xs font-black bg-[#5c6e46] hover:bg-[#475735] text-white rounded-xl shadow-xs flex items-center gap-1.5 uppercase tracking-wider"
+            >
+              <PackageCheck className="w-4 h-4 text-amber-300 animate-pulse" />
+              <span>Add Arrived Chemical (PubChem)</span>
+            </button>
             <Button variant='outline' onClick={downloadInventoryImportTemplate} className='text-xs px-3 py-2 border-[#5c6e46] text-[#5c6e46] font-bold rounded-xl'>
               <FileDown size={14} className='mr-1.5' /> Template CSV
             </Button>
@@ -880,6 +890,15 @@ export default function LabAdminDashboard() {
           </div>
         </div>
       </Modal>
+
+      {/* ARRIVED CHEMICAL INTAKE MODAL (PUBCHEM AUTO-FILL) */}
+      <ChemicalIntakeModal
+        open={intakeOpen}
+        onClose={() => setIntakeOpen(false)}
+        onSuccess={() => fetchInventory(labId)}
+        isStoreAdmin={false}
+        labId={labId}
+      />
 
     </div>
   );
