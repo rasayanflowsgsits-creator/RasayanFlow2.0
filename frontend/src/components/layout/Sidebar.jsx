@@ -263,25 +263,29 @@ export default function Sidebar({ collapsed, isDark, toggleTheme }) {
         </div>
       </aside>
 
-      {/* ENHANCED LOGOUT CONFIRMATION MODAL */}
+      {/* ENHANCED LOGOUT CONFIRMATION MODAL (BIGGER, SQUARER & PROPER TEXTS) */}
       {confirmLogoutOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="w-full max-w-sm rounded-3xl border border-[#d9e1ca] bg-[#fffef8] p-6 shadow-2xl dark:border-[#414a33] dark:bg-[#20251a] space-y-5 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center gap-3.5">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400 border border-rose-500/20 shrink-0">
-                <LogOut size={22} />
+          <div className="w-full max-w-lg rounded-2xl border border-[#d9e1ca] bg-[#fffef8] p-8 shadow-2xl dark:border-[#414a33] dark:bg-[#1f2419] space-y-6 animate-in zoom-in-95 duration-200">
+            <div className="flex items-start gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400 border border-rose-500/20 shrink-0">
+                <LogOut size={26} />
               </div>
-              <div>
-                <h3 className="text-base font-black text-[#37412a] dark:text-[#e4e9d8]">Sign Out of RasayanFlow</h3>
-                <p className="text-xs font-medium text-[#71805a] dark:text-[#a5b48b] mt-0.5">Are you sure you want to end your active session?</p>
+              <div className="space-y-1 min-w-0 flex-1">
+                <h3 className="text-xl font-bold text-[#2e3d19] dark:text-[#eef4e8] leading-tight">
+                  Sign Out of RasayanFlow
+                </h3>
+                <p className="text-sm font-medium text-[#71805a] dark:text-[#a5b48b] leading-relaxed">
+                  Are you sure you want to end your active session? You will need to log in again to access your lab dashboard and inventory management.
+                </p>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2.5 pt-1">
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#e8efd9] dark:border-[#2e3d19]">
               <button
                 type="button"
                 onClick={() => setConfirmLogoutOpen(false)}
-                className="rounded-xl border border-[#d9e1ca] bg-white px-4 py-2 text-xs font-bold text-[#5c6e46] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:bg-[#1a1d16] dark:text-[#a8be8a] dark:hover:bg-[#20251a] transition-colors"
+                className="rounded-xl border border-[#d9e1ca] bg-white px-5 py-2.5 text-sm font-bold text-[#5c6e46] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:bg-[#1a1d16] dark:text-[#a8be8a] dark:hover:bg-[#28301f] transition-all shadow-xs"
               >
                 Cancel
               </button>
@@ -291,7 +295,7 @@ export default function Sidebar({ collapsed, isDark, toggleTheme }) {
                   setConfirmLogoutOpen(false);
                   logout();
                 }}
-                className="rounded-xl bg-rose-600 px-4.5 py-2 text-xs font-extrabold text-white hover:bg-rose-700 shadow-md transition-colors"
+                className="rounded-xl bg-rose-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-rose-700 shadow-md transition-all whitespace-nowrap active:scale-95"
               >
                 Confirm Logout
               </button>
