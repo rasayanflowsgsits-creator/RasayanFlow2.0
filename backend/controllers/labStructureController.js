@@ -591,19 +591,20 @@ const bulkToggleLock = asyncHandler(async (req, res) => {
   const queryIds = getLabIdQuery(lab._id);
   const targetUnlocked = typeof isUnlocked === 'boolean' ? isUnlocked : true;
 
-  const docs = await LabStructure.find({ labId: { $in: queryIds } });
-  for (const doc of docs) {
-    doc.isUnlocked = targetUnlocked;
-    doc.unlockedAt = targetUnlocked ? new Date() : null;
-    doc.chemicals = (doc.chemicals || []).map(c => {
-      const obj = typeof c.toObject === 'function' ? c.toObject() : c;
-      return { ...obj, isUnlocked: targetUnlocked };
-    });
-    doc.updatedAt = Date.now();
-    await doc.save();
-  }
+  // Ultra-fast single atomic MongoDB update
+  await LabStructure.updateMany(
+    { labId: { $in: queryIds } },
+    {
+      $set: {
+        isUnlocked: targetUnlocked,
+        unlockedAt: targetUnlocked ? new Date() : null,
+        "chemicals.$[].isUnlocked": targetUnlocked,
+        updatedAt: Date.now()
+      }
+    }
+  );
 
-  const updatedDocs = await LabStructure.find({ labId: { $in: queryIds } }).sort({ subject: 1, experimentNo: 1 });
+  const updatedDocs = await LabStructure.find({ labId: { $in: queryIds } }).lean().sort({ subject: 1, experimentNo: 1 });
 
   res.status(200).json({
     success: true,

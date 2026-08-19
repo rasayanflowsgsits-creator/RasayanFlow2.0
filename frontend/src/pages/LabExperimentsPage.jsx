@@ -20,6 +20,9 @@ export default function LabExperimentsPage() {
     uploadLabStructure,
     fetchInventory,
     createLabStoreRequest,
+    toggleExperimentLockOptimistic,
+    toggleChemicalLockOptimistic,
+    bulkToggleLockOptimistic,
     setToast
   } = useAppStore();
 
@@ -323,31 +326,45 @@ export default function LabExperimentsPage() {
   };
 
   const handleToggleLock = async (expId, currentStatus) => {
+    const targetUnlocked = !currentStatus;
+    // 0ms INSTANT OPTIMISTIC UI UPDATE
+    toggleExperimentLockOptimistic(expId, targetUnlocked);
+    if (setToast) setToast({ type: 'success', message: `Experiment ${targetUnlocked ? 'UNLOCKED 🔓' : 'LOCKED 🔒'}` });
+
     try {
-      await api.put(`/lab/structure/experiment/${expId}/lock`, { isUnlocked: !currentStatus });
-      if (activeLabId) fetchLabStructure(activeLabId);
-      if (setToast) setToast({ type: 'success', message: `Experiment ${!currentStatus ? 'UNLOCKED 🔓' : 'LOCKED 🔒'} successfully` });
+      await api.put(`/lab/structure/experiment/${expId}/lock`, { isUnlocked: targetUnlocked });
     } catch (err) {
+      // Revert if failed
+      toggleExperimentLockOptimistic(expId, currentStatus);
       alert(err?.response?.data?.message || 'Failed to toggle experiment lock');
     }
   };
 
   const handleToggleChemicalLock = async (expId, chemicalName, currentStatus) => {
+    const targetUnlocked = !currentStatus;
+    // 0ms INSTANT OPTIMISTIC UI UPDATE
+    toggleChemicalLockOptimistic(expId, chemicalName, targetUnlocked);
+    if (setToast) setToast({ type: 'success', message: `Chemical "${chemicalName}" ${targetUnlocked ? 'UNLOCKED 🔓' : 'LOCKED 🔒'}` });
+
     try {
-      await api.put(`/lab/structure/experiment/${expId}/chemical-lock`, { chemicalName, isUnlocked: !currentStatus });
-      if (activeLabId) fetchLabStructure(activeLabId);
-      if (setToast) setToast({ type: 'success', message: `Chemical "${chemicalName}" ${!currentStatus ? 'UNLOCKED 🔓' : 'LOCKED 🔒'}` });
+      await api.put(`/lab/structure/experiment/${expId}/chemical-lock`, { chemicalName, isUnlocked: targetUnlocked });
     } catch (err) {
+      // Revert if failed
+      toggleChemicalLockOptimistic(expId, chemicalName, currentStatus);
       alert(err?.response?.data?.message || 'Failed to toggle chemical lock');
     }
   };
 
   const handleBulkToggleLock = async (targetUnlocked) => {
+    // 0ms INSTANT OPTIMISTIC UI UPDATE
+    bulkToggleLockOptimistic(targetUnlocked);
+    if (setToast) setToast({ type: 'success', message: `All experiments ${targetUnlocked ? 'UNLOCKED 🔓' : 'LOCKED 🔒'} for today's session` });
+
     try {
       await api.put('/lab/structure/experiment/lock-all', { labId: activeLabId, isUnlocked: targetUnlocked });
-      if (activeLabId) fetchLabStructure(activeLabId);
-      if (setToast) setToast({ type: 'success', message: `All experiments ${targetUnlocked ? 'UNLOCKED 🔓' : 'LOCKED 🔒'} for today's session` });
     } catch (err) {
+      // Revert if failed
+      bulkToggleLockOptimistic(!targetUnlocked);
       alert(err?.response?.data?.message || 'Failed to bulk toggle experiment locks');
     }
   };

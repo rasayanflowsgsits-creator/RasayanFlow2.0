@@ -123,6 +123,19 @@ export default function StudentLabDetail() {
 
   useEffect(() => {
     fetchLabData();
+
+    // Smooth real-time polling every 4 seconds to sync lock/unlock states automatically
+    const timer = setInterval(() => {
+      fetchLabData();
+    }, 4000);
+
+    const handleFocus = () => fetchLabData();
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [labId]);
 
   // Derived display information for target lab

@@ -441,6 +441,54 @@ const useAppStore = create((set) => ({
       return [];
     }
   },
+  toggleExperimentLockOptimistic: (expId, targetStatus) => {
+    set(state => ({
+      labStructure: (state.labStructure || []).map(exp => {
+        if ((exp._id || exp.id) === expId) {
+          const newStatus = typeof targetStatus === 'boolean' ? targetStatus : !exp.isUnlocked;
+          return {
+            ...exp,
+            isUnlocked: newStatus,
+            chemicals: (exp.chemicals || []).map(c => ({ ...c, isUnlocked: newStatus }))
+          };
+        }
+        return exp;
+      })
+    }));
+  },
+  toggleChemicalLockOptimistic: (expId, chemicalName, targetStatus) => {
+    set(state => ({
+      labStructure: (state.labStructure || []).map(exp => {
+        if ((exp._id || exp.id) === expId) {
+          let anyUnlocked = false;
+          const updatedChems = (exp.chemicals || []).map(c => {
+            if (c.chemicalName?.toLowerCase() === chemicalName?.toLowerCase()) {
+              const newStatus = typeof targetStatus === 'boolean' ? targetStatus : !c.isUnlocked;
+              if (newStatus) anyUnlocked = true;
+              return { ...c, isUnlocked: newStatus };
+            }
+            if (c.isUnlocked) anyUnlocked = true;
+            return c;
+          });
+          return {
+            ...exp,
+            isUnlocked: anyUnlocked,
+            chemicals: updatedChems
+          };
+        }
+        return exp;
+      })
+    }));
+  },
+  bulkToggleLockOptimistic: (targetUnlocked) => {
+    set(state => ({
+      labStructure: (state.labStructure || []).map(exp => ({
+        ...exp,
+        isUnlocked: targetUnlocked,
+        chemicals: (exp.chemicals || []).map(c => ({ ...c, isUnlocked: targetUnlocked }))
+      }))
+    }));
+  },
   uploadLabStructure: async (structures, labId) => {
     set({ loading: true });
     try {
