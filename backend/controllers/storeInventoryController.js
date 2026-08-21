@@ -1,39 +1,65 @@
 const StoreInventory = require('../models/StoreInventory');
 const StoreTracking = require('../models/StoreTracking');
 const asyncHandler = require('express-async-handler');
-
-const { safeRound, totalStock } = require('../utils/storeHelpers');
+const { safeRound, parsePackSize, totalStock } = require('../utils/storeHelpers');
 
 const calculateStatus = (qty, reorderLevel) => {
-  if (qty <= 0) return 'Out of Stock';
-  if (qty <= (reorderLevel || 2)) return 'Low Stock';
+  const q = safeRound(qty);
+  if (q <= 0) return 'Out of Stock';
+  if (q <= (reorderLevel || 2)) return 'Low Stock';
   return 'In Stock';
 };
 
-const createTrackingLog = async (chemical, updateType, previousQty, previousPrice, newQty, newPrice) => {
-  const stockData = totalStock(newQty, chemical.packSize);
-  const totalChemStr = newQty ? `${stockData.total} ${stockData.unit}` : '--';
+const createTrackingLog = async ({
+  chemical,
+  updateType,
+  previousQty = 0,
+  previousPrice = 0,
+  newQty = 0,
+  newPrice = 0,
+  updatedBy = 'Store Manager'
+}) => {
+  const pQty = safeRound(previousQty);
+  const nQty = safeRound(newQty);
+  const pPrice = safeRound(previousPrice || chemical.unitPrice || 0);
+  const nPrice = safeRound(newPrice || chemical.unitPrice || 0);
+  const uPrice = nPrice || pPrice;
 
-  await StoreTracking.create({
-    chemicalId: chemical.chemicalId,
-    chemicalName: chemical.name,
-    casNumber: chemical.cas || '',
-    formula: chemical.formula || '',
+  const packData = parsePackSize(chemical.packSize);
+  const totalVolumeNum = safeRound(nQty * packData.baseValue);
+  const totalVolumeStr = `${totalVolumeNum.toLocaleString('en-IN')} ${packData.baseUnit}`;
+  const totalChemStr = nQty ? `${totalVolumeNum} ${packData.baseUnit}` : '--';
+
+  const totalPriceVal = safeRound(nQty * uPrice);
+  const statusVal = calculateStatus(nQty, chemical.reorderLevel);
+
+  const logData = {
+    timestamp: new Date(),
+    chemicalId: chemical.chemicalId || chemical.itemCode || '',
+    chemicalName: chemical.name || chemical.itemName || 'Unknown Chemical',
+    casNumber: chemical.cas || chemical.casNumber || '',
+    cas: chemical.cas || chemical.casNumber || '',
+    formula: chemical.formula || chemical.molecularFormula || '',
     smiles: chemical.smiles || '',
-    grade: chemical.grade || '',
+    grade: chemical.grade || 'LR',
     packSize: chemical.packSize || '',
-    updateType,
-    previousQty: safeRound(previousQty),
-    newQty: safeRound(newQty),
-    qtyChange: safeRound(newQty - previousQty),
-    previousPrice: safeRound(previousPrice),
-    newPrice: safeRound(newPrice),
+    updateType: updateType || 'Manual Edit',
+    previousQty: pQty,
+    newQty: nQty,
+    qtyChange: safeRound(nQty - pQty),
+    previousPrice: pPrice,
+    newPrice: nPrice,
+    unitPrice: uPrice,
     totalChemical: totalChemStr,
-    totalPrice: safeRound(newQty * newPrice),
-    totalValue: safeRound(newQty * newPrice),
-    status: calculateStatus(newQty, chemical.reorderLevel),
-    snapshot: chemical
-  });
+    totalVolume: totalVolumeStr,
+    totalPrice: totalPriceVal,
+    totalValue: totalPriceVal,
+    status: statusVal,
+    updatedBy: updatedBy || 'Store Manager',
+    snapshot: typeof chemical.toObject === 'function' ? chemical.toObject() : chemical
+  };
+
+  return await StoreTracking.create(logData);
 };
 
 const getAllChemicals = asyncHandler(async (req, res) => {
@@ -42,7 +68,6 @@ const getAllChemicals = asyncHandler(async (req, res) => {
 });
 
 const importChemicals = asyncHandler(async (req, res) => {
-  // Support both direct array (legacy) and object payload
   const isObjectPayload = !Array.isArray(req.body) && req.body.chemicals;
   const chemicals = isObjectPayload ? req.body.chemicals : req.body;
   const importMode = isObjectPayload ? req.body.importMode : 'merge';
@@ -54,6 +79,7 @@ const importChemicals = asyncHandler(async (req, res) => {
 
   let added = 0;
   let updated = 0;
+  const userName = req.user?.name || 'Store Manager';
 
   for (const chem of chemicals) {
     if (!chem.chemicalId && !chem.name) continue;
@@ -73,13 +99,12 @@ const importChemicals = asyncHandler(async (req, res) => {
         const previousPrice = existing.unitPrice || 0;
 
         existing.packSize = chem.packSize || existing.packSize;
-        existing.unitPrice = chem.unitPrice || existing.unitPrice;
-        existing.purchasePrice = chem.purchasePrice || existing.purchasePrice;
-        existing.pricePerUnit = chem.pricePerUnit || existing.pricePerUnit;
+        existing.unitPrice = chem.unitPrice !== undefined ? Number(chem.unitPrice) : existing.unitPrice;
+        existing.purchasePrice = chem.purchasePrice !== undefined ? Number(chem.purchasePrice) : existing.purchasePrice;
+        existing.pricePerUnit = chem.pricePerUnit !== undefined ? Number(chem.pricePerUnit) : existing.pricePerUnit;
         
         const newReceived = Number(chem.receivedQty !== undefined ? chem.receivedQty : chem.availableQty) || 0;
         
-        // Handle Replace vs Merge logic
         if (importMode === 'replace') {
           existing.receivedQty = safeRound(newReceived);
           existing.availableQty = safeRound(newReceived);
@@ -102,26 +127,45 @@ const importChemicals = asyncHandler(async (req, res) => {
         const saved = await existing.save();
         updated++;
 
-        await createTrackingLog(saved, importMode === 'replace' ? 'Import (Replace)' : 'Import (Merge)', previousQty, previousPrice, saved.availableQty, saved.unitPrice);
+        const updateType = importMode === 'replace' ? 'Bulk Import' : 'Stock Replenishment';
+        await createTrackingLog({
+          chemical: saved,
+          updateType,
+          previousQty,
+          previousPrice,
+          newQty: saved.availableQty,
+          newPrice: saved.unitPrice,
+          updatedBy: userName
+        });
       } else {
         const newReceived = Number(chem.receivedQty !== undefined ? chem.receivedQty : chem.availableQty) || 0;
         const availableQty = safeRound(newReceived);
         const reorderLevel = chem.reorderLevel !== undefined ? chem.reorderLevel : 2;
         const status = calculateStatus(availableQty, reorderLevel);
-        const totalValue = safeRound((chem.unitPrice || 0) * availableQty);
+        const uPrice = Number(chem.unitPrice || 0);
+        const totalValue = safeRound(uPrice * availableQty);
 
         const newChem = await StoreInventory.create({
           ...chem,
-          chemicalId: chem.chemicalId || `chem-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          chemicalId: chem.chemicalId || `CHEM-${Date.now().toString().slice(-6)}`,
           receivedQty: availableQty,
           availableQty,
+          unitPrice: uPrice,
           status,
           totalValue,
           reorderLevel
         });
         added++;
 
-        await createTrackingLog(newChem, newReceived ? 'Bulk Upload' : 'Added New', 0, 0, newChem.availableQty, newChem.unitPrice);
+        await createTrackingLog({
+          chemical: newChem,
+          updateType: 'Bulk Import',
+          previousQty: 0,
+          previousPrice: 0,
+          newQty: newChem.availableQty,
+          newPrice: newChem.unitPrice,
+          updatedBy: userName
+        });
       }
     } catch (err) {
       console.error(`Error importing chemical ${chem.name || chem.chemicalId}:`, err);
@@ -130,7 +174,6 @@ const importChemicals = asyncHandler(async (req, res) => {
 
   res.status(200).json({ added, updated });
 });
-
 
 const updateChemical = asyncHandler(async (req, res) => {
   const chemical = await StoreInventory.findById(req.params.id);
@@ -142,11 +185,16 @@ const updateChemical = asyncHandler(async (req, res) => {
 
   const previousQty = chemical.availableQty || 0;
   const previousPrice = chemical.unitPrice || 0;
+  const userName = req.user?.name || 'Store Manager';
 
   const updates = req.body;
   Object.keys(updates).forEach(key => {
     chemical[key] = updates[key];
   });
+
+  if (updates.availableQty !== undefined) {
+    chemical.availableQty = safeRound(updates.availableQty);
+  }
 
   chemical.status = calculateStatus(chemical.availableQty, chemical.reorderLevel);
   chemical.totalValue = safeRound((chemical.unitPrice || 0) * (chemical.availableQty || 0));
@@ -154,7 +202,15 @@ const updateChemical = asyncHandler(async (req, res) => {
 
   const updatedChemical = await chemical.save();
   
-  await createTrackingLog(updatedChemical, 'Manual Edit', previousQty, previousPrice, updatedChemical.availableQty, updatedChemical.unitPrice);
+  await createTrackingLog({
+    chemical: updatedChemical,
+    updateType: 'Manual Edit',
+    previousQty,
+    previousPrice,
+    newQty: updatedChemical.availableQty,
+    newPrice: updatedChemical.unitPrice,
+    updatedBy: userName
+  });
 
   res.status(200).json(updatedChemical);
 });
@@ -167,6 +223,21 @@ const deleteChemical = asyncHandler(async (req, res) => {
     throw new Error('Chemical not found');
   }
 
+  const previousQty = chemical.availableQty || 0;
+  const previousPrice = chemical.unitPrice || 0;
+  const userName = req.user?.name || 'Store Manager';
+
+  // Log final state before deletion
+  await createTrackingLog({
+    chemical,
+    updateType: 'Deleted',
+    previousQty,
+    previousPrice,
+    newQty: 0,
+    newPrice: previousPrice,
+    updatedBy: userName
+  });
+
   await StoreInventory.deleteOne({ _id: chemical._id });
   res.status(200).json({ id: req.params.id });
 });
@@ -176,6 +247,7 @@ const addSingleChemical = asyncHandler(async (req, res) => {
   const cleanName = (name || '').trim();
   const cleanCode = (chemicalId || '').trim();
   const addQty = Number(quantity) || 0;
+  const userName = req.user?.name || 'Store Manager';
 
   const orConditions = [];
   if (cleanCode) orConditions.push({ chemicalId: cleanCode });
@@ -203,7 +275,16 @@ const addSingleChemical = asyncHandler(async (req, res) => {
     existing.updatedAt = Date.now();
 
     const saved = await existing.save();
-    await createTrackingLog(saved, 'Stock Restock (Quantity Added)', previousQty, previousPrice, saved.availableQty, saved.unitPrice);
+    
+    await createTrackingLog({
+      chemical: saved,
+      updateType: 'Stock Replenishment',
+      previousQty,
+      previousPrice,
+      newQty: saved.availableQty,
+      newPrice: saved.unitPrice,
+      updatedBy: userName
+    });
 
     return res.status(200).json({
       success: true,
@@ -235,7 +316,15 @@ const addSingleChemical = asyncHandler(async (req, res) => {
     reorderLevel
   });
 
-  await createTrackingLog(newChem, 'Added New Chemical', 0, 0, newChem.availableQty, newChem.unitPrice);
+  await createTrackingLog({
+    chemical: newChem,
+    updateType: 'Initial Import',
+    previousQty: 0,
+    previousPrice: 0,
+    newQty: newChem.availableQty,
+    newPrice: newChem.unitPrice,
+    updatedBy: userName
+  });
 
   res.status(201).json({
     success: true,
@@ -250,5 +339,6 @@ module.exports = {
   importChemicals,
   addSingleChemical,
   updateChemical,
-  deleteChemical
+  deleteChemical,
+  createTrackingLog
 };
