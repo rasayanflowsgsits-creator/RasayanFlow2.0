@@ -33,6 +33,10 @@ import LabLiveMonitorPage from './pages/LabLiveMonitorPage';
 import LabAnalyticsPage from './pages/LabAnalyticsPage';
 import AboutPage from './pages/AboutPage';
 import NotFound from './pages/NotFound';
+import SubjectManagementPage from './pages/SubjectManagementPage';
+import ExamResultsPage from './pages/ExamResultsPage';
+import PromotionDashboardPage from './pages/PromotionDashboardPage';
+import StudentSemesterStatusPage from './pages/StudentSemesterStatusPage';
 import socket from './services/socket';
 import './index.css';
 
@@ -92,9 +96,9 @@ function App() {
     socket.on('store:new_request', (payload) => {
       // Notify all users and refresh store allotments for store admin
       if (user?.role === 'store-admin' || user?.role === 'store_admin') {
-        setToast({ 
-          type: 'info', 
-          message: `New store request: ${payload.itemName} from ${payload.studentName}` 
+        setToast({
+          type: 'info',
+          message: `New store request: ${payload.itemName} from ${payload.studentName}`
         });
         const appStore = useAppStore.getState();
         appStore.fetchStoreAllotments();
@@ -102,9 +106,9 @@ function App() {
     });
 
     socket.on('store:request_approved', (payload) => {
-      setToast({ 
-        type: 'success', 
-        message: `Store request approved: ${payload.itemName} for ${payload.studentName}` 
+      setToast({
+        type: 'success',
+        message: `Store request approved: ${payload.itemName} for ${payload.studentName}`
       });
       // Refresh store allotments if on store admin dashboard
       if (user?.role === 'store-admin' || user?.role === 'store_admin') {
@@ -114,9 +118,9 @@ function App() {
     });
 
     socket.on('store:request_rejected', (payload) => {
-      setToast({ 
-        type: 'warning', 
-        message: `Store request rejected: ${payload.itemName} for ${payload.studentName}` 
+      setToast({
+        type: 'warning',
+        message: `Store request rejected: ${payload.itemName} for ${payload.studentName}`
       });
       // Refresh store allotments if on store admin dashboard
       if (user?.role === 'store-admin' || user?.role === 'store_admin') {
@@ -255,6 +259,11 @@ function App() {
                     <Route path='student/lab/:id' element={isStudent ? <StudentLabDetail /> : <Navigate to='/' replace />} />
                     <Route path='student/subjects/:id' element={isStudent ? <StudentLabDetail /> : <Navigate to='/' replace />} />
                     <Route path='about' element={<AboutPage />} />
+                    {/* Semester Promotion System Routes */}
+                    <Route path='admin/subjects' element={isSuperAdmin ? <SubjectManagementPage /> : <Navigate to='/' replace />} />
+                    <Route path='admin/exam-results' element={isSuperAdmin ? <ExamResultsPage /> : <Navigate to='/' replace />} />
+                    <Route path='admin/promotions' element={isSuperAdmin ? <PromotionDashboardPage /> : <Navigate to='/' replace />} />
+                    <Route path='student/semester-status' element={isStudent ? <StudentSemesterStatusPage /> : <Navigate to='/' replace />} />
                     <Route path='*' element={<NotFound />} />
                   </Routes>
 

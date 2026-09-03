@@ -42,6 +42,9 @@ const linksMap = {
     { to: "/user-credentials", label: "Credentials Vault", icon: KeyRound },
     { to: "/master-chemicals", label: "Chemical Master", icon: FlaskConical },
     { to: "/curriculum", label: "Curriculum & Practicals", icon: BookOpen },
+    { to: "/admin/subjects", label: "Subjects & Syllabus", icon: BookOpen },
+    { to: "/admin/exam-results", label: "Exam Results Entry", icon: FileSpreadsheet },
+    { to: "/admin/promotions", label: "Promotions Hub", icon: UsersRound },
     { to: "/store-oversight", label: "Store Oversight", icon: Store },
     { to: "/activity", label: "Audit Logs", icon: History },
     { to: "/settings", label: "Security & Settings", icon: KeyRound },
@@ -73,6 +76,7 @@ const linksMap = {
   student: [
     { to: "/", label: "Dashboard", icon: LayoutDashboard },
     { to: "/my-borrowings", label: "My Activity", icon: PackageSearch },
+    { to: "/student/semester-status", label: "My Semester Status", icon: FileSpreadsheet },
     { to: "/about", label: "About Us", icon: Info },
   ],
 };
@@ -84,13 +88,13 @@ export default function Sidebar({ collapsed, isDark, toggleTheme }) {
 
   const role = user?.role || "student";
   const isPhD = user?.course === 'PhD' || user?.isPhD;
-  const navRole = (role === "store-admin" || role === "store_admin" || role === "storeAdmin") 
-    ? "store_admin" 
-    : (role === "lab-admin" || role === "labAdmin" || role === "lab_admin") 
-    ? "lab-admin" 
-    : (role === "super-admin" || role === "superAdmin") 
-    ? "super-admin" 
-    : role;
+  const navRole = (role === "store-admin" || role === "store_admin" || role === "storeAdmin")
+    ? "store_admin"
+    : (role === "lab-admin" || role === "labAdmin" || role === "lab_admin")
+      ? "lab-admin"
+      : (role === "super-admin" || role === "superAdmin")
+        ? "super-admin"
+        : role;
 
   const currentLinks = linksMap[navRole]?.map(item => {
     if (navRole === 'student' && isPhD) {
@@ -99,7 +103,7 @@ export default function Sidebar({ collapsed, isDark, toggleTheme }) {
     }
     return item;
   }) || [];
-  
+
   const [storeInventory, setStoreInventory] = useState([]);
   const alertThreshold = 15;
 
@@ -107,7 +111,7 @@ export default function Sidebar({ collapsed, isDark, toggleTheme }) {
     if (role === 'store-admin' || role === 'store_admin' || role === 'storeAdmin') {
       api.get('/store/inventory')
         .then(res => setStoreInventory((res.data || []).map(toFrontendChemical)))
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [role]);
 
@@ -118,7 +122,7 @@ export default function Sidebar({ collapsed, isDark, toggleTheme }) {
       const availableStock = totalStock(chem['Available Quantity'], chem['Pack Size']);
       const totalBase = receivedStock.total;
       const availableBase = availableStock.total;
-      
+
       if (totalBase > 0) {
         const percentage = safeRound((availableBase / totalBase) * 100);
         if (percentage < alertThreshold) {
@@ -137,9 +141,8 @@ export default function Sidebar({ collapsed, isDark, toggleTheme }) {
   return (
     <>
       <aside
-        className={`fixed inset-y-0 left-0 z-20 flex flex-col justify-between overflow-y-auto border-r border-[#d9e1ca] bg-[#fdfdf7] pt-5 pb-5 transition-all duration-300 dark:border-[#3c452f] dark:bg-[#1c2117] ${
-          collapsed ? "-translate-x-full md:translate-x-0 md:w-20 md:px-2" : "translate-x-0 w-64 px-3"
-        }`}
+        className={`fixed inset-y-0 left-0 z-20 flex flex-col justify-between overflow-y-auto border-r border-[#d9e1ca] bg-[#fdfdf7] pt-5 pb-5 transition-all duration-300 dark:border-[#3c452f] dark:bg-[#1c2117] ${collapsed ? "-translate-x-full md:translate-x-0 md:w-20 md:px-2" : "translate-x-0 w-64 px-3"
+          }`}
       >
         <div>
           {/* BRANDING HEADER */}
@@ -173,12 +176,10 @@ export default function Sidebar({ collapsed, isDark, toggleTheme }) {
                   to={item.to}
                   title={collapsed ? item.label : undefined}
                   className={({ isActive }) =>
-                    `group flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-all duration-200 ${
-                      collapsed ? "md:justify-center md:px-2" : "gap-2.5"
-                    } ${
-                      isActive
-                        ? "bg-[#556b2f] text-white shadow-sm font-bold dark:bg-[#556b2f] dark:text-white"
-                        : "text-[#36461f] font-semibold hover:bg-[#ebf1e1] hover:text-[#18240a] dark:text-[#c5d0b5] dark:hover:bg-[#27311f] dark:hover:text-[#f4f7ee]"
+                    `group flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-all duration-200 ${collapsed ? "md:justify-center md:px-2" : "gap-2.5"
+                    } ${isActive
+                      ? "bg-[#556b2f] text-white shadow-sm font-bold dark:bg-[#556b2f] dark:text-white"
+                      : "text-[#36461f] font-semibold hover:bg-[#ebf1e1] hover:text-[#18240a] dark:text-[#c5d0b5] dark:hover:bg-[#27311f] dark:hover:text-[#f4f7ee]"
                     }`
                   }
                 >
@@ -219,12 +220,10 @@ export default function Sidebar({ collapsed, isDark, toggleTheme }) {
                 </div>
 
                 {/* Animated Pill Switch Slider */}
-                <div className={`relative h-5 w-9 rounded-full p-0.5 transition-colors duration-300 ${
-                  isDark ? 'bg-[#5c6e46]' : 'bg-[#d9e1ca]'
-                }`}>
-                  <div className={`h-4 w-4 rounded-full bg-white shadow-xs transition-transform duration-300 ${
-                    isDark ? 'translate-x-4' : 'translate-x-0'
-                  }`} />
+                <div className={`relative h-5 w-9 rounded-full p-0.5 transition-colors duration-300 ${isDark ? 'bg-[#5c6e46]' : 'bg-[#d9e1ca]'
+                  }`}>
+                  <div className={`h-4 w-4 rounded-full bg-white shadow-xs transition-transform duration-300 ${isDark ? 'translate-x-4' : 'translate-x-0'
+                    }`} />
                 </div>
               </button>
 
