@@ -45,11 +45,11 @@ const getAllowedOrigins = () => {
   const developmentOrigins = isProduction
     ? []
     : [
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-      ];
+      "http://localhost:3000",
+      "http://localhost:5173",
+      "http://127.0.0.1:3000",
+      "http://127.0.0.1:5173",
+    ];
 
   const allOrigins = [
     ...new Set([...productionOrigins, ...developmentOrigins]),
@@ -91,9 +91,9 @@ const corsOptions = {
     try {
       const hostname = new URL(origin).hostname;
       if (
-        hostname.endsWith('.vercel.app') || 
-        hostname.endsWith('.onrender.com') || 
-        hostname === 'localhost' || 
+        hostname.endsWith('.vercel.app') ||
+        hostname.endsWith('.onrender.com') ||
+        hostname === 'localhost' ||
         hostname === '127.0.0.1'
       ) {
         return callback(null, true);
@@ -191,6 +191,9 @@ const routePairs = [
   ["/student/research-requests", require("./routes/researchRequestRoutes")],
   ["/student/profile", require("./routes/studentProfileRoutes")],
   ["/super-admin", require("./routes/superAdminRoutes")],
+  ["/subjects", require("./routes/subjectRoutes")],
+  ["/exam-results", require("./routes/examResultRoutes")],
+  ["/promotions", require("./routes/promotionRoutes")],
 ];
 
 routePairs.forEach(([routePath, router]) => {
