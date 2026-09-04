@@ -1,6 +1,15 @@
 const express = require('express');
 const { body } = require('express-validator');
-const { register, login, me, changePassword, refreshToken, updateStudentOnboarding } = require('../controllers/authController');
+const {
+  register,
+  login,
+  me,
+  changePassword,
+  refreshToken,
+  updateStudentOnboarding,
+  forgotPassword,
+  resetPassword,
+} = require('../controllers/authController');
 const authMiddleware = require('../middleware/authMiddleware');
 const validateRequest = require('../middleware/validateMiddleware');
 const { authLimiter, passwordLimiter } = require('../middleware/rateLimiter');
@@ -43,6 +52,36 @@ router.put(
   ],
   validateRequest,
   changePassword,
+);
+
+// Forgot password
+router.post(
+  '/forgot-password',
+  passwordLimiter,
+  [
+    body('email')
+      .isEmail()
+      .withMessage('Valid email required')
+      .normalizeEmail(),
+  ],
+  validateRequest,
+  forgotPassword,
+);
+// Reset password using reset token
+router.post(
+  '/reset-password',
+  passwordLimiter,
+  [
+    body('token')
+      .notEmpty()
+      .withMessage('Reset token is required'),
+
+    body('newPassword')
+      .isLength({ min: 6 })
+      .withMessage('Password min 6 chars'),
+  ],
+  validateRequest,
+  resetPassword,
 );
 
 // Refresh access token

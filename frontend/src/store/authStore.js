@@ -105,6 +105,46 @@ const useAuthStore = create((set) => ({
       throw new Error(message);
     }
   },
+    forgotPassword: async (email) => {
+    set({ loading: true, error: null });
+
+    try {
+      const resp = await api.post('/auth/forgot-password', { email });
+
+      set({ loading: false, error: null });
+
+      return resp.data;
+    } catch (error) {
+      const message =
+        error?.response?.data?.message || 'Password reset request failed';
+
+      set({ loading: false, error: message });
+
+      throw new Error(message);
+    }
+  },
+
+  resetPassword: async ({ token, newPassword }) => {
+    set({ loading: true, error: null });
+
+    try {
+      const resp = await api.post('/auth/reset-password', {
+        token,
+        newPassword,
+      });
+
+      set({ loading: false, error: null });
+
+      return resp.data;
+    } catch (error) {
+      const message =
+        error?.response?.data?.message || 'Password reset failed';
+
+      set({ loading: false, error: message });
+
+      throw new Error(message);
+    }
+  },
   loginAsPreviewStudent: () => {
     const previewUser = {
       id: 'preview-student-id',

@@ -35,7 +35,8 @@ import AboutPage from './pages/AboutPage';
 import NotFound from './pages/NotFound';
 import socket from './services/socket';
 import './index.css';
-
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 function normalizePathname(pathname) {
   const collapsedPath = pathname.replace(/\/{2,}/g, '/');
 
@@ -92,9 +93,9 @@ function App() {
     socket.on('store:new_request', (payload) => {
       // Notify all users and refresh store allotments for store admin
       if (user?.role === 'store-admin' || user?.role === 'store_admin') {
-        setToast({ 
-          type: 'info', 
-          message: `New store request: ${payload.itemName} from ${payload.studentName}` 
+        setToast({
+          type: 'info',
+          message: `New store request: ${payload.itemName} from ${payload.studentName}`
         });
         const appStore = useAppStore.getState();
         appStore.fetchStoreAllotments();
@@ -102,9 +103,9 @@ function App() {
     });
 
     socket.on('store:request_approved', (payload) => {
-      setToast({ 
-        type: 'success', 
-        message: `Store request approved: ${payload.itemName} for ${payload.studentName}` 
+      setToast({
+        type: 'success',
+        message: `Store request approved: ${payload.itemName} for ${payload.studentName}`
       });
       // Refresh store allotments if on store admin dashboard
       if (user?.role === 'store-admin' || user?.role === 'store_admin') {
@@ -114,9 +115,9 @@ function App() {
     });
 
     socket.on('store:request_rejected', (payload) => {
-      setToast({ 
-        type: 'warning', 
-        message: `Store request rejected: ${payload.itemName} for ${payload.studentName}` 
+      setToast({
+        type: 'warning',
+        message: `Store request rejected: ${payload.itemName} for ${payload.studentName}`
       });
       // Refresh store allotments if on store admin dashboard
       if (user?.role === 'store-admin' || user?.role === 'store_admin') {
@@ -209,6 +210,15 @@ function App() {
       <Routes>
         <Route path='/login' element={user ? <Navigate to='/' replace /> : <LoginPage />} />
         <Route path='/register' element={user ? <Navigate to='/' replace /> : <RegisterPage />} />
+        <Route
+          path='/forgot-password'
+          element={user ? <Navigate to='/' replace /> : <ForgotPasswordPage />}
+        />
+
+        <Route
+          path='/reset-password/:token'
+          element={user ? <Navigate to='/' replace /> : <ResetPasswordPage />}
+        />
         <Route
           path='*'
           element={!user ? (

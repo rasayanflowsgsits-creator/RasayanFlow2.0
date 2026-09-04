@@ -11,7 +11,7 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPreviewSubmitting, setIsPreviewSubmitting] = useState(false);
   const [isPreviewPhDSubmitting, setIsPreviewPhDSubmitting] = useState(false);
-  
+
   const { login, user } = useAuthStore((state) => ({ login: state.login, user: state.user }));
   const navigate = useNavigate();
   const location = useLocation();
@@ -82,22 +82,30 @@ export default function LoginPage() {
         </div>
 
         <form className='space-y-3.5' onSubmit={handleSubmit}>
-          <Input 
-            label='Email' 
-            type='email' 
-            value={form.email} 
-            onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))} 
-            required 
+          <Input
+            label='Email'
+            type='email'
+            value={form.email}
+            onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
+            required
             disabled={isLoading}
           />
-          <Input 
-            label='Password' 
-            type='password' 
-            value={form.password} 
-            onChange={(e) => setForm((s) => ({ ...s, password: e.target.value }))} 
-            required 
+          <Input
+            label='Password'
+            type='password'
+            value={form.password}
+            onChange={(e) => setForm((s) => ({ ...s, password: e.target.value }))}
+            required
             disabled={isLoading}
           />
+          <div className='flex justify-end'>
+            <Link
+              to='/forgot-password'
+              className='text-xs font-extrabold text-[#556b2f] hover:text-[#6f7d45] dark:text-[#b8c99c]'
+            >
+              Forgot password?
+            </Link>
+          </div>
           {message && (
             <div className='rounded-lg bg-emerald-50 p-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'>
               {message}
@@ -124,10 +132,10 @@ export default function LoginPage() {
           <div className="pt-2 border-t border-[#e4eed3] dark:border-[#38432a] space-y-2">
             <div className="text-[11px] font-black text-[#5c6e46] uppercase tracking-wider text-center">Instant Demo Previews</div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <Button 
-                type='button' 
-                variant='outline' 
-                className='w-full flex items-center justify-center gap-1.5 text-xs font-extrabold border-[#cfd8bd] text-[#5c6e46] hover:bg-[#f4f6ee]' 
+              <Button
+                type='button'
+                variant='outline'
+                className='w-full flex items-center justify-center gap-1.5 text-xs font-extrabold border-[#cfd8bd] text-[#5c6e46] hover:bg-[#f4f6ee]'
                 onClick={previewStudentDashboard}
                 disabled={isLoading}
               >
@@ -140,10 +148,10 @@ export default function LoginPage() {
                 )}
               </Button>
 
-              <Button 
-                type='button' 
-                variant='outline' 
-                className='w-full flex items-center justify-center gap-1.5 text-xs font-black bg-purple-50 text-purple-900 border-purple-300 hover:bg-purple-100 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800' 
+              <Button
+                type='button'
+                variant='outline'
+                className='w-full flex items-center justify-center gap-1.5 text-xs font-black bg-purple-50 text-purple-900 border-purple-300 hover:bg-purple-100 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800'
                 onClick={previewPhDStudentDashboard}
                 disabled={isLoading}
               >

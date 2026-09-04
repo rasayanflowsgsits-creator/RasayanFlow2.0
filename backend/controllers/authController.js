@@ -1,17 +1,27 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const asyncHandler = require('express-async-handler');
 const User = require('../models/User');
 const ActivityLog = require('../models/ActivityLog');
-
+const { sendPasswordResetEmail } = require('../utils/emailService');
 const SUPER_ADMIN_EMAIL = (process.env.SUPER_ADMIN_EMAIL || '').toLowerCase();
 
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '15m' });
+const generateToken = (id, tokenVersion = 0) => {
+  return jwt.sign(
+    { id, tokenVersion },
+    process.env.JWT_SECRET,
+    { expiresIn: '15m' }
+  );
 };
 
-const generateRefreshToken = (id) => {
+const generateRefreshToken = (id, tokenVersion = 0) => {
   const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
-  return jwt.sign({ id }, secret, { expiresIn: '7d' });
+
+  return jwt.sign(
+    { id, tokenVersion },
+    secret,
+    { expiresIn: '7d' }
+  );
 };
 
 const serializeUser = (user) => ({
@@ -116,8 +126,8 @@ const register = asyncHandler(async (req, res) => {
     success: true,
     data: {
       ...serializeUser(user),
-      accessToken: generateToken(user._id),
-      refreshToken: generateRefreshToken(user._id),
+      accessToken: generateToken(user._id, user.tokenVersion),
+      refreshToken: generateRefreshToken(user._id, user.tokenVersion),
     },
   });
 });
@@ -221,9 +231,8 @@ const login = asyncHandler(async (req, res) => {
     success: true,
     data: {
       ...serializeUser(user),
-      accessToken: generateToken(user._id),
-      refreshToken: generateRefreshToken(user._id),
-    },
+      accessToken: generateToken(user._id, user.tokenVersion),
+      refreshToken: generateRefreshToken(user._id, user.tokenVersion),    },
   });
 });
 
@@ -244,19 +253,30 @@ const changePassword = asyncHandler(async (req, res) => {
     throw new Error('Current password and new password are required');
   }
 
+  if (newPassword.length < 6) {
+    res.status(400);
+    throw new Error('New password must be at least 6 characters long');
+  }
+
   const user = await User.findById(req.user._id);
+
   if (!user) {
     res.status(404);
     throw new Error('User not found');
   }
 
   const passwordMatches = await user.comparePassword(currentPassword);
+
   if (!passwordMatches) {
     res.status(400);
     throw new Error('Current password is incorrect');
   }
 
   user.password = newPassword;
+
+  // Invalidate all previously issued JWT tokens
+  user.tokenVersion = (user.tokenVersion || 0) + 1;
+
   await user.save();
 
   await ActivityLog.create({
@@ -265,7 +285,132 @@ const changePassword = asyncHandler(async (req, res) => {
     details: `Password changed for ${user.email}`,
   });
 
-  res.json({ success: true, message: 'Password updated successfully' });
+  // Return fresh tokens because old tokens are now invalid
+  const accessToken = generateToken(user._id, user.tokenVersion);
+  const refreshToken = generateRefreshToken(user._id, user.tokenVersion);
+
+  res.json({
+    success: true,
+    message: 'Password updated successfully',
+    data: {
+      accessToken,
+      refreshToken,
+    },
+  });
+});
+
+const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    res.status(400);
+    throw new Error('Email is required');
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const user = await User.findOne({ email: normalizedEmail }).select(
+    '+resetPasswordToken'
+  );
+
+  // Always return the same response so users cannot discover
+  // whether an email exists in the database.
+  const genericResponse = {
+    success: true,
+    message:
+      'If an account with that email exists, a password reset link has been sent.',
+  };
+
+  if (!user) {
+    return res.json(genericResponse);
+  }
+
+  // Generate a secure random token
+  const rawToken = crypto.randomBytes(32).toString('hex');
+
+  // Store only the hashed token in MongoDB
+  const hashedToken = crypto
+    .createHash('sha256')
+    .update(rawToken)
+    .digest('hex');
+
+  const expiryMinutes =
+    Number(process.env.RESET_PASSWORD_TOKEN_EXPIRY_MINUTES) || 30;
+
+  user.resetPasswordToken = hashedToken;
+  user.resetPasswordExpires = new Date(
+    Date.now() + expiryMinutes * 60 * 1000
+  );
+
+  await user.save();
+
+   const frontendUrl = (
+    process.env.FRONTEND_URL || 'http://localhost:5173'
+  ).replace(/\/$/, '');
+
+  const resetUrl = `${frontendUrl}/reset-password/${rawToken}`;
+
+  await sendPasswordResetEmail({
+    to: user.email,
+    resetUrl,
+    expiryMinutes,
+  });
+
+  return res.json(genericResponse);
+});
+  
+const resetPassword = asyncHandler(async (req, res) => {
+  const { token, newPassword } = req.body;
+
+  if (!token || !newPassword) {
+    res.status(400);
+    throw new Error('Token and new password are required');
+  }
+
+  if (newPassword.length < 6) {
+    res.status(400);
+    throw new Error('New password must be at least 6 characters long');
+  }
+
+  // Hash the token received from the frontend
+  const hashedToken = crypto
+    .createHash('sha256')
+    .update(token)
+    .digest('hex');
+
+  const user = await User.findOne({
+    resetPasswordToken: hashedToken,
+    resetPasswordExpires: { $gt: new Date() },
+  }).select('+resetPasswordToken');
+
+  if (!user) {
+    res.status(400);
+    throw new Error('Invalid or expired password reset token');
+  }
+
+  // Set new password.
+  // User schema pre-save hook will hash it automatically.
+  user.password = newPassword;
+
+  // Clear reset token so it cannot be reused
+  user.resetPasswordToken = null;
+  user.resetPasswordExpires = null;
+
+  // Invalidate all existing sessions/tokens
+  user.tokenVersion = (user.tokenVersion || 0) + 1;
+
+  await user.save();
+
+  await ActivityLog.create({
+    userId: user._id,
+    action: 'reset_password',
+    details: `Password reset successfully for ${user.email}`,
+  });
+
+  res.json({
+    success: true,
+    message: 'Password reset successfully. Please log in with your new password.',
+  });
 });
 
 const refreshToken = asyncHandler(async (req, res) => {
@@ -304,8 +449,11 @@ const refreshToken = asyncHandler(async (req, res) => {
   }
 
   // rotate tokens
-  const accessToken = generateToken(user._id);
-  const newRefreshToken = generateRefreshToken(user._id);
+const accessToken = generateToken(user._id, user.tokenVersion);
+const newRefreshToken = generateRefreshToken(
+  user._id,
+  user.tokenVersion
+);
 
   res.json({ success: true, data: { accessToken, refreshToken: newRefreshToken } });
 });
@@ -335,4 +483,4 @@ const updateStudentOnboarding = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { register, login, me, changePassword, refreshToken, updateStudentOnboarding };
+module.exports = { register, login, me, changePassword, refreshToken, updateStudentOnboarding, forgotPassword, resetPassword };
