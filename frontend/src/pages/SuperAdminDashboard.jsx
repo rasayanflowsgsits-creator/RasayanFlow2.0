@@ -1449,14 +1449,25 @@ export default function SuperAdminDashboard() {
   // Credentials Vault User Filtering & Actions
   const filteredCredUsers = useMemo(() => {
     return users.filter((u) => {
-      // Role filter
-      if (credRoleFilter === 'lab-admin' && u.role !== 'lab-admin' && u.role !== 'labAdmin') return false;
-      if (credRoleFilter === 'student' && u.role !== 'student') return false;
-      if (credRoleFilter === 'store-admin' && u.role !== 'store-admin' && u.role !== 'storeAdmin' && u.role !== 'store_admin') return false;
+      const isLabAdmin = u.role === 'lab-admin' || u.role === 'labAdmin' || u.role === 'lab_admin';
+      const isStoreAdmin = u.role === 'store-admin' || u.role === 'storeAdmin' || u.role === 'store_admin';
+      const isSuperAdmin = u.role === 'super-admin' || u.role === 'superAdmin' || u.role === 'super_admin';
+      const isPhD = u.course === 'PhD' || u.course === 'Ph.D.' || u.courseType === 'PhD' || u.courseType === 'Ph.D.' || u.isPhD || Boolean(u.isPhDRequest);
+
+      // ONLY allow Lab Admins, Store Managers, Super Admins, and PhD Scholars in the Credentials Vault.
+      // Exclude all general undergraduate/master's student accounts (B.Pharm/M.Pharm).
+      const isAllowedAccount = isLabAdmin || isStoreAdmin || isSuperAdmin || isPhD;
+      if (!isAllowedAccount) return false;
+
+      // Role category pill filter
+      if (credRoleFilter === 'lab-admin' && !isLabAdmin) return false;
+      if (credRoleFilter === 'store-admin' && !isStoreAdmin) return false;
+      if (credRoleFilter === 'phd' && !isPhD) return false;
+      if (credRoleFilter === 'super-admin' && !isSuperAdmin) return false;
 
       // Course filter
       if (credCourseFilter !== 'all') {
-        const uCourse = u.course || u.courseType || 'B.Pharm';
+        const uCourse = u.course || u.courseType || (isPhD ? 'Ph.D.' : 'B.Pharm');
         if (uCourse !== credCourseFilter) return false;
       }
 
@@ -1482,12 +1493,14 @@ export default function SuperAdminDashboard() {
   const exportCredentialsCSV = () => {
     const csvHeader = "Account Name,Role,Email / Username,Roll Number / Lab Code,Course,Year,Semester,Assigned Lab,Account Status,Password / Default Credential\n";
     const csvRows = filteredCredUsers.map(u => {
-      const isLabAdmin = u.role === 'lab-admin' || u.role === 'labAdmin';
-      const isStudent = u.role === 'student';
+      const isLabAdmin = u.role === 'lab-admin' || u.role === 'labAdmin' || u.role === 'lab_admin';
+      const isStoreAdmin = u.role === 'store-admin' || u.role === 'storeAdmin' || u.role === 'store_admin';
+      const isPhD = u.course === 'PhD' || u.course === 'Ph.D.' || u.courseType === 'PhD' || u.courseType === 'Ph.D.' || u.isPhD;
+      const isStudent = u.role === 'student' && !isPhD;
       const codeOrRoll = u.rollNumber || u.labCode || (isLabAdmin ? u.assignedLabCode : '') || 'N/A';
-      const courseStr = isStudent ? (u.course || u.courseType || 'B.Pharm') : (u.academicLabel || 'All Courses');
+      const courseStr = isPhD ? 'Ph.D.' : isLabAdmin ? 'Lab Admin' : isStoreAdmin ? 'Central Store' : (u.course || u.courseType || 'B.Pharm');
       const semStr = u.semester ? `Sem ${u.semester}` : (u.year ? `Year ${u.year}` : 'N/A');
-      const pass = u.displayPassword || u.initialPassword || u.plainPassword || (typeof showPasswordMap[u.id] === 'string' ? showPasswordMap[u.id] : '') || (isLabAdmin ? 'labadmin@123' : isStudent ? 'student123' : 'admin123');
+      const pass = u.displayPassword || u.initialPassword || u.plainPassword || (typeof showPasswordMap[u.id] === 'string' ? showPasswordMap[u.id] : '') || (isLabAdmin ? 'labadmin@123' : isStoreAdmin ? 'store123' : isPhD ? 'phd123' : 'admin123');
       return `"${u.name}","${u.roleDisplay}","${u.email}","${codeOrRoll}","${courseStr}","${u.year || '1'}","${semStr}","${u.assignedLabName || 'Unassigned'}","${u.isApproved ? 'Approved' : 'Pending'}","${pass}"`;
     }).join("\n");
 
@@ -2783,7 +2796,7 @@ export default function SuperAdminDashboard() {
                 System Account Credentials & Login Directory
               </h2>
               <p className='text-xs font-medium text-[#71805a] dark:text-[#a5b48b] mt-0.5'>
-                Super Admin central directory for user IDs, student roll numbers, lab admin logins, and passwords course & semester-wise.
+                Super Admin central directory for Lab Admin, Store Manager, and PhD Scholar credentials & passwords.
               </p>
             </div>
 
@@ -2809,10 +2822,10 @@ export default function SuperAdminDashboard() {
                   <Users size={14} /> Role Category:
                 </span>
                 {[
-                  { id: 'all', label: 'All Accounts' },
+                  { id: 'all', label: 'All Authorized Credentials' },
                   { id: 'lab-admin', label: 'Lab Admins' },
-                  { id: 'student', label: 'Students' },
                   { id: 'store-admin', label: 'Store Managers' },
+                  { id: 'phd', label: 'PhD Scholars' },
                 ].map((roleItem) => {
                   const isActive = credRoleFilter === roleItem.id;
                   return (
