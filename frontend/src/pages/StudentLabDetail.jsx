@@ -49,87 +49,100 @@ export default function StudentLabDetail() {
 
   const labId = routeLabId || stateLab?._id || stateLab?.id;
 
-  // Fetch Lab Details, Real Lab Chemical Inventory, Experiments, and Student Requests
-  const fetchLabData = async () => {
+  // Track whether initial load has already completed
+  const isFirstLoad = React.useRef(true);
+
+  // Full data load — shows spinner only on first load
+  const fetchLabData = async (silent = false) => {
     if (!labId) {
       setLoading(false);
       return;
     }
-    setLoading(true);
+    if (!silent) setLoading(true);
 
     try {
-      // 1. Fetch Lab Metadata
-      try {
-        const labRes = await api.get(`/labs/${labId}`);
-        if (labRes.data?.data || labRes.data?.lab) {
-          setLabInfo(labRes.data.data || labRes.data.lab);
-        }
-      } catch (e) {
-        console.warn('[StudentLabDetail] Metadata fetch fallback via stateLab');
+      // Run all 4 fetches in PARALLEL for fast initial load (~1-2s instead of 5-8s)
+      const [labRes, invRes, expRes, reqRes] = await Promise.allSettled([
+        api.get(`/labs/${labId}`),                               // 1. Lab metadata
+        api.get(`/inventory?labId=${labId}&limit=500`),          // 2. Lab inventory
+        api.get(`/lab/structure/student/${labId}`),              // 3. Experiments + lock status
+        api.get(`/student/requests/lab/${labId}`)                // 4. Student requests
+      ]);
+
+      // 1. Lab metadata
+      if (labRes.status === 'fulfilled') {
+        const d = labRes.value.data;
+        if (d?.data || d?.lab) setLabInfo(d.data || d.lab);
       }
 
-      // 2. Fetch REAL Lab Chemical Inventory (Added by Lab Admin for this lab)
-      try {
-        const invRes = await api.get(`/inventory?labId=${labId}&limit=500`);
-        if (invRes.data?.data) {
-          setLabInventory(invRes.data.data);
-        } else if (Array.isArray(invRes.data)) {
-          setLabInventory(invRes.data);
-        }
-      } catch (e) {
-        console.error('[StudentLabDetail] Error fetching lab inventory:', e);
+      // 2. Lab inventory
+      if (invRes.status === 'fulfilled') {
+        const d = invRes.value.data;
+        if (d?.data) setLabInventory(d.data);
+        else if (Array.isArray(d)) setLabInventory(d);
       }
 
-      // 3. Fetch Custom Lab Experiments & Real-time Lock Status (configured by Lab Admin)
-      try {
-        const expRes = await api.get(`/lab/structure/student/${labId}`);
-        if (expRes.data?.experiments && Array.isArray(expRes.data.experiments)) {
-          setExperiments(expRes.data.experiments);
-        } else if (expRes.data?.data && Array.isArray(expRes.data.data)) {
-          setExperiments(expRes.data.data);
+      // 3. Experiments + lock status (with fallback)
+      if (expRes.status === 'fulfilled') {
+        const d = expRes.value.data;
+        if (d?.experiments && Array.isArray(d.experiments)) {
+          setExperiments(d.experiments);
+        } else if (d?.data && Array.isArray(d.data)) {
+          setExperiments(d.data);
         } else {
-          // Fallback to /experiments/lab/${labId}
-          const fallbackRes = await api.get(`/experiments/lab/${labId}`);
-          if (fallbackRes.data?.experiments) {
-            setExperiments(fallbackRes.data.experiments);
-          }
+          // Fallback endpoint
+          try {
+            const fallbackRes = await api.get(`/experiments/lab/${labId}`);
+            if (fallbackRes.data?.experiments) setExperiments(fallbackRes.data.experiments);
+          } catch { /* non-fatal */ }
         }
-      } catch (e) {
-        console.warn('[StudentLabDetail] Error fetching lab structure, using fallback');
+      } else {
+        // Primary endpoint failed — try fallback
         try {
           const fallbackRes = await api.get(`/experiments/lab/${labId}`);
-          if (fallbackRes.data?.experiments) {
-            setExperiments(fallbackRes.data.experiments);
-          }
-        } catch (err2) { /* non-fatal */ }
+          if (fallbackRes.data?.experiments) setExperiments(fallbackRes.data.experiments);
+        } catch { /* non-fatal */ }
       }
 
-      // 4. Fetch Student's Requests for this Lab
-      try {
-        const reqRes = await api.get(`/student/requests/lab/${labId}`);
-        if (reqRes.data?.data && Array.isArray(reqRes.data.data)) {
-          setRequests(reqRes.data.data);
-        }
-      } catch (e) {
-        console.warn('[StudentLabDetail] Error fetching student requests');
+      // 4. Student requests
+      if (reqRes.status === 'fulfilled') {
+        const d = reqRes.value.data;
+        if (d?.data && Array.isArray(d.data)) setRequests(d.data);
       }
 
     } catch (err) {
       console.error('[StudentLabDetail] Error loading lab details:', err);
     } finally {
       setLoading(false);
+      isFirstLoad.current = false;
     }
   };
 
+  // Lightweight silent refresh — only re-fetches experiment lock status (not full page reload)
+  const fetchExperimentStatus = async () => {
+    if (!labId) return;
+    try {
+      const expRes = await api.get(`/lab/structure/student/${labId}`);
+      const d = expRes.data;
+      if (d?.experiments && Array.isArray(d.experiments)) {
+        setExperiments(d.experiments);
+      } else if (d?.data && Array.isArray(d.data)) {
+        setExperiments(d.data);
+      }
+    } catch { /* non-fatal silent */ }
+  };
+
   useEffect(() => {
-    fetchLabData();
+    // Initial full load (shows spinner once)
+    fetchLabData(false);
 
-    // Smooth real-time polling every 4 seconds to sync lock/unlock states automatically
+    // Poll ONLY experiment lock status every 45 seconds (not all 4 APIs every 4 seconds)
     const timer = setInterval(() => {
-      fetchLabData();
-    }, 4000);
+      fetchExperimentStatus();
+    }, 45000);
 
-    const handleFocus = () => fetchLabData();
+    // Re-fetch on window focus (silent — no spinner)
+    const handleFocus = () => fetchLabData(true);
     window.addEventListener('focus', handleFocus);
 
     return () => {
@@ -137,6 +150,8 @@ export default function StudentLabDetail() {
       window.removeEventListener('focus', handleFocus);
     };
   }, [labId]);
+
+
 
   // Derived display information for target lab
   const currentLab = useMemo(() => {
