@@ -21,8 +21,6 @@ import {
   Megaphone,
   UsersRound,
   Radio,
-  Moon,
-  Sun,
   LogOut
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -81,7 +79,7 @@ const linksMap = {
   ],
 };
 
-export default function Sidebar({ collapsed, isDark, toggleTheme }) {
+export default function Sidebar({ collapsed }) {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
@@ -199,8 +197,8 @@ export default function Sidebar({ collapsed, isDark, toggleTheme }) {
           </nav>
         </div>
 
-        {/* BOTTOM SIDEBAR FOOTER: DARK MODE SWITCH & LOGOUT */}
-        <div className="mt-6 pt-3 border-t border-[#e8efd9] dark:border-[#2e3d19] space-y-2">
+        {/* BOTTOM SIDEBAR FOOTER: LOGOUT */}
+        <div className="mt-6 pt-3 border-t border-[#e8efd9] dark:border-[#2e3d19]">
           {!collapsed ? (
             /* EXPANDED SIDEBAR FOOTER CARD */
             <div className="rounded-2xl border border-[#d9e1ca] bg-[#f8faee] p-2.5 shadow-2xs dark:border-[#3c452f] dark:bg-[#20251a] space-y-2">
@@ -239,16 +237,7 @@ export default function Sidebar({ collapsed, isDark, toggleTheme }) {
             </div>
           ) : (
             /* COLLAPSED SIDEBAR ICON BUTTONS */
-            <div className="flex flex-col items-center gap-2">
-              <button
-                type="button"
-                onClick={toggleTheme}
-                title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white dark:bg-[#20251a] text-[#5c6e46] dark:text-[#a8be8a] border border-[#d9e1ca] dark:border-[#414a33] hover:bg-[#edf1e4] dark:hover:bg-[#2a3121] transition-all shadow-2xs"
-              >
-                {isDark ? <Sun size={17} className="text-amber-400" /> : <Moon size={17} />}
-              </button>
-
+            <div className="flex flex-col items-center">
               <button
                 type="button"
                 onClick={() => setConfirmLogoutOpen(true)}

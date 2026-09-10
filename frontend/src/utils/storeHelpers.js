@@ -1,34 +1,35 @@
 // Round to 2 decimal places always
 export function safeRound(num) {
-  if (isNaN(num) || num === null || num === undefined) return 0;
-  return Math.round((Number(num) + Number.EPSILON) * 100) / 100;
+  if (num === null || num === undefined || isNaN(num)) return 0;
+  const val = Number(num);
+  return Math.round((val + Number.EPSILON) * 100) / 100;
 }
 
-// Parse pack size to base unit value and unit
+// Parse pack size string to base unit value and unit
 export function parsePackSize(packStr) {
   if (!packStr) return { baseValue: 1, baseUnit: 'UNT', value: 1, unit: 'UNT' };
-  
-  const s = packStr.toString().trim().toLowerCase();
+
+  const s = packStr.toString().trim();
   const match = s.match(/^([\d.]+)\s*(.*)$/);
   if (!match) {
     return { baseValue: 1, baseUnit: 'UNT', value: 1, unit: 'UNT' };
   }
-  
+
   const num = parseFloat(match[1]) || 1;
-  const unitRaw = match[2].trim().replace(/\s+/g, '');
-  
+  const unitRaw = match[2].trim().toLowerCase().replace(/\s+/g, '');
+
   let baseValue = num;
   let baseUnit = 'UNT';
 
   if (/^(kg|kgs|kilogram|kilograms)$/i.test(unitRaw)) {
     baseValue = safeRound(num * 1000);
     baseUnit = 'g';
+  } else if (/^(gm|gms|gm\.|g|gram|grams)$/i.test(unitRaw)) {
+    baseValue = num;
+    baseUnit = 'g';
   } else if (/^(mg|mgs|milligram|milligrams)$/i.test(unitRaw)) {
     baseValue = num;
     baseUnit = 'mg';
-  } else if (/^(gm|gms|g|gram|grams)$/i.test(unitRaw)) {
-    baseValue = num;
-    baseUnit = 'g';
   } else if (/^(ml|mls|milliliter|milliliters|millilitre|millilitres)$/i.test(unitRaw)) {
     baseValue = num;
     baseUnit = 'ml';
@@ -45,11 +46,10 @@ export function parsePackSize(packStr) {
 
 // Calculate total stock in base unit
 export function totalStock(availableQty, packSize) {
-  const { value, unit } = parsePackSize(packSize);
+  const { baseValue, baseUnit } = parsePackSize(packSize);
   const qty = parseFloat(availableQty) || 0;
   return {
-    total: safeRound(qty * value),
-    unit: unit
+    total: safeRound(qty * baseValue),
+    unit: baseUnit
   };
 }
-

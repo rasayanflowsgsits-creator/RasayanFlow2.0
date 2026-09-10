@@ -126,7 +126,7 @@ export default function LabStudentRequestsPage() {
       const inv = inventory.find(
         (i) => (i.chemicalName || i.itemName || '').toLowerCase() === chemName.toLowerCase()
       );
-      const avail = inv ? Number(inv.quantity || 0) : 0;
+      const avail = inv ? Number(inv.quantityAvailable ?? inv.quantity ?? 0) : 0;
       return { ...c, available: avail, ok: avail >= (c.totalQuantity || c.quantityRequested) };
     });
   };
@@ -166,7 +166,7 @@ export default function LabStudentRequestsPage() {
       const invItem = (inventory || []).find(i =>
         (i.chemicalName || i.itemName || '').trim().toLowerCase() === item.chemicalName.toLowerCase()
       );
-      const avail = invItem ? Number(invItem.quantity || 0) : 0;
+      const avail = invItem ? Number(invItem.quantityAvailable ?? invItem.quantity ?? 0) : 0;
       const deficit = Math.max(0, item.totalRequested - avail);
       return {
         ...item,
@@ -212,7 +212,8 @@ export default function LabStudentRequestsPage() {
           quantityRequested: storeModalData.quantityRequested,
           unit: storeModalData.unit,
           reason: storeModalData.reason,
-          labId: activeLabId
+          labId: activeLabId,
+          labName: currentLab?.labName || currentLab?.name || ''
         });
       }
       setStoreModalOpen(false);

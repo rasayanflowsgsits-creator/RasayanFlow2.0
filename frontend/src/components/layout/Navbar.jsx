@@ -1,12 +1,12 @@
 import { useMemo, useState, useEffect } from 'react';
-import { Moon, Sun, LogOut, Bell } from 'lucide-react';
+import { LogOut, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
 import useAppStore from '../../store/appStore';
 import useStoreManagerMock, { parsePackSize } from '../../store/storeManagerMock';
 import { getUserAvatarUrl } from '../../utils/avatar';
 
-export default function Navbar({ onToggleSidebar, isDark, toggleTheme }) {
+export default function Navbar({ onToggleSidebar }) {
   const logout = useAuthStore((state) => state.logout);
   const user = useAuthStore((state) => state.user);
   const inventory = useAppStore((state) => state.inventory);

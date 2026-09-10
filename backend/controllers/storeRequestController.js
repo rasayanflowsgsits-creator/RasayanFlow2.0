@@ -17,27 +17,40 @@ const calculateStatus = (qty, reorderLevel) => {
   return 'In Stock';
 };
 
-const buildTrackingLog = (chemical, updateType, previousQty, previousPrice, newQty, newPrice) => {
-  const stockData = totalStock(newQty, chemical.packSize);
-  const totalChemStr = newQty ? `${stockData.total} ${stockData.unit}` : '--';
+const buildTrackingLog = (chemical, updateType, previousQty, previousPrice, newQty, newPrice, updatedBy = 'Store Manager') => {
+  const pQty = safeRound(previousQty);
+  const nQty = safeRound(newQty);
+  const uPrice = safeRound(newPrice || chemical.unitPrice || 0);
+
+  const packData = parsePackSize(chemical.packSize);
+  const totalVolumeNum = safeRound(nQty * packData.baseValue);
+  const totalVolumeStr = `${totalVolumeNum.toLocaleString('en-IN')} ${packData.baseUnit}`;
+  const totalChemStr = nQty ? `${totalVolumeNum} ${packData.baseUnit}` : '--';
+  const totalPriceVal = safeRound(nQty * uPrice);
+
   return {
-    chemicalId: chemical.chemicalId,
-    chemicalName: chemical.name,
+    timestamp: new Date(),
+    chemicalId: chemical.chemicalId || '',
+    chemicalName: chemical.name || 'Unknown Chemical',
     casNumber: chemical.cas || '',
+    cas: chemical.cas || '',
     formula: chemical.formula || '',
     smiles: chemical.smiles || '',
-    grade: chemical.grade || '',
+    grade: chemical.grade || 'LR',
     packSize: chemical.packSize || '',
-    updateType,
-    previousQty: safeRound(previousQty),
-    newQty: safeRound(newQty),
-    qtyChange: safeRound(newQty - previousQty),
+    updateType: updateType || 'Lab Transfer',
+    previousQty: pQty,
+    newQty: nQty,
+    qtyChange: safeRound(nQty - pQty),
     previousPrice: safeRound(previousPrice),
-    newPrice: safeRound(newPrice),
+    newPrice: uPrice,
+    unitPrice: uPrice,
     totalChemical: totalChemStr,
-    totalPrice: safeRound(newQty * newPrice),
-    totalValue: safeRound(newQty * newPrice),
-    status: calculateStatus(newQty, chemical.reorderLevel),
+    totalVolume: totalVolumeStr,
+    totalPrice: totalPriceVal,
+    totalValue: totalPriceVal,
+    status: calculateStatus(nQty, chemical.reorderLevel),
+    updatedBy: updatedBy || 'Store Manager',
     snapshot: typeof chemical.toObject === 'function' ? chemical.toObject() : chemical,
   };
 };

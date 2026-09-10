@@ -52,7 +52,6 @@ function normalizePathname(pathname) {
 
 function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 768 : false));
-  const [darkMode, setDarkMode] = useState(localStorage.getItem('pharmlab-dark') === 'true');
 
   const user = useAuthStore((state) => state.user);
   const initialized = useAuthStore((state) => state.initialized);
@@ -66,12 +65,9 @@ function App() {
 
   useEffect(() => {
     ensureAuth();
+    document.documentElement.classList.remove('dark');
+    localStorage.removeItem('pharmlab-dark');
   }, [ensureAuth]);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', darkMode);
-    localStorage.setItem('pharmlab-dark', darkMode ? 'true' : 'false');
-  }, [darkMode]);
 
   useEffect(() => {
     if (user && !socket.connected) {
@@ -218,11 +214,11 @@ function App() {
           element={!user ? (
             <Navigate to='/login' replace />
           ) : (
-            <div className='min-h-screen bg-[#fdfdf7] text-[#3c4e23] dark:bg-[#1a1d16] dark:text-[#eef4e8]'>
-              <Sidebar collapsed={sidebarCollapsed} isDark={darkMode} toggleTheme={() => setDarkMode((value) => !value)} />
+            <div className='min-h-screen bg-[#fdfdf7] text-[#3c4e23]'>
+              <Sidebar collapsed={sidebarCollapsed} />
               {!sidebarCollapsed ? <div className='fixed inset-0 z-10 bg-[#23281d]/20 md:hidden' onClick={() => setSidebarCollapsed(true)} /> : null}
               <div className={sidebarCollapsed ? 'ml-0 md:ml-20' : 'ml-0 md:ml-64'}>
-                <Navbar onToggleSidebar={() => setSidebarCollapsed((value) => !value)} isDark={darkMode} toggleTheme={() => setDarkMode((value) => !value)} />
+                <Navbar onToggleSidebar={() => setSidebarCollapsed((value) => !value)} />
                 <main className='mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8'>
                   <Routes>
                     <Route index element={isSuperAdmin ? <SuperAdminDashboard /> : isLabAdmin ? <LabAdminDashboard /> : isStoreAdmin ? <StoreManagerDashboard /> : <StudentDashboard />} />

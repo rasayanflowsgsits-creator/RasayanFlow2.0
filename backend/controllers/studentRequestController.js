@@ -187,8 +187,14 @@ const approveBulk = asyncHandler(async (req, res) => {
         }).session(session);
 
         if (invItem) {
-          const qtyToDeduct = Math.min(invItem.quantity || 0, chem.quantityRequested || 0);
-          invItem.quantity = Math.max(0, (invItem.quantity || 0) - (chem.quantityRequested || 0));
+          const availQty = invItem.quantityAvailable !== undefined ? invItem.quantityAvailable : (invItem.quantity || 0);
+          const qtyToDeduct = chem.quantityRequested || 0;
+          const newAvail = Math.max(0, availQty - qtyToDeduct);
+          invItem.quantityAvailable = newAvail;
+          invItem.quantity = newAvail; // keep legacy field in sync
+          if (invItem.totalValue !== undefined && invItem.costPerBase) {
+            invItem.totalValue = newAvail * invItem.costPerBase;
+          }
           await invItem.save({ session });
 
           chemicalsUsed.push({
@@ -289,7 +295,15 @@ const approveRequest = asyncHandler(async (req, res) => {
       }).session(session);
 
       if (invItem) {
-        invItem.quantity = Math.max(0, (invItem.quantity || 0) - (chemReq.quantityRequested || 0));
+        const availQty = invItem.quantityAvailable !== undefined ? invItem.quantityAvailable : (invItem.quantity || 0);
+        const qtyToDeduct = chemReq.quantityRequested || 0;
+        const newAvail = Math.max(0, availQty - qtyToDeduct);
+        invItem.quantityAvailable = newAvail;
+        invItem.quantity = newAvail; // keep legacy field in sync
+        if (invItem.totalValue !== undefined && invItem.costPerBase) {
+          invItem.totalValue = newAvail * invItem.costPerBase;
+        }
+        invItem.lastUpdated = Date.now();
         await invItem.save({ session });
         
         chemicalsUsed.push({

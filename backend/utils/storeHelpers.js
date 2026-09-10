@@ -1,7 +1,8 @@
-// Round to 2 decimal places always
+// Round to 2 decimal places always using EPSILON safety
 function safeRound(num) {
-  if (isNaN(num) || num === null || num === undefined) return 0;
-  return Math.round((Number(num) + Number.EPSILON) * 100) / 100;
+  if (num === null || num === undefined || isNaN(num)) return 0;
+  const val = Number(num);
+  return Math.round((val + Number.EPSILON) * 100) / 100;
 }
 
 // Parse pack size string to base value and unit
@@ -28,7 +29,7 @@ function parsePackSize(packStr) {
   if (/^(kg|kgs|kilogram|kilograms)$/i.test(unitRaw)) {
     baseValue = safeRound(num * 1000);
     baseUnit = 'g';
-  } else if (/^(gm|gms|gm.|g|gram|grams)$/i.test(unitRaw)) {
+  } else if (/^(gm|gms|gm\.|g|gram|grams)$/i.test(unitRaw)) {
     baseValue = num;
     baseUnit = 'g';
   } else if (/^(mg|mgs|milligram|milligrams)$/i.test(unitRaw)) {
@@ -63,5 +64,3 @@ module.exports = {
   safeRound,
   totalStock
 };
-
-
