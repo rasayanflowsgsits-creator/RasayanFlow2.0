@@ -98,6 +98,9 @@ export default function StudentSemesterStatusPage() {
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="font-semibold text-gray-800 text-sm">{r.subjectId.name}</div>
                                                     <div className="text-xs font-mono text-gray-500">{r.subjectId.code}</div>
+                                                    {r.isLab && r.semester < Number(selectedSemester) && (
+                                                        <div className="text-xs font-semibold text-orange-600 mt-1">Lab backlog from Sem {r.semester}</div>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-gray-900">
                                                     {r.marks}
@@ -109,6 +112,9 @@ export default function StudentSemesterStatusPage() {
                                                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${getStatusColor(r.status)}`}>
                                                         {r.status.toUpperCase()}
                                                     </span>
+                                                    {r.isLab && r.status === 'fail' && (
+                                                        <div className="text-[11px] font-semibold text-red-600 mt-1">Complete lab backlog</div>
+                                                    )}
                                                 </td>
                                             </tr>
                                         ))}

@@ -37,6 +37,29 @@ const createLab = asyncHandler(async (req, res) => {
     admins: [],
   });
 
+  // Auto-create a corresponding Subject entry for this lab so it appears in Exam Results
+  try {
+    const Subject = require('../models/Subject');
+    const subjCode = lab.labCode || (`LAB-${String(lab._id).slice(-6)}`).toUpperCase();
+    const existingSubj = await Subject.findOne({ code: subjCode, course: lab.courseType });
+    if (!existingSubj) {
+      await Subject.create({
+        name: `${lab.labName} (Lab)`,
+        code: subjCode,
+        semester: lab.semester ? Number(lab.semester) : 1,
+        course: lab.courseType || 'B.Pharm',
+        year: lab.year ? Number(lab.year) : 1,
+        maxMarks: 100,
+        passingMarks: 40,
+        type: 'lab',
+        experiments: [],
+        createdBy: req.user._id,
+      });
+    }
+  } catch (e) {
+    console.error('Failed to auto-create subject for lab:', e.message || e);
+  }
+
   // — Atomic admin provisioning —
   let provisionedAdmin = null;
 
@@ -465,6 +488,23 @@ const updateLab = asyncHandler(async (req, res) => {
     action: 'update_lab',
     details: `Updated lab details: ${lab.labName} (${lab.labCode}) — ${lab.courseType} Yr ${lab.year} Sem ${lab.semester}`
   });
+
+  // Sync subject record (if exists) for this lab: update subject name/code/course/semester
+  try {
+    const Subject = require('../models/Subject');
+    const subj = await Subject.findOne({ $or: [{ code: lab.labCode }, { name: new RegExp(`^${lab.labName}.*`, 'i') }], course: lab.courseType });
+    if (subj) {
+      subj.name = `${lab.labName} (Lab)`;
+      subj.code = lab.labCode;
+      subj.semester = lab.semester ? Number(lab.semester) : subj.semester;
+      subj.course = lab.courseType || subj.course;
+      subj.year = lab.year ? Number(lab.year) : subj.year;
+      subj.type = 'lab';
+      await subj.save();
+    }
+  } catch (e) {
+    console.error('Failed to sync subject for updated lab:', e.message || e);
+  }
 
   const updatedLab = await Lab.findById(lab._id).populate('admins', 'name email role isApproved');
   res.json({ success: true, data: updatedLab });

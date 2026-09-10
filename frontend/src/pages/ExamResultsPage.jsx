@@ -12,7 +12,9 @@ export default function ExamResultsPage() {
 
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [marksData, setMarksData] = useState({}); // { [studentId]: { [subjectId]: marks } }
+    const [marksData, setMarksData] = useState({}); // { [studentId]: { [subjectId]: marks | { experiments: [{ marks }] } } }
+    const [backlogSubjects, setBacklogSubjects] = useState([]);
+    const [backlogStudentsBySubject, setBacklogStudentsBySubject] = useState({});
 
     const loadData = async () => {
         setLoading(true);
@@ -29,10 +31,30 @@ export default function ExamResultsPage() {
             const res = await api.get(`/exam-results?course=${filterCourse}&semester=${filterSemester}&examSession=${examSession}`);
             const existingResults = res.data.data;
 
+            const carriedLabSubjects = existingResults
+                .filter(result => result.isLab && result.semester < Number(filterSemester) && result.subjectId)
+                .map(result => ({ ...result.subjectId, type: 'lab', isBacklog: true }))
+                .filter((subject, index, list) => list.findIndex(item => item._id === subject._id) === index);
+            setBacklogSubjects(carriedLabSubjects);
+
+            const studentsBySubject = {};
+            existingResults
+                .filter(result => result.isLab && result.semester < Number(filterSemester) && result.subjectId && result.status === 'fail')
+                .forEach(result => {
+                    const subjectId = result.subjectId._id;
+                    if (!studentsBySubject[subjectId]) studentsBySubject[subjectId] = new Set();
+                    studentsBySubject[subjectId].add(result.studentId._id);
+                });
+            setBacklogStudentsBySubject(studentsBySubject);
+
             const newMarksData = {};
             existingResults.forEach(r => {
                 if (!newMarksData[r.studentId._id]) newMarksData[r.studentId._id] = {};
-                newMarksData[r.studentId._id][r.subjectId._id] = r.marks;
+                if (r.isLab && Array.isArray(r.experiments) && r.experiments.length > 0) {
+                    newMarksData[r.studentId._id][r.subjectId._id] = { experiments: r.experiments.map(e => ({ marks: e.marks })) };
+                } else {
+                    newMarksData[r.studentId._id][r.subjectId._id] = r.marks;
+                }
             });
             setMarksData(newMarksData);
         } catch (err) {
@@ -56,14 +78,31 @@ export default function ExamResultsPage() {
         }));
     };
 
+    const handleExperimentChange = (studentId, subjectId, expIndex, value) => {
+        setMarksData(prev => {
+            const studentMarks = { ...(prev[studentId] || {}) };
+            const subj = studentMarks[subjectId] || { experiments: [] };
+            const exps = subj.experiments ? [...subj.experiments] : [];
+            exps[expIndex] = { ...(exps[expIndex] || {}), marks: value === '' ? '' : Number(value) };
+            studentMarks[subjectId] = { experiments: exps };
+            return { ...prev, [studentId]: studentMarks };
+        });
+    };
+
     const handleSaveAll = async () => {
         const resultsPayload = [];
 
         for (const studentId of Object.keys(marksData)) {
             for (const subjectId of Object.keys(marksData[studentId])) {
-                const marks = marksData[studentId][subjectId];
-                if (marks !== '' && marks !== undefined) {
-                    resultsPayload.push({ studentId, subjectId, marks });
+                const entry = marksData[studentId][subjectId];
+                if (entry === '' || entry === undefined) continue;
+                if (entry && entry.experiments) {
+                    // lab entry
+                    const subject = [...subjects, ...backlogSubjects].find(s => s._id === subjectId);
+                    const experiments = entry.experiments.map((e, idx) => ({ name: subject?.experiments?.[idx]?.name || `Exp ${idx+1}`, marks: Number(e.marks || 0), maxMarks: subject?.experiments?.[idx]?.maxMarks || 0, passingMarks: subject?.experiments?.[idx]?.passingMarks || 0 }));
+                    resultsPayload.push({ studentId, subjectId, experiments });
+                } else {
+                    resultsPayload.push({ studentId, subjectId, marks: Number(entry) });
                 }
             }
         }
@@ -117,7 +156,7 @@ export default function ExamResultsPage() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 {loading ? (
                     <div className="p-12 text-center text-gray-500">Loading student roster...</div>
-                ) : subjects.length === 0 ? (
+                ) : subjects.length === 0 && backlogSubjects.length === 0 ? (
                     <div className="p-12 text-center text-gray-500">
                         <p className="font-medium">No subjects found for {filterCourse} Semester {filterSemester}</p>
                         <p className="text-sm mt-1">Please create subjects first before entering marks.</p>
@@ -150,7 +189,34 @@ export default function ExamResultsPage() {
                                             <div className="text-xs font-mono text-gray-500">{student.rollNumber || 'No Roll No.'}</div>
                                         </td>
                                         {subjects.map(sub => {
-                                            const marks = marksData[student._id]?.[sub._id] ?? '';
+                                            const entry = marksData[student._id]?.[sub._id] ?? '';
+
+                                            // Lab subject: allow super-admin to set a single overall lab mark
+                                            if (sub.type === 'lab') {
+                                                const marksVal = (entry && (entry.marks !== undefined ? entry.marks : entry)) || '';
+                                                const isPassingLab = marksVal !== '' && marksVal >= sub.passingMarks;
+                                                const isFailingLab = marksVal !== '' && marksVal < sub.passingMarks;
+                                                return (
+                                                    <td key={sub._id} className="px-4 py-3 text-center border-r border-gray-50">
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            max={sub.maxMarks}
+                                                            value={marksVal}
+                                                            onChange={(e) => handleMarkChange(student._id, sub._id, e.target.value)}
+                                                            className={`w-20 text-center font-medium rounded border ${isPassingLab ? 'border-green-300 bg-green-50 text-green-700' : isFailingLab ? 'border-red-300 bg-red-50 text-red-700' : 'border-gray-200'} py-1.5 text-sm focus:ring-0 focus:border-[#556b2f]`}
+                                                            placeholder="Lab Marks"
+                                                        />
+                                                        {sub.isBacklog && <div className="text-[10px] font-bold text-red-600 mt-1">BACKLOG</div>}
+                                                        {Array.isArray(sub.experiments) && sub.experiments.length > 0 ? (
+                                                            <div className="text-xs text-gray-400 mt-1">Experiments defined — entering overall lab marks will be recorded as aggregate.</div>
+                                                        ) : null}
+                                                    </td>
+                                                );
+                                            }
+
+                                            // Theory/normal subject
+                                            const marks = entry ?? '';
                                             const isPassing = marks !== '' && marks >= sub.passingMarks;
                                             const isFailing = marks !== '' && marks < sub.passingMarks;
 
@@ -175,6 +241,72 @@ export default function ExamResultsPage() {
                     </div>
                 )}
             </div>
+
+            {backlogSubjects.length > 0 && (
+                <div className="mt-6 bg-red-50/40 rounded-xl shadow-sm border border-red-200 overflow-hidden">
+                    <div className="px-6 py-4 border-b border-red-200">
+                        <h2 className="text-lg font-bold text-red-800">Backlog Subject Results</h2>
+                        <p className="text-sm text-red-600 mt-1">
+                            Enter backlog marks separately. These results are not included in the current-semester promotion evaluation.
+                        </p>
+                    </div>
+                    <div className="p-4 space-y-5">
+                        {backlogSubjects.map(subject => {
+                            const affectedStudents = students.filter(student => backlogStudentsBySubject[subject._id]?.has(student._id));
+                            return (
+                                <div key={subject._id} className="bg-white rounded-lg border border-red-200 overflow-hidden">
+                                    <div className="px-4 py-3 bg-red-50 flex items-center justify-between">
+                                        <div>
+                                            <span className="font-bold text-red-800">{subject.code}</span>
+                                            <span className="ml-2 text-sm text-red-700">{subject.name}</span>
+                                        </div>
+                                        <span className="text-xs font-bold text-red-700">BACKLOG ONLY</span>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="min-w-full divide-y divide-red-100">
+                                            <thead className="bg-red-50/50">
+                                                <tr>
+                                                    <th className="px-4 py-3 text-left text-xs font-bold text-red-700 uppercase">Student</th>
+                                                    <th className="px-4 py-3 text-center text-xs font-bold text-red-700 uppercase">Marks</th>
+                                                    <th className="px-4 py-3 text-center text-xs font-bold text-red-700 uppercase">Max / Pass</th>
+                                                    <th className="px-4 py-3 text-right text-xs font-bold text-red-700 uppercase">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-red-100">
+                                                {affectedStudents.map(student => {
+                                                    const entry = marksData[student._id]?.[subject._id] ?? '';
+                                                    const marks = entry && entry.marks !== undefined ? entry.marks : entry;
+                                                    const isPassing = marks !== '' && marks >= subject.passingMarks;
+                                                    return (
+                                                        <tr key={student._id}>
+                                                            <td className="px-4 py-3 text-sm font-semibold text-gray-800">{student.name}</td>
+                                                            <td className="px-4 py-3 text-center">
+                                                                <input
+                                                                    type="number"
+                                                                    min="0"
+                                                                    max={subject.maxMarks}
+                                                                    value={marks}
+                                                                    onChange={(e) => handleMarkChange(student._id, subject._id, e.target.value)}
+                                                                    className={`w-20 text-center rounded border py-1.5 text-sm ${isPassing ? 'border-green-300 bg-green-50 text-green-700' : 'border-red-300 bg-red-50 text-red-700'}`}
+                                                                    placeholder="Marks"
+                                                                />
+                                                            </td>
+                                                            <td className="px-4 py-3 text-center text-xs text-gray-500">{subject.maxMarks} / {subject.passingMarks}</td>
+                                                            <td className={`px-4 py-3 text-right text-xs font-bold ${isPassing ? 'text-green-700' : 'text-red-700'}`}>
+                                                                {isPassing ? 'CLEARED' : 'BACKLOG'}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

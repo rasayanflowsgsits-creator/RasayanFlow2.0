@@ -42,7 +42,8 @@ const evaluateStudent = async (student, examSession) => {
     }).populate('subjectId', 'name code maxMarks passingMarks');
 
     const passedSubjects = results.filter((r) => r.status === 'pass').length;
-    const failedSubjects = results.filter((r) => r.status === 'fail').length;
+    // Treat any result with status 'fail' or backlog true as failed for promotion purposes
+    const failedSubjects = results.filter((r) => r.status === 'fail' || r.backlog).length;
     const attemptedSubjects = results.length;
 
     // Subjects not yet attempted (no result entered)
@@ -61,7 +62,7 @@ const evaluateStudent = async (student, examSession) => {
 
     // Collect backlog subject IDs (failed subjects)
     const backlogs = results
-        .filter((r) => r.status === 'fail')
+        .filter((r) => r.status === 'fail' || r.backlog)
         .map((r) => ({ subjectId: r.subjectId._id, name: r.subjectId.name, code: r.subjectId.code }));
 
     return {
@@ -83,6 +84,9 @@ const evaluateStudent = async (student, examSession) => {
             maxMarks: r.maxMarks,
             passingMarks: r.passingMarks,
             status: r.status,
+            isLab: r.isLab || false,
+            experiments: r.experiments || [],
+            backlog: r.backlog || false,
         })),
         backlogs,
     };

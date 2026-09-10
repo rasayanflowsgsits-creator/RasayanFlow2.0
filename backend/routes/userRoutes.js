@@ -3,7 +3,7 @@ const { query, param, body } = require('express-validator');
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
 const validateRequest = require('../middleware/validateMiddleware');
-const { getUsers, approveUser, setUserBlockedState, createSuperAdmin, createLabAdmin, createStoreAdmin, resetUserPassword } = require('../controllers/userController');
+const { getUsers, approveUser, setUserBlockedState, createLabAdmin, createStoreAdmin, resetUserPassword } = require('../controllers/userController');
 
 const router = express.Router();
 
@@ -13,18 +13,6 @@ router.get('/', [query('page').optional().isInt({ min: 1 }), query('limit').opti
 router.put('/approve/:userId', roleMiddleware(['superAdmin']), [param('userId').isMongoId()], validateRequest, approveUser);
 router.put('/reset-password/:userId', roleMiddleware(['superAdmin']), [param('userId').isMongoId(), body('newPassword').isLength({ min: 4 })], validateRequest, resetUserPassword);
 router.put('/block/:userId', roleMiddleware(['superAdmin', 'labAdmin', 'storeAdmin']), [param('userId').isMongoId(), body('isBlocked').isBoolean(), body('blockedReason').optional().isString()], validateRequest, setUserBlockedState);
-router.post(
-	'/super-admins',
-	roleMiddleware(['superAdmin']),
-	[
-		body('name').trim().notEmpty().withMessage('Name is required'),
-		body('email').isEmail().withMessage('Valid email required'),
-		body('password').isLength({ min: 6 }).withMessage('Password min 6 chars'),
-	],
-	validateRequest,
-	createSuperAdmin,
-);
-
 router.post(
 	'/lab-admins',
 	roleMiddleware(['superAdmin']),

@@ -8,6 +8,15 @@ const subjectSchema = new mongoose.Schema({
   year: { type: Number, required: true, min: 1, max: 4 },
   maxMarks: { type: Number, required: true, default: 100 },
   passingMarks: { type: Number, required: true, default: 40 },
+  // type: 'theory' or 'lab'. Labs may contain experiments with individual marks.
+  type: { type: String, enum: ['theory', 'lab'], default: 'theory' },
+  experiments: [
+    {
+      name: { type: String, required: true },
+      maxMarks: { type: Number, required: true, default: 25 },
+      passingMarks: { type: Number, required: true, default: 10 },
+    },
+  ],
   isActive: { type: Boolean, default: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   createdAt: { type: Date, default: Date.now },

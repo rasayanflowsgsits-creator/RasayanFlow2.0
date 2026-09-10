@@ -29,25 +29,38 @@ const createResult = asyncHandler(async (req, res) => {
 
     // Check if result already exists for this student + subject + session
     let result = await ExamResult.findOne({ studentId, subjectId, examSession });
+    const isLab = subject.type === 'lab';
     if (result) {
         // Update existing result
-        result.marks = Number(marks);
+        result.isLab = isLab;
+        if (isLab && req.body.experiments) {
+            result.experiments = req.body.experiments;
+        } else {
+            result.marks = Number(marks);
+        }
         result.maxMarks = subject.maxMarks;
         result.passingMarks = subject.passingMarks;
         result.enteredBy = req.user._id;
         await result.save();
     } else {
-        result = await ExamResult.create({
+        const createObj = {
             studentId,
             subjectId,
             semester: subject.semester,
             course: subject.course,
-            marks: Number(marks),
-            maxMarks: subject.maxMarks,
-            passingMarks: subject.passingMarks,
             examSession,
             enteredBy: req.user._id,
-        });
+            isLab,
+        };
+        if (isLab && req.body.experiments) {
+            createObj.experiments = req.body.experiments;
+        } else {
+            createObj.marks = Number(marks);
+        }
+        createObj.maxMarks = subject.maxMarks;
+        createObj.passingMarks = subject.passingMarks;
+
+        result = await ExamResult.create(createObj);
     }
 
     await ActivityLog.create({
@@ -83,31 +96,42 @@ const createBulkResults = asyncHandler(async (req, res) => {
                 errors.push({ ...r, error: 'Subject not found' });
                 continue;
             }
-
             let result = await ExamResult.findOne({
                 studentId: r.studentId,
                 subjectId: r.subjectId,
                 examSession,
             });
-
+            const isLab = subject.type === 'lab';
             if (result) {
-                result.marks = Number(r.marks);
+                result.isLab = isLab;
+                if (isLab && r.experiments) {
+                    result.experiments = r.experiments;
+                } else {
+                    result.marks = Number(r.marks);
+                }
                 result.maxMarks = subject.maxMarks;
                 result.passingMarks = subject.passingMarks;
                 result.enteredBy = req.user._id;
                 await result.save();
             } else {
-                result = await ExamResult.create({
+                const createObj = {
                     studentId: r.studentId,
                     subjectId: r.subjectId,
                     semester: subject.semester,
                     course: subject.course,
-                    marks: Number(r.marks),
-                    maxMarks: subject.maxMarks,
-                    passingMarks: subject.passingMarks,
                     examSession,
                     enteredBy: req.user._id,
-                });
+                    isLab,
+                };
+                if (isLab && r.experiments) {
+                    createObj.experiments = r.experiments;
+                } else {
+                    createObj.marks = Number(r.marks);
+                }
+                createObj.maxMarks = subject.maxMarks;
+                createObj.passingMarks = subject.passingMarks;
+
+                result = await ExamResult.create(createObj);
             }
             saved.push(result);
         } catch (err) {
@@ -138,11 +162,28 @@ const getStudentResults = asyncHandler(async (req, res) => {
     }
 
     const filter = { studentId };
-    if (semester) filter.semester = Number(semester);
+    if (semester) {
+        const requestedSemester = Number(semester);
+        const student = await User.findById(studentId).select('semester');
+        const currentSemester = Number(student?.semester);
+
+        // Keep failed lab results visible after promotion so the student can complete them
+        // alongside the new semester. Theory results remain tied to their original semester.
+        if (currentSemester > requestedSemester || !Number.isFinite(currentSemester)) {
+            filter.semester = requestedSemester;
+        } else if (currentSemester === requestedSemester) {
+            filter.$or = [
+                { semester: requestedSemester },
+                { isLab: true, semester: { $lt: requestedSemester }, $or: [{ backlog: true }, { status: 'fail' }] },
+            ];
+        } else {
+            filter.semester = requestedSemester;
+        }
+    }
     if (examSession) filter.examSession = examSession;
 
     const results = await ExamResult.find(filter)
-        .populate('subjectId', 'name code maxMarks passingMarks semester')
+        .populate('subjectId', 'name code maxMarks passingMarks semester type experiments')
         .sort({ semester: 1, createdAt: 1 });
 
     res.json({ success: true, data: results });
@@ -154,7 +195,19 @@ const getStudentResults = asyncHandler(async (req, res) => {
 const getResults = asyncHandler(async (req, res) => {
     const { semester, course, examSession, studentId } = req.query;
     const filter = {};
-    if (semester) filter.semester = Number(semester);
+    if (semester) {
+        const requestedSemester = Number(semester);
+        // Include failed lab results from earlier semesters so super-admin can clear
+        // carried lab backlogs while entering the promoted semester.
+        if (!studentId && requestedSemester > 1) {
+            filter.$or = [
+                { semester: requestedSemester },
+                { isLab: true, semester: { $lt: requestedSemester }, $or: [{ backlog: true }, { status: 'fail' }] },
+            ];
+        } else {
+            filter.semester = requestedSemester;
+        }
+    }
     if (course) filter.course = course;
     if (examSession) filter.examSession = examSession;
     if (studentId) filter.studentId = studentId;
