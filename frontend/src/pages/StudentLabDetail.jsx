@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { 
   ArrowLeft, FlaskConical, Beaker, CheckCircle2, Clock, 
@@ -50,7 +50,7 @@ export default function StudentLabDetail() {
   const labId = routeLabId || stateLab?._id || stateLab?.id;
 
   // Track whether initial load has already completed
-  const isFirstLoad = React.useRef(true);
+  const isFirstLoad = useRef(true);
 
   // Full data load — shows spinner only on first load
   const fetchLabData = async (silent = false) => {
