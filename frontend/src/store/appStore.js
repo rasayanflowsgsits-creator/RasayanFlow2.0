@@ -518,15 +518,17 @@ const useAppStore = create((set) => ({
       return null;
     }
   },
-  createLabStoreRequest: async ({ chemicalName, quantityRequested, unit, reason, labId }) => {
+  createLabStoreRequest: async ({ chemicalName, casNumber, quantityRequested, unit, reason, labId, labName }) => {
     set({ loading: true });
     try {
       const { data } = await api.post('/store/requests', {
         chemicalName,
+        casNumber: casNumber || '',
         quantityRequested: Number(quantityRequested),
         unit: unit || 'mL',
         reason: reason || 'Lab Inventory Shortage',
-        labId
+        labId,
+        labName: labName || ''
       });
       set({ loading: false, toast: { title: 'Success', message: `Store request for ${chemicalName} submitted`, type: 'success' } });
       return data;
