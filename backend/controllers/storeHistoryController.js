@@ -1,5 +1,6 @@
 const StoreHistory = require('../models/StoreHistory');
 const asyncHandler = require('express-async-handler');
+const mongoose = require('mongoose');
 
 const getHistory = asyncHandler(async (req, res) => {
   const { month, year } = req.query;

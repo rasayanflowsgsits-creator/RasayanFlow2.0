@@ -1,4 +1,5 @@
 const asyncHandler = require('express-async-handler');
+const mongoose = require('mongoose');
 const Inventory = require('../models/Inventory');
 const ActivityLog = require('../models/ActivityLog');
 const { getIo } = require('../sockets');

@@ -202,29 +202,6 @@ export default function Sidebar({ collapsed }) {
           {!collapsed ? (
             /* EXPANDED SIDEBAR FOOTER CARD */
             <div className="rounded-2xl border border-[#d9e1ca] bg-[#f8faee] p-2.5 shadow-2xs dark:border-[#3c452f] dark:bg-[#20251a] space-y-2">
-              {/* Smooth Pill Switch for Dark Mode */}
-              <button
-                type="button"
-                onClick={toggleTheme}
-                className="flex w-full items-center justify-between rounded-xl bg-white dark:bg-[#1a1d16] px-3 py-2 text-xs font-bold text-[#5c6e46] dark:text-[#a8be8a] border border-[#e4eed3] dark:border-[#38432a] hover:border-[#5c6e46] transition-all shadow-2xs"
-              >
-                <div className="flex items-center gap-2">
-                  {isDark ? (
-                    <Sun size={15} className="text-amber-400 shrink-0" />
-                  ) : (
-                    <Moon size={15} className="text-[#5c6e46] dark:text-[#a8be8a] shrink-0" />
-                  )}
-                  <span>{isDark ? 'Dark Theme' : 'Light Theme'}</span>
-                </div>
-
-                {/* Animated Pill Switch Slider */}
-                <div className={`relative h-5 w-9 rounded-full p-0.5 transition-colors duration-300 ${isDark ? 'bg-[#5c6e46]' : 'bg-[#d9e1ca]'
-                  }`}>
-                  <div className={`h-4 w-4 rounded-full bg-white shadow-xs transition-transform duration-300 ${isDark ? 'translate-x-4' : 'translate-x-0'
-                    }`} />
-                </div>
-              </button>
-
               {/* Premium Executive Logout Button */}
               <button
                 type="button"
