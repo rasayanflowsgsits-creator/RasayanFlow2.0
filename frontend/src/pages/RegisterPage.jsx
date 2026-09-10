@@ -27,10 +27,7 @@ export default function RegisterPage() {
       };
 
       const user = await register(payload);
-      const message =
-        user.role === 'super-admin'
-          ? 'Super admin account created. Please sign in.'
-          : 'Account created. You can now sign in.';
+      const message = 'Account created. You can now sign in.';
       setSuccess(message);
       setTimeout(() => {
         navigate('/login', { state: { message } });

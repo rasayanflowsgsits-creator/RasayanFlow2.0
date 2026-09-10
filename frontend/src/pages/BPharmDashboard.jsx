@@ -24,6 +24,7 @@ import Table from '../components/ui/Table';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Modal from '../components/ui/Modal';
+import api from '../services/api';
 
 export const FIFTEEN_PHARMA_EXPERIMENTS = [
   {
@@ -225,7 +226,7 @@ const INITIAL_CHEMICAL_INVENTORY = [
 const BPharmDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { myLabs, fetchMyLabs, studentRequests, fetchMyStudentRequests, setToast } = useAppStore();
+  const { myLabs, fetchMyLabs, fetchMatchingLabs, studentRequests, fetchMyStudentRequests, setToast } = useAppStore();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('Approved'); // Default to Approved per user request
@@ -241,6 +242,7 @@ const BPharmDashboard = () => {
   const [reqNotes, setReqNotes] = useState('');
   const [inventoryList, setInventoryList] = useState(INITIAL_CHEMICAL_INVENTORY);
   const [localRequests, setLocalRequests] = useState([]);
+  const [backlogLabs, setBacklogLabs] = useState([]);
 
   useEffect(() => {
     const c = user?.course || 'B.Pharm';
@@ -252,6 +254,41 @@ const BPharmDashboard = () => {
     }
     fetchMyStudentRequests();
   }, [user?.course, user?.year, user?.semester, fetchMyLabs, fetchMyStudentRequests]);
+
+  // Load only failed labs from earlier semesters. They remain available until passed.
+  useEffect(() => {
+    const loadBacklogLabs = async () => {
+      const currentSemester = Number(user?.semester);
+      if (!user?._id || !user?.course || !Number.isFinite(currentSemester) || currentSemester <= 1) {
+        setBacklogLabs([]);
+        return;
+      }
+
+      try {
+        const resultResponse = await api.get(`/exam-results/student/${user._id}?semester=${currentSemester}`);
+        const failedLabResults = (resultResponse.data?.data || []).filter(
+          result => result.isLab && result.status === 'fail' && Number(result.semester) < currentSemester
+        );
+        const failedCodes = new Set(failedLabResults.map(result => result.subjectId?.code).filter(Boolean));
+        const priorLabs = (await Promise.all(
+          Array.from({ length: currentSemester - 1 }, (_, index) =>
+            fetchMatchingLabs(user.course, String(Math.ceil((index + 1) / 2)), index + 1)
+          )
+        )).flat();
+
+        const uniqueLabs = new Map();
+        priorLabs.forEach(lab => {
+          if (failedCodes.has(lab.labCode)) uniqueLabs.set(String(lab._id || lab.labCode), lab);
+        });
+        setBacklogLabs(Array.from(uniqueLabs.values()).map(lab => ({ ...lab, isBacklog: true })));
+      } catch (error) {
+        console.error('Failed to load lab backlogs', error);
+        setBacklogLabs([]);
+      }
+    };
+
+    loadBacklogLabs();
+  }, [user?._id, user?.course, user?.year, user?.semester, fetchMatchingLabs]);
 
   // Reset page when filters change
   useEffect(() => {
@@ -588,6 +625,56 @@ const BPharmDashboard = () => {
           </Card>
         )}
       </div>
+
+      {backlogLabs.length > 0 && (
+        <>
+          <div className="w-full my-6 border-t-2 border-dashed border-red-200 dark:border-red-900/40"></div>
+          <div className="rounded-3xl p-5 sm:p-7 bg-red-50/40 dark:bg-red-950/10 border-2 border-red-200 dark:border-red-900/40 shadow-lg space-y-6 text-left">
+            <div className="pb-4 border-b-2 border-red-100 dark:border-red-900/30">
+              <div className="flex items-center gap-2.5">
+                <FlaskConical className="w-6 h-6 text-red-600 dark:text-red-400" />
+                <h2 className="text-2xl sm:text-3xl font-black text-red-800 dark:text-red-300">Lab Backlogs</h2>
+              </div>
+              <p className="text-xs sm:text-sm text-red-700 dark:text-red-300 mt-1 font-medium">
+                Complete these previous-semester labs and their experiments alongside your current semester labs.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {backlogLabs.map(lab => {
+                const targetId = lab._id || lab.id || lab.labId;
+                const adminName = lab.admin || (Array.isArray(lab.admins) && lab.admins.length
+                  ? lab.admins.map(a => (typeof a === 'object' ? (a.name || a.email) : a)).join(', ')
+                  : 'Unassigned');
+                return (
+                  <button
+                    type="button"
+                    key={targetId || lab.labCode}
+                    onClick={() => {
+                      if (user?.isPreview) setActiveLabWindow(lab);
+                      else if (targetId) navigate(`/student/lab/${targetId}`, { state: { lab } });
+                    }}
+                    className="text-left group relative overflow-hidden bg-white dark:bg-[#1c2117] border-2 border-red-200 dark:border-red-800 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all p-5 rounded-2xl"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="px-3 py-1 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 text-xs font-extrabold rounded-lg border border-red-200 dark:border-red-800 uppercase tracking-wider">
+                        {lab.labCode || 'LAB'}
+                      </span>
+                      <span className="text-[11px] font-bold text-red-600 dark:text-red-300">BACKLOG</span>
+                    </div>
+                    <h3 className="mt-4 text-xl font-black text-[#3c4e23] dark:text-[#eef4e8]">{lab.labName || lab.name}</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Previous-semester lab and experiments</p>
+                    <div className="mt-4 pt-3 border-t border-red-100 dark:border-red-900/30 text-xs font-bold text-red-700 dark:text-red-300 flex items-center justify-between">
+                      <span>Complete experiments</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </div>
+                    <span className="sr-only">Faculty instructor: {adminName}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Border Divider before Requisition History */}
       <div className="w-full my-6 border-t-2 border-dashed border-[#dce5cc] dark:border-[#333d26]"></div>

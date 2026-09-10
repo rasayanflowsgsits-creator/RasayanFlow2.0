@@ -2,11 +2,19 @@ const mongoose = require('mongoose');
 const logger = require('../utils/logger');
 
 const connectDB = async () => {
-  const uri = process.env.MONGO_URI || process.env.MONGODB_URI;
+  let uri = process.env.MONGO_URI || process.env.MONGODB_URI;
 
   if (!uri) {
-    logger.error('MONGO_URI or MONGODB_URI environment variable is missing. Set it in Render settings.');
-    return;
+    logger.warn('MONGO_URI is missing. Spinning up mongodb-memory-server for local testing...');
+    try {
+      const { MongoMemoryServer } = require('mongodb-memory-server');
+      const mongoServer = await MongoMemoryServer.create();
+      uri = mongoServer.getUri();
+      logger.info(`In-memory MongoDB started at ${uri}`);
+    } catch (memErr) {
+      logger.error('Failed to start mongodb-memory-server:', memErr.message);
+      return;
+    }
   }
 
   try {

@@ -31,7 +31,6 @@ export default function SuperAdminDashboard() {
     deleteLab,
     createLabAdmin,
     createStoreAdmin,
-    createSuperAdmin,
     assignAdminToLab,
     removeAdminFromLab,
     approveUserAccount,
@@ -78,7 +77,6 @@ export default function SuperAdminDashboard() {
   const [deleteStep, setDeleteStep] = useState(1);
   const [confirmLabNameInput, setConfirmLabNameInput] = useState('');
   const [storeAdminModalOpen, setStoreAdminModalOpen] = useState(false);
-  const [superAdminModalOpen, setSuperAdminModalOpen] = useState(false);
   const [masterChemModalOpen, setMasterChemModalOpen] = useState(false);
   const [curriculumModalOpen, setCurriculumModalOpen] = useState(false);
   const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
@@ -87,7 +85,6 @@ export default function SuperAdminDashboard() {
   // Operation States
   const [creating, setCreating] = useState(false);
   const [savingAdmin, setSavingAdmin] = useState(false);
-  const [savingSuperAdmin, setSavingSuperAdmin] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const [deletingLab, setDeletingLab] = useState(false);
   const [approvingUserId, setApprovingUserId] = useState('');
@@ -101,7 +98,6 @@ export default function SuperAdminDashboard() {
   const [selectedExistingAdminId, setSelectedExistingAdminId] = useState('');
   const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '' });
   const [newStoreAdmin, setNewStoreAdmin] = useState({ name: '', email: '', password: '' });
-  const [newSuperAdmin, setNewSuperAdmin] = useState({ name: '', email: '', password: '' });
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
 
   // Custom Feature Forms
@@ -1352,26 +1348,6 @@ export default function SuperAdminDashboard() {
       setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to create store admin account.' });
     } finally {
       setSavingAdmin(false);
-    }
-  };
-
-  const handleCreateSuperAdmin = async () => {
-    if (!newSuperAdmin.name.trim() || !newSuperAdmin.email.trim() || !newSuperAdmin.password.trim()) return;
-    setSavingSuperAdmin(true);
-    try {
-      await createSuperAdmin({
-        name: newSuperAdmin.name.trim(),
-        email: newSuperAdmin.email.trim(),
-        password: newSuperAdmin.password,
-      });
-      await Promise.all([fetchUsers(), fetchActivityLogs({ limit: 100 })]);
-      setToast({ type: 'success', message: 'Super admin account created.' });
-      setNewSuperAdmin({ name: '', email: '', password: '' });
-      setSuperAdminModalOpen(false);
-    } catch (error) {
-      setToast({ type: 'error', message: error?.response?.data?.message || 'Failed to create super admin account.' });
-    } finally {
-      setSavingSuperAdmin(false);
     }
   };
 
@@ -2660,11 +2636,6 @@ export default function SuperAdminDashboard() {
               {userRoleFilter === 'store-admin' && (
                 <Button onClick={() => setStoreAdminModalOpen(true)} className='text-xs px-3 py-2 whitespace-nowrap'>
                   + Add Store Manager
-                </Button>
-              )}
-              {userRoleFilter === 'super-admin' && (
-                <Button onClick={() => setSuperAdminModalOpen(true)} className='text-xs px-3 py-2 whitespace-nowrap'>
-                  + Create Super Admin
                 </Button>
               )}
             </div>
@@ -4392,17 +4363,6 @@ export default function SuperAdminDashboard() {
       {activeTab === 'settings' && (
         <div className='space-y-6 animate-in fade-in'>
           <div className='grid gap-6 lg:grid-cols-2'>
-            <Card title='Create Super Admin Account' subtitle='Grant full platform administrative permissions'>
-              <div className='space-y-4 pt-2'>
-                <Input label='Full Name' value={newSuperAdmin.name} onChange={(e) => setNewSuperAdmin((s) => ({ ...s, name: e.target.value }))} placeholder='e.g. Dr. Super Admin' />
-                <Input label='Email Address' type='email' value={newSuperAdmin.email} onChange={(e) => setNewSuperAdmin((s) => ({ ...s, email: e.target.value }))} placeholder='superadmin@rasayanflow.edu' />
-                <Input label='Password' type='password' value={newSuperAdmin.password} onChange={(e) => setNewSuperAdmin((s) => ({ ...s, password: e.target.value }))} minLength={6} placeholder='••••••••' />
-                <Button onClick={handleCreateSuperAdmin} disabled={savingSuperAdmin} className='w-full'>
-                  {savingSuperAdmin ? 'Creating Account...' : 'Create Super Admin'}
-                </Button>
-              </div>
-            </Card>
-
             <Card title='Reset Password' subtitle='Update password for current Super Admin account'>
               <div className='space-y-4 pt-2'>
                 <Input label='Current Password' type='password' value={passwordForm.currentPassword} onChange={(e) => setPasswordForm((s) => ({ ...s, currentPassword: e.target.value }))} />
@@ -5244,17 +5204,6 @@ export default function SuperAdminDashboard() {
           <Input label='Temporary Password *' type='password' value={newStoreAdmin.password} onChange={(e) => setNewStoreAdmin((s) => ({ ...s, password: e.target.value }))} minLength={6} placeholder='••••••••' />
           <Button onClick={handleCreateStoreAdmin} disabled={savingAdmin} className='w-full mt-2'>
             {savingAdmin ? 'Creating Account...' : 'Create Store Manager'}
-          </Button>
-        </div>
-      </Modal>
-
-      <Modal open={superAdminModalOpen} onClose={() => setSuperAdminModalOpen(false)} title='Add Super Administrator'>
-        <div className='space-y-4'>
-          <Input label='Full Name *' value={newSuperAdmin.name} onChange={(e) => setNewSuperAdmin((s) => ({ ...s, name: e.target.value }))} placeholder='Dr. Super Admin' />
-          <Input label='Email Address *' type='email' value={newSuperAdmin.email} onChange={(e) => setNewSuperAdmin((s) => ({ ...s, email: e.target.value }))} placeholder='superadmin@rasayanflow.edu' />
-          <Input label='Temporary Password *' type='password' value={newSuperAdmin.password} onChange={(e) => setNewSuperAdmin((s) => ({ ...s, password: e.target.value }))} minLength={6} placeholder='••••••••' />
-          <Button onClick={handleCreateSuperAdmin} disabled={savingSuperAdmin} className='w-full mt-2'>
-            {savingSuperAdmin ? 'Creating Account...' : 'Create Super Admin'}
           </Button>
         </div>
       </Modal>
