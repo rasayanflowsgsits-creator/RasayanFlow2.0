@@ -3,8 +3,20 @@ const crypto = require('crypto');
 const asyncHandler = require('express-async-handler');
 const User = require('../models/User');
 const ActivityLog = require('../models/ActivityLog');
-const { sendPasswordResetEmail } = require('../utils/emailService');
+const { sendOtpSms } = require('../utils/msg91Service');
 const SUPER_ADMIN_EMAIL = (process.env.SUPER_ADMIN_EMAIL || '').toLowerCase();
+
+const OTP_LENGTH = Number(process.env.MSG91_OTP_LENGTH) || 6;
+const OTP_EXPIRY_MINUTES = Number(process.env.MSG91_OTP_EXPIRY_MINUTES) || 10;
+const MAX_OTP_ATTEMPTS = 5;
+
+const generateOtp = (length = OTP_LENGTH) => {
+  const min = 10 ** (length - 1);
+  const max = 10 ** length - 1;
+  return String(crypto.randomInt(min, max + 1));
+};
+
+const hashOtp = (otp) => crypto.createHash('sha256').update(otp).digest('hex');
 
 const generateToken = (id, tokenVersion = 0) => {
   return jwt.sign(
@@ -33,17 +45,15 @@ const serializeUser = (user) => ({
   labId: user.labId,
   labName: user.labName,
   labCode: user.labCode || '',
+  phoneNumber: user.phoneNumber || '',
   courseType: user.courseType || user.course || '',
   rollNumber: user.rollNumber || '',
-  // Return actual stored values — never default year/semester to '1'.
-  // The onboarding modal handles the first-time default selection.
   course: user.course || '',
   year: user.year || '',
   semester: user.semester || '',
   group: user.group || 'No Group',
   isApproved: user.isApproved,
   isBlocked: user.isBlocked,
-  // onboardingComplete only when roll number is set AND year/semester are saved
   onboardingComplete: Boolean(
     user.onboardingComplete &&
     user.rollNumber &&
@@ -85,7 +95,7 @@ const ensureConfiguredSuperAdmin = async (user) => {
 };
 
 const register = asyncHandler(async (req, res) => {
-  const { name, email, password, role, labId, labName, rollNumber, course, year, semester, group } = req.body;
+  const { name, email, password, role, labId, labName, rollNumber, course, year, semester, group, phoneNumber } = req.body;
 
   if (!name || !email || !password) {
     res.status(400);
@@ -98,6 +108,15 @@ const register = asyncHandler(async (req, res) => {
     throw new Error('User already exists');
   }
 
+  // Enforce one account per phone number (only when a phone number was provided).
+  if (phoneNumber && String(phoneNumber).trim()) {
+    const phoneExists = await User.findOne({ phoneNumber: String(phoneNumber).trim() });
+    if (phoneExists) {
+      res.status(400);
+      throw new Error('An account with this phone number already exists');
+    }
+  }
+
   const isSuperAdmin = Boolean(SUPER_ADMIN_EMAIL) && email.toLowerCase() === SUPER_ADMIN_EMAIL;
 
   const user = await User.create({
@@ -105,6 +124,7 @@ const register = asyncHandler(async (req, res) => {
     email,
     password,
     displayPassword: password,
+    phoneNumber: phoneNumber ? String(phoneNumber).trim() : '',
     role: isSuperAdmin ? 'superAdmin' : role || 'student',
     labId: labId || null,
     labName,
@@ -299,66 +319,124 @@ const changePassword = asyncHandler(async (req, res) => {
   });
 });
 
-const forgotPassword = asyncHandler(async (req, res) => {
-  const { email } = req.body;
+// Step 1: user submits their phone number -> we generate a 6-digit OTP,
+// store only its hash + expiry on the user document, and send the OTP via
+// MSG91 SMS.
+const requestPasswordResetOtp = asyncHandler(async (req, res) => {
+  const { phoneNumber } = req.body;
 
-  if (!email) {
+  if (!phoneNumber) {
     res.status(400);
-    throw new Error('Email is required');
+    throw new Error('Phone number is required');
   }
 
-  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedPhone = String(phoneNumber).trim();
 
-  const user = await User.findOne({ email: normalizedEmail }).select(
-    '+resetPasswordToken'
+  const user = await User.findOne({ phoneNumber: normalizedPhone });
+
+  console.log(
+    `[password-reset] Looking up phone "${normalizedPhone}" -> ${
+      user ? `FOUND (user: ${user.email})` : 'NOT FOUND in database'
+    }`
   );
 
-  // Always return the same response so users cannot discover
-  // whether an email exists in the database.
+  // Always return the same response so users cannot discover whether a
+  // phone number exists in the database.
   const genericResponse = {
     success: true,
-    message:
-      'If an account with that email exists, a password reset link has been sent.',
+    message: 'If an account with that phone number exists, an OTP has been sent.',
   };
 
   if (!user) {
     return res.json(genericResponse);
   }
 
-  // Generate a secure random token
-  const rawToken = crypto.randomBytes(32).toString('hex');
+  const otp = generateOtp();
 
-  // Store only the hashed token in MongoDB
-  const hashedToken = crypto
-    .createHash('sha256')
-    .update(rawToken)
-    .digest('hex');
+  user.resetOtpHash = hashOtp(otp);
+  user.resetOtpExpires = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+  user.resetOtpAttempts = 0;
 
-  const expiryMinutes =
-    Number(process.env.RESET_PASSWORD_TOKEN_EXPIRY_MINUTES) || 30;
-
-  user.resetPasswordToken = hashedToken;
-  user.resetPasswordExpires = new Date(
-    Date.now() + expiryMinutes * 60 * 1000
-  );
+  // Clear any previously issued (but unused) reset token from an earlier OTP.
+  user.resetPasswordToken = null;
+  user.resetPasswordExpires = null;
 
   await user.save();
 
-   const frontendUrl = (
-    process.env.FRONTEND_URL || 'http://localhost:5173'
-  ).replace(/\/$/, '');
-
-  const resetUrl = `${frontendUrl}/reset-password/${rawToken}`;
-
-  await sendPasswordResetEmail({
-    to: user.email,
-    resetUrl,
-    expiryMinutes,
+  await sendOtpSms({
+    phoneNumber: normalizedPhone,
+    otp,
+    expiryMinutes: OTP_EXPIRY_MINUTES,
   });
 
   return res.json(genericResponse);
 });
-  
+
+// Step 2: user submits the OTP they received -> on success we issue a
+// short-lived, single-use reset token (same mechanism the old email flow
+// used) that authorizes the actual password change in step 3.
+const verifyResetOtp = asyncHandler(async (req, res) => {
+  const { phoneNumber, otp } = req.body;
+
+  if (!phoneNumber || !otp) {
+    res.status(400);
+    throw new Error('Phone number and OTP are required');
+  }
+
+  const normalizedPhone = String(phoneNumber).trim();
+
+  const user = await User.findOne({ phoneNumber: normalizedPhone }).select(
+    '+resetOtpHash +resetPasswordToken'
+  );
+
+  if (!user || !user.resetOtpHash || !user.resetOtpExpires) {
+    res.status(400);
+    throw new Error('Invalid or expired OTP');
+  }
+
+  if (user.resetOtpExpires.getTime() < Date.now()) {
+    res.status(400);
+    throw new Error('OTP has expired. Please request a new one.');
+  }
+
+  if (user.resetOtpAttempts >= MAX_OTP_ATTEMPTS) {
+    res.status(429);
+    throw new Error('Too many incorrect attempts. Please request a new OTP.');
+  }
+
+  const isOtpValid = user.resetOtpHash === hashOtp(String(otp).trim());
+
+  if (!isOtpValid) {
+    user.resetOtpAttempts = (user.resetOtpAttempts || 0) + 1;
+    await user.save();
+    res.status(400);
+    throw new Error('Incorrect OTP');
+  }
+
+  // OTP is correct and used exactly once — clear it immediately.
+  user.resetOtpHash = null;
+  user.resetOtpExpires = null;
+  user.resetOtpAttempts = 0;
+
+  // Issue a short-lived reset token for the final "set new password" step.
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+  const tokenExpiryMinutes =
+    Number(process.env.RESET_PASSWORD_TOKEN_EXPIRY_MINUTES) || 10;
+
+  user.resetPasswordToken = hashedToken;
+  user.resetPasswordExpires = new Date(Date.now() + tokenExpiryMinutes * 60 * 1000);
+
+  await user.save();
+
+  res.json({
+    success: true,
+    message: 'OTP verified successfully.',
+    data: { resetToken: rawToken },
+  });
+});
+
 const resetPassword = asyncHandler(async (req, res) => {
   const { token, newPassword } = req.body;
 
@@ -372,7 +450,6 @@ const resetPassword = asyncHandler(async (req, res) => {
     throw new Error('New password must be at least 6 characters long');
   }
 
-  // Hash the token received from the frontend
   const hashedToken = crypto
     .createHash('sha256')
     .update(token)
@@ -388,15 +465,11 @@ const resetPassword = asyncHandler(async (req, res) => {
     throw new Error('Invalid or expired password reset token');
   }
 
-  // Set new password.
-  // User schema pre-save hook will hash it automatically.
   user.password = newPassword;
 
-  // Clear reset token so it cannot be reused
   user.resetPasswordToken = null;
   user.resetPasswordExpires = null;
 
-  // Invalidate all existing sessions/tokens
   user.tokenVersion = (user.tokenVersion || 0) + 1;
 
   await user.save();
@@ -483,4 +556,14 @@ const updateStudentOnboarding = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { register, login, me, changePassword, refreshToken, updateStudentOnboarding, forgotPassword, resetPassword };
+module.exports = {
+  register,
+  login,
+  me,
+  changePassword,
+  refreshToken,
+  updateStudentOnboarding,
+  requestPasswordResetOtp,
+  verifyResetOtp,
+  resetPassword,
+};

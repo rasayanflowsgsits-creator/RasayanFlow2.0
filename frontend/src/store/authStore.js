@@ -105,18 +105,19 @@ const useAuthStore = create((set) => ({
       throw new Error(message);
     }
   },
-    forgotPassword: async (email) => {
+  // Step 1: request an OTP via SMS for the given phone number
+  requestPasswordResetOtp: async (phoneNumber) => {
     set({ loading: true, error: null });
 
     try {
-      const resp = await api.post('/auth/forgot-password', { email });
+      const resp = await api.post('/auth/forgot-password', { phoneNumber });
 
       set({ loading: false, error: null });
 
       return resp.data;
     } catch (error) {
       const message =
-        error?.response?.data?.message || 'Password reset request failed';
+        error?.response?.data?.message || 'Failed to send OTP';
 
       set({ loading: false, error: message });
 
@@ -124,6 +125,30 @@ const useAuthStore = create((set) => ({
     }
   },
 
+  // Step 2: verify the OTP -> returns a short-lived reset token
+  verifyResetOtp: async ({ phoneNumber, otp }) => {
+    set({ loading: true, error: null });
+
+    try {
+      const resp = await api.post('/auth/verify-reset-otp', {
+        phoneNumber,
+        otp,
+      });
+
+      set({ loading: false, error: null });
+
+      return resp.data?.data || resp.data;
+    } catch (error) {
+      const message =
+        error?.response?.data?.message || 'OTP verification failed';
+
+      set({ loading: false, error: message });
+
+      throw new Error(message);
+    }
+  },
+
+  // Step 3: set the new password using the reset token from step 2
   resetPassword: async ({ token, newPassword }) => {
     set({ loading: true, error: null });
 

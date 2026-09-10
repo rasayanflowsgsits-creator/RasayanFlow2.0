@@ -4,6 +4,7 @@ const bcrypt = require('bcrypt');
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+  phoneNumber: {type: String, trim: true, default: '',},
   password: { type: String, required: true },
   role: {
     type: String,
@@ -26,6 +27,9 @@ const userSchema = new mongoose.Schema({
  displayPassword: { type: String, trim: true, default: '' },
 
 // Password reset fields
+// resetPasswordToken/resetPasswordExpires are issued only AFTER a phone OTP
+// has been verified (see verifyResetOtp in authController). They act as a
+// short-lived, single-use ticket that authorizes the final resetPassword call.
 resetPasswordToken: {
   type: String,
   default: null,
@@ -35,6 +39,25 @@ resetPasswordToken: {
 resetPasswordExpires: {
   type: Date,
   default: null,
+},
+
+// Phone-based OTP password reset fields
+resetOtpHash: {
+  type: String,
+  default: null,
+  select: false,
+},
+
+resetOtpExpires: {
+  type: Date,
+  default: null,
+},
+
+// Number of failed OTP verification attempts for the current OTP.
+// Used to lock an OTP after too many wrong guesses.
+resetOtpAttempts: {
+  type: Number,
+  default: 0,
 },
 
 // Incremented whenever the password is changed/reset.
@@ -58,5 +81,13 @@ userSchema.pre('save', async function (next) {
 userSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
+
+// Enforce one account per phone number — but only for non-empty numbers,
+// since many existing/legacy users may still have phoneNumber: '' (blank),
+// and a plain unique index would break on multiple blank values.
+userSchema.index(
+  { phoneNumber: 1 },
+  { unique: true, partialFilterExpression: { phoneNumber: { $type: 'string', $ne: '' } } }
+);
 
 module.exports = mongoose.model('User', userSchema);

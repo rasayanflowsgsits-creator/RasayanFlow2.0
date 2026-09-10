@@ -7,7 +7,8 @@ const {
   changePassword,
   refreshToken,
   updateStudentOnboarding,
-  forgotPassword,
+  requestPasswordResetOtp,
+  verifyResetOtp,
   resetPassword,
 } = require('../controllers/authController');
 const authMiddleware = require('../middleware/authMiddleware');
@@ -54,20 +55,32 @@ router.put(
   changePassword,
 );
 
-// Forgot password
+// Step 1: request an OTP via SMS for a given phone number
 router.post(
   '/forgot-password',
   passwordLimiter,
   [
-    body('email')
-      .isEmail()
-      .withMessage('Valid email required')
-      .normalizeEmail(),
+    body('phoneNumber')
+      .notEmpty()
+      .withMessage('Phone number is required'),
   ],
   validateRequest,
-  forgotPassword,
+  requestPasswordResetOtp,
 );
-// Reset password using reset token
+
+// Step 2: verify the OTP -> returns a short-lived reset token
+router.post(
+  '/verify-reset-otp',
+  passwordLimiter,
+  [
+    body('phoneNumber').notEmpty().withMessage('Phone number is required'),
+    body('otp').notEmpty().withMessage('OTP is required'),
+  ],
+  validateRequest,
+  verifyResetOtp,
+);
+
+// Step 3: reset password using the reset token issued after OTP verification
 router.post(
   '/reset-password',
   passwordLimiter,

@@ -7,7 +7,7 @@ import Input from '../components/ui/Input';
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ 
-    name: '', email: '', password: '', rollNumber: '' 
+    name: '', email: '', password: '', rollNumber: '', phoneNumber: '' 
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -51,6 +51,7 @@ export default function RegisterPage() {
           <Input label='Email' type='email' value={form.email} onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))} required />
           <Input label='Password' type='password' value={form.password} onChange={(e) => setForm((s) => ({ ...s, password: e.target.value }))} required minLength={6} />
           <Input label='Roll Number' value={form.rollNumber} onChange={(e) => setForm((s) => ({ ...s, rollNumber: e.target.value }))} required />
+          <Input label='Phone Number' type='tel' value={form.phoneNumber} onChange={(e) => setForm((s) => ({ ...s, phoneNumber: e.target.value }))} placeholder='Used for password reset OTP' required />
 
           {error && (
             <div className='flex items-center gap-2 rounded-lg bg-red-50 p-2 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300'>

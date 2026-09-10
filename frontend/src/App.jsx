@@ -36,6 +36,7 @@ import NotFound from './pages/NotFound';
 import socket from './services/socket';
 import './index.css';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import VerifyOtpPage from './pages/VerifyOtpPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 function normalizePathname(pathname) {
   const collapsedPath = pathname.replace(/\/{2,}/g, '/');
@@ -213,6 +214,10 @@ function App() {
         <Route
           path='/forgot-password'
           element={user ? <Navigate to='/' replace /> : <ForgotPasswordPage />}
+        />
+        <Route
+          path='/verify-otp'
+          element={user ? <Navigate to='/' replace /> : <VerifyOtpPage />}
         />
 
         <Route
