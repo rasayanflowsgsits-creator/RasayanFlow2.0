@@ -244,6 +244,7 @@ function App() {
                     <Route path='user-credentials' element={isSuperAdmin ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='master-chemicals' element={isSuperAdmin ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='curriculum' element={isSuperAdmin ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
+                    <Route path='tracking-labs' element={isSuperAdmin ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='store-oversight' element={isSuperAdmin ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='activity' element={isSuperAdmin ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='settings' element={isSuperAdmin ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />

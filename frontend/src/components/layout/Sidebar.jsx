@@ -39,7 +39,7 @@ const linksMap = {
     { to: "/approval", label: "Users & Approvals", icon: Users },
     { to: "/user-credentials", label: "Credentials Vault", icon: KeyRound },
     { to: "/master-chemicals", label: "Chemical Master", icon: FlaskConical },
-    { to: "/curriculum", label: "Curriculum & Practicals", icon: BookOpen },
+    { to: "/tracking-labs", label: "Tracking Labs", icon: Activity },
     { to: "/store-oversight", label: "Store Oversight", icon: Store },
     { to: "/activity", label: "Audit Logs", icon: History },
     { to: "/settings", label: "Security & Settings", icon: KeyRound },
