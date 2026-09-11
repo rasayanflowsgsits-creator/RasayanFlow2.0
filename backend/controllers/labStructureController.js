@@ -614,6 +614,105 @@ const bulkToggleLock = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Mark/unmark a single experiment as completed (Lab Admin action)
+// @route   PUT /api/lab/structure/experiment/:id/complete
+// @access  Private (Lab Admin)
+const markExperimentComplete = asyncHandler(async (req, res) => {
+  const { isCompleted, completionNotes } = req.body;
+  const experiment = await LabStructure.findById(req.params.id);
+
+  if (!experiment) {
+    res.status(404);
+    throw new Error('Experiment not found');
+  }
+
+  const newStatus = typeof isCompleted === 'boolean' ? isCompleted : !experiment.isCompleted;
+  experiment.isCompleted = newStatus;
+  experiment.completedAt = newStatus ? new Date() : null;
+  experiment.completedBy = newStatus ? (req.user._id || req.user.id) : null;
+  experiment.completedByName = newStatus ? (req.user.name || req.user.email || 'Lab Admin') : '';
+  experiment.completionNotes = newStatus ? (completionNotes || '') : '';
+  experiment.updatedAt = Date.now();
+
+  await experiment.save();
+
+  res.status(200).json({
+    success: true,
+    data: experiment,
+    message: newStatus
+      ? `✅ Experiment "${experiment.experimentName}" marked as completed`
+      : `↩ Experiment "${experiment.experimentName}" marked as incomplete`
+  });
+});
+
+// @desc    Get experiment completion progress stats grouped by lab / course / semester
+// @route   GET /api/lab/structure/progress
+// @access  Private (Super Admin)
+const getProgressStats = asyncHandler(async (req, res) => {
+  // Aggregate progress per lab
+  const stats = await LabStructure.aggregate([
+    {
+      $group: {
+        _id: {
+          labId: '$labId',
+          labName: '$labName',
+          courseType: '$courseType',
+          year: '$year',
+          semester: '$semester'
+        },
+        total: { $sum: 1 },
+        completed: { $sum: { $cond: ['$isCompleted', 1, 0] } }
+      }
+    },
+    {
+      $project: {
+        _id: 0,
+        labId: '$_id.labId',
+        labName: '$_id.labName',
+        courseType: '$_id.courseType',
+        year: '$_id.year',
+        semester: '$_id.semester',
+        total: 1,
+        completed: 1,
+        pct: {
+          $cond: [
+            { $gt: ['$total', 0] },
+            { $round: [{ $multiply: [{ $divide: ['$completed', '$total'] }, 100] }, 1] },
+            0
+          ]
+        }
+      }
+    },
+    { $sort: { courseType: 1, year: 1, semester: 1, labName: 1 } }
+  ]);
+
+  // Also fetch experiment-level detail (for drill-down in Super Admin)
+  const courseFilter = req.query.courseType;
+  const labIdFilter = req.query.labId;
+
+  let experimentQuery = {};
+  if (courseFilter) experimentQuery.courseType = courseFilter;
+  if (labIdFilter && mongoose.Types.ObjectId.isValid(labIdFilter)) {
+    experimentQuery.labId = new mongoose.Types.ObjectId(labIdFilter);
+  }
+
+  const experiments = labIdFilter
+    ? await LabStructure.find(experimentQuery)
+        .select('experimentNo experimentName subject isCompleted completedAt completedByName completionNotes isUnlocked')
+        .sort({ subject: 1, experimentNo: 1 })
+        .lean()
+    : [];
+
+  res.status(200).json({
+    success: true,
+    stats,
+    experiments,
+    totalLabs: stats.length,
+    grandTotal: stats.reduce((a, s) => a + s.total, 0),
+    grandCompleted: stats.reduce((a, s) => a + s.completed, 0)
+  });
+});
+
 module.exports = {
   uploadStructure,
   getStructure,
@@ -624,5 +723,7 @@ module.exports = {
   deleteExperiment,
   toggleExperimentLock,
   toggleChemicalLockInExperiment,
-  bulkToggleLock
+  bulkToggleLock,
+  markExperimentComplete,
+  getProgressStats
 };

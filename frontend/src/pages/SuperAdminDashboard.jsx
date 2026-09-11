@@ -43,6 +43,8 @@ export default function SuperAdminDashboard() {
     addMasterChemical,
     curriculumExperiments,
     fetchCurriculumExperiments,
+    labProgressStats,
+    fetchLabProgressStats,
     addCurriculumExperiment,
     updateCurriculumExperiment,
     deleteCurriculumExperiment,
@@ -879,12 +881,23 @@ export default function SuperAdminDashboard() {
     return map;
   }, [filteredCurriculumExperiments]);
 
+  // Progress & Completion Summary for Active Course / Semester Filter
+  const currOverallStats = useMemo(() => {
+    const list = filteredCurriculumExperiments;
+    const total = list.length;
+    const completed = list.filter((e) => e.isCompleted).length;
+    const pending = total - completed;
+    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { total, completed, pending, pct };
+  }, [filteredCurriculumExperiments]);
+
   useEffect(() => {
     fetchLabs();
     fetchUsers();
     fetchActivityLogs({ limit: 100 });
     fetchCurriculumExperiments();
-  }, [fetchActivityLogs, fetchLabs, fetchUsers, fetchCurriculumExperiments]);
+    if (fetchLabProgressStats) fetchLabProgressStats();
+  }, [fetchActivityLogs, fetchLabs, fetchUsers, fetchCurriculumExperiments, fetchLabProgressStats]);
 
   // Derived user groups
   const pendingApprovals = useMemo(() => users.filter((u) => u.role !== 'super-admin' && !u.isApproved), [users]);
@@ -3446,16 +3459,16 @@ export default function SuperAdminDashboard() {
                 <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-[#5c6e46] text-white shadow-sm'>
                   <BookOpen size={20} />
                 </div>
-                Curriculum &amp; Practical Syllabus Directory
+                Curriculum Practicals &amp; Lab Progress Tracker
               </h2>
               <p className='mt-1 text-xs font-medium text-[#71805a] dark:text-[#a5b48b]'>
-                Structured governance for academic practicals, prescribed reagents, and course syllabus
+                Real-time tracking of practical syllabus completion percentage across laboratories, programs, and academic semesters
               </p>
             </div>
 
             <div className='flex items-center gap-2.5 shrink-0'>
               <Button variant='outline' onClick={handleExportCurriculumCSV} className='text-xs px-3.5 py-2 border-[#5c6e46] text-[#5c6e46] hover:bg-[#f4f6ee] font-bold dark:border-[#a8be8a] dark:text-[#a8be8a] dark:hover:bg-[#1e2418] rounded-xl'>
-                <Download size={14} className='mr-1.5' /> Export Syllabus CSV
+                <Download size={14} className='mr-1.5' /> Export Progress CSV
               </Button>
               <Button onClick={() => setCurriculumModalOpen(true)} className='text-xs px-4 py-2 font-bold shadow-sm bg-[#5c6e46] hover:bg-[#4a5e2a] text-white rounded-xl'>
                 <Plus size={15} className='mr-1.5' /> Add Experiment
@@ -3468,10 +3481,15 @@ export default function SuperAdminDashboard() {
             {[
               { id: 'B.Pharm', label: 'B.Pharm', icon: '🎓' },
               { id: 'M.Pharm', label: 'M.Pharm', icon: '🔬' },
+              { id: 'B.Tech', label: 'B.Tech', icon: '⚙️' },
               { id: 'PhD', label: 'PhD', icon: '📖' }
             ].map((program) => {
               const isActive = currCourseFilter === program.id;
-              const count = curriculumExperiments.filter(e => (e.course || 'B.Pharm') === program.id).length;
+              const programExps = curriculumExperiments.filter(e => (e.course || 'B.Pharm') === program.id);
+              const count = programExps.length;
+              const completed = programExps.filter(e => e.isCompleted).length;
+              const pct = count > 0 ? Math.round((completed / count) * 100) : 0;
+
               return (
                 <button
                   key={program.id}
@@ -3481,7 +3499,7 @@ export default function SuperAdminDashboard() {
                     setCurrSemFilter('all');
                     setCurrSubjectFilter('all');
                   }}
-                  className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-extrabold transition-all duration-200 ${
+                  className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-extrabold transition-all duration-200 ${
                     isActive
                       ? 'bg-[#5c6e46] text-white shadow-sm dark:bg-[#e4e9d8] dark:text-[#20251a]'
                       : 'bg-transparent text-[#5c6e46] border border-[#d9e1ca] hover:bg-[#f4f6ee] dark:text-[#a5b48b] dark:border-[#414a33] dark:hover:bg-[#242c1c]'
@@ -3492,11 +3510,95 @@ export default function SuperAdminDashboard() {
                   <span className={`text-xs px-2 py-0.5 rounded-full font-bold transition-colors ${
                     isActive ? 'bg-white/20 text-white dark:bg-[#20251a]/20 dark:text-[#20251a]' : 'bg-[#e8efd9] text-[#3c4e23] dark:bg-[#2a3320] dark:text-[#a8be8a]'
                   }`}>
-                    ({count})
+                    {completed}/{count} ({pct}%)
                   </span>
                 </button>
               );
             })}
+          </div>
+
+          {/* SYLLABUS COMPLETION KPI STAT CARDS */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+            {/* Total Experiments */}
+            <div className="rounded-2xl border border-[#d9e1ca] bg-white dark:bg-[#1a1d16] dark:border-[#414a33] p-4 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-[#71805a] dark:text-[#a5b48b] uppercase tracking-wider">
+                  Total Practicals
+                </span>
+                <span className="p-2 rounded-xl bg-[#5c6e46]/10 text-[#5c6e46] dark:bg-[#a8be8a]/20 dark:text-[#a8be8a]">
+                  <BookOpen size={16} />
+                </span>
+              </div>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="text-2xl font-black text-[#37412a] dark:text-[#e4e9d8]">
+                  {currOverallStats.total}
+                </span>
+                <span className="text-xs font-semibold text-[#87996c]">
+                  in {currCourseFilter} {currSemFilter !== 'all' ? `Sem ${currSemFilter}` : 'all sems'}
+                </span>
+              </div>
+            </div>
+
+            {/* Completed */}
+            <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-white dark:bg-[#1a1d16] p-4 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">
+                  Completed
+                </span>
+                <span className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                  <CheckCircle2 size={16} />
+                </span>
+              </div>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="text-2xl font-black text-emerald-700 dark:text-emerald-300">
+                  {currOverallStats.completed}
+                </span>
+                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                  marked done by Lab Admins
+                </span>
+              </div>
+            </div>
+
+            {/* Pending */}
+            <div className="rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-white dark:bg-[#1a1d16] p-4 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">
+                  Pending Practicals
+                </span>
+                <span className="p-2 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300">
+                  <Clock size={16} />
+                </span>
+              </div>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="text-2xl font-black text-amber-700 dark:text-amber-300">
+                  {currOverallStats.pending}
+                </span>
+                <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                  awaiting session
+                </span>
+              </div>
+            </div>
+
+            {/* Completion Percentage Gauge */}
+            <div className="rounded-2xl border border-[#d9e1ca] dark:border-[#414a33] bg-gradient-to-br from-[#f8faee] to-[#edf3e4] dark:from-[#1c2117] dark:to-[#242c1c] p-4 shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-[#5c6e46] dark:text-[#a8be8a] uppercase tracking-wider">
+                  Completion Rate
+                </span>
+                <span className="text-base font-black text-[#5c6e46] dark:text-[#a8be8a]">
+                  {currOverallStats.pct}%
+                </span>
+              </div>
+              <div className="mt-2 w-full h-2.5 bg-[#d9e1ca] dark:bg-[#343e28] rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-[#5c6e46] to-emerald-600 rounded-full transition-all duration-500"
+                  style={{ width: `${currOverallStats.pct}%` }}
+                />
+              </div>
+              <span className="text-[11px] font-semibold text-[#71805a] dark:text-[#a5b48b] mt-1.5">
+                {currOverallStats.completed} of {currOverallStats.total} total practicals done
+              </span>
+            </div>
           </div>
 
           {/* LEVEL 2 — SEMESTER SELECTOR */}
@@ -3507,7 +3609,10 @@ export default function SuperAdminDashboard() {
             <div className='flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin'>
               {/* All Semesters Pill */}
               {(() => {
-                const totalCount = curriculumExperiments.filter(e => (e.course || 'B.Pharm') === currCourseFilter).length;
+                const totalList = curriculumExperiments.filter(e => (e.course || 'B.Pharm') === currCourseFilter);
+                const totalCount = totalList.length;
+                const totalCompleted = totalList.filter(e => e.isCompleted).length;
+                const totalPct = totalCount > 0 ? Math.round((totalCompleted / totalCount) * 100) : 0;
                 const isAllActive = currSemFilter === 'all';
                 return (
                   <button
@@ -3523,10 +3628,10 @@ export default function SuperAdminDashboard() {
                     }`}
                   >
                     <span>All Semesters</span>
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black ${
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
                       isAllActive ? 'bg-white text-[#c8a030]' : 'bg-[#5c6e46] text-white'
                     }`}>
-                      {totalCount}
+                      {totalCompleted}/{totalCount} ({totalPct}%)
                     </span>
                   </button>
                 );
@@ -3537,12 +3642,17 @@ export default function SuperAdminDashboard() {
                 ? ['1', '2', '3', '4', '5', '6', '7', '8']
                 : currCourseFilter === 'M.Pharm'
                 ? ['1', '2', '3', '4']
+                : currCourseFilter === 'B.Tech'
+                ? ['1', '2', '3', '4', '5', '6', '7', '8']
                 : ['1']
               ).map((sem) => {
                 const isSemActive = currSemFilter === sem;
-                const semCount = curriculumExperiments.filter(
+                const semExps = curriculumExperiments.filter(
                   e => (e.course || 'B.Pharm') === currCourseFilter && String(e.semester) === String(sem)
-                ).length;
+                );
+                const semCount = semExps.length;
+                const semCompleted = semExps.filter(e => e.isCompleted).length;
+                const semPct = semCount > 0 ? Math.round((semCompleted / semCount) * 100) : 0;
 
                 return (
                   <button
@@ -3552,17 +3662,17 @@ export default function SuperAdminDashboard() {
                       setCurrSemFilter(sem);
                       setCurrSubjectFilter('all');
                     }}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-extrabold shrink-0 transition-all duration-200 border ${
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-extrabold shrink-0 transition-all duration-200 border ${
                       isSemActive
                         ? 'bg-[#5c6e46] text-white border-[#5c6e46] shadow-sm dark:bg-[#e4e9d8] dark:text-[#20251a] dark:border-[#e4e9d8]'
                         : 'bg-white text-[#5c6e46] border-[#d9e1ca] hover:bg-[#f4f6ee] dark:bg-[#20251a] dark:text-[#a5b48b] dark:border-[#414a33]'
                     }`}
                   >
                     <span>Sem {sem}</span>
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black ${
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
                       isSemActive ? 'bg-white text-[#5c6e46] dark:bg-[#20251a] dark:text-[#e4e9d8]' : 'bg-[#5c6e46] text-white'
                     }`}>
-                      {semCount}
+                      {semCompleted}/{semCount} ({semPct}%)
                     </span>
                   </button>
                 );
@@ -3607,24 +3717,67 @@ export default function SuperAdminDashboard() {
             <div className='space-y-5'>
               {Object.entries(groupedCurriculumBySubject).map(([subjectName, exps]) => {
                 const isCollapsed = collapsedLabs.includes(subjectName);
+                const labCompletedCount = exps.filter(e => e.isCompleted).length;
+                const labPct = exps.length > 0 ? Math.round((labCompletedCount / exps.length) * 100) : 0;
+                const matchedLab = labs.find(l => 
+                  (exps[0]?.labId && String(l.id || l._id) === String(exps[0].labId)) ||
+                  (l.labName && l.labName.toLowerCase() === subjectName.toLowerCase()) ||
+                  (l.name && l.name.toLowerCase() === subjectName.toLowerCase())
+                );
+                const adminDisplay = matchedLab?.admin || 'Assigned Lab Admin';
+
                 return (
                   <div key={subjectName} className='bg-white dark:bg-[#1a1d16] rounded-2xl shadow-sm hover:shadow-md border border-[#d9e1ca] dark:border-[#414a33] overflow-hidden transition-all duration-200'>
                     
                     {/* LAB SECTION HEADER */}
                     <div
-                      className='bg-[#f8faee] dark:bg-[#20251a] px-5 py-3.5 flex items-center justify-between border-b border-[#d9e1ca] dark:border-[#414a33] cursor-pointer select-none transition-colors hover:bg-[#edf1e4] dark:hover:bg-[#242c1c]'
+                      className='bg-[#f8faee] dark:bg-[#20251a] px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#d9e1ca] dark:border-[#414a33] cursor-pointer select-none transition-colors hover:bg-[#edf1e4] dark:hover:bg-[#242c1c]'
                       onClick={() => toggleLabCollapse(subjectName)}
                     >
                       <div className='flex items-center gap-3'>
-                        <span className='text-lg text-[#5c6e46] dark:text-[#a8be8a]'>⚗️</span>
-                        <h3 className='text-base font-extrabold text-[#37412a] dark:text-[#e4e9d8] tracking-tight'>
-                          {subjectName}
-                        </h3>
+                        <span className='text-xl text-[#5c6e46] dark:text-[#a8be8a]'>⚗️</span>
+                        <div>
+                          <div className='flex items-center gap-2 flex-wrap'>
+                            <h3 className='text-base font-extrabold text-[#37412a] dark:text-[#e4e9d8] tracking-tight'>
+                              {subjectName}
+                            </h3>
+                            {matchedLab?.labCode && (
+                              <span className='px-2 py-0.5 rounded text-[11px] font-bold bg-[#e8efd9] text-[#556b2f] dark:bg-[#28301f] dark:text-[#a8be8a]'>
+                                {matchedLab.labCode}
+                              </span>
+                            )}
+                          </div>
+                          <p className='text-xs text-[#71805a] dark:text-[#a5b48b] mt-0.5'>
+                            👨‍🏫 Lab Admin: <span className='font-semibold text-[#5c6e46] dark:text-[#c8a030]'>{adminDisplay}</span>
+                          </p>
+                        </div>
                       </div>
-                      <div className='flex items-center gap-3'>
-                        <span className='bg-[#5c6e46] text-white px-3 py-1 rounded-full text-xs font-extrabold shadow-2xs'>
-                          {exps.length} {exps.length === 1 ? 'Practical' : 'Practicals'}
-                        </span>
+
+                      <div className='flex items-center gap-4'>
+                        {/* Progress Bar & Percentage */}
+                        <div className='flex flex-col items-end min-w-[150px]'>
+                          <div className='flex items-center gap-2 mb-1 text-xs font-bold text-[#5c6e46] dark:text-[#a8be8a]'>
+                            <span>{labCompletedCount} / {exps.length} Done</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                              labPct === 100
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                : labPct > 0
+                                ? 'bg-[#e8efd9] text-[#556b2f] dark:bg-[#28301f] dark:text-[#a8be8a]'
+                                : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
+                            }`}>
+                              {labPct}%
+                            </span>
+                          </div>
+                          <div className='w-32 sm:w-44 h-2 bg-[#d9e1ca] dark:bg-[#38432a] rounded-full overflow-hidden'>
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                labPct === 100 ? 'bg-emerald-500' : 'bg-[#5c6e46]'
+                              }`}
+                              style={{ width: `${labPct}%` }}
+                            />
+                          </div>
+                        </div>
+
                         <span className={`text-[#5c6e46] dark:text-[#a8be8a] transition-transform duration-300 ${isCollapsed ? '-rotate-90' : 'rotate-0'}`}>
                           <ChevronDown size={18} />
                         </span>
@@ -3639,8 +3792,9 @@ export default function SuperAdminDashboard() {
                             <tr className='bg-[#f4f6ee] dark:bg-[#151712] border-b border-[#d9e1ca] dark:border-[#414a33]'>
                               <th className='w-[90px] px-5 py-3 text-[11px] font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>EXP NO</th>
                               <th className='px-5 py-3 text-[11px] font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>PRACTICAL EXPERIMENT TITLE</th>
-                              <th className='w-[240px] px-5 py-3 text-[11px] font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>PRESCRIBED REAGENTS &amp; CHEMICALS</th>
-                              <th className='w-[140px] px-5 py-3 text-[11px] font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c] text-center'>ACTIONS</th>
+                              <th className='w-[220px] px-5 py-3 text-[11px] font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>PRESCRIBED REAGENTS</th>
+                              <th className='w-[170px] px-5 py-3 text-[11px] font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c]'>PROGRESS STATUS</th>
+                              <th className='w-[130px] px-5 py-3 text-[11px] font-extrabold uppercase tracking-wider text-[#5c6e46] dark:text-[#87996c] text-center'>ACTIONS</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -3657,7 +3811,11 @@ export default function SuperAdminDashboard() {
                                 >
                                   {/* EXP NO */}
                                   <td className='px-5 py-4 align-middle'>
-                                    <div className='w-[50px] h-[50px] rounded-xl bg-[#5c6e46] text-white font-bold text-xs text-center flex flex-col justify-center items-center leading-tight shadow-2xs'>
+                                    <div className={`w-[50px] h-[50px] rounded-xl font-bold text-xs text-center flex flex-col justify-center items-center leading-tight shadow-2xs ${
+                                      row.isCompleted
+                                        ? 'bg-emerald-600 text-white'
+                                        : 'bg-[#5c6e46] text-white'
+                                    }`}>
                                       <span>Exp</span>
                                       <span className='text-sm font-black'>{row.expNo ? row.expNo.replace(/exp\s*/i, '') : '01'}</span>
                                     </div>
@@ -3709,6 +3867,38 @@ export default function SuperAdminDashboard() {
                                         <span className='text-xs text-[#87996c] italic'>No chemicals specified</span>
                                       )}
                                     </div>
+                                  </td>
+
+                                  {/* PROGRESS STATUS */}
+                                  <td className='px-5 py-4 align-middle'>
+                                    {row.isCompleted ? (
+                                      <div className='space-y-0.5'>
+                                        <span className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'>
+                                          <CheckCircle2 size={12} className='text-emerald-600 dark:text-emerald-400' />
+                                          Completed
+                                        </span>
+                                        {row.completedAt && (
+                                          <p className='text-[10px] text-[#71805a] dark:text-[#a5b48b]'>
+                                            Done on {new Date(row.completedAt).toLocaleDateString()}
+                                          </p>
+                                        )}
+                                        {row.completedByName && (
+                                          <p className='text-[10px] font-semibold text-[#5c6e46] dark:text-[#a8be8a]'>
+                                            by {row.completedByName}
+                                          </p>
+                                        )}
+                                        {row.completionNotes && (
+                                          <p className='text-[10px] italic text-zinc-500 max-w-[160px] truncate' title={row.completionNotes}>
+                                            "{row.completionNotes}"
+                                          </p>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <span className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#f4f6ee] text-[#71805a] dark:bg-[#1a1d16] dark:text-[#a5b48b] border border-[#d9e1ca] dark:border-[#414a33]'>
+                                        <Clock size={11} className='text-[#87996c]' />
+                                        Pending
+                                      </span>
+                                    )}
                                   </td>
 
                                   {/* ACTIONS */}

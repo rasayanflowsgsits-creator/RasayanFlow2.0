@@ -23,6 +23,7 @@ export default function LabExperimentsPage() {
     toggleExperimentLockOptimistic,
     toggleChemicalLockOptimistic,
     bulkToggleLockOptimistic,
+    markExperimentComplete,
     setToast
   } = useAppStore();
 
@@ -46,6 +47,12 @@ export default function LabExperimentsPage() {
   const [storeModalOpen, setStoreModalOpen] = useState(false);
   const [storeModalData, setStoreModalData] = useState({ chemicalName: '', quantityRequested: '100', unit: 'g', reason: '' });
   const [submittingStoreReq, setSubmittingStoreReq] = useState(false);
+
+  // Experiment Completion State
+  const [completeModalOpen, setCompleteModalOpen] = useState(false);
+  const [selectedExpForComplete, setSelectedExpForComplete] = useState(null);
+  const [completionNotes, setCompletionNotes] = useState('');
+  const [updatingComplete, setUpdatingComplete] = useState(false);
 
   const currentLab = labs.find(l => (l.id === activeLabId || l._id === activeLabId)) || labs[0];
 
@@ -121,6 +128,53 @@ export default function LabExperimentsPage() {
       if (setToast) setToast({ type: 'error', message: 'Failed to submit store request' });
     } finally {
       setSubmittingStoreReq(false);
+    }
+  };
+
+  // Completion statistics for current lab structure
+  const completionStats = useMemo(() => {
+    const total = (labStructure || []).length;
+    const completed = (labStructure || []).filter(e => e.isCompleted).length;
+    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { total, completed, pct };
+  }, [labStructure]);
+
+  const handleOpenCompleteModal = (exp) => {
+    setSelectedExpForComplete(exp);
+    setCompletionNotes(exp.completionNotes || '');
+    setCompleteModalOpen(true);
+  };
+
+  const handleConfirmToggleComplete = async () => {
+    if (!selectedExpForComplete) return;
+    setUpdatingComplete(true);
+    const expId = selectedExpForComplete._id || selectedExpForComplete.id;
+    const targetStatus = !selectedExpForComplete.isCompleted;
+    try {
+      if (markExperimentComplete) {
+        await markExperimentComplete(expId, targetStatus, completionNotes);
+      } else {
+        await api.put(`/lab/structure/experiment/${expId}/complete`, {
+          isCompleted: targetStatus,
+          completionNotes
+        });
+        if (activeLabId) fetchLabStructure(activeLabId);
+      }
+      if (setToast) {
+        setToast({
+          type: 'success',
+          message: targetStatus
+            ? `✅ Experiment "${selectedExpForComplete.experimentName}" marked as completed!`
+            : `Experiment "${selectedExpForComplete.experimentName}" marked as incomplete`
+        });
+      }
+      setCompleteModalOpen(false);
+      setSelectedExpForComplete(null);
+      setCompletionNotes('');
+    } catch (err) {
+      alert(err?.response?.data?.message || 'Failed to update experiment completion status');
+    } finally {
+      setUpdatingComplete(false);
     }
   };
 
@@ -487,6 +541,41 @@ export default function LabExperimentsPage() {
         </div>
       </div>
 
+      {/* Syllabus & Practical Completion Progress Tracker Bar */}
+      {labStructure.length > 0 && (
+        <div className="p-4 rounded-2xl border border-[#d9e1ca] bg-gradient-to-r from-[#f7f9f2] to-[#edf3e4] dark:from-[#1c2117] dark:to-[#22281c] dark:border-[#3c452f] shadow-sm mb-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-2.5">
+            <div className="flex items-center gap-2.5">
+              <div className="h-9 w-9 rounded-xl bg-[#556b2f] text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                {completionStats.pct}%
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-[#3c4e23] dark:text-[#eef4e8] flex items-center gap-1.5">
+                  <span>Lab Experiments Completion Progress</span>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#556b2f]/10 text-[#556b2f] dark:bg-[#a8be8a]/20 dark:text-[#a8be8a]">
+                    Synced to Super Admin
+                  </span>
+                </h4>
+                <p className="text-xs text-[#71805a] dark:text-[#a5b48b]">
+                  {completionStats.completed} of {completionStats.total} experiments marked completed for this lab syllabus
+                </p>
+              </div>
+            </div>
+            <div className="text-xs font-semibold text-[#556b2f] dark:text-[#a8be8a] bg-white dark:bg-[#131610] px-3 py-1.5 rounded-xl border border-[#d9e1ca] dark:border-[#3c452f] shadow-2xs">
+              {completionStats.total - completionStats.completed} Pending Experiments
+            </div>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="w-full h-2.5 bg-[#e4ecd7] dark:bg-[#2b3322] rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-[#556b2f] to-[#738e41] rounded-full transition-all duration-500"
+              style={{ width: `${completionStats.pct}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Filter & Search Bar */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-[#fffef8] dark:bg-[#1c2117] p-4 rounded-xl border border-[#d9e1ca] dark:border-[#3c452f] shadow-sm">
         <div className="relative flex-1 max-w-md w-full">
@@ -548,9 +637,17 @@ export default function LabExperimentsPage() {
                       Exp #{exp.experimentNo}
                     </span>
                   </div>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${getExperimentReadiness(exp.chemicals).color}`}>
-                    {getExperimentReadiness(exp.chemicals).status}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {exp.isCompleted && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
+                        <CheckCircle2 size={10} className="text-emerald-600 dark:text-emerald-400" />
+                        Completed
+                      </span>
+                    )}
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${getExperimentReadiness(exp.chemicals).color}`}>
+                      {getExperimentReadiness(exp.chemicals).status}
+                    </span>
+                  </div>
                 </div>
                 <h3 className="text-base font-bold text-[#3c4e23] dark:text-[#eef4e8] mb-4">
                   {exp.experimentName}
@@ -606,31 +703,57 @@ export default function LabExperimentsPage() {
                     );
                   })}
                 </div>
+
+                {exp.isCompleted && (
+                  <div className="mb-3 text-[11px] text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 p-2 rounded-xl border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-between">
+                    <span className="font-medium flex items-center gap-1">
+                      <CheckCircle2 size={12} className="text-emerald-600" />
+                      Completed {exp.completedAt ? `on ${new Date(exp.completedAt).toLocaleDateString()}` : ''}
+                    </span>
+                    {exp.completedByName && <span className="text-[10px] opacity-80">by {exp.completedByName}</span>}
+                  </div>
+                )}
               </div>
 
               <div className="pt-3 border-t border-[#e8ece1] dark:border-[#3c452f] flex justify-between items-center text-xs text-[#87996c]">
-                <button
-                  type="button"
-                  onClick={() => handleToggleLock(exp._id || exp.id, exp.isUnlocked)}
-                  className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border transition ${
-                    exp.isUnlocked
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
-                      : 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800 hover:bg-amber-100'
-                  }`}
-                  title={exp.isUnlocked ? "Click to Lock Experiment" : "Click to Unlock for Today's Practical"}
-                >
-                  {exp.isUnlocked ? (
-                    <>
-                      <Unlock size={12} className="text-emerald-600" />
-                      <span>🔓 Unlocked</span>
-                    </>
-                  ) : (
-                    <>
-                      <Lock size={12} className="text-amber-600" />
-                      <span>🔒 Locked</span>
-                    </>
-                  )}
-                </button>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleLock(exp._id || exp.id, exp.isUnlocked)}
+                    className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border transition ${
+                      exp.isUnlocked
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
+                        : 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800 hover:bg-amber-100'
+                    }`}
+                    title={exp.isUnlocked ? "Click to Lock Experiment" : "Click to Unlock for Today's Practical"}
+                  >
+                    {exp.isUnlocked ? (
+                      <>
+                        <Unlock size={12} className="text-emerald-600" />
+                        <span>🔓 Unlocked</span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock size={12} className="text-amber-600" />
+                        <span>🔒 Locked</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenCompleteModal(exp)}
+                    className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border transition ${
+                      exp.isCompleted
+                        ? 'bg-emerald-600 text-white border-emerald-700 hover:bg-emerald-700 shadow-2xs'
+                        : 'bg-[#f4f6ee] text-[#556b2f] border-[#d9e1ca] dark:bg-[#20251a] dark:text-[#a8be8a] dark:border-[#3c452f] hover:bg-[#e4ebd4]'
+                    }`}
+                    title={exp.isCompleted ? "Marked complete — Click to view or change" : "Click to mark as completed (syncs to Super Admin)"}
+                  >
+                    <CheckCircle2 size={12} className={exp.isCompleted ? "text-white" : "text-[#556b2f] dark:text-[#a8be8a]"} />
+                    <span>{exp.isCompleted ? 'Done ✓' : 'Mark Done'}</span>
+                  </button>
+                </div>
 
                 <div className="flex items-center gap-1.5">
                   <button 
@@ -681,6 +804,24 @@ export default function LabExperimentsPage() {
                       );
                     })}
                   </div>
+                )
+              },
+              {
+                key: 'completion',
+                label: 'Status',
+                render: (row) => (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenCompleteModal(row)}
+                    className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border transition ${
+                      row.isCompleted
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300'
+                        : 'bg-[#f4f6ee] text-[#556b2f] border-[#d9e1ca] hover:bg-[#e4ebd4]'
+                    }`}
+                  >
+                    <CheckCircle2 size={13} className={row.isCompleted ? "text-emerald-700" : "text-[#87996c]"} />
+                    <span>{row.isCompleted ? 'Completed ✓' : 'Mark Done'}</span>
+                  </button>
                 )
               },
               {
@@ -1013,6 +1154,118 @@ export default function LabExperimentsPage() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Mark Experiment Complete Confirmation Modal */}
+      <Modal
+        open={completeModalOpen}
+        onClose={() => {
+          setCompleteModalOpen(false);
+          setSelectedExpForComplete(null);
+          setCompletionNotes('');
+        }}
+        title={selectedExpForComplete?.isCompleted ? "Experiment Completion Status" : "Mark Experiment as Completed"}
+      >
+        {selectedExpForComplete && (
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-[#d9e1ca] bg-[#fbfdf7] dark:bg-[#1a1d16] dark:border-[#3c452f] p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#556b2f] dark:text-[#a5b48b] bg-[#f0f4e8] dark:bg-[#28301f] px-2 py-0.5 rounded">
+                  {selectedExpForComplete.subject}
+                </span>
+                <span className="text-xs font-semibold text-[#87996c]">
+                  Exp #{selectedExpForComplete.experimentNo}
+                </span>
+              </div>
+              <h3 className="text-base font-bold text-[#3c4e23] dark:text-[#eef4e8]">
+                {selectedExpForComplete.experimentName}
+              </h3>
+            </div>
+
+            {selectedExpForComplete.isCompleted ? (
+              <div className="rounded-xl border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 dark:border-emerald-800 p-3.5 text-xs text-emerald-900 dark:text-emerald-300 space-y-1">
+                <div className="font-bold flex items-center gap-1.5 text-sm text-emerald-800 dark:text-emerald-200">
+                  <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400" />
+                  Currently Marked Completed
+                </div>
+                <p>
+                  Marked on: {selectedExpForComplete.completedAt ? new Date(selectedExpForComplete.completedAt).toLocaleString() : 'N/A'}
+                </p>
+                {selectedExpForComplete.completedByName && (
+                  <p>By: <span className="font-semibold">{selectedExpForComplete.completedByName}</span></p>
+                )}
+                {selectedExpForComplete.completionNotes && (
+                  <p className="mt-1 pt-1 border-t border-emerald-200 dark:border-emerald-800">
+                    Notes: <span className="italic">{selectedExpForComplete.completionNotes}</span>
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="text-xs text-[#71805a] dark:text-[#c5d0b5] space-y-2">
+                <p>
+                  Marking this experiment as completed will immediately update the syllabus progress visible to the <strong>Super Administrator</strong> in their Curriculum & Practicals Tracking dashboard.
+                </p>
+                {(selectedExpForComplete.chemicals || []).length > 0 && (
+                  <div className="p-3 bg-[#f7f9f2] dark:bg-[#20251a] rounded-xl border border-[#e2ebd4] dark:border-[#38432a]">
+                    <div className="font-semibold text-[#3c4e23] dark:text-[#eef4e8] mb-1.5">
+                      Chemicals Used for this Practical:
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedExpForComplete.chemicals.map((c, i) => (
+                        <span key={i} className="px-2 py-0.5 rounded-md bg-white dark:bg-[#151812] border border-[#d9e1ca] dark:border-[#3c452f] text-[11px] font-medium text-[#556b2f] dark:text-[#a8be8a]">
+                          {c.chemicalName} ({c.quantityPerStudent} {c.unit})
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!selectedExpForComplete.isCompleted && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[#3c4e23] dark:text-[#eef4e8]">
+                  Completion Notes (Optional)
+                </label>
+                <textarea
+                  rows={2}
+                  className="w-full rounded-xl border border-[#cfd8bd] bg-white px-3 py-2 text-xs text-[#2e3d19] focus:border-[#556b2f] focus:outline-none focus:ring-1 focus:ring-[#556b2f] dark:border-[#414a33] dark:bg-[#131610] dark:text-[#eef4e8]"
+                  placeholder="e.g. Conducted for Semester 1, Batch A & B (45 students completed successfully)"
+                  value={completionNotes}
+                  onChange={(e) => setCompletionNotes(e.target.value)}
+                />
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-3 border-t border-[#e8ece1] dark:border-[#3c452f]">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setCompleteModalOpen(false);
+                  setSelectedExpForComplete(null);
+                  setCompletionNotes('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                className={
+                  selectedExpForComplete.isCompleted
+                    ? "bg-amber-600 hover:bg-amber-700 text-white"
+                    : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                }
+                onClick={handleConfirmToggleComplete}
+                disabled={updatingComplete}
+              >
+                {updatingComplete
+                  ? 'Updating...'
+                  : selectedExpForComplete.isCompleted
+                  ? '↩ Mark as Incomplete'
+                  : '✓ Confirm Experiment Complete'}
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
     </div>

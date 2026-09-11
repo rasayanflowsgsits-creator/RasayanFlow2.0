@@ -23,6 +23,12 @@ const labStructureSchema = new mongoose.Schema({
   isUnlocked: { type: Boolean, default: false },
   unlockedAt: { type: Date, default: null },
   uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  // Completion tracking (Lab Admin marks experiment as done)
+  isCompleted: { type: Boolean, default: false },
+  completedAt: { type: Date, default: null },
+  completedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  completedByName: { type: String, trim: true, default: '' },
+  completionNotes: { type: String, trim: true, default: '' },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });

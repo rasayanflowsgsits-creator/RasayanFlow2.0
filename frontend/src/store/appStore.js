@@ -374,6 +374,8 @@ const useAppStore = create((set) => ({
   activityLogs: [],
   labRequests: [],
   labStructure: [],
+  labProgressStats: null,
+  loadingProgressStats: false,
   studentRequests: [],
   researchRequests: [],
   smartInventory: null,
@@ -488,6 +490,57 @@ const useAppStore = create((set) => ({
         chemicals: (exp.chemicals || []).map(c => ({ ...c, isUnlocked: targetUnlocked }))
       }))
     }));
+  },
+  markExperimentComplete: async (expId, isCompleted, completionNotes) => {
+    // Optimistic update
+    set((state) => ({
+      labStructure: (state.labStructure || []).map((exp) => {
+        if ((exp._id || exp.id) === expId) {
+          const newStatus = typeof isCompleted === 'boolean' ? isCompleted : !exp.isCompleted;
+          return {
+            ...exp,
+            isCompleted: newStatus,
+            completedAt: newStatus ? new Date().toISOString() : null,
+            completionNotes: newStatus ? (completionNotes || '') : '',
+          };
+        }
+        return exp;
+      })
+    }));
+    try {
+      const { data } = await api.put(`/lab/structure/experiment/${expId}/complete`, {
+        isCompleted,
+        completionNotes,
+      });
+      const updated = getPayload(data) || data?.data;
+      if (updated) {
+        set((state) => ({
+          labStructure: (state.labStructure || []).map((exp) =>
+            (exp._id || exp.id) === expId ? { ...exp, ...updated } : exp
+          )
+        }));
+      }
+      return updated;
+    } catch (err) {
+      console.error('Failed to update experiment completion status:', err);
+      throw err;
+    }
+  },
+  fetchLabProgressStats: async (params = {}) => {
+    set({ loadingProgressStats: true });
+    try {
+      const query = new URLSearchParams();
+      if (params.courseType) query.set('courseType', params.courseType);
+      if (params.labId) query.set('labId', params.labId);
+      const queryString = query.toString() ? `?${query.toString()}` : '';
+      const { data } = await api.get(`/lab/structure/progress${queryString}`);
+      set({ labProgressStats: data, loadingProgressStats: false });
+      return data;
+    } catch (err) {
+      console.error('Failed to fetch lab progress stats:', err);
+      set({ loadingProgressStats: false });
+      return null;
+    }
   },
   uploadLabStructure: async (structures, labId) => {
     set({ loading: true });
@@ -2101,6 +2154,8 @@ const useAppStore = create((set) => ({
           return {
             id: item._id || item.id,
             _id: item._id,
+            labId: item.labId,
+            labName: item.labName,
             course: item.courseType || 'B.Pharm',
             year: String(item.year || '1'),
             semester: String(item.semester || '1'),
@@ -2109,7 +2164,13 @@ const useAppStore = create((set) => ({
             experimentNo: item.experimentNo,
             name: item.experimentName || 'Untitled Experiment',
             requiredChemicals: chemStr,
-            chemicals: rawChems
+            chemicals: rawChems,
+            isCompleted: Boolean(item.isCompleted),
+            completedAt: item.completedAt || null,
+            completedBy: item.completedBy || null,
+            completedByName: item.completedByName || '',
+            completionNotes: item.completionNotes || '',
+            isUnlocked: Boolean(item.isUnlocked),
           };
         });
         set({ curriculumExperiments: mapped });
