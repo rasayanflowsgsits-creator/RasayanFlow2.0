@@ -12,6 +12,8 @@ body {
   background: #fdfdf7;
   color: #3c4e23;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 200ms ease, color 200ms ease;
 }
 
 .dark body {
