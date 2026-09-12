@@ -407,8 +407,16 @@ const getMatchingLabs = asyncHandler(async (req, res) => {
   const reqCourse = (courseType || '').toLowerCase().trim();
   const reqYr = year ? String(year).replace(/\D/g, '') : '';
   const reqSem = semester ? String(semester).replace(/\D/g, '') : '';
+  const isPhD = reqCourse === 'phd' || reqCourse === 'phd research' || req.user?.isPhD || req.user?.course === 'PhD';
 
   const matchingLabs = allLabs.filter((lab) => {
+    // For PhD scholars, match PhD labs or user's assigned lab
+    if (isPhD) {
+      const labCourse = (lab.courseType || '').toLowerCase().trim();
+      const matchesLabId = req.user?.labId && String(lab._id) === String(req.user.labId);
+      return labCourse === 'phd' || labCourse === 'phd research' || matchesLabId;
+    }
+
     // 1. Course type must match exactly
     const labCourse = (lab.courseType || 'B.Pharm').toLowerCase().trim();
     if (reqCourse) {

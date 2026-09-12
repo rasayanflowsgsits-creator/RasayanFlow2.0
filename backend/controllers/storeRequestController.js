@@ -131,12 +131,25 @@ const getAllRequests = asyncHandler(async (req, res) => {
 });
 
 const getMyRequests = asyncHandler(async (req, res) => {
-  const filter = {
-    $or: [
-      { studentId: req.user._id },
-      ...(req.user.labId ? [{ labId: req.user.labId }] : [])
-    ]
-  };
+  const userId = req.user?._id || req.user?.id;
+  const userName = (req.user?.name || '').trim();
+  const userEmail = (req.user?.email || '').trim();
+
+  const orConditions = [];
+  if (userId) {
+    orConditions.push({ studentId: userId });
+  }
+  if (req.user?.labId) {
+    orConditions.push({ labId: req.user.labId });
+  }
+  if (userName) {
+    orConditions.push({ studentName: new RegExp('^' + userName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') });
+  }
+  if (userEmail) {
+    orConditions.push({ studentName: new RegExp('^' + userEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') });
+  }
+
+  const filter = orConditions.length > 0 ? { $or: orConditions } : {};
   const requests = await StoreRequest.find(filter).sort({ requestedAt: -1 });
   res.status(200).json(requests);
 });

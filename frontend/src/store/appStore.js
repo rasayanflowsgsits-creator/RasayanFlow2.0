@@ -1990,6 +1990,7 @@ const useAppStore = create((set) => ({
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // STRICT STUDENT LAB FILTER — NO FALLBACKS TO ALL LABS
     // Students ONLY see labs that exactly match their course + year + semester.
+    // PhD Scholars see their assigned PhD lab or matching PhD labs.
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     const currentUser = useAuthStore.getState().user;
     const isPreview = currentUser?.isPreview;
@@ -2003,27 +2004,53 @@ const useAppStore = create((set) => ({
     const cType = courseType || currentUser?.course || '';
     const y = (year !== undefined && year !== null && year !== '') ? String(year) : (currentUser?.year || '');
     const sem = (semester !== undefined && semester !== null && semester !== '') ? String(semester) : (currentUser?.semester || '');
+    const isPhD = cType === 'PhD' || cType === 'PhD Research' || currentUser?.isPhD || currentUser?.course === 'PhD';
 
-    // All three are required — if missing, profile is incomplete, show empty
-    if (!cType || !y || !sem) {
+    // All three are required for undergraduate programs — if missing, profile is incomplete
+    if (!isPhD && (!cType || !y || !sem)) {
       set({ myLabs: [], loading: false });
       return [];
     }
 
     set({ loading: true });
     try {
-      // Single strict query — exact match on all three fields
-      const response = await api.get(
-        `/labs/matching?courseType=${encodeURIComponent(cType)}&year=${encodeURIComponent(y)}&semester=${encodeURIComponent(sem)}`
-      );
+      const queryParams = isPhD
+        ? `courseType=PhD`
+        : `courseType=${encodeURIComponent(cType)}&year=${encodeURIComponent(y)}&semester=${encodeURIComponent(sem)}`;
+
+      const response = await api.get(`/labs/matching?${queryParams}`);
       const rawLabs = getPayload(response.data) || [];
-      const fetched = (Array.isArray(rawLabs) ? rawLabs : []).map(normalizeLab);
-      // NOTE: Only update myLabs — do NOT overwrite labs (which is for admin views)
+      let fetched = (Array.isArray(rawLabs) ? rawLabs : []).map(normalizeLab);
+
+      if (isPhD && fetched.length === 0 && (currentUser?.labName || currentUser?.labId)) {
+        fetched = [{
+          _id: currentUser.labId || 'phd-lab-default',
+          id: currentUser.labId || 'phd-lab-default',
+          labName: currentUser.labName || 'PhD Research Lab',
+          name: currentUser.labName || 'PhD Research Lab',
+          labCode: currentUser.labCode || 'PHD-LAB',
+          courseType: 'PhD',
+          department: 'PhD & Research'
+        }];
+      }
+
       set({ myLabs: fetched, loading: false });
       return fetched;
     } catch (err) {
       console.error('Failed to fetch my labs:', err);
-      // On error, return empty — NEVER fall back to all labs
+      if (isPhD && (currentUser?.labName || currentUser?.labId)) {
+        const fallback = [{
+          _id: currentUser.labId || 'phd-lab-default',
+          id: currentUser.labId || 'phd-lab-default',
+          labName: currentUser.labName || 'PhD Research Lab',
+          name: currentUser.labName || 'PhD Research Lab',
+          labCode: currentUser.labCode || 'PHD-LAB',
+          courseType: 'PhD',
+          department: 'PhD & Research'
+        }];
+        set({ myLabs: fallback, loading: false });
+        return fallback;
+      }
       set({ myLabs: [], loading: false });
       return [];
     }
