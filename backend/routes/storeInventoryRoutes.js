@@ -7,7 +7,7 @@ const storeInventoryController = require('../controllers/storeInventoryControlle
 router.use(authMiddleware);
 
 router.route('/')
-  .get(roleMiddleware(['storeAdmin', 'store_admin', 'superAdmin', 'labAdmin']), (req, res, next) => storeInventoryController.getAllChemicals(req, res, next))
+  .get(roleMiddleware(['storeAdmin', 'store_admin', 'superAdmin', 'labAdmin', 'student']), (req, res, next) => storeInventoryController.getAllChemicals(req, res, next))
   .post(roleMiddleware(['storeAdmin', 'store_admin', 'superAdmin']), (req, res, next) => storeInventoryController.addSingleChemical(req, res, next));
 
 router.route('/import')

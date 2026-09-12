@@ -14,33 +14,40 @@ const generateRefreshToken = (id) => {
   return jwt.sign({ id }, secret, { expiresIn: '7d' });
 };
 
-const serializeUser = (user) => ({
-  id: user._id,
-  _id: user._id,
-  name: user.name,
-  email: user.email,
-  role: user.role,
-  labId: user.labId,
-  labName: user.labName,
-  labCode: user.labCode || '',
-  courseType: user.courseType || user.course || '',
-  rollNumber: user.rollNumber || '',
-  // Return actual stored values — never default year/semester to '1'.
-  // The onboarding modal handles the first-time default selection.
-  course: user.course || '',
-  year: user.year || '',
-  semester: user.semester || '',
-  group: user.group || 'No Group',
-  isApproved: user.isApproved,
-  isBlocked: user.isBlocked,
-  // onboardingComplete only when roll number is set AND year/semester are saved
-  onboardingComplete: Boolean(
-    user.onboardingComplete &&
-    user.rollNumber &&
-    user.year &&
-    user.semester
-  ) || Boolean(user.role && user.role !== 'student'),
-});
+const serializeUser = (user) => {
+  const isPhD = Boolean(
+    user.isPhD ||
+    user.course === 'PhD' ||
+    user.courseType === 'PhD' ||
+    user.course === 'PhD Research' ||
+    user.courseType === 'PhD Research'
+  );
+
+  return {
+    id: user._id,
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    labId: user.labId,
+    labName: user.labName,
+    labCode: user.labCode || '',
+    courseType: isPhD ? 'PhD' : (user.courseType || user.course || ''),
+    rollNumber: user.rollNumber || '',
+    course: isPhD ? 'PhD' : (user.course || ''),
+    year: isPhD ? '' : (user.year || ''),
+    semester: isPhD ? '' : (user.semester || ''),
+    group: user.group || 'No Group',
+    isApproved: user.isApproved,
+    isBlocked: user.isBlocked,
+    isPhD: isPhD,
+    onboardingComplete: Boolean(
+      isPhD ||
+      (user.onboardingComplete && user.rollNumber && user.year && user.semester) ||
+      (user.role && user.role !== 'student')
+    ),
+  };
+};
 
 const ensureConfiguredSuperAdmin = async (user) => {
   const isConfiguredSuperAdmin =
@@ -181,10 +188,19 @@ const login = asyncHandler(async (req, res) => {
       if (linkedLab) {
         userLabName = linkedLab.labName || userLabName;
         userLabCode = linkedLab.labCode || userLabCode;
-        if (!user.year || user.year === '-') userYear = linkedLab.year ? String(linkedLab.year) : '1';
-        if (!user.semester || user.semester === '-') userSemester = linkedLab.semester ? String(linkedLab.semester) : '1';
-        if (!user.course || user.course === '-') userCourse = linkedLab.courseType || 'B.Pharm';
-        if (!user.courseType || user.courseType === '-') userCourseType = linkedLab.courseType || 'B.Pharm';
+        const isPhDLab = linkedLab.courseType === 'PhD' || linkedLab.courseType === 'PhD Research';
+        if (isPhDLab) {
+          userYear = '';
+          userSemester = '';
+          userCourse = 'PhD';
+          userCourseType = 'PhD';
+          user.isPhD = true;
+        } else {
+          if (!user.year || user.year === '-') userYear = linkedLab.year ? String(linkedLab.year) : '1';
+          if (!user.semester || user.semester === '-') userSemester = linkedLab.semester ? String(linkedLab.semester) : '1';
+          if (!user.course || user.course === '-') userCourse = linkedLab.courseType || 'B.Pharm';
+          if (!user.courseType || user.courseType === '-') userCourseType = linkedLab.courseType || 'B.Pharm';
+        }
 
         user.labName = userLabName;
         user.labCode = userLabCode;

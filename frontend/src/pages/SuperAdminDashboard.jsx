@@ -1216,13 +1216,14 @@ export default function SuperAdminDashboard() {
     setSelectedLab(lab);
     setSelectedAdminId('');
     setNewAdmin({ name: '', email: '', password: '' });
+    const isPhD = (lab.courseType || '') === 'PhD';
     setEditLabForm({
       name: lab.name || lab.labName || '',
       code: lab.labCode || lab.code || '',
       courseType: lab.courseType || 'B.Pharm',
       department: lab.department || '',
-      year: lab.year ? String(lab.year) : '1',
-      semester: lab.semester ? String(lab.semester) : '1',
+      year: isPhD ? '' : (lab.year ? String(lab.year) : '1'),
+      semester: isPhD ? '' : (lab.semester ? String(lab.semester) : '1'),
     });
     setManageTab('admin');
     setManageOpen(true);
@@ -1237,13 +1238,14 @@ export default function SuperAdminDashboard() {
     setSavingLabEdit(true);
     try {
       const labId = selectedLab._id || selectedLab.id;
+      const isPhD = editLabForm.courseType === 'PhD';
       const updated = await updateLab(labId, {
         labName: editLabForm.name.trim(),
         labCode: editLabForm.code.trim().toUpperCase(),
         courseType: editLabForm.courseType,
         department: editLabForm.department.trim(),
-        year: editLabForm.year,
-        semester: editLabForm.semester,
+        year: isPhD ? '' : editLabForm.year,
+        semester: isPhD ? '' : editLabForm.semester,
       });
       await Promise.all([fetchLabs(), fetchUsers(), fetchActivityLogs({ limit: 100 })]);
       setToast({ type: 'success', message: `Lab "${editLabForm.name}" details updated successfully!` });
@@ -1319,13 +1321,14 @@ export default function SuperAdminDashboard() {
         effectiveAdminMode = 'skip';
       }
 
+      const isPhDLab = newLab.courseType === 'PhD';
       const createdLab = await createLab({
         name: newLab.name.trim(),
         code: newLab.code.trim().toUpperCase(),
         courseType: newLab.courseType,
         department: newLab.department,
-        year: newLab.year,
-        semester: newLab.semester,
+        year: isPhDLab ? '' : newLab.year,
+        semester: isPhDLab ? '' : newLab.semester,
         adminMode: effectiveAdminMode,
         adminEmail: adminEmailToAssign || undefined,
         adminName: adminNameToSend || undefined,
@@ -1339,7 +1342,9 @@ export default function SuperAdminDashboard() {
       setToast({
         type: 'success',
         message: adminEmailToAssign
-          ? `Created "${createdLab.name}" and provisioned Lab Admin (${adminEmailToAssign})!`
+          ? isPhDLab
+            ? `Created PhD Lab "${createdLab.name}" and provisioned PhD Researcher (${adminEmailToAssign})!`
+            : `Created "${createdLab.name}" and provisioned Lab Admin (${adminEmailToAssign})!`
           : existingAdminIdToSend
             ? `Created "${createdLab.name}" and assigned existing staff as Lab Admin!`
             : `Created "${createdLab.name}" successfully!`
@@ -2218,7 +2223,9 @@ export default function SuperAdminDashboard() {
                               </p>
                               
                               <div className='flex items-center justify-between text-[11px] pt-1 border-t border-[#f0f4e8] dark:border-[#2a3121]'>
-                                <span className='text-gray-500 dark:text-gray-400 font-medium'>{lab.courseType || 'B.Pharm'} • Yr {lab.year || '1'} Sem {lab.semester || '1'}</span>
+                                <span className='text-gray-500 dark:text-gray-400 font-medium'>
+                                  {lab.courseType === 'PhD' ? 'PhD • Doctoral Research Section' : `${lab.courseType || 'B.Pharm'} • Yr ${lab.year || '1'} Sem ${lab.semester || '1'}`}
+                                </span>
                                 <span className={`font-bold ${hasAdmin ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-600'}`}>
                                   {hasAdmin ? '🟢 Operational' : '⚠️ Pending Admin'}
                                 </span>
@@ -2595,7 +2602,7 @@ export default function SuperAdminDashboard() {
                               <div className='flex items-center justify-between gap-1 text-[11px] text-[#71805a] dark:text-[#a5b48b] pt-0.5'>
                                 <span className='truncate'>{lab.department ? `${lab.department} Dept` : 'Pharmacy Dept'}</span>
                                 <span className='rounded bg-[#f4f5eb] px-1.5 py-0.5 text-[10px] font-semibold text-[#5c6e46] dark:bg-[#28301f] dark:text-[#c5d0b5] shrink-0'>
-                                  {lab.year && lab.semester ? `Yr ${lab.year} • Sem ${lab.semester}` : 'All Semesters'}
+                                  {lab.courseType === 'PhD' ? 'PhD Research Section' : (lab.year && lab.semester ? `Yr ${lab.year} • Sem ${lab.semester}` : 'All Semesters')}
                                 </span>
                               </div>
                             </div>
@@ -4660,7 +4667,7 @@ export default function SuperAdminDashboard() {
                   <span className='mb-1 block'>Course Program</span>
                   <select
                     value={newLab.courseType}
-                    onChange={(e) => setNewLab({ ...newLab, courseType: e.target.value, year: '1', semester: '1' })}
+                    onChange={(e) => setNewLab({ ...newLab, courseType: e.target.value, year: e.target.value === 'PhD' ? '' : '1', semester: e.target.value === 'PhD' ? '' : '1' })}
                     className='w-full rounded-xl border border-[#cfd8bd] bg-white p-2.5 text-xs font-bold text-[#3c4e23] outline-none focus:border-[#5c6e46] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]'
                   >
                     <option value='B.Pharm'>B.Pharm (4 Years)</option>
@@ -4678,56 +4685,71 @@ export default function SuperAdminDashboard() {
                 />
               </div>
 
-              {/* Visual Academic Year */}
-              <div>
-                <p className='text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf] mb-1.5'>Academic Year</p>
-                <div className='flex gap-2'>
-                  {(newLab.courseType === 'B.Pharm' ? ['1', '2', '3', '4'] : newLab.courseType === 'M.Pharm' ? ['1', '2'] : ['1', '2', '3', '4', '5']).map((y) => (
-                    <button
-                      key={y}
-                      type='button'
-                      onClick={() => setNewLab({ ...newLab, year: y, semester: (parseInt(y) * 2 - 1).toString() })}
-                      className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all border ${
-                        newLab.year === y
-                          ? 'bg-[#5c6e46] text-white border-[#5c6e46] shadow-sm'
-                          : 'border-[#d9e1ca] bg-white text-[#37412a] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
-                      }`}
-                    >
-                      Year {y}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Visual Semester */}
-              {newLab.year && (
-                <div>
-                  <p className='text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf] mb-1.5'>Semester</p>
-                  <div className='flex gap-2'>
-                    {[(parseInt(newLab.year) * 2 - 1).toString(), (parseInt(newLab.year) * 2).toString()].map((s) => (
-                      <button
-                        key={s}
-                        type='button'
-                        onClick={() => setNewLab({ ...newLab, semester: s })}
-                        className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all border ${
-                          newLab.semester === s
-                            ? 'bg-[#37412a] text-white border-[#37412a] shadow-sm dark:bg-[#e4e9d8] dark:text-[#20251a]'
-                            : 'border-[#d9e1ca] bg-white text-[#37412a] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
-                        }`}
-                      >
-                        Semester {s}
-                      </button>
-                    ))}
+              {/* Visual Academic Year & Semester or PhD Direct Access Banner */}
+              {newLab.courseType === 'PhD' ? (
+                <div className='rounded-xl bg-purple-50/80 p-3.5 border border-purple-200 dark:bg-purple-950/40 dark:border-purple-800/50 space-y-1.5'>
+                  <div className='flex items-center gap-2 text-purple-900 dark:text-purple-200 font-extrabold text-xs'>
+                    <Award size={16} className='text-purple-700 dark:text-purple-400 shrink-0' />
+                    <span>Direct PhD & Research Portal</span>
                   </div>
+                  <p className='text-[11px] text-purple-800 dark:text-purple-300 font-medium leading-relaxed'>
+                    This section is dedicated to doctoral and faculty research. No academic year or semester will be assigned. Requisitions will bypass lab syllabus validation and link directly to Central Store.
+                  </p>
                 </div>
+              ) : (
+                <>
+                  {/* Visual Academic Year */}
+                  <div>
+                    <p className='text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf] mb-1.5'>Academic Year</p>
+                    <div className='flex gap-2'>
+                      {(newLab.courseType === 'B.Pharm' ? ['1', '2', '3', '4'] : newLab.courseType === 'M.Pharm' ? ['1', '2'] : ['1', '2', '3', '4', '5']).map((y) => (
+                        <button
+                          key={y}
+                          type='button'
+                          onClick={() => setNewLab({ ...newLab, year: y, semester: (parseInt(y) * 2 - 1).toString() })}
+                          className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all border ${
+                            newLab.year === y
+                              ? 'bg-[#5c6e46] text-white border-[#5c6e46] shadow-sm'
+                              : 'border-[#d9e1ca] bg-white text-[#37412a] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
+                          }`}
+                        >
+                          Year {y}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Visual Semester */}
+                  {newLab.year && (
+                    <div>
+                      <p className='text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf] mb-1.5'>Semester</p>
+                      <div className='flex gap-2'>
+                        {[(parseInt(newLab.year) * 2 - 1).toString(), (parseInt(newLab.year) * 2).toString()].map((s) => (
+                          <button
+                            key={s}
+                            type='button'
+                            onClick={() => setNewLab({ ...newLab, semester: s })}
+                            className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all border ${
+                              newLab.semester === s
+                                ? 'bg-[#37412a] text-white border-[#37412a] shadow-sm dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                                : 'border-[#d9e1ca] bg-white text-[#37412a] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
+                            }`}
+                          >
+                            Semester {s}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
-            {/* COLUMN 2: Assign / Create Lab Admin */}
+            {/* COLUMN 2: Assign / Create Lab Admin or PhD Researcher */}
             <div className='space-y-4 rounded-2xl border border-[#d9e1ca] bg-[#fffef8] p-4 dark:border-[#414a33] dark:bg-[#1a1d16] flex flex-col justify-between'>
               <div>
                 <h4 className='text-xs font-bold text-[#5c6e46] dark:text-[#a5b48b] uppercase tracking-wider flex items-center gap-1.5 border-b border-[#d9e1ca] pb-2 dark:border-[#414a33]'>
-                  <UserPlus size={16} /> 2. Lab Administrator Provisioning
+                  <UserPlus size={16} /> {newLab.courseType === 'PhD' ? '2. PhD Researcher Provisioning' : '2. Lab Administrator Provisioning'}
                 </h4>
 
                 {/* Mode Selector Tabs */}
@@ -4739,7 +4761,7 @@ export default function SuperAdminDashboard() {
                       adminMode === 'create_new' ? 'bg-[#5c6e46] text-white shadow-sm' : 'text-[#71805a] hover:text-[#37412a] dark:text-[#a5b48b]'
                     }`}
                   >
-                    + Provision New Admin
+                    {newLab.courseType === 'PhD' ? '+ Provision PhD Researcher' : '+ Provision New Admin'}
                   </button>
                   <button
                     type='button'
@@ -4758,12 +4780,16 @@ export default function SuperAdminDashboard() {
                     <div className='rounded-xl bg-emerald-50/70 p-3 border border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/40'>
                       <p className='text-xs text-emerald-800 dark:text-emerald-300 font-medium leading-relaxed flex items-start gap-1.5'>
                         <ShieldCheck size={16} className='shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400' />
-                        <span>Provision credentials for the Lab Admin. When this admin logs in with this email and password, they will immediately land inside this lab dashboard!</span>
+                        <span>
+                          {newLab.courseType === 'PhD'
+                            ? 'Provision credentials for the PhD Researcher. When they log in with this ID (email) and password, they will immediately land inside the dedicated PhD & Research Portal with direct Central Store requisition access!'
+                            : 'Provision credentials for the Lab Admin. When this admin logs in with this email and password, they will immediately land inside this lab dashboard!'}
+                        </span>
                       </p>
                     </div>
 
                     <Input
-                      label='Admin Full Name *'
+                      label={newLab.courseType === 'PhD' ? 'Researcher Full Name *' : 'Admin Full Name *'}
                       value={newLabAdmin.name}
                       onChange={(e) => setNewLabAdmin({ ...newLabAdmin, name: e.target.value })}
                       placeholder='e.g. Dr. Omprakash Tanwar'
@@ -4771,7 +4797,7 @@ export default function SuperAdminDashboard() {
                     />
 
                     <Input
-                      label='Admin Login Email *'
+                      label={newLab.courseType === 'PhD' ? 'Researcher Login Email (ID) *' : 'Admin Login Email *'}
                       type='email'
                       value={newLabAdmin.email}
                       onChange={(e) => setNewLabAdmin({ ...newLabAdmin, email: e.target.value })}
@@ -4809,7 +4835,9 @@ export default function SuperAdminDashboard() {
             className='w-full py-3.5 text-sm font-bold shadow-md bg-[#37412a] hover:bg-[#2a3220] text-white dark:bg-[#e4e9d8] dark:text-[#20251a]'
             disabled={creating}
           >
-            {creating ? 'Creating & Provisioning Lab...' : 'Create & Provision Department Lab'}
+            {creating
+              ? (newLab.courseType === 'PhD' ? 'Creating & Provisioning PhD Section...' : 'Creating & Provisioning Lab...')
+              : (newLab.courseType === 'PhD' ? 'Create & Provision PhD Research Section' : 'Create & Provision Department Lab')}
           </Button>
         </div>
       </Modal>
@@ -5001,7 +5029,7 @@ export default function SuperAdminDashboard() {
                     <button
                       key={c}
                       type='button'
-                      onClick={() => setEditLabForm({ ...editLabForm, courseType: c })}
+                      onClick={() => setEditLabForm({ ...editLabForm, courseType: c, year: c === 'PhD' ? '' : '1', semester: c === 'PhD' ? '' : '1' })}
                       className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all border ${
                         editLabForm.courseType === c
                           ? 'bg-[#5c6e46] text-white border-[#5c6e46] shadow-sm'
@@ -5021,48 +5049,63 @@ export default function SuperAdminDashboard() {
                 placeholder='e.g. Pharmaceutics / Pharmacology'
               />
 
-              {/* Visual Academic Year Selection */}
-              <div>
-                <label className='block text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf] mb-1.5'>Academic Year</label>
-                <div className='flex gap-2'>
-                  {(editLabForm.courseType === 'B.Pharm' ? ['1', '2', '3', '4'] : editLabForm.courseType === 'M.Pharm' ? ['1', '2'] : ['1', '2', '3', '4', '5']).map((y) => (
-                    <button
-                      key={y}
-                      type='button'
-                      onClick={() => setEditLabForm({ ...editLabForm, year: y, semester: (parseInt(y) * 2 - 1).toString() })}
-                      className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all border ${
-                        editLabForm.year === y
-                          ? 'bg-[#5c6e46] text-white border-[#5c6e46] shadow-sm'
-                          : 'border-[#d9e1ca] bg-white text-[#37412a] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
-                      }`}
-                    >
-                      Year {y}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Visual Semester Selection */}
-              {editLabForm.year && (
-                <div>
-                  <label className='block text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf] mb-1.5'>Academic Semester</label>
-                  <div className='flex gap-2'>
-                    {[(parseInt(editLabForm.year) * 2 - 1).toString(), (parseInt(editLabForm.year) * 2).toString()].map((s) => (
-                      <button
-                        key={s}
-                        type='button'
-                        onClick={() => setEditLabForm({ ...editLabForm, semester: s })}
-                        className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all border ${
-                          editLabForm.semester === s
-                            ? 'bg-[#37412a] text-white border-[#37412a] shadow-sm dark:bg-[#e4e9d8] dark:text-[#20251a]'
-                            : 'border-[#d9e1ca] bg-white text-[#37412a] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
-                        }`}
-                      >
-                        Semester {s}
-                      </button>
-                    ))}
+              {/* Visual Academic Year & Semester or PhD Direct Access Banner */}
+              {editLabForm.courseType === 'PhD' ? (
+                <div className='rounded-xl bg-purple-50/80 p-3.5 border border-purple-200 dark:bg-purple-950/40 dark:border-purple-800/50 space-y-1.5'>
+                  <div className='flex items-center gap-2 text-purple-900 dark:text-purple-200 font-extrabold text-xs'>
+                    <Award size={16} className='text-purple-700 dark:text-purple-400 shrink-0' />
+                    <span>Direct PhD & Research Section</span>
                   </div>
+                  <p className='text-[11px] text-purple-800 dark:text-purple-300 font-medium leading-relaxed'>
+                    This section is dedicated to doctoral and faculty research. No academic year or semester is assigned.
+                  </p>
                 </div>
+              ) : (
+                <>
+                  {/* Visual Academic Year Selection */}
+                  <div>
+                    <label className='block text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf] mb-1.5'>Academic Year</label>
+                    <div className='flex gap-2'>
+                      {(editLabForm.courseType === 'B.Pharm' ? ['1', '2', '3', '4'] : editLabForm.courseType === 'M.Pharm' ? ['1', '2'] : ['1', '2', '3', '4', '5']).map((y) => (
+                        <button
+                          key={y}
+                          type='button'
+                          onClick={() => setEditLabForm({ ...editLabForm, year: y, semester: (parseInt(y) * 2 - 1).toString() })}
+                          className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all border ${
+                            editLabForm.year === y
+                              ? 'bg-[#5c6e46] text-white border-[#5c6e46] shadow-sm'
+                              : 'border-[#d9e1ca] bg-white text-[#37412a] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
+                          }`}
+                        >
+                          Year {y}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Visual Semester Selection */}
+                  {editLabForm.year && (
+                    <div>
+                      <label className='block text-xs font-bold text-[#4e5d35] dark:text-[#d5ddbf] mb-1.5'>Academic Semester</label>
+                      <div className='flex gap-2'>
+                        {[(parseInt(editLabForm.year) * 2 - 1).toString(), (parseInt(editLabForm.year) * 2).toString()].map((s) => (
+                          <button
+                            key={s}
+                            type='button'
+                            onClick={() => setEditLabForm({ ...editLabForm, semester: s })}
+                            className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all border ${
+                              editLabForm.semester === s
+                                ? 'bg-[#37412a] text-white border-[#37412a] shadow-sm dark:bg-[#e4e9d8] dark:text-[#20251a]'
+                                : 'border-[#d9e1ca] bg-white text-[#37412a] hover:bg-[#f4f6ee] dark:border-[#414a33] dark:bg-[#20251a] dark:text-[#e4e9d8]'
+                            }`}
+                          >
+                            Semester {s}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
 
               <Button

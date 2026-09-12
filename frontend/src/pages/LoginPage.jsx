@@ -28,9 +28,12 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       const userFound = await login(form);
-      if (userFound.role === 'super-admin') navigate('/');
-      else if (userFound.role === 'lab-admin') navigate('/inventory');
-      else if (userFound.role === 'store_admin') navigate('/store/dashboard');
+      const isPhDUser = userFound?.course === 'PhD' || userFound?.isPhD || userFound?.courseType === 'PhD' || userFound?.course === 'PhD Research' || userFound?.courseType === 'PhD Research';
+      const role = userFound?.role;
+      if (role === 'super-admin' || role === 'superAdmin') navigate('/');
+      else if (isPhDUser) navigate('/');
+      else if (role === 'lab-admin' || role === 'labAdmin') navigate('/inventory');
+      else if (role === 'store_admin' || role === 'storeAdmin' || role === 'store-admin') navigate('/store/dashboard');
       else navigate('/');
     } catch (err) {
       setError(err.message || 'Invalid email or password.');

@@ -13,11 +13,11 @@ const {
 router.use(authMiddleware);
 
 router.route('/')
-  .post(roleMiddleware(['labAdmin', 'superAdmin']), createRequest)
-  .get(roleMiddleware(['storeAdmin', 'store_admin', 'superAdmin']), getAllRequests);
+  .post(roleMiddleware(['labAdmin', 'superAdmin', 'student']), createRequest)
+  .get(roleMiddleware(['storeAdmin', 'store_admin', 'superAdmin', 'student', 'labAdmin']), getAllRequests);
 
 router.route('/my')
-  .get(roleMiddleware(['labAdmin', 'superAdmin']), getMyRequests);
+  .get(roleMiddleware(['labAdmin', 'superAdmin', 'student']), getMyRequests);
 
 router.route('/:id/approve')
   .put(roleMiddleware(['storeAdmin', 'store_admin', 'superAdmin']), approveRequest);

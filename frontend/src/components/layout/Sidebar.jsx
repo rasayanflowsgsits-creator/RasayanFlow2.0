@@ -81,18 +81,29 @@ export default function Sidebar({ collapsed }) {
   const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
 
   const role = user?.role || "student";
-  const isPhD = user?.course === 'PhD' || user?.isPhD;
-  const navRole = (role === "store-admin" || role === "store_admin" || role === "storeAdmin") 
-    ? "store_admin" 
-    : (role === "lab-admin" || role === "labAdmin" || role === "lab_admin") 
-    ? "lab-admin" 
-    : (role === "super-admin" || role === "superAdmin") 
-    ? "super-admin" 
-    : role;
+  const isSuperAdmin = role === "super-admin" || role === "superAdmin";
+  const isStoreAdmin = role === "store-admin" || role === "store_admin" || role === "storeAdmin";
+  const isPhD = !isSuperAdmin && !isStoreAdmin && (
+    user?.course === 'PhD' ||
+    user?.courseType === 'PhD' ||
+    user?.course === 'PhD Research' ||
+    user?.courseType === 'PhD Research' ||
+    user?.isPhD ||
+    Boolean(user?.isPhDRequest)
+  );
+  const navRole = isSuperAdmin
+    ? "super-admin"
+    : isStoreAdmin
+    ? "store_admin"
+    : isPhD
+    ? "student"
+    : (role === "lab-admin" || role === "labAdmin" || role === "lab_admin")
+    ? "lab-admin"
+    : "student";
 
   const currentLinks = linksMap[navRole]?.map(item => {
-    if (navRole === 'student' && isPhD) {
-      if (item.to === '/') return { ...item, label: 'Request Chemical to Store', icon: FlaskConical };
+    if (isPhD) {
+      if (item.to === '/') return { ...item, label: 'PhD Chemical Requisitions', icon: FlaskConical };
       if (item.to === '/my-borrowings') return { ...item, label: 'Requisition History', icon: History };
     }
     return item;

@@ -26,13 +26,17 @@ const createLab = asyncHandler(async (req, res) => {
     throw new Error('labCode already exists');
   }
 
+  const isPhDLab = courseType === 'PhD' || courseType === 'PhD Research';
+  const effectiveYear = isPhDLab ? '' : (year || '');
+  const effectiveSemester = isPhDLab ? '' : (semester || '');
+
   const lab = await Lab.create({
     labName,
     labCode,
-    courseType: courseType || 'B.Pharm',
+    courseType: isPhDLab ? 'PhD' : (courseType || 'B.Pharm'),
     department: department || '',
-    year: year || '',
-    semester: semester || '',
+    year: effectiveYear,
+    semester: effectiveSemester,
     createdBy: req.user._id,
     admins: [],
   });
@@ -44,15 +48,16 @@ const createLab = asyncHandler(async (req, res) => {
   if (adminMode === 'existing' && existingAdminId) {
     const existingAdmin = await User.findById(existingAdminId);
     if (existingAdmin) {
-      existingAdmin.role = 'labAdmin';
+      existingAdmin.role = isPhDLab ? 'student' : 'labAdmin';
       existingAdmin.labId = lab._id;
       existingAdmin.labName = lab.labName;
       existingAdmin.labCode = lab.labCode;
-      existingAdmin.course = lab.courseType || 'B.Pharm';
-      existingAdmin.courseType = lab.courseType || 'B.Pharm';
-      existingAdmin.year = lab.year || '1';
-      existingAdmin.semester = lab.semester || '1';
+      existingAdmin.course = isPhDLab ? 'PhD' : (lab.courseType || 'B.Pharm');
+      existingAdmin.courseType = isPhDLab ? 'PhD' : (lab.courseType || 'B.Pharm');
+      existingAdmin.year = effectiveYear;
+      existingAdmin.semester = effectiveSemester;
       existingAdmin.isApproved = true;
+      existingAdmin.isPhD = isPhDLab;
       if (adminName && adminName.trim()) existingAdmin.name = adminName.trim();
       if (adminPassword && adminPassword.trim()) {
         existingAdmin.password = adminPassword.trim();
@@ -69,16 +74,17 @@ const createLab = asyncHandler(async (req, res) => {
 
     let existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
-      // User exists -> Upgrade to labAdmin & assign to this lab
-      existingUser.role = 'labAdmin';
+      // User exists -> Assign to this lab
+      existingUser.role = isPhDLab ? 'student' : 'labAdmin';
       existingUser.labId = lab._id;
       existingUser.labName = lab.labName;
       existingUser.labCode = lab.labCode;
-      existingUser.course = lab.courseType || 'B.Pharm';
-      existingUser.courseType = lab.courseType || 'B.Pharm';
-      existingUser.year = lab.year || '1';
-      existingUser.semester = lab.semester || '1';
+      existingUser.course = isPhDLab ? 'PhD' : (lab.courseType || 'B.Pharm');
+      existingUser.courseType = isPhDLab ? 'PhD' : (lab.courseType || 'B.Pharm');
+      existingUser.year = effectiveYear;
+      existingUser.semester = effectiveSemester;
       existingUser.isApproved = true;
+      existingUser.isPhD = isPhDLab;
       if (adminName && adminName.trim()) existingUser.name = adminName.trim();
       if (adminPassword && adminPassword.trim()) {
         existingUser.password = adminPassword.trim();
@@ -87,22 +93,23 @@ const createLab = asyncHandler(async (req, res) => {
       await existingUser.save();
       provisionedAdmin = existingUser;
     } else {
-      // User does not exist -> Create new labAdmin user
+      // User does not exist -> Create new user
       const defaultPass = (adminPassword && adminPassword.trim()) || '123456';
       provisionedAdmin = await User.create({
         name: (adminName && adminName.trim()) || normalizedEmail.split('@')[0],
         email: normalizedEmail,
         password: defaultPass,
         displayPassword: defaultPass,
-        role: 'labAdmin',
+        role: isPhDLab ? 'student' : 'labAdmin',
         isApproved: true,
+        isPhD: isPhDLab,
         labId: lab._id,
         labName: lab.labName,
         labCode: lab.labCode,
-        course: lab.courseType || 'B.Pharm',
-        courseType: lab.courseType || 'B.Pharm',
-        year: lab.year || '1',
-        semester: lab.semester || '1',
+        course: isPhDLab ? 'PhD' : (lab.courseType || 'B.Pharm'),
+        courseType: isPhDLab ? 'PhD' : (lab.courseType || 'B.Pharm'),
+        year: effectiveYear,
+        semester: effectiveSemester,
       });
     }
   }
@@ -133,7 +140,9 @@ const createLab = asyncHandler(async (req, res) => {
 
 const listLabs = asyncHandler(async (req, res) => {
   const labs = await Lab.find().populate('admins', 'name email role isApproved');
-  const allLabAdmins = await User.find({ role: { $in: ['labAdmin', 'lab-admin'] } }).select('_id name email role labId labName labCode');
+  const allLabAdmins = await User.find({
+    $or: [{ role: { $in: ['labAdmin', 'lab-admin'] } }, { isPhD: true }, { course: 'PhD' }, { labId: { $ne: null } }]
+  }).select('_id name email role isPhD course labId labName labCode');
 
   const enrichedLabs = await Promise.all(
     labs.map(async (labDoc) => {
@@ -205,6 +214,11 @@ const assignAdmin = asyncHandler(async (req, res) => {
     admin = await User.findOne({ email: normalizedEmail });
   }
 
+  const isPhD = lab.courseType === 'PhD' || lab.courseType === 'PhD Research';
+  const roleToSet = isPhD ? 'student' : 'labAdmin';
+  const yearToSet = isPhD ? '' : (lab.year || '1');
+  const semToSet = isPhD ? '' : (lab.semester || '1');
+
   let isNewUser = false;
   if (!admin && normalizedEmail) {
     const defaultPass = (password && password.trim()) || '123456';
@@ -213,15 +227,16 @@ const assignAdmin = asyncHandler(async (req, res) => {
       email: normalizedEmail,
       password: defaultPass,
       displayPassword: defaultPass,
-      role: 'labAdmin',
+      role: roleToSet,
       isApproved: true,
+      isPhD: isPhD,
       labId: lab._id,
       labName: lab.labName,
       labCode: lab.labCode,
-      course: lab.courseType || 'B.Pharm',
-      courseType: lab.courseType || 'B.Pharm',
-      year: lab.year || '1',
-      semester: lab.semester || '1',
+      course: isPhD ? 'PhD' : (lab.courseType || 'B.Pharm'),
+      courseType: isPhD ? 'PhD' : (lab.courseType || 'B.Pharm'),
+      year: yearToSet,
+      semester: semToSet,
     });
     isNewUser = true;
   }
@@ -232,15 +247,16 @@ const assignAdmin = asyncHandler(async (req, res) => {
   }
 
   if (!isNewUser) {
-    admin.role = 'labAdmin';
+    admin.role = roleToSet;
     admin.labId = lab._id;
     admin.labName = lab.labName;
     admin.labCode = lab.labCode;
-    admin.course = lab.courseType || 'B.Pharm';
-    admin.courseType = lab.courseType || 'B.Pharm';
-    admin.year = lab.year || '1';
-    admin.semester = lab.semester || '1';
+    admin.course = isPhD ? 'PhD' : (lab.courseType || 'B.Pharm');
+    admin.courseType = isPhD ? 'PhD' : (lab.courseType || 'B.Pharm');
+    admin.year = yearToSet;
+    admin.semester = semToSet;
     admin.isApproved = true;
+    admin.isPhD = isPhD;
     if (name && name.trim()) admin.name = name.trim();
     if (password && password.trim()) {
       admin.password = password.trim();
@@ -440,8 +456,16 @@ const updateLab = asyncHandler(async (req, res) => {
   if (labName) lab.labName = labName.trim();
   if (courseType) lab.courseType = courseType.trim();
   if (department !== undefined) lab.department = department.trim();
-  if (year !== undefined) lab.year = String(year).trim();
-  if (semester !== undefined) lab.semester = String(semester).trim();
+
+  const isPhD = (courseType && (courseType === 'PhD' || courseType === 'PhD Research')) || lab.courseType === 'PhD' || lab.courseType === 'PhD Research';
+  if (isPhD) {
+    lab.year = '';
+    lab.semester = '';
+    lab.courseType = 'PhD';
+  } else {
+    if (year !== undefined) lab.year = String(year).trim();
+    if (semester !== undefined) lab.semester = String(semester).trim();
+  }
 
   await lab.save();
 
@@ -454,8 +478,9 @@ const updateLab = asyncHandler(async (req, res) => {
         labCode: lab.labCode,
         course: lab.courseType,
         courseType: lab.courseType,
-        year: lab.year,
-        semester: lab.semester,
+        year: isPhD ? '' : lab.year,
+        semester: isPhD ? '' : lab.semester,
+        ...(isPhD ? { isPhD: true, role: 'student' } : {})
       }
     }
   );
@@ -463,7 +488,7 @@ const updateLab = asyncHandler(async (req, res) => {
   await ActivityLog.create({
     userId: req.user._id,
     action: 'update_lab',
-    details: `Updated lab details: ${lab.labName} (${lab.labCode}) — ${lab.courseType} Yr ${lab.year} Sem ${lab.semester}`
+    details: `Updated lab details: ${lab.labName} (${lab.labCode}) — ${lab.courseType}${isPhD ? ' (PhD Research)' : ` Yr ${lab.year} Sem ${lab.semester}`}`
   });
 
   const updatedLab = await Lab.findById(lab._id).populate('admins', 'name email role isApproved');

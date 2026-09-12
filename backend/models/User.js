@@ -24,6 +24,7 @@ const userSchema = new mongoose.Schema({
   blockedReason: { type: String, trim: true, default: '' },
   blockedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   displayPassword: { type: String, trim: true, default: '' },
+  isPhD: { type: Boolean, default: false },
   onboardingComplete: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
 });

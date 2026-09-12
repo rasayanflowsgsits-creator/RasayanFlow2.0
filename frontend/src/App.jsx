@@ -19,6 +19,7 @@ import StoreRequests from './store/StoreRequests';
 import StoreHistory from './store/StoreHistory';
 import StoreReports from './store/StoreReports';
 import StudentDashboard from './pages/StudentDashboard';
+import PhDResearchDashboard from './pages/PhDResearchDashboard';
 import StudentBorrowingsPage from './pages/StudentBorrowingsPage';
 import StudentLabDetail from './pages/StudentLabDetail';
 import StudentStorePage from './pages/StudentStorePage';
@@ -189,8 +190,16 @@ function App() {
 
   const rawRole = user?.role || 'student';
   const isSuperAdmin = rawRole === 'super-admin' || rawRole === 'superAdmin' || rawRole === 'super_admin';
-  const isLabAdmin = rawRole === 'lab-admin' || rawRole === 'labAdmin' || rawRole === 'lab_admin';
   const isStoreAdmin = rawRole === 'store-admin' || rawRole === 'store_admin' || rawRole === 'storeAdmin';
+  const isPhD = !isSuperAdmin && !isStoreAdmin && (
+    user?.course === 'PhD' ||
+    user?.courseType === 'PhD' ||
+    user?.course === 'PhD Research' ||
+    user?.courseType === 'PhD Research' ||
+    user?.isPhD ||
+    Boolean(user?.isPhDRequest)
+  );
+  const isLabAdmin = !isPhD && (rawRole === 'lab-admin' || rawRole === 'labAdmin' || rawRole === 'lab_admin');
   const isStudent = !isSuperAdmin && !isLabAdmin && !isStoreAdmin;
 
   function AppRoutes() {
@@ -217,7 +226,16 @@ function App() {
                 <Navbar onToggleSidebar={() => setSidebarCollapsed((value) => !value)} />
                 <main className='mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8'>
                   <Routes>
-                    <Route index element={isSuperAdmin ? <SuperAdminDashboard /> : isLabAdmin ? <LabAdminDashboard /> : isStoreAdmin ? <StoreManagerDashboard /> : <StudentDashboard />} />
+                    <Route
+                      index
+                      element={
+                        isSuperAdmin ? <SuperAdminDashboard /> :
+                        isStoreAdmin ? <StoreManagerDashboard /> :
+                        isPhD ? <PhDResearchDashboard /> :
+                        isLabAdmin ? <LabAdminDashboard /> :
+                        <StudentDashboard />
+                      }
+                    />
                     <Route path='labs' element={isSuperAdmin ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='inventory' element={isLabAdmin ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='analytics' element={isLabAdmin ? <LabAnalyticsPage /> : <Navigate to='/' replace />} />
