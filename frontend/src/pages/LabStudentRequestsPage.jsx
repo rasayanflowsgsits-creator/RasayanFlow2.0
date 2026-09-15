@@ -5,6 +5,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Input from '../components/ui/Input';
+import ChemicalSearchInput from '../components/ChemicalSearchInput';
 import {
   AlertCircle, CheckCircle, PackageSearch, Search, Filter,
   Users, ClipboardList, ChevronDown, ChevronUp, Calendar,
@@ -43,7 +44,7 @@ export default function LabStudentRequestsPage() {
   const [schedulingGroupKey, setSchedulingGroupKey] = useState('');
 
   const [storeModalOpen, setStoreModalOpen] = useState(false);
-  const [storeModalData, setStoreModalData] = useState({ chemicalName: '', quantityRequested: '', unit: '', reason: '' });
+  const [storeModalData, setStoreModalData] = useState({ chemicalName: '', casNumber: '', quantityRequested: '', unit: 'g', reason: '' });
   const [submittingStoreReq, setSubmittingStoreReq] = useState(false);
 
   const currentLab = labs.find((l) => (l.id || l._id) === activeLabId) || labs[0];
@@ -209,6 +210,7 @@ export default function LabStudentRequestsPage() {
       if (createLabStoreRequest) {
         await createLabStoreRequest({
           chemicalName: storeModalData.chemicalName,
+          casNumber: storeModalData.casNumber || '',
           quantityRequested: storeModalData.quantityRequested,
           unit: storeModalData.unit,
           reason: storeModalData.reason,
@@ -426,6 +428,7 @@ export default function LabStudentRequestsPage() {
                       onClick={() => {
                         setStoreModalData({
                           chemicalName: item.chemicalName,
+                          casNumber: item.casNumber || '',
                           quantityRequested: String(item.deficit),
                           unit: item.unit,
                           reason: `Deficit for ${item.studentCount} student requests in ${currentLab?.labName || currentLab?.name || 'Lab'}`
@@ -607,6 +610,7 @@ export default function LabStudentRequestsPage() {
                                   e.stopPropagation();
                                   setStoreModalData({
                                     chemicalName: c.chemicalName,
+                                    casNumber: c.casNumber || '',
                                     quantityRequested: String(Math.max(0, c.totalQuantity - c.available)),
                                     unit: c.unit || 'g',
                                     reason: `Required for ${group.subject} - Exp ${group.experimentNo} (Missing ${c.totalQuantity - c.available} ${c.unit})`
@@ -853,11 +857,35 @@ export default function LabStudentRequestsPage() {
       {/* Store Request Modal */}
       <Modal open={storeModalOpen} onClose={() => setStoreModalOpen(false)} title="Request Chemical From Central Store">
         <div className="space-y-4 text-left">
-          <Input
+          <ChemicalSearchInput
             label="Chemical Name"
+            required
             value={storeModalData.chemicalName}
-            onChange={(e) => setStoreModalData({ ...storeModalData, chemicalName: e.target.value })}
+            onChange={(val) => setStoreModalData((prev) => ({ ...prev, chemicalName: val }))}
+            onSelect={(item) => {
+              setStoreModalData((prev) => ({
+                ...prev,
+                chemicalName: item.name || item.chemicalName || '',
+                casNumber: item.cas || item.casNumber || '',
+                unit: item.unit || item.quantityUnit || prev.unit || 'g'
+              }));
+            }}
+            placeholder="Search chemical name or CAS (e.g. Agar, Ethanol, 7647-14-5)..."
           />
+
+          {/* CAS Number Field */}
+          <div className="space-y-1.5">
+            <label className="block text-sm font-semibold text-[#3c4e23] dark:text-[#eef4e8]">
+              CAS Number <span className="text-xs font-normal text-[#71805a] dark:text-[#a8be8a]">(Auto-filled from Central Store)</span>
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. 7647-14-5"
+              value={storeModalData.casNumber}
+              onChange={(e) => setStoreModalData((prev) => ({ ...prev, casNumber: e.target.value }))}
+              className="w-full rounded-lg border border-[#cfd8bd] bg-white px-3.5 py-2.5 text-sm font-mono text-[#2e3d19] focus:border-[#556b2f] focus:outline-none focus:ring-1 focus:ring-[#556b2f] dark:border-[#414a33] dark:bg-[#131610] dark:text-[#eef4e8]"
+            />
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="Quantity Requested"

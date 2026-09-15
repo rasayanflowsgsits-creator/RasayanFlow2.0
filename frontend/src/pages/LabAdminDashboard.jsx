@@ -15,6 +15,7 @@ import Input from '../components/ui/Input';
 import { parseCsv } from '../utils/csv';
 import LabImportModal from '../components/LabImportModal';
 import ChemicalIntakeModal from '../components/ChemicalIntakeModal';
+import ChemicalSearchInput from '../components/ChemicalSearchInput';
 
 const UNIT_OPTIONS = ['mg', 'g', 'kg', 'mcg', 'mL', 'L', 'uL', 'tablets', 'capsules', 'bottles', 'boxes', 'packs', 'vials', 'ampoules', 'units'];
 const getTodayDate = () => new Date().toISOString().slice(0, 10);
@@ -102,7 +103,7 @@ export default function LabAdminDashboard() {
   const [intakeOpen, setIntakeOpen] = useState(false);
 
   const [storeModalOpen, setStoreModalOpen] = useState(false);
-  const [storeModalData, setStoreModalData] = useState({ chemicalName: '', quantityRequested: '100', unit: 'mL', reason: '' });
+  const [storeModalData, setStoreModalData] = useState({ chemicalName: '', casNumber: '', quantityRequested: '100', unit: 'mL', reason: '' });
   const [submittingStoreReq, setSubmittingStoreReq] = useState(false);
 
   const openEditModal = (item) => {
@@ -318,6 +319,7 @@ export default function LabAdminDashboard() {
       if (store.createLabStoreRequest) {
         await store.createLabStoreRequest({
           chemicalName: storeModalData.chemicalName,
+          casNumber: storeModalData.casNumber || '',
           quantityRequested: storeModalData.quantityRequested,
           unit: storeModalData.unit,
           reason: storeModalData.reason,
@@ -505,7 +507,7 @@ export default function LabAdminDashboard() {
               <Upload size={14} className='mr-1.5' /> Bulk Import
             </Button>
             <Button onClick={() => {
-              setStoreModalData({ chemicalName: '', quantityRequested: '100', unit: 'mL', reason: `Stock replenishment for ${currentLab?.name}` });
+              setStoreModalData({ chemicalName: '', casNumber: '', quantityRequested: '100', unit: 'mL', reason: `Stock replenishment for ${currentLab?.name}` });
               setStoreModalOpen(true);
             }} className='text-xs px-3.5 py-2 font-bold bg-[#c8a030] hover:bg-[#b08b26] text-white rounded-xl shadow-xs'>
               <Store size={14} className='mr-1.5' /> Request Central Store
@@ -670,6 +672,7 @@ export default function LabAdminDashboard() {
                                 onClick={() => {
                                   setStoreModalData({
                                     chemicalName: item.chemicalName,
+                                    casNumber: item.casNumber || item.cas || '',
                                     quantityRequested: '100',
                                     unit: item.quantityUnit || 'mL',
                                     reason: `Restock requisition for ${currentLab?.name || 'Lab'}`
@@ -769,12 +772,34 @@ export default function LabAdminDashboard() {
       {/* CENTRAL STORE REQUISITION MODAL */}
       <Modal open={storeModalOpen} onClose={() => setStoreModalOpen(false)} title='Request Reagent Transfer from Central Store'>
         <div className='space-y-4 text-left'>
-          <Input
-            label='Chemical Reagent Name *'
+          <ChemicalSearchInput
+            label='Chemical Reagent Name'
+            required
             value={storeModalData.chemicalName}
-            onChange={(e) => setStoreModalData({ ...storeModalData, chemicalName: e.target.value })}
-            placeholder='e.g. Hydrochloric Acid 0.1M'
+            onChange={(val) => setStoreModalData((prev) => ({ ...prev, chemicalName: val }))}
+            onSelect={(item) => {
+              setStoreModalData((prev) => ({
+                ...prev,
+                chemicalName: item.name || item.chemicalName || '',
+                casNumber: item.cas || item.casNumber || '',
+                unit: item.unit || item.quantityUnit || prev.unit || 'mL'
+              }));
+            }}
+            placeholder='Search chemical reagent name or CAS (e.g. Agar, Hydrochloric Acid, 7647-14-5)...'
           />
+
+          <div className='space-y-1.5'>
+            <label className='block text-xs font-bold text-[#3c4e23] dark:text-[#eef4e8]'>
+              CAS Number <span className='text-[11px] font-normal text-[#71805a] dark:text-[#a8be8a]'>(Auto-filled from Central Store)</span>
+            </label>
+            <input
+              type='text'
+              placeholder='e.g. 7647-14-5'
+              value={storeModalData.casNumber}
+              onChange={(e) => setStoreModalData((prev) => ({ ...prev, casNumber: e.target.value }))}
+              className='w-full rounded-xl border border-[#cfd8bd] bg-[#fffef8] px-3 py-2 text-xs font-mono text-[#3c4e23] focus:outline-none focus:ring-2 focus:ring-[#5c6e46] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8]'
+            />
+          </div>
           <div className='grid grid-cols-2 gap-4'>
             <Input
               label='Quantity Requested *'
