@@ -83,6 +83,16 @@ const createRequest = asyncHandler(async (req, res) => {
     requestData.labName = requestData.labName || req.user?.labName || 'Pharmacy Lab';
   }
 
+  if (!requestData.casNumber && requestData.chemicalName) {
+    const matchedChem = await StoreInventory.findOne({
+      name: { $regex: new RegExp(`^${requestData.chemicalName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+    });
+    if (matchedChem) {
+      requestData.casNumber = matchedChem.cas || '';
+      if (!requestData.chemicalId) requestData.chemicalId = matchedChem.chemicalId;
+    }
+  }
+
   const newRequest = await StoreRequest.create(requestData);
 
   // Emit socket event to store manager

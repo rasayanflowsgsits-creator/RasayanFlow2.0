@@ -5,6 +5,7 @@ import api from '../services/api';
 import useAppStore from '../store/appStore';
 import { toFrontendRequest } from '../utils/storeMapper';
 import StoreRequestReceiptModal from '../components/StoreRequestReceiptModal';
+import ChemicalSearchInput from '../components/ChemicalSearchInput';
 
 const UNIT_OPTIONS = ['ml', 'L', 'g', 'kg', 'mg', 'pcs', 'bottles', 'boxes', 'vials', 'packs', 'UNT'];
 
@@ -473,25 +474,28 @@ export default function LabStoreRequests() {
             {/* Form Body */}
             <form onSubmit={handleSubmit} className="space-y-5">
               
-              {/* Field 1: Chemical Name */}
-              <div className="space-y-1.5">
-                <label className="block text-sm font-bold tracking-wide text-[#37412a] dark:text-[#e4e9d8]">
-                  Chemical Name <span className="text-rose-600">*</span>
-                </label>
-                <input 
-                  required 
-                  type="text" 
-                  value={formData.chemicalName} 
-                  onChange={(e) => setFormData({...formData, chemicalName: e.target.value})} 
-                  className="w-full px-4 py-3 rounded-lg border border-[#cfd8bd] bg-white dark:bg-[#20251a] dark:border-[#414a33] text-sm font-semibold text-[#37412a] dark:text-[#e4e9d8] placeholder:text-[#8a9970] focus:ring-2 focus:ring-[#5c6e46]/20 focus:border-[#5c6e46] transition-all outline-none" 
-                  placeholder="e.g. Sodium Chloride, Acetone, Ethanol..." 
-                />
-              </div>
+              {/* Field 1: Chemical Name with Live Store Search & Autocomplete */}
+              <ChemicalSearchInput
+                label="Chemical Name"
+                required
+                value={formData.chemicalName}
+                onChange={(val) => setFormData((prev) => ({ ...prev, chemicalName: val }))}
+                onSelect={(item) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    chemicalName: item.name || item.chemicalName || '',
+                    casNumber: item.cas || item.casNumber || prev.casNumber || '',
+                    unit: item.unit || item.quantityUnit || prev.unit || 'g'
+                  }));
+                }}
+                placeholder="Search chemical name or CAS (e.g. Sodium Chloride, Agar, Ethanol)..."
+                inputClassName="w-full px-4 py-3 rounded-lg border border-[#cfd8bd] bg-white dark:bg-[#20251a] dark:border-[#414a33] text-sm font-semibold text-[#37412a] dark:text-[#e4e9d8] placeholder:text-[#8a9970] focus:ring-2 focus:ring-[#5c6e46]/20 focus:border-[#5c6e46] transition-all outline-none"
+              />
 
               {/* Field 2: CAS Number */}
               <div className="space-y-1.5">
                 <label className="block text-sm font-bold tracking-wide text-[#37412a] dark:text-[#e4e9d8]">
-                  CAS Number <span className="text-[#71805a] font-normal text-xs">(Optional)</span>
+                  CAS Number <span className="text-[#71805a] dark:text-[#a8be8a] font-normal text-xs">(Auto-filled from Central Store or enter manually)</span>
                 </label>
                 <input 
                   type="text" 
