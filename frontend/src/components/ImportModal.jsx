@@ -6,6 +6,7 @@ import Button from './ui/Button';
 import Input from './ui/Input';
 import useAppStore from '../store/appStore';
 import { UploadCloud, Link as LinkIcon, Download, AlertCircle, CheckCircle } from 'lucide-react';
+import { analyzeCsvHeaders, smartNormalizeCsvRecord } from '../utils/storeMapper';
 
 const REQUIRED_HEADERS = [
   'Chemical ID', 'Chemical Name', 'CAS Number', 'Synonyms', 'Molecular Formula',
@@ -48,29 +49,29 @@ export default function ImportModal({ open, onClose, onImportSuccess }) {
   };
 
   const processData = (headers, rows) => {
-    // Validate headers
-    const missingHeaders = REQUIRED_HEADERS.filter(h => !headers.includes(h));
-    if (missingHeaders.length > 0) {
-      setHeaderError(`Column(s) not recognized: ${missingHeaders.join(', ')}. Please use the correct template.`);
+    const analysis = analyzeCsvHeaders(headers);
+    if (!analysis.hasRequiredCore) {
+      setHeaderError('Required column "Chemical Name" (or "Name", "Item") not found. Please ensure your file includes chemical names.');
       setPreviewData(null);
       return;
     }
 
     setHeaderError('');
 
-    const parsedRows = rows.map(row => {
-      // Validate row (basic validation)
-      const chemicalName = row['Chemical Name'];
-      const chemicalId = row['Chemical ID'];
-      const isValid = Boolean(chemicalName && chemicalId);
-      return { data: row, isValid };
-    });
+    const parsedRows = rows
+      .filter((r) => Object.values(r).some((v) => String(v ?? '').trim() !== ''))
+      .map((row, idx) => {
+        const normalized = smartNormalizeCsvRecord(row, idx);
+        const chemicalName = normalized['Chemical Name'];
+        const isValid = Boolean(chemicalName);
+        return { data: normalized, isValid };
+      });
 
     setPreviewData({
-      headers,
+      headers: REQUIRED_HEADERS,
       rows: parsedRows,
-      validCount: parsedRows.filter(r => r.isValid).length,
-      invalidCount: parsedRows.filter(r => !r.isValid).length
+      validCount: parsedRows.filter((r) => r.isValid).length,
+      invalidCount: parsedRows.filter((r) => !r.isValid).length,
     });
   };
 
@@ -129,8 +130,8 @@ export default function ImportModal({ open, onClose, onImportSuccess }) {
           subCategory: r.data['Hazard Class'] || 'General',
           quantity: Number(r.data['Available Quantity']) || 0,
           quantityUnit: r.data['Standard Unit'] || 'units',
-          storageLocation: [r.data['Storage Block'], r.data['Rack No'], r.data['Shelf No'], r.data['Location Code']].filter(Boolean).join('-'),
-          description: r.data['Remarks'] || '',
+          storageLocation: r.data['Storage Location'] || [r.data['Storage Block'], r.data['Rack No'], r.data['Shelf No'], r.data['Location Code']].filter(Boolean).join('-') || 'Main Chemical Rack A',
+          description: r.data['Remarks'] || r.data['Synonyms'] || '',
         }));
 
       const result = await bulkImportStoreItems({ items: itemsToImport, importMode: mode });

@@ -1,4 +1,4 @@
-import { FileDown, FileSpreadsheet, UploadCloud } from 'lucide-react';
+import { CheckCircle, FileDown, FileSpreadsheet, Sparkles, UploadCloud } from 'lucide-react';
 import Papa from 'papaparse';
 import { useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
@@ -6,6 +6,7 @@ import Button from './ui/Button';
 import Modal from './ui/Modal';
 import useAppStore from '../store/appStore';
 import api from '../services/api';
+import { analyzeCsvHeaders, findMatchingValue } from '../utils/storeMapper';
 
 const LAB_IMPORT_HEADERS = [
   'Item Code',
@@ -40,7 +41,6 @@ function isEmptyRecord(record) {
 function getMissingFields(record) {
   const missing = [];
   if (!String(record['Chemical Name'] ?? '').trim()) missing.push('Chemical Name');
-  if (!String(record['Quantity Unit'] ?? '').trim()) missing.push('Quantity Unit');
   return missing;
 }
 
@@ -114,29 +114,48 @@ export default function LabImportModal({ open, onClose, labId }) {
   };
 
   const validateHeaders = (incomingHeaders) => {
-    const cleanedHeaders = incomingHeaders.map(normalizeHeader).filter(Boolean);
-    const unknownHeaders = cleanedHeaders.filter((header) => !LAB_IMPORT_HEADERS.includes(header));
-    const missingHeaders = LAB_IMPORT_HEADERS.filter((header) => !cleanedHeaders.includes(header));
-    const nextWarnings = [
-      ...unknownHeaders.map((header) => `Column "${header}" not recognized.`),
-      ...missingHeaders.map((header) => `Column "${header}" is missing.`),
-    ];
-    setHeaders(cleanedHeaders);
+    const analysis = analyzeCsvHeaders(incomingHeaders);
+    setHeaders(analysis.cleanedHeaders);
+    const nextWarnings = [];
+    if (!analysis.hasRequiredCore) {
+      nextWarnings.push('Warning: "Chemical Name" (or "Name", "Item") column not detected. Rows without a chemical name will be skipped.');
+    }
     setWarnings(nextWarnings);
     return nextWarnings;
   };
 
   const normalizeRecords = (records) =>
-    records.map((record) =>
-      LAB_IMPORT_HEADERS.reduce((acc, header) => {
-        acc[header] = record[header] ?? '';
-        return acc;
-      }, {})
-    );
+    records.map((record, idx) => {
+      const chemName = findMatchingValue(record, 'Chemical Name') || record['Chemical Name'] || '';
+      const unit = findMatchingValue(record, 'Standard Unit') || record['Quantity Unit'] || 'mL';
+      const qty = findMatchingValue(record, 'Available Quantity') || record['Quantity'] || 1;
+      const cas = findMatchingValue(record, 'CAS Number') || record['CAS Number'] || 'N/A';
+      const cost = findMatchingValue(record, 'Unit Price (INR)') || record['Cost Per Unit (INR)'] || 0;
+      const code = findMatchingValue(record, 'Chemical ID') || record['Item Code'] || `LAB-${Date.now().toString().slice(-4)}-${idx + 1}`;
+
+      return {
+        'Item Code': code,
+        'Chemical Name': chemName,
+        'Quantity': qty,
+        'Quantity Unit': unit,
+        'Min Threshold': record['Min Threshold'] || 2,
+        'Cost Per Unit (INR)': cost,
+        'CAS Number': cas,
+        'Chemical Formula': record['Chemical Formula'] || record['Molecular Formula'] || '',
+        'SMILES': record['SMILES'] || record['SMILES ID'] || '',
+        'InChI': record['InChI'] || record['InChI Key'] || '',
+        'Manufacturing Company': record['Manufacturing Company'] || record['Supplier'] || 'Standard Labs',
+        'Storage Location': record['Storage Location'] || 'Shelf A1',
+        'Lot Number': record['Lot Number'] || record['Batch Number'] || '',
+        'Entry Date': record['Entry Date'] || new Date().toISOString().slice(0, 10),
+        'Expiry Date': record['Expiry Date'] || '',
+      };
+    });
 
   const handleRecords = (incomingHeaders, records) => {
     validateHeaders(incomingHeaders);
-    setRows(normalizeRecords(records));
+    const nonEmpty = (records || []).filter((r) => Object.values(r).some((v) => String(v ?? '').trim() !== ''));
+    setRows(normalizeRecords(nonEmpty));
   };
 
   const parseCsvFile = (file) => {

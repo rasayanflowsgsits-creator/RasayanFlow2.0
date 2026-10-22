@@ -88,13 +88,15 @@ const importChemicals = asyncHandler(async (req, res) => {
 
     try {
       const orConditions = [];
-      if (chem.chemicalId) orConditions.push({ chemicalId: chem.chemicalId });
+      if (chem.chemicalId && !chem.isAutoId) {
+        orConditions.push({ chemicalId: chem.chemicalId });
+      }
       if (chem.name) {
         const cleanName = chem.name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         orConditions.push({ name: new RegExp('^' + cleanName + '$', 'i') });
       }
 
-      const existing = await StoreInventory.findOne({ $or: orConditions });
+      const existing = orConditions.length > 0 ? await StoreInventory.findOne({ $or: orConditions }) : null;
 
       if (existing) {
         const previousQty = existing.availableQty || 0;
@@ -116,11 +118,12 @@ const importChemicals = asyncHandler(async (req, res) => {
         }
 
         existing.reorderLevel = chem.reorderLevel !== undefined ? chem.reorderLevel : (existing.reorderLevel || 2);
-        existing.grade = chem.grade || existing.grade;
+        existing.grade = chem.grade || existing.grade || 'LR';
         existing.cas = chem.cas || existing.cas;
         existing.formula = chem.formula || existing.formula;
         existing.smiles = chem.smiles || existing.smiles;
-        existing.supplier = chem.supplier || existing.supplier;
+        existing.supplier = chem.supplier || existing.supplier || 'Central Pharmacy Depo';
+        existing.storageLocation = chem.storageLocation || existing.storageLocation || 'Main Chemical Rack A';
         
         existing.status = calculateStatus(existing.availableQty, existing.reorderLevel, existing.receivedQty);
         existing.totalValue = safeRound((existing.unitPrice || 0) * existing.availableQty);
@@ -147,9 +150,19 @@ const importChemicals = asyncHandler(async (req, res) => {
         const uPrice = Number(chem.unitPrice || 0);
         const totalValue = safeRound(uPrice * availableQty);
 
+        const salt = Math.random().toString(36).substring(2, 6);
+        const uniqueChemicalId = (chem.chemicalId && !chem.isAutoId)
+          ? chem.chemicalId
+          : `CHEM-${Date.now().toString().slice(-6)}-${added + 1}-${salt}`;
+
         const newChem = await StoreInventory.create({
           ...chem,
-          chemicalId: chem.chemicalId || `CHEM-${Date.now().toString().slice(-6)}`,
+          chemicalId: uniqueChemicalId,
+          supplier: chem.supplier || 'Central Pharmacy Depo',
+          grade: chem.grade || 'LR',
+          hazard: chem.hazard || 'General Chemical',
+          safety: chem.safety || 'Lab Coat, Gloves & Safety Glasses',
+          storageLocation: chem.storageLocation || 'Main Chemical Rack A',
           receivedQty: availableQty,
           availableQty,
           unitPrice: uPrice,
