@@ -2,6 +2,7 @@ const StoreInventory = require('../models/StoreInventory');
 const StoreTracking = require('../models/StoreTracking');
 const asyncHandler = require('express-async-handler');
 const { safeRound, parsePackSize, totalStock } = require('../utils/storeHelpers');
+const { fetchChemicalDataByQuery } = require('../utils/pubchemService');
 
 const calculateStatus = (qty, reorderLevel, receivedQty = 0) => {
   const q = safeRound(qty);
@@ -349,11 +350,66 @@ const addSingleChemical = asyncHandler(async (req, res) => {
   });
 });
 
+const lookupChemical = asyncHandler(async (req, res) => {
+  const query = (req.query.q || req.query.query || '').trim();
+  if (!query) {
+    return res.status(400).json({ success: false, message: 'Query parameter "q" is required.' });
+  }
+
+  // 1. Search in StoreInventory first
+  const cleanRegex = new RegExp('^' + query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i');
+  let storeItem = await StoreInventory.findOne({
+    $or: [
+      { name: cleanRegex },
+      { cas: query },
+      { chemicalId: query }
+    ]
+  });
+
+  // If not exact match, try contains for name
+  if (!storeItem && query.length >= 3) {
+    storeItem = await StoreInventory.findOne({
+      name: new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+    });
+  }
+
+  if (storeItem) {
+    return res.status(200).json({
+      success: true,
+      found: true,
+      source: 'inventory',
+      data: storeItem
+    });
+  }
+
+  // 2. Fallback to PubChem
+  try {
+    const pubchemResult = await fetchChemicalDataByQuery(query);
+    if (pubchemResult && pubchemResult.found) {
+      return res.status(200).json({
+        success: true,
+        found: true,
+        source: 'pubchem',
+        data: pubchemResult.data
+      });
+    }
+  } catch (err) {
+    console.warn(`PubChem lookup failed for query "${query}":`, err.message);
+  }
+
+  return res.status(200).json({
+    success: true,
+    found: false,
+    message: `No chemical found for "${query}" in store inventory or PubChem.`
+  });
+});
+
 module.exports = {
   getAllChemicals,
   importChemicals,
   addSingleChemical,
   updateChemical,
   deleteChemical,
-  createTrackingLog
+  createTrackingLog,
+  lookupChemical
 };

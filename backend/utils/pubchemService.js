@@ -47,7 +47,7 @@ const fetchCompoundProperties = async (cid) => {
   if (!cid) return null;
 
   const response = await axios.get(
-    `${PUBCHEM_BASE_URL}/compound/cid/${encodeURIComponent(cid)}/property/Title,MolecularFormula,SMILES,ConnectivitySMILES,InChI,IUPACName/JSON`,
+    `${PUBCHEM_BASE_URL}/compound/cid/${encodeURIComponent(cid)}/property/Title,MolecularFormula,MolecularWeight,SMILES,ConnectivitySMILES,InChI,InChIKey,IUPACName/JSON`,
     { timeout: 8000 }
   );
 
@@ -119,9 +119,12 @@ const fetchChemicalDataByQuery = async (query) => {
         chemicalName: pickChemicalName(properties, synonyms),
         casNumber: detectedCas,
         chemicalFormula: properties.MolecularFormula || '',
+        molecularWeight: properties.MolecularWeight ? String(properties.MolecularWeight) : '',
         smiles: properties.SMILES || properties.ConnectivitySMILES || '',
         inchi: properties.InChI || '',
+        inchiKey: properties.InChIKey || '',
         iupacName: properties.IUPACName || '',
+        synonyms: Array.isArray(synonyms) ? synonyms.slice(0, 10).join(', ') : '',
         pubchemUrl: `https://pubchem.ncbi.nlm.nih.gov/compound/${cid}`,
       },
     };

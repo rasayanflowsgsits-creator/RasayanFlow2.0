@@ -62,7 +62,7 @@ router.post(
 
 router.post(
   '/fetch-pubchem',
-  roleMiddleware(['superAdmin', 'labAdmin']),
+  roleMiddleware(['superAdmin', 'labAdmin', 'storeAdmin', 'store_admin']),
   [
     body('casNumber').notEmpty().isString(),
   ],

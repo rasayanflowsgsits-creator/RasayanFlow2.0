@@ -1,5 +1,5 @@
-import { Eye, FileDown, FileSpreadsheet, Pencil, Plus, Trash2, Upload, X, Search } from 'lucide-react';
-import { useMemo, useState, useEffect } from 'react';
+import { Eye, FileDown, FileSpreadsheet, Pencil, Plus, Trash2, Upload, X, Search, Sparkles, CheckCircle2, AlertCircle, Loader2, Database, FlaskConical, Check } from 'lucide-react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import * as XLSX from 'xlsx';
 import Button from '../components/ui/Button';
@@ -40,6 +40,188 @@ function SectionHeading({ title }) {
   return (
     <div className="col-span-full mb-3 mt-4 border-b border-[#e3e9d8] dark:border-[#343b2b] pb-2">
       <h3 className="text-sm font-bold text-[#556b2f] dark:text-[#a8be8a]">{title}</h3>
+    </div>
+  );
+}
+
+function ChemicalNameAutocomplete({
+  value,
+  onChange,
+  onSelectExisting,
+  onNotFound,
+  chemicals,
+  pubchemLoading,
+  onPubChemLookup,
+  matchedSource
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const suggestions = useMemo(() => {
+    const term = (value || '').trim().toLowerCase();
+    if (!term) return [];
+    return chemicals.filter(c => {
+      const name = (c['Chemical Name'] || '').toLowerCase();
+      const cas = (c['CAS Number'] || '').toLowerCase();
+      const syn = (c['Synonyms'] || '').toLowerCase();
+      return name.includes(term) || cas.includes(term) || syn.includes(term);
+    }).slice(0, 8);
+  }, [value, chemicals]);
+
+  const handleInputChange = (e) => {
+    const newVal = e.target.value;
+    onChange(e);
+    setIsOpen(true);
+
+    const term = newVal.trim().toLowerCase();
+    if (!term) {
+      onNotFound('');
+      return;
+    }
+
+    const exactMatch = chemicals.find(c => (c['Chemical Name'] || '').trim().toLowerCase() === term);
+    if (exactMatch) {
+      onSelectExisting(exactMatch);
+    } else {
+      onNotFound(newVal);
+    }
+  };
+
+  const handleSelect = (chem) => {
+    onSelectExisting(chem);
+    setIsOpen(false);
+  };
+
+  return (
+    <div ref={containerRef} className="relative sm:col-span-2">
+      <div className="flex items-center justify-between mb-1">
+        <label className="text-xs font-semibold text-[#4e5d35] dark:text-[#d5ddbf] flex items-center gap-1.5">
+          <span>Chemical Name *</span>
+          <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400">
+            (Instant search & auto-fill from existing inventory)
+          </span>
+        </label>
+        {value?.trim() && (
+          <button
+            type="button"
+            disabled={pubchemLoading}
+            onClick={onPubChemLookup}
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#556b2f] hover:text-[#3c4e23] dark:text-[#a8be8a] dark:hover:text-[#c5d0b5] transition-colors"
+          >
+            {pubchemLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+            <span>Auto-fetch PubChem</span>
+          </button>
+        )}
+      </div>
+
+      <div className="relative">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+          <Search size={15} />
+        </div>
+        <input
+          type="text"
+          name="Chemical Name"
+          value={value || ''}
+          onChange={handleInputChange}
+          onFocus={() => setIsOpen(true)}
+          placeholder="Type chemical name (e.g. Acetone, Ethanol, Sodium Hydroxide)..."
+          required
+          autoComplete="off"
+          className="w-full rounded-lg border-2 border-[#cfd8bd] bg-white pl-9 pr-8 py-2 text-sm text-[#3c4e23] font-medium transition placeholder:text-[#95a381] placeholder:font-normal focus:border-[#556b2f] focus:outline-none focus:ring-2 focus:ring-[#6f7d45] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8] dark:placeholder:text-[#8d9a77]"
+        />
+        {value && (
+          <button
+            type="button"
+            onClick={() => {
+              handleInputChange({ target: { name: 'Chemical Name', value: '' } });
+              setIsOpen(false);
+            }}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+          >
+            <X size={15} />
+          </button>
+        )}
+      </div>
+
+      {isOpen && suggestions.length > 0 && (
+        <div className="absolute left-0 right-0 top-full mt-1.5 z-50 rounded-xl border-2 border-[#556b2f]/30 bg-white/95 dark:bg-[#1a1d16]/95 backdrop-blur-md shadow-2xl overflow-hidden max-h-64 overflow-y-auto">
+          <div className="bg-[#f4f7ee] dark:bg-[#22271c] px-3 py-1.5 text-[11px] font-bold text-[#556b2f] dark:text-[#a8be8a] flex items-center justify-between border-b border-[#e3e9d8] dark:border-[#343b2b]">
+            <span className="flex items-center gap-1.5">
+              <Database size={13} /> Found in Store Inventory ({suggestions.length})
+            </span>
+            <span className="text-[10px] text-[#71805a] dark:text-[#a8be8a]">Click chemical to auto-fill all 22 fields</span>
+          </div>
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {suggestions.map((chem) => (
+              <button
+                key={chem.id || chem['Chemical ID'] || chem['Chemical Name']}
+                type="button"
+                onClick={() => handleSelect(chem)}
+                className="w-full px-3 py-2 text-left hover:bg-[#ebf2df] dark:hover:bg-[#2a3220] transition-colors flex items-center justify-between gap-2"
+              >
+                <div className="flex flex-col min-w-0">
+                  <span className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate flex items-center gap-1.5">
+                    <FlaskConical size={13} className="text-[#556b2f] shrink-0" />
+                    {chem['Chemical Name']}
+                  </span>
+                  <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                    {chem['CAS Number'] && <span>CAS: <strong className="text-slate-700 dark:text-slate-300">{chem['CAS Number']}</strong></span>}
+                    {chem['Grade'] && <span>• Grade: {chem['Grade']}</span>}
+                    {chem['Pack Size'] && <span>• Pack: {chem['Pack Size']}</span>}
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                    Stock: {chem['Available Quantity'] || 0} {chem['Standard Unit'] || 'UNT'}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {matchedSource === 'inventory' && (
+        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800">
+          <CheckCircle2 size={14} className="shrink-0 text-emerald-600" />
+          <span>Found existing chemical in Store Inventory — all existing information auto-populated.</span>
+        </div>
+      )}
+
+      {matchedSource === 'pubchem' && (
+        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-blue-700 dark:text-blue-400 font-medium bg-blue-50 dark:bg-blue-950/40 px-2.5 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800">
+          <Sparkles size={14} className="shrink-0 text-blue-600 dark:text-blue-400" />
+          <span>Scientific data auto-filled from PubChem (Formula, MW, SMILES, InChI Key, CAS).</span>
+        </div>
+      )}
+
+      {matchedSource === 'not_found' && value?.trim() && (
+        <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/60 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-1.5">
+            <FlaskConical size={14} className="shrink-0 text-[#71805a]" />
+            <span>New chemical (not in store inventory) — scientific fields left clean.</span>
+          </div>
+          <button
+            type="button"
+            disabled={pubchemLoading}
+            onClick={onPubChemLookup}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-[#556b2f] text-white hover:bg-[#3c4e23] disabled:opacity-50 transition-colors shadow-xs"
+          >
+            {pubchemLoading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+            ⚡ Auto-fetch PubChem Data
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -94,9 +276,93 @@ export default function StoreInventory() {
 
   const rows = useMemo(() => filteredChemicals.map((chemical) => ({ ...chemical })), [filteredChemicals]);
 
+  const [pubchemLoading, setPubchemLoading] = useState(false);
+  const [matchedSource, setMatchedSource] = useState(null); // null | 'inventory' | 'pubchem' | 'not_found'
+
+  const openAdd = () => {
+    setChemicalForm(EMPTY_CHEMICAL);
+    setMatchedSource(null);
+    setAddOpen(true);
+  };
+
   const closeAdd = () => {
     setAddOpen(false);
     setChemicalForm(EMPTY_CHEMICAL);
+    setMatchedSource(null);
+  };
+
+  const handlePubChemLookup = async (queryTerm, form, setter) => {
+    const q = (queryTerm || form['Chemical Name'] || form['CAS Number'] || '').trim();
+    if (!q) {
+      setToast({ type: 'error', message: 'Please enter a Chemical Name or CAS Number to lookup.' });
+      return;
+    }
+
+    try {
+      setPubchemLoading(true);
+      const res = await api.get(`/store/inventory/lookup?q=${encodeURIComponent(q)}`);
+      
+      if (res.data?.found) {
+        if (res.data.source === 'inventory') {
+          const matchedChem = toFrontendChemical(res.data.data);
+          setter((prev) => ({
+            ...EMPTY_CHEMICAL,
+            ...matchedChem,
+            id: prev.id || matchedChem.id,
+            'Chemical ID': prev.id ? prev['Chemical ID'] : (matchedChem['Chemical ID'] || '')
+          }));
+          setMatchedSource('inventory');
+          setToast({ type: 'success', message: `Found "${matchedChem['Chemical Name']}" in store inventory — all fields loaded!` });
+        } else if (res.data.source === 'pubchem') {
+          const pData = res.data.data;
+          setter((prev) => ({
+            ...prev,
+            'Chemical Name': prev['Chemical Name'] || pData.chemicalName || '',
+            'CAS Number': pData.casNumber || prev['CAS Number'] || '',
+            'Molecular Formula': pData.chemicalFormula || '',
+            'Molecular Weight': pData.molecularWeight || '',
+            'SMILES ID': pData.smiles || '',
+            'InChI Key': pData.inchiKey || '',
+            'PubChem Link URL': pData.pubchemUrl || '',
+            'Synonyms': pData.synonyms || prev['Synonyms'] || '',
+          }));
+          setMatchedSource('pubchem');
+          setToast({ type: 'success', message: `Auto-filled scientific data from PubChem for "${pData.chemicalName || q}"!` });
+        }
+      } else {
+        setMatchedSource('not_found');
+        setToast({ type: 'info', message: `No PubChem record found for "${q}". You can enter details manually.` });
+      }
+    } catch (err) {
+      setToast({ type: 'error', message: 'Failed to lookup chemical data.' });
+    } finally {
+      setPubchemLoading(false);
+    }
+  };
+
+  const handleSelectExistingChemical = (selectedChem, setter) => {
+    setter((prev) => ({
+      ...EMPTY_CHEMICAL,
+      ...selectedChem,
+      id: prev.id || selectedChem.id,
+      'Chemical ID': prev.id ? prev['Chemical ID'] : (selectedChem['Chemical ID'] || '')
+    }));
+    setMatchedSource('inventory');
+    setToast({ type: 'success', message: `Loaded existing details for "${selectedChem['Chemical Name']}".` });
+  };
+
+  const handleChemicalNotFound = (currentInput, setter) => {
+    setter((prev) => ({
+      ...prev,
+      'CAS Number': '',
+      'Synonyms': '',
+      'SMILES ID': '',
+      'PubChem Link URL': '',
+      'Molecular Formula': '',
+      'Molecular Weight': '',
+      'InChI Key': '',
+    }));
+    setMatchedSource(currentInput ? 'not_found' : null);
   };
 
   const handleFormChange = (setter) => (e) => {
@@ -104,16 +370,24 @@ export default function StoreInventory() {
     setter((state) => ({ ...state, [name]: value }));
   };
 
-  const validateForm = (form) => {
-    if (!form['Chemical ID']?.trim() || !form['Chemical Name']?.trim()) {
-      setToast({ type: 'error', message: 'Chemical ID and Chemical Name are required.' });
+  const validateForm = (form, setter) => {
+    if (!form['Chemical Name']?.trim()) {
+      setToast({ type: 'error', message: 'Chemical Name is required.' });
       return false;
+    }
+    // Auto-generate Chemical ID if blank
+    if (!form['Chemical ID']?.trim()) {
+      const generatedId = `CHEM-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+      form['Chemical ID'] = generatedId;
+      if (setter) {
+        setter((prev) => ({ ...prev, 'Chemical ID': generatedId }));
+      }
     }
     return true;
   };
 
   const saveChemical = async () => {
-    if (!validateForm(chemicalForm)) return;
+    if (!validateForm(chemicalForm, setChemicalForm)) return;
     try {
       // For create, we use import API endpoint since there is no single POST
       const backendChem = toBackendChemical(chemicalForm);
@@ -128,10 +402,11 @@ export default function StoreInventory() {
 
   const openEdit = (chemical) => {
     setEditTarget({ ...EMPTY_CHEMICAL, ...chemical });
+    setMatchedSource('inventory');
   };
 
   const saveEdit = async () => {
-    if (!validateForm(editTarget)) return;
+    if (!validateForm(editTarget, setEditTarget)) return;
     try {
       const backendChem = toBackendChemical(editTarget);
       await api.put(`/store/inventory/${editTarget.id}`, backendChem);
@@ -215,10 +490,47 @@ export default function StoreInventory() {
     return (
       <div className='grid gap-4 sm:grid-cols-2 max-h-[65vh] overflow-y-auto p-1 pr-3'>
         <SectionHeading title='Section 1 — Basic Info' />
-        <Input label='Chemical ID *' name='Chemical ID' value={form['Chemical ID']} onChange={handleChange} required />
-        <Input label='Chemical Name *' name='Chemical Name' value={form['Chemical Name']} onChange={handleChange} required />
-        <Input label='CAS Number' name='CAS Number' value={form['CAS Number']} onChange={handleChange} />
-        <Input label='Synonyms' name='Synonyms' value={form['Synonyms']} onChange={handleChange} />
+        <ChemicalNameAutocomplete
+          value={form['Chemical Name']}
+          onChange={handleChange}
+          onSelectExisting={(chem) => handleSelectExistingChemical(chem, setter)}
+          onNotFound={(inputVal) => handleChemicalNotFound(inputVal, setter)}
+          chemicals={chemicals}
+          pubchemLoading={pubchemLoading}
+          onPubChemLookup={() => handlePubChemLookup(form['Chemical Name'], form, setter)}
+          matchedSource={matchedSource}
+        />
+        <Input 
+          label='Chemical ID (Auto-assigned if blank)' 
+          name='Chemical ID' 
+          value={form['Chemical ID']} 
+          onChange={handleChange} 
+          placeholder="e.g. CHEM-100234 (optional)" 
+        />
+        <div className="relative">
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs font-semibold text-[#4e5d35] dark:text-[#d5ddbf]">CAS Number</label>
+            {form['CAS Number']?.trim() && !form['Molecular Formula'] && (
+              <button
+                type="button"
+                disabled={pubchemLoading}
+                onClick={() => handlePubChemLookup(form['CAS Number'], form, setter)}
+                className="text-[11px] font-semibold text-[#556b2f] hover:text-[#3c4e23] dark:text-[#a8be8a]"
+              >
+                {pubchemLoading ? 'Looking up...' : '⚡ Lookup by CAS'}
+              </button>
+            )}
+          </div>
+          <input
+            type="text"
+            name="CAS Number"
+            value={form['CAS Number'] || ''}
+            onChange={handleChange}
+            placeholder="e.g. 67-64-1"
+            className="w-full rounded-lg border border-[#cfd8bd] bg-white px-3 py-2 text-sm text-[#3c4e23] transition placeholder:text-[#95a381] focus:border-[#556b2f] focus:outline-none focus:ring-2 focus:ring-[#6f7d45] dark:border-[#4e5d35] dark:bg-[#20251a] dark:text-[#eef4e8] dark:placeholder:text-[#8d9a77]"
+          />
+        </div>
+        <Input label='Synonyms' name='Synonyms' value={form['Synonyms']} onChange={handleChange} placeholder="Alternative names, comma separated" />
 
         <SectionHeading title='Section 2 — Scientific Data' />
         <Input label='SMILES ID' name='SMILES ID' value={form['SMILES ID']} onChange={handleChange} />
@@ -308,7 +620,7 @@ export default function StoreInventory() {
           <Button variant='outline' onClick={() => setSheetImportOpen(true)}>
             <FileSpreadsheet size={16} className='mr-2' /> Import / Bulk Upload
           </Button>
-          <Button onClick={() => setAddOpen(true)}>
+          <Button onClick={openAdd}>
             <Plus size={16} className='mr-2' /> Add Chemical
           </Button>
         </>
