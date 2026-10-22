@@ -147,6 +147,103 @@ const useAuthStore = create((set) => ({
     set({ user: previewUser, token: dummyToken, loading: false, error: null, initialized: true });
     return previewUser;
   },
+  loginAsPreviewMPharmStudent: (semester = '1') => {
+    const semNum = String(semester);
+    const yr = semNum === '3' || semNum === '4' ? '2' : '1';
+    const labMapping = {
+      '1': { code: 'MPHARM-101L', name: 'M.Pharm Advanced Pharmaceutics Lab - I', email: 'mpharm.student1@rasayanflow.local', studentName: 'Ananya Sen (M.Pharm Sem 1)' },
+      '2': { code: 'MPHARM-201L', name: 'M.Pharm Advanced Spectral Analysis Lab', email: 'mpharm.student2@rasayanflow.local', studentName: 'Rohit Mehta (M.Pharm Sem 2)' },
+      '3': { code: 'MPHARM-301L', name: 'M.Pharm Novel Drug Delivery Research Lab', email: 'mpharm.student3@rasayanflow.local', studentName: 'Tanvi Deshmukh (M.Pharm Thesis Scholar)' },
+      '4': { code: 'MPHARM-401L', name: 'M.Pharm Dissertation & Final Defense Lab', email: 'mpharm.student4@rasayanflow.local', studentName: 'Aman Verma (M.Pharm Dissertation Scholar)' },
+    };
+    const target = labMapping[semNum] || labMapping['1'];
+    const labs = useAppStore.getState().labs || [];
+    const matchedLab = labs.find((l) => l.labCode === target.code) || labs.find((l) => (l.courseType || '').toLowerCase().includes('m.pharm'));
+    const labId = matchedLab ? (matchedLab._id || matchedLab.id) : `preview-lab-mpharm-sem${semNum}`;
+
+    const previewUser = {
+      id: matchedLab ? `mpharm-student-${semNum}` : 'preview-mpharm-id',
+      _id: matchedLab ? `mpharm-student-${semNum}` : 'preview-mpharm-id',
+      name: target.studentName,
+      email: target.email,
+      role: 'student',
+      course: 'M.Pharm',
+      courseType: 'M.Pharm',
+      year: yr,
+      semester: semNum,
+      rollNumber: `0832MP25100${semNum}`,
+      group: 'Group A',
+      labId: labId,
+      labName: matchedLab?.labName || matchedLab?.name || target.name,
+      labCode: target.code,
+      isApproved: true,
+      onboardingComplete: true,
+      isPreview: true,
+    };
+    const dummyToken = 'preview-mpharm-token';
+    saveToken(dummyToken);
+    saveUser(previewUser);
+    set({ user: previewUser, token: dummyToken, loading: false, error: null, initialized: true });
+    return previewUser;
+  },
+  loginAsPreviewMPharmSupervisor: (semester = '1') => {
+    const semNum = String(semester);
+    const yr = semNum === '3' || semNum === '4' ? '2' : '1';
+    const supervisorProfiles = {
+      '1': {
+        name: 'Dr. Rajesh Sharma (Sem 1 Supervisor)',
+        email: 'supervisor.sem1@rasayanflow.local',
+        labName: 'M.Pharm Advanced Pharmaceutics Lab - I',
+        labCode: 'MPHARM-101L'
+      },
+      '2': {
+        name: 'Dr. Priya Nair (Sem 2 Supervisor)',
+        email: 'supervisor.sem2@rasayanflow.local',
+        labName: 'M.Pharm Advanced Spectral Analysis Lab',
+        labCode: 'MPHARM-201L'
+      },
+      '3': {
+        name: 'Dr. Arun Verma (Sem 3 Research Supervisor)',
+        email: 'supervisor.sem3@rasayanflow.local',
+        labName: 'M.Pharm Novel Drug Delivery Research Lab',
+        labCode: 'MPHARM-301L'
+      },
+      '4': {
+        name: 'Dr. Neha Gupta (Sem 4 Dissertation Supervisor)',
+        email: 'supervisor.sem4@rasayanflow.local',
+        labName: 'M.Pharm Dissertation & Final Defense Lab',
+        labCode: 'MPHARM-401L'
+      }
+    };
+    const profile = supervisorProfiles[semNum] || supervisorProfiles['1'];
+    const labs = useAppStore.getState().labs || [];
+    const matchedLab = labs.find((l) => l.labCode === profile.labCode) || labs.find((l) => (l.courseType || '').toLowerCase().includes('m.pharm'));
+    const labId = matchedLab ? (matchedLab._id || matchedLab.id) : `preview-lab-mpharm-sem${semNum}`;
+
+    const previewUser = {
+      id: `preview-supervisor-sem${semNum}-id`,
+      _id: `preview-supervisor-sem${semNum}-id`,
+      name: profile.name,
+      email: profile.email,
+      role: 'labAdmin',
+      course: 'M.Pharm',
+      courseType: 'M.Pharm',
+      year: yr,
+      semester: semNum,
+      isSupervisor: true,
+      labId: labId,
+      labName: matchedLab?.labName || matchedLab?.name || profile.labName,
+      labCode: profile.labCode,
+      isApproved: true,
+      onboardingComplete: true,
+      isPreview: true,
+    };
+    const dummyToken = 'preview-supervisor-token';
+    saveToken(dummyToken);
+    saveUser(previewUser);
+    set({ user: previewUser, token: dummyToken, loading: false, error: null, initialized: true });
+    return previewUser;
+  },
   logout: () => {
     clearAuthSession();
   },

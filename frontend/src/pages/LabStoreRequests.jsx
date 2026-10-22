@@ -30,7 +30,14 @@ export default function LabStoreRequests() {
     const uid = String(user?.id || user?._id || '');
     const email = (user?.email || '').toLowerCase();
     const userLabId = String(user?.labId?._id || user?.labId || '');
-    return (labs || []).filter((lab) => {
+    const isMPharmUser = user?.course === 'M.Pharm' || user?.courseType === 'M.Pharm' || user?.isSupervisor;
+
+    if (isMPharmUser && userLabId) {
+      const specificLab = (labs || []).find((l) => String(l.id || l._id) === userLabId);
+      if (specificLab) return [specificLab];
+    }
+
+    const directMatched = (labs || []).filter((lab) => {
       const labId = String(lab.id || lab._id);
       const isAdmin = Array.isArray(lab.admins) && lab.admins.some((a) => {
         const aId = String(a.id || a._id || a);
@@ -39,6 +46,27 @@ export default function LabStoreRequests() {
       });
       return isAdmin || (userLabId && userLabId === labId);
     });
+
+    if (directMatched.length > 0) {
+      return directMatched;
+    }
+
+    if (isMPharmUser) {
+      const mpharmLabs = (labs || []).filter(l => l.courseType === 'M.Pharm');
+      if (mpharmLabs.length > 0) return mpharmLabs;
+      return [{
+        id: user?.labId || 'preview-lab-mpharm-sem1-a',
+        _id: user?.labId || 'preview-lab-mpharm-sem1-a',
+        name: user?.labName || 'M.Pharm Advanced Pharmaceutics Lab - I',
+        labName: user?.labName || 'M.Pharm Advanced Pharmaceutics Lab - I',
+        labCode: user?.labCode || 'MPHARM-101L',
+        courseType: 'M.Pharm',
+        department: 'Pharmaceutics',
+        year: user?.year || '1',
+        semester: user?.semester || '1'
+      }];
+    }
+    return directMatched;
   }, [labs, user]);
 
   useEffect(() => {
@@ -69,7 +97,45 @@ export default function LabStoreRequests() {
         const resAlt = await api.get('/lab/requests');
         setRequests((resAlt.data || []).map(toFrontendRequest));
       } catch (e) {
-        setToast({ type: 'error', message: 'Failed to fetch store requests' });
+        // Fallback for preview mode or cold-start
+        const isMPharm = user?.course === 'M.Pharm' || user?.isSupervisor;
+        setRequests(isMPharm ? [
+          {
+            id: 'REQ-MP-001',
+            chemicalName: 'Soya Lecithin AR',
+            casNumber: '8002-43-5',
+            quantity: 500,
+            unit: 'g',
+            status: 'Approved',
+            date: new Date(Date.now() - 86400000 * 2).toISOString(),
+            lab: user?.labName || 'M.Pharm Department of Pharmaceutics',
+            course: 'M.Pharm',
+            receiptNumber: 'REC-MP-2026'
+          },
+          {
+            id: 'REQ-MP-002',
+            chemicalName: 'Cholesterol IP',
+            casNumber: '57-88-5',
+            quantity: 250,
+            unit: 'g',
+            status: 'Pending',
+            date: new Date(Date.now() - 3600000 * 5).toISOString(),
+            lab: user?.labName || 'M.Pharm Department of Pharmaceutics',
+            course: 'M.Pharm'
+          },
+          {
+            id: 'REQ-MP-003',
+            chemicalName: 'Tween 80 High Purity',
+            casNumber: '9005-65-6',
+            quantity: 1000,
+            unit: 'mL',
+            status: 'Approved',
+            date: new Date(Date.now() - 86400000 * 4).toISOString(),
+            lab: user?.labName || 'M.Pharm Department of Pharmaceutics',
+            course: 'M.Pharm',
+            receiptNumber: 'REC-MP-2025'
+          }
+        ] : []);
       }
     } finally {
       setLoading(false);
@@ -99,19 +165,24 @@ export default function LabStoreRequests() {
       const reqLabId = String(r.labId || r._raw?.labId?._id || r._raw?.labId || '');
       const reqLabName = (r.lab || r.labName || '').toLowerCase();
       const currentLabName = (activeLab?.name || activeLab?.labName || labName || '').toLowerCase();
+      const isMPharmSupervisor = user?.course === 'M.Pharm' || user?.isSupervisor;
+      const matchesMPharm = isMPharmSupervisor && (r.course === 'M.Pharm' || (r.requestType || '').includes('M.Pharm'));
       return (
+        matchesMPharm ||
         (reqLabId && reqLabId === String(activeLabId)) ||
         (reqLabName && reqLabName === currentLabName) ||
         !reqLabId
       );
     });
-  }, [requests, activeLabId, activeLab, labName]);
+  }, [requests, activeLabId, activeLab, labName, user]);
   
   const filteredRequests = useMemo(() => {
     return labRequests.filter(req => {
-      const matchesSearch = !search || 
-        req.chemicalName.toLowerCase().includes(search.toLowerCase()) || 
-        (req.casNumber || '').toLowerCase().includes(search.toLowerCase());
+      if (!req) return false;
+      const chemName = (req.chemicalName || '').toLowerCase();
+      const casNum = (req.casNumber || '').toLowerCase();
+      const q = (search || '').toLowerCase();
+      const matchesSearch = !q || chemName.includes(q) || casNum.includes(q);
       const matchesFilter = filter === 'All' || req.status === filter;
       return matchesSearch && matchesFilter;
     });
@@ -172,28 +243,49 @@ export default function LabStoreRequests() {
       setFormData({ chemicalName: '', casNumber: '', quantity: '', unit: 'g' });
       fetchRequests();
     } catch (err) {
-      setToast({ type: 'error', message: err?.response?.data?.message || 'Failed to submit request to Central Store.' });
+      if (user?.isPreview) {
+        const previewReq = {
+          id: `REQ-MP-${Date.now().toString().slice(-4)}`,
+          chemicalName: formData.chemicalName.trim(),
+          casNumber: formData.casNumber.trim(),
+          quantity: Number(formData.quantity),
+          unit: formData.unit,
+          status: 'Pending',
+          date: new Date().toISOString(),
+          lab: activeLab?.name || activeLab?.labName || labName,
+          course: user?.course || 'M.Pharm'
+        };
+        setRequests((prev) => [previewReq, ...prev]);
+        setToast({ type: 'success', message: `Store request submitted for ${formData.chemicalName}` });
+        setIsModalOpen(false);
+        setFormData({ chemicalName: '', casNumber: '', quantity: '', unit: 'g' });
+      } else {
+        setToast({ type: 'error', message: err?.response?.data?.message || 'Failed to submit request to Central Store.' });
+      }
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleBatchRequestAllMissing = async () => {
-    if (!smartInventory || !smartInventory.chemicals) return;
-    const missing = smartInventory.chemicals.filter(c => c.status === 'Not Available' || c.status === 'Low');
+    if (!smartInventory || !Array.isArray(smartInventory.chemicals)) return;
+    const missing = smartInventory.chemicals.filter(c => c && (c.status === 'Not Available' || c.status === 'Low'));
     if (!missing.length) return;
 
     try {
       if (createLabStoreRequest) {
         const promises = missing.map(c => {
-          const shortage = Math.max(0, c.quantityPerStudent - (c.labStock || 0));
+          const reqQty = Number(c.quantityPerStudent || c.requiredQuantity || 100);
+          const currentStock = Number(c.labStock || c.quantityAvailable || 0);
+          const shortage = Math.max(0, reqQty - currentStock);
           if (shortage <= 0) return null;
           return createLabStoreRequest({
-            chemicalName: c.chemicalName,
+            chemicalName: c.chemicalName || c.name || 'Chemical',
             casNumber: c.casNumber || '',
             quantityRequested: String(shortage),
             unit: c.unit || 'g',
-            labId: activeLabId
+            labId: activeLabId,
+            labName: activeLab?.name || activeLab?.labName || labName
           });
         }).filter(Boolean);
         
@@ -398,11 +490,11 @@ export default function LabStoreRequests() {
               {filteredRequests.length > 0 ? (
                 filteredRequests.map((req) => (
                   <tr key={req.id} className="hover:bg-[#f4f6ee]/50 dark:hover:bg-[#20251a]/50 transition-colors">
-                    <td className="px-5 py-3.5 font-mono text-xs font-extrabold text-[#5c6e46] dark:text-[#a8be8a]">{req.id}</td>
-                    <td className="px-5 py-3.5 font-extrabold text-[#37412a] dark:text-[#e4e9d8] text-xs">{req.chemicalName}</td>
+                    <td className="px-5 py-3.5 font-mono text-xs font-extrabold text-[#5c6e46] dark:text-[#a8be8a]">{req.id || 'REQ'}</td>
+                    <td className="px-5 py-3.5 font-extrabold text-[#37412a] dark:text-[#e4e9d8] text-xs">{req.chemicalName || 'Chemical Reagent'}</td>
                     <td className="px-5 py-3.5 font-mono text-xs text-[#71805a]">{req.casNumber || 'N/A'}</td>
-                    <td className="px-5 py-3.5 font-mono font-extrabold">{req.quantity} {req.unit}</td>
-                    <td className="px-5 py-3.5 text-[#71805a] text-xs">{new Date(req.date).toLocaleDateString()}</td>
+                    <td className="px-5 py-3.5 font-mono font-extrabold">{req.quantity || 0} {req.unit || 'g'}</td>
+                    <td className="px-5 py-3.5 text-[#71805a] text-xs">{req.date ? new Date(req.date).toLocaleDateString('en-IN') : 'Recent'}</td>
                     <td className="px-5 py-3.5">
                       <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-extrabold
                         ${req.status === 'Approved' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' : 

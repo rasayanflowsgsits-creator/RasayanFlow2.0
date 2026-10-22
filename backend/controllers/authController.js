@@ -41,6 +41,7 @@ const serializeUser = (user) => {
     isApproved: user.isApproved,
     isBlocked: user.isBlocked,
     isPhD: isPhD,
+    isSupervisor: Boolean(user.isSupervisor || user.course === 'M.Pharm' || user.courseType === 'M.Pharm'),
     onboardingComplete: Boolean(
       isPhD ||
       (user.onboardingComplete && user.rollNumber && user.year && user.semester) ||

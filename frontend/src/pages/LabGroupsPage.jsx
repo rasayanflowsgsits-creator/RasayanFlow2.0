@@ -61,7 +61,14 @@ export default function LabGroupsPage() {
     const uid = String(user?.id || user?._id || '');
     const email = (user?.email || '').toLowerCase();
     const userLabId = String(user?.labId?._id || user?.labId || '');
-    return (labs || []).filter((lab) => {
+    const isMPharmUser = user?.course === 'M.Pharm' || user?.courseType === 'M.Pharm' || user?.isSupervisor;
+
+    if (isMPharmUser && userLabId) {
+      const specificLab = (labs || []).find((l) => String(l.id || l._id) === userLabId);
+      if (specificLab) return [specificLab];
+    }
+
+    const matched = (labs || []).filter((lab) => {
       const labId = String(lab.id || lab._id);
       const isAdmin = Array.isArray(lab.admins) && lab.admins.some((a) => {
         const aId = String(a.id || a._id || a);
@@ -70,6 +77,24 @@ export default function LabGroupsPage() {
       });
       return isAdmin || (userLabId && userLabId === labId);
     });
+
+    if (matched.length > 0) return matched;
+
+    if (isMPharmUser) {
+      return [{
+        id: user?.labId || 'preview-lab-mpharm-sem1-a',
+        _id: user?.labId || 'preview-lab-mpharm-sem1-a',
+        name: user?.labName || 'M.Pharm Advanced Pharmaceutics Lab - I',
+        labName: user?.labName || 'M.Pharm Advanced Pharmaceutics Lab - I',
+        labCode: user?.labCode || 'MPHARM-101L',
+        courseType: 'M.Pharm',
+        department: 'Pharmaceutics',
+        year: user?.year || '1',
+        semester: user?.semester || '1'
+      }];
+    }
+
+    return matched;
   }, [labs, user]);
 
   useEffect(() => {

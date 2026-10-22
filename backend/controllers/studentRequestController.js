@@ -25,9 +25,13 @@ try {
 const createRequest = asyncHandler(async (req, res) => {
   const { labId, labName, year, semester, subject, experimentNo, experimentName, chemicalsRequested, notes } = req.body;
 
-  if (!experimentName || !chemicalsRequested || chemicalsRequested.length === 0) {
+  const effectiveCourse = req.body.course || req.user.course || 'B.Pharm';
+  const isResearchReq = Boolean(req.body.isResearchRequest || effectiveCourse === 'M.Pharm' && (req.body.semester === '3' || req.body.semester === '4' || req.user.semester === '3' || req.user.semester === '4'));
+  const effectiveExpName = experimentName || req.body.projectThesisName || req.body.subject || (isResearchReq ? 'Thesis Chemical Requisition' : 'Experiment');
+
+  if (!effectiveExpName || !chemicalsRequested || chemicalsRequested.length === 0) {
     res.status(400);
-    throw new Error('Experiment name and chemicals are required');
+    throw new Error('Experiment or Thesis name and chemicals are required');
   }
 
   const rawLabId = labId || req.user.labId;
@@ -41,11 +45,31 @@ const createRequest = asyncHandler(async (req, res) => {
     }
   }
 
-  // Duplicate Check: Check if student already requested this experiment and status is STILL Pending
+  // Fallback to M.Pharm Lab/Department if M.Pharm request
+  if (!targetLabId && effectiveCourse === 'M.Pharm') {
+    const studentYear = year || req.user.year;
+    const studentSem = semester || req.user.semester;
+    let mpharmLab = null;
+    if (studentSem) {
+      mpharmLab = await mongoose.model('Lab').findOne({
+        courseType: 'M.Pharm',
+        semester: String(studentSem),
+        ...(studentYear ? { year: String(studentYear) } : {})
+      });
+    }
+    if (!mpharmLab) {
+      mpharmLab = await mongoose.model('Lab').findOne({ courseType: 'M.Pharm' });
+    }
+    if (mpharmLab) {
+      targetLabId = new mongoose.Types.ObjectId(mpharmLab._id);
+    }
+  }
+
+  // Duplicate Check: Check if student already requested this experiment/thesis and status is STILL Pending
   const existingPending = await StudentRequest.findOne({
     studentId: req.user.id,
-    labId: targetLabId,
-    experimentName: experimentName,
+    ...(targetLabId && { labId: targetLabId }),
+    experimentName: effectiveExpName,
     overallStatus: 'Pending'
   });
 
@@ -53,7 +77,7 @@ const createRequest = asyncHandler(async (req, res) => {
     const formattedDate = new Date(existingPending.requestedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
     return res.status(409).json({
       success: false,
-      message: `You already have a pending request for this experiment!\nRequest ID: ${existingPending.requestId}\nSubmitted: ${formattedDate}`,
+      message: `You already have a pending request for this ${isResearchReq ? 'thesis chemical requisition' : 'experiment'}!\nRequest ID: ${existingPending.requestId}\nSubmitted: ${formattedDate}`,
       isDuplicate: true,
       data: existingPending
     });
@@ -68,12 +92,17 @@ const createRequest = asyncHandler(async (req, res) => {
     rollNumber: req.user.rollNumber || 'RN-1001',
     group: req.user.group || 'Group A',
     ...(targetLabId && { labId: targetLabId }),
-    labName: labName || 'HAP1',
+    labName: labName || (effectiveCourse === 'M.Pharm' ? 'M.Pharm Department' : 'HAP1'),
     year: year || req.user.year || '1',
     semester: semester || req.user.semester || '1',
-    subject: subject || 'HAP - I',
-    experimentNo: Number(experimentNo) || 1,
-    experimentName: experimentName,
+    course: effectiveCourse,
+    isResearchRequest: isResearchReq,
+    projectThesisName: req.body.projectThesisName || (isResearchReq ? effectiveExpName : ''),
+    supervisorName: req.body.supervisorName || '',
+    researchObjective: req.body.researchObjective || notes || '',
+    subject: subject || (isResearchReq ? 'Thesis Project Research' : 'HAP - I'),
+    experimentNo: experimentNo !== undefined ? Number(experimentNo) : (isResearchReq ? 0 : 1),
+    experimentName: effectiveExpName,
     chemicalsRequested: chemicalsRequested.map(c => ({
       chemicalName: c.chemicalName || c.name,
       quantityRequested: Number(c.quantityRequested || c.quantity || c.quantityPerStudent || 1),
@@ -132,9 +161,24 @@ const getLabRequests = asyncHandler(async (req, res) => {
     const lab = await mongoose.model('Lab').findOne({ $or: [{ labCode: rawLabId }, { name: rawLabId }, { labName: rawLabId }] });
     if (lab) queryIds.push(new mongoose.Types.ObjectId(lab._id));
   }
-  if (queryIds.length === 0) queryIds.push(new mongoose.Types.ObjectId());
+  let filterQuery = {};
+  if (queryIds.length > 0) {
+    filterQuery = { labId: { $in: queryIds } };
+  } else if (req.user?.course === 'M.Pharm' || req.user?.isSupervisor) {
+    if (req.user.labId) {
+      filterQuery = { labId: req.user.labId };
+    } else {
+      filterQuery = {
+        course: 'M.Pharm',
+        ...(req.user.semester ? { semester: String(req.user.semester) } : {}),
+        ...(req.user.year ? { year: String(req.user.year) } : {})
+      };
+    }
+  } else if (req.user?.labId) {
+    filterQuery = { labId: req.user.labId };
+  }
 
-  const requests = await StudentRequest.find({ labId: { $in: queryIds } }).sort({ requestedAt: -1 });
+  const requests = await StudentRequest.find(filterQuery).sort({ requestedAt: -1 });
   res.status(200).json({ success: true, count: requests.length, data: requests });
 });
 

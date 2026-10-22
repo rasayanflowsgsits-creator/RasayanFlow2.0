@@ -98,7 +98,11 @@ export default function Navbar({ onToggleSidebar }) {
         <div className="bg-[#5c6e46] px-3 py-1.5 text-center text-xs font-semibold text-white flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="rounded-full bg-emerald-400/20 px-2 py-0.5 text-[9px] uppercase tracking-wider text-emerald-200 shrink-0">Preview</span>
-            <span className="truncate text-[11px] sm:text-xs">Student Mode ({user?.course || 'B.Pharm'} • Y{user?.year || 1} S{user?.semester || 1})</span>
+            <span className="truncate text-[11px] sm:text-xs">
+              {user?.isSupervisor 
+                ? `M.Pharm Supervisor Mode • ${user?.labName || 'Advanced Pharmaceutics Lab - I'} (Sem ${user?.semester || 1})`
+                : `Student Mode (${user?.course || 'B.Pharm'} • Y${user?.year || 1} S${user?.semester || 1})`}
+            </span>
           </div>
           <button 
             onClick={logout}

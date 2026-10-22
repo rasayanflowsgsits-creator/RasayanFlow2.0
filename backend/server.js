@@ -15,6 +15,7 @@ const logger = require('./utils/logger');
 const socketHandler = require('./sockets');
 const seedSuperAdmin = require('./scripts/seedSuperAdmin');
 const seedStoreManager = require('./scripts/seedStoreManager');
+const seedMPharm = require('./scripts/seedMPharm');
 const rateLimiter = require("./middleware/rateLimiter");
 
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
@@ -223,6 +224,8 @@ connectDB()
     await seedSuperAdmin();
     // Seed store manager user
     await seedStoreManager();
+    // Seed authentic M.Pharm infrastructure
+    await seedMPharm();
 
     server.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);

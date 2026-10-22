@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { AlertCircle, Loader2, Award, GraduationCap } from 'lucide-react';
+import { AlertCircle, Loader2, Award, GraduationCap, FlaskConical, ShieldCheck } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -11,6 +11,8 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPreviewSubmitting, setIsPreviewSubmitting] = useState(false);
   const [isPreviewPhDSubmitting, setIsPreviewPhDSubmitting] = useState(false);
+  const [isPreviewMPharmSubmitting, setIsPreviewMPharmSubmitting] = useState(false);
+  const [isPreviewSupervisorSubmitting, setIsPreviewSupervisorSubmitting] = useState(false);
   
   const { login, user } = useAuthStore((state) => ({ login: state.login, user: state.user }));
   const navigate = useNavigate();
@@ -29,9 +31,11 @@ export default function LoginPage() {
     try {
       const userFound = await login(form);
       const isPhDUser = userFound?.course === 'PhD' || userFound?.isPhD || userFound?.courseType === 'PhD' || userFound?.course === 'PhD Research' || userFound?.courseType === 'PhD Research';
+      const isSupervisor = userFound?.isSupervisor || userFound?.course === 'M.Pharm';
       const role = userFound?.role;
       if (role === 'super-admin' || role === 'superAdmin') navigate('/');
       else if (isPhDUser) navigate('/');
+      else if (isSupervisor) navigate('/');
       else if (role === 'lab-admin' || role === 'labAdmin') navigate('/inventory');
       else if (role === 'store_admin' || role === 'storeAdmin' || role === 'store-admin') navigate('/store/dashboard');
       else navigate('/');
@@ -69,7 +73,35 @@ export default function LoginPage() {
     }, 250);
   };
 
-  const isLoading = isSubmitting || isPreviewSubmitting || isPreviewPhDSubmitting;
+  const previewMPharmStudentDashboard = () => {
+    setIsPreviewMPharmSubmitting(true);
+    setTimeout(() => {
+      try {
+        const authStore = useAuthStore.getState();
+        authStore.loginAsPreviewMPharmStudent('1');
+        navigate('/');
+      } catch (err) {
+        setError('Preview M.Pharm failed: ' + (err.message || 'Unknown error'));
+        setIsPreviewMPharmSubmitting(false);
+      }
+    }, 250);
+  };
+
+  const previewMPharmSupervisorDashboard = () => {
+    setIsPreviewSupervisorSubmitting(true);
+    setTimeout(() => {
+      try {
+        const authStore = useAuthStore.getState();
+        authStore.loginAsPreviewMPharmSupervisor();
+        navigate('/');
+      } catch (err) {
+        setError('Preview Supervisor failed: ' + (err.message || 'Unknown error'));
+        setIsPreviewSupervisorSubmitting(false);
+      }
+    }, 250);
+  };
+
+  const isLoading = isSubmitting || isPreviewSubmitting || isPreviewPhDSubmitting || isPreviewMPharmSubmitting || isPreviewSupervisorSubmitting;
 
   return (
     <div className='relative grid min-h-screen place-items-center overflow-hidden bg-[#eef1e6] px-4 dark:bg-[#141811]'>
@@ -123,22 +155,22 @@ export default function LoginPage() {
             )}
           </Button>
 
-          {/* Quick Preview Buttons: B.Pharm vs PhD Scholar */}
+          {/* Quick Preview Buttons */}
           <div className="pt-2 border-t border-[#e4eed3] dark:border-[#38432a] space-y-2">
             <div className="text-[11px] font-black text-[#5c6e46] uppercase tracking-wider text-center">Instant Demo Previews</div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <Button 
                 type='button' 
                 variant='outline' 
-                className='w-full flex items-center justify-center gap-1.5 text-xs font-extrabold border-[#cfd8bd] text-[#5c6e46] hover:bg-[#f4f6ee]' 
+                className='w-full flex items-center justify-center gap-1 text-[11px] font-extrabold border-[#cfd8bd] text-[#5c6e46] hover:bg-[#f4f6ee] px-1' 
                 onClick={previewStudentDashboard}
                 disabled={isLoading}
               >
                 {isPreviewSubmitting ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
                   <>
-                    <GraduationCap size={14} /> Preview Student
+                    <GraduationCap size={13} /> B.Pharm
                   </>
                 )}
               </Button>
@@ -146,15 +178,47 @@ export default function LoginPage() {
               <Button 
                 type='button' 
                 variant='outline' 
-                className='w-full flex items-center justify-center gap-1.5 text-xs font-black bg-purple-50 text-purple-900 border-purple-300 hover:bg-purple-100 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800' 
+                className='w-full flex items-center justify-center gap-1 text-[11px] font-black bg-indigo-50 text-indigo-900 border-indigo-200 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-300 px-1' 
+                onClick={previewMPharmStudentDashboard}
+                disabled={isLoading}
+              >
+                {isPreviewMPharmSubmitting ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <>
+                    <FlaskConical size={13} /> M.Pharm Student
+                  </>
+                )}
+              </Button>
+
+              <Button 
+                type='button' 
+                variant='outline' 
+                className='w-full flex items-center justify-center gap-1 text-[11px] font-black bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 px-1' 
+                onClick={previewMPharmSupervisorDashboard}
+                disabled={isLoading}
+              >
+                {isPreviewSupervisorSubmitting ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <>
+                    <ShieldCheck size={13} /> M.Pharm Supervisor
+                  </>
+                )}
+              </Button>
+
+              <Button 
+                type='button' 
+                variant='outline' 
+                className='w-full flex items-center justify-center gap-1 text-[11px] font-black bg-purple-50 text-purple-900 border-purple-300 hover:bg-purple-100 dark:bg-purple-950/60 dark:text-purple-300 px-1' 
                 onClick={previewPhDStudentDashboard}
                 disabled={isLoading}
               >
                 {isPreviewPhDSubmitting ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
                   <>
-                    <Award size={14} /> Preview PhD Scholar
+                    <Award size={13} /> PhD Scholar
                   </>
                 )}
               </Button>

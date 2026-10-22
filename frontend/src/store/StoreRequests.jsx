@@ -92,10 +92,11 @@ export default function StoreRequests() {
   let approveData = null;
   if (approveTarget) {
     const packData = parsePackSize(approveTarget.chem?.['Pack Size']);
-    const totalBaseAvailable = safeRound(approveTarget.currentStock * packData.value);
+    const packVal = packData.value || 1;
+    const totalBaseAvailable = safeRound(approveTarget.currentStock * packVal);
     const requestedBase = approveTarget.quantity;
     const remainingBase = Math.max(0, safeRound(totalBaseAvailable - requestedBase));
-    const newUNT = safeRound(remainingBase / packData.value);
+    const newUNT = safeRound(remainingBase / packVal);
     const newPrice = safeRound(newUNT * Number(approveTarget.chem?.['Unit Price (INR)'] || 0));
 
     approveData = {
@@ -147,9 +148,13 @@ export default function StoreRequests() {
           <div className="font-extrabold text-[#37412a] dark:text-[#e4e9d8] flex items-center gap-1.5">
             <span>{row.lab}</span>
           </div>
-          {row.requestType === 'PhD Research' ? (
+          {row.requestType === 'PhD Research' || row.course === 'PhD' ? (
             <span className="inline-flex items-center gap-1 mt-1 px-2.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 font-black text-[10px] border border-purple-300 dark:border-purple-800 uppercase tracking-wider">
               <Award size={10} /> PhD Research
+            </span>
+          ) : row.requestType === 'M.Pharm Research' || row.course === 'M.Pharm' ? (
+            <span className="inline-flex items-center gap-1 mt-1 px-2.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-black text-[10px] border border-emerald-300 dark:border-emerald-800 uppercase tracking-wider">
+              <GraduationCap size={10} /> M.Pharm Requisition
             </span>
           ) : (
             <span className="inline-block mt-1 px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold text-[10px]">

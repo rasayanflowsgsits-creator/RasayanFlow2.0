@@ -1,7 +1,7 @@
 import React from 'react';
 import useAuthStore from '../store/authStore';
 import BPharmDashboard from './BPharmDashboard';
-import ResearchDashboard from './ResearchDashboard';
+import MPharmStudentDashboard from './MPharmStudentDashboard';
 import PhDResearchDashboard from './PhDResearchDashboard';
 import StudentOnboardingModal from '../components/student/StudentOnboardingModal';
 
@@ -27,7 +27,7 @@ export default function StudentDashboard() {
       {user?.course === 'PhD' || user?.isPhD ? (
         <PhDResearchDashboard />
       ) : user?.course === 'M.Pharm' ? (
-        <ResearchDashboard />
+        <MPharmStudentDashboard />
       ) : (
         <BPharmDashboard />
       )}

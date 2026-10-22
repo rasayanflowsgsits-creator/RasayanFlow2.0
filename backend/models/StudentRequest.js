@@ -22,7 +22,11 @@ const studentRequestSchema = new mongoose.Schema({
   semester: { type: String, trim: true },
   subject: { type: String, trim: true }, // Optional for research requests
   experimentNo: { type: Number }, // Optional for research requests
-  experimentName: { type: String, trim: true }, // Optional for research requests
+  course: { type: String, trim: true },
+  isResearchRequest: { type: Boolean, default: false },
+  projectThesisName: { type: String, trim: true },
+  supervisorName: { type: String, trim: true },
+  researchObjective: { type: String, trim: true },
   chemicalsRequested: { type: [requestedChemicalSchema], default: [] },
   overallStatus: { 
     type: String, 

@@ -1,6 +1,10 @@
+const mongoose = require('mongoose');
 const User = require('../models/User');
 
 const seedStoreManager = async () => {
+  if (mongoose.connection.readyState !== 1) {
+    return;
+  }
   try {
     const email = 'storemanagersgsits@gmail.com';
     let user = await User.findOne({ email });

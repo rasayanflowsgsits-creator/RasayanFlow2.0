@@ -3,10 +3,12 @@ const StoreTracking = require('../models/StoreTracking');
 const asyncHandler = require('express-async-handler');
 const { safeRound, parsePackSize, totalStock } = require('../utils/storeHelpers');
 
-const calculateStatus = (qty, reorderLevel) => {
+const calculateStatus = (qty, reorderLevel, receivedQty = 0) => {
   const q = safeRound(qty);
   if (q <= 0) return 'Out of Stock';
-  if (q <= (reorderLevel || 2)) return 'Low Stock';
+  const rec = safeRound(receivedQty);
+  if (rec > 0 && q >= rec) return 'In Stock';
+  if (q <= (reorderLevel || 2) && (rec <= 0 || q < rec)) return 'Low Stock';
   return 'In Stock';
 };
 
@@ -120,7 +122,7 @@ const importChemicals = asyncHandler(async (req, res) => {
         existing.smiles = chem.smiles || existing.smiles;
         existing.supplier = chem.supplier || existing.supplier;
         
-        existing.status = calculateStatus(existing.availableQty, existing.reorderLevel);
+        existing.status = calculateStatus(existing.availableQty, existing.reorderLevel, existing.receivedQty);
         existing.totalValue = safeRound((existing.unitPrice || 0) * existing.availableQty);
         existing.updatedAt = Date.now();
         
@@ -141,7 +143,7 @@ const importChemicals = asyncHandler(async (req, res) => {
         const newReceived = Number(chem.receivedQty !== undefined ? chem.receivedQty : chem.availableQty) || 0;
         const availableQty = safeRound(newReceived);
         const reorderLevel = chem.reorderLevel !== undefined ? chem.reorderLevel : 2;
-        const status = calculateStatus(availableQty, reorderLevel);
+        const status = calculateStatus(availableQty, reorderLevel, newReceived);
         const uPrice = Number(chem.unitPrice || 0);
         const totalValue = safeRound(uPrice * availableQty);
 

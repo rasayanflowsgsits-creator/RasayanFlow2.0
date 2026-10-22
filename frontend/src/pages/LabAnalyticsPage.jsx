@@ -34,7 +34,14 @@ export default function LabAnalyticsPage() {
     const currentUserId = String(user?.id || user?._id || '');
     const currentUserEmail = (user?.email || '').toLowerCase();
     const currentUserLabId = String(user?.labId?._id || user?.labId || '');
-    return (store.labs || []).filter(lab => {
+    const isMPharmUser = user?.course === 'M.Pharm' || user?.courseType === 'M.Pharm' || user?.isSupervisor;
+
+    if (isMPharmUser && currentUserLabId) {
+      const specificLab = (store.labs || []).find((l) => String(l.id || l._id) === currentUserLabId);
+      if (specificLab) return [specificLab];
+    }
+
+    const matched = (store.labs || []).filter(lab => {
       const labIdStr = String(lab.id || lab._id || '');
       const isDirectAdmin = Array.isArray(lab.admins) && lab.admins.some(admin => {
         const adminIdStr = String(admin.id || admin._id || admin);
@@ -44,6 +51,24 @@ export default function LabAnalyticsPage() {
       const matchesUserLabId = Boolean(currentUserLabId && currentUserLabId === labIdStr);
       return isDirectAdmin || matchesUserLabId;
     });
+
+    if (matched.length > 0) return matched;
+
+    if (isMPharmUser) {
+      return [{
+        id: user?.labId || 'preview-lab-mpharm-sem1-a',
+        _id: user?.labId || 'preview-lab-mpharm-sem1-a',
+        name: user?.labName || 'M.Pharm Advanced Pharmaceutics Lab - I',
+        labName: user?.labName || 'M.Pharm Advanced Pharmaceutics Lab - I',
+        labCode: user?.labCode || 'MPHARM-101L',
+        courseType: 'M.Pharm',
+        department: 'Pharmaceutics',
+        year: user?.year || '1',
+        semester: user?.semester || '1'
+      }];
+    }
+
+    return matched;
   }, [store.labs, user]);
 
   useEffect(() => {

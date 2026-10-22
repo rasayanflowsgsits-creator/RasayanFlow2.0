@@ -60,10 +60,9 @@ const linksMap = {
   "store_admin": [
     { to: "/store/dashboard", label: "Dashboard", icon: Store },
     { to: "/store/inventory", label: "Inventory", icon: Boxes },
-    { to: "/store/tracking", label: "Tracking", icon: Activity },
-    { to: "/store/lowstock", label: "Low Stock", icon: AlertTriangle },
-    { to: "/store/overview", label: "Overview", icon: BarChart3 },
     { to: "/store/requests", label: "Requests", icon: ClipboardList },
+    { to: "/store/lowstock", label: "Stock Alerts", icon: AlertTriangle },
+    { to: "/store/tracking", label: "Tracking", icon: Activity },
     { to: "/store/history", label: "History", icon: History },
     { to: "/store/reports", label: "Reports", icon: FileText },
     { to: "/about", label: "About Us", icon: Info },
@@ -91,6 +90,12 @@ export default function Sidebar({ collapsed }) {
     user?.isPhD ||
     Boolean(user?.isPhDRequest)
   );
+  const isMPharmSupervisor = !isSuperAdmin && !isStoreAdmin && !isPhD && Boolean(
+    user?.isSupervisor ||
+    user?.course === 'M.Pharm' ||
+    user?.courseType === 'M.Pharm' ||
+    user?.designation === 'M.Pharm Supervisor'
+  );
   const navRole = isSuperAdmin
     ? "super-admin"
     : isStoreAdmin
@@ -105,6 +110,11 @@ export default function Sidebar({ collapsed }) {
     if (isPhD) {
       if (item.to === '/') return { ...item, label: 'PhD Chemical Requisitions', icon: FlaskConical };
       if (item.to === '/my-borrowings') return { ...item, label: 'Requisition History', icon: History };
+    }
+    if (isMPharmSupervisor) {
+      if (item.to === '/inventory') return { ...item, label: 'Supervisor Lab', icon: ClipboardList };
+      if (item.to === '/lab/experiments') return { ...item, label: 'Practicals & Syllabus', icon: FileText };
+      if (item.to === '/lab/student-requests') return { ...item, label: 'Student Requisitions', icon: Users };
     }
     return item;
   }) || [];
@@ -136,6 +146,19 @@ export default function Sidebar({ collapsed }) {
       }
     });
   }
+
+  const [storePendingRequestsCount, setStorePendingRequestsCount] = useState(0);
+
+  useEffect(() => {
+    if (role === 'store-admin' || role === 'store_admin' || role === 'storeAdmin') {
+      api.get('/store/requests')
+        .then(res => {
+          const list = res.data || [];
+          setStorePendingRequestsCount(list.filter(r => r.status === 'Pending').length);
+        })
+        .catch(() => {});
+    }
+  }, [role]);
 
   let storeRequestsCount = 0;
   if (role === 'lab-admin' || role === 'labAdmin' || role === 'lab_admin') {
@@ -195,6 +218,11 @@ export default function Sidebar({ collapsed }) {
                     <Icon size={18} className="shrink-0 transition-transform duration-200 group-hover:scale-105" />
                     {!collapsed ? <span className="truncate">{item.label}</span> : null}
                   </div>
+                  {!collapsed && item.to === "/store/requests" && storePendingRequestsCount > 0 ? (
+                    <span className="bg-emerald-600 text-white text-[11px] font-black px-2 py-0.5 rounded-full shadow-sm">
+                      {storePendingRequestsCount}
+                    </span>
+                  ) : null}
                   {!collapsed && item.to === "/store/lowstock" && lowStockCount > 0 ? (
                     <span className="bg-rose-500 text-white text-[11px] font-black px-2 py-0.5 rounded-full shadow-sm">{lowStockCount}</span>
                   ) : null}

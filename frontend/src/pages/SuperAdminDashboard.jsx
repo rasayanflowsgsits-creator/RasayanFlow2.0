@@ -1322,6 +1322,7 @@ export default function SuperAdminDashboard() {
       }
 
       const isPhDLab = newLab.courseType === 'PhD';
+      const isMPharmLab = newLab.courseType === 'M.Pharm';
       const createdLab = await createLab({
         name: newLab.name.trim(),
         code: newLab.code.trim().toUpperCase(),
@@ -1344,6 +1345,8 @@ export default function SuperAdminDashboard() {
         message: adminEmailToAssign
           ? isPhDLab
             ? `Created PhD Lab "${createdLab.name}" and provisioned PhD Researcher (${adminEmailToAssign})!`
+            : isMPharmLab
+            ? `Created M.Pharm Lab "${createdLab.name}" and provisioned M.Pharm Supervisor (${adminEmailToAssign})!`
             : `Created "${createdLab.name}" and provisioned Lab Admin (${adminEmailToAssign})!`
           : existingAdminIdToSend
             ? `Created "${createdLab.name}" and assigned existing staff as Lab Admin!`
@@ -1559,14 +1562,16 @@ export default function SuperAdminDashboard() {
       const isStoreAdmin = u.role === 'store-admin' || u.role === 'storeAdmin' || u.role === 'store_admin';
       const isSuperAdmin = u.role === 'super-admin' || u.role === 'superAdmin' || u.role === 'super_admin';
       const isPhD = u.course === 'PhD' || u.course === 'Ph.D.' || u.courseType === 'PhD' || u.courseType === 'Ph.D.' || u.isPhD || Boolean(u.isPhDRequest);
+      const isSupervisor = Boolean(u.isSupervisor || (isLabAdmin && (u.course === 'M.Pharm' || u.courseType === 'M.Pharm')));
 
-      // ONLY allow Lab Admins, Store Managers, Super Admins, and PhD Scholars in the Credentials Vault.
+      // ONLY allow Lab Admins, Store Managers, Super Admins, PhD Scholars, and M.Pharm Supervisors in the Credentials Vault.
       // Exclude all general undergraduate/master's student accounts (B.Pharm/M.Pharm).
-      const isAllowedAccount = isLabAdmin || isStoreAdmin || isSuperAdmin || isPhD;
+      const isAllowedAccount = isLabAdmin || isStoreAdmin || isSuperAdmin || isPhD || isSupervisor;
       if (!isAllowedAccount) return false;
 
       // Role category pill filter
-      if (credRoleFilter === 'lab-admin' && !isLabAdmin) return false;
+      if (credRoleFilter === 'mpharm-supervisor' && !isSupervisor) return false;
+      if (credRoleFilter === 'lab-admin' && (!isLabAdmin || isSupervisor)) return false;
       if (credRoleFilter === 'store-admin' && !isStoreAdmin) return false;
       if (credRoleFilter === 'phd' && !isPhD) return false;
       if (credRoleFilter === 'super-admin' && !isSuperAdmin) return false;
@@ -2931,6 +2936,7 @@ export default function SuperAdminDashboard() {
                 </span>
                 {[
                   { id: 'all', label: 'All Authorized Credentials' },
+                  { id: 'mpharm-supervisor', label: 'M.Pharm Supervisors' },
                   { id: 'lab-admin', label: 'Lab Admins' },
                   { id: 'store-admin', label: 'Store Managers' },
                   { id: 'phd', label: 'PhD Scholars' },
@@ -3068,11 +3074,12 @@ export default function SuperAdminDashboard() {
                                 <div className='flex items-center gap-1.5 mt-0.5'>
                                   <span className={`inline-flex items-center rounded-md px-1.5 py-0.2 text-[10px] font-black ${
                                     userRow.role === 'super-admin' ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300' :
+                                    (userRow.isSupervisor || userRow.course === 'M.Pharm') ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' :
                                     isLabAdmin ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300' :
                                     isStudent ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' :
                                     'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300'
                                   }`}>
-                                    {userRow.roleDisplay}
+                                    {(userRow.isSupervisor || (isLabAdmin && userRow.course === 'M.Pharm')) ? 'M.Pharm Supervisor' : userRow.roleDisplay}
                                   </span>
                                   {userRow.rollNumber && (
                                     <span className='font-mono text-[10px] font-bold text-[#5c6e46] dark:text-[#a8be8a]'>
@@ -3813,9 +3820,15 @@ export default function SuperAdminDashboard() {
               <div className='w-16 h-16 rounded-2xl bg-[#e8efd9] dark:bg-[#2a3320] flex items-center justify-center mx-auto mb-4 text-[#5c6e46] dark:text-[#a8be8a]'>
                 <Warehouse size={32} />
               </div>
-              <h4 className='text-lg font-extrabold text-[#37412a] dark:text-[#e4e9d8]'>No Labs Found</h4>
+              <h4 className='text-lg font-extrabold text-[#37412a] dark:text-[#e4e9d8]'>
+                {currCourseFilter === 'M.Pharm' && (currSemFilter === '3' || currSemFilter === '4')
+                  ? `M.Pharm Semester ${currSemFilter} Thesis & Dissertation Phase`
+                  : 'No Labs Found'}
+              </h4>
               <p className='text-xs text-[#71805a] dark:text-[#a5b48b] max-w-md mx-auto mt-1 leading-relaxed'>
-                No laboratories match your current filter for {currCourseFilter} {currSemFilter !== 'all' ? `Semester ${currSemFilter}` : ''}.
+                {currCourseFilter === 'M.Pharm' && (currSemFilter === '3' || currSemFilter === '4')
+                  ? 'In M.Pharm Year 2 (Semesters 3 & 4), scholars conduct independent thesis research without fixed syllabus practicals. Chemicals are requested dynamically to the M.Pharm Supervisor and fulfilled through Central Store.'
+                  : `No laboratories match your current filter for ${currCourseFilter} ${currSemFilter !== 'all' ? `Semester ${currSemFilter}` : ''}.`}
               </p>
             </div>
           ) : (
@@ -4749,7 +4762,7 @@ export default function SuperAdminDashboard() {
             <div className='space-y-4 rounded-2xl border border-[#d9e1ca] bg-[#fffef8] p-4 dark:border-[#414a33] dark:bg-[#1a1d16] flex flex-col justify-between'>
               <div>
                 <h4 className='text-xs font-bold text-[#5c6e46] dark:text-[#a5b48b] uppercase tracking-wider flex items-center gap-1.5 border-b border-[#d9e1ca] pb-2 dark:border-[#414a33]'>
-                  <UserPlus size={16} /> {newLab.courseType === 'PhD' ? '2. PhD Researcher Provisioning' : '2. Lab Administrator Provisioning'}
+                  <UserPlus size={16} /> {newLab.courseType === 'PhD' ? '2. PhD Researcher Provisioning' : newLab.courseType === 'M.Pharm' ? '2. M.Pharm Supervisor Provisioning' : '2. Lab Administrator Provisioning'}
                 </h4>
 
                 {/* Mode Selector Tabs */}
@@ -4761,7 +4774,7 @@ export default function SuperAdminDashboard() {
                       adminMode === 'create_new' ? 'bg-[#5c6e46] text-white shadow-sm' : 'text-[#71805a] hover:text-[#37412a] dark:text-[#a5b48b]'
                     }`}
                   >
-                    {newLab.courseType === 'PhD' ? '+ Provision PhD Researcher' : '+ Provision New Admin'}
+                    {newLab.courseType === 'PhD' ? '+ Provision PhD Researcher' : newLab.courseType === 'M.Pharm' ? '+ Provision M.Pharm Supervisor' : '+ Provision New Admin'}
                   </button>
                   <button
                     type='button'
@@ -4774,7 +4787,7 @@ export default function SuperAdminDashboard() {
                   </button>
                 </div>
 
-                {/* Option A: Create New Lab Admin Account */}
+                {/* Option A: Create New Lab Admin / Supervisor Account */}
                 {adminMode === 'create_new' && (
                   <div className='mt-4 space-y-3.5 animate-in fade-in'>
                     <div className='rounded-xl bg-emerald-50/70 p-3 border border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/40'>
@@ -4783,25 +4796,27 @@ export default function SuperAdminDashboard() {
                         <span>
                           {newLab.courseType === 'PhD'
                             ? 'Provision credentials for the PhD Researcher. When they log in with this ID (email) and password, they will immediately land inside the dedicated PhD & Research Portal with direct Central Store requisition access!'
+                            : newLab.courseType === 'M.Pharm'
+                            ? 'Provision credentials for the M.Pharm Supervisor. This supervisor oversees all M.Pharm scholars across Semesters 1-4, approving practical curriculum experiments (Sem 1-2) and self-directed thesis chemical requisitions (Sem 3-4), with Central Store requisition authority.'
                             : 'Provision credentials for the Lab Admin. When this admin logs in with this email and password, they will immediately land inside this lab dashboard!'}
                         </span>
                       </p>
                     </div>
 
                     <Input
-                      label={newLab.courseType === 'PhD' ? 'Researcher Full Name *' : 'Admin Full Name *'}
+                      label={newLab.courseType === 'PhD' ? 'Researcher Full Name *' : newLab.courseType === 'M.Pharm' ? 'Supervisor Full Name *' : 'Admin Full Name *'}
                       value={newLabAdmin.name}
                       onChange={(e) => setNewLabAdmin({ ...newLabAdmin, name: e.target.value })}
-                      placeholder='e.g. Dr. Omprakash Tanwar'
+                      placeholder={newLab.courseType === 'M.Pharm' ? 'e.g. Dr. Rajesh Sharma' : newLab.courseType === 'PhD' ? 'e.g. Dr. Omprakash Tanwar' : 'e.g. Dr. Sharma'}
                       required
                     />
 
                     <Input
-                      label={newLab.courseType === 'PhD' ? 'Researcher Login Email (ID) *' : 'Admin Login Email *'}
+                      label={newLab.courseType === 'PhD' ? 'Researcher Login Email (ID) *' : newLab.courseType === 'M.Pharm' ? 'Supervisor Login Email (ID) *' : 'Admin Login Email *'}
                       type='email'
                       value={newLabAdmin.email}
                       onChange={(e) => setNewLabAdmin({ ...newLabAdmin, email: e.target.value })}
-                      placeholder='admin.pharmaceutics@rasayanflow.edu'
+                      placeholder={newLab.courseType === 'M.Pharm' ? 'supervisor.mpharm@rasayanflow.edu' : 'admin.pharmaceutics@rasayanflow.edu'}
                       required
                     />
 

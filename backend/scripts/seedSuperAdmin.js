@@ -9,7 +9,10 @@ const seedSuperAdmin = async () => {
   const SUPER_ADMIN_EMAIL = (process.env.SUPER_ADMIN_EMAIL || '').toLowerCase();
 
   if (!SUPER_ADMIN_EMAIL) {
-    console.log('⚠️  SUPER_ADMIN_EMAIL not configured in .env');
+    return;
+  }
+
+  if (mongoose.connection.readyState !== 1) {
     return;
   }
 

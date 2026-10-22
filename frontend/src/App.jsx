@@ -9,6 +9,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import LabAdminDashboard from './pages/LabAdminDashboard';
+import MPharmSupervisorDashboard from './pages/MPharmSupervisorDashboard';
 import StoreDashboard from './pages/StoreDashboard';
 import StoreManagerDashboard from './store/StoreDashboard';
 import StoreInventory from './store/StoreInventory';
@@ -200,6 +201,12 @@ function App() {
     Boolean(user?.isPhDRequest)
   );
   const isLabAdmin = !isPhD && (rawRole === 'lab-admin' || rawRole === 'labAdmin' || rawRole === 'lab_admin');
+  const isMPharmSupervisor = isLabAdmin && Boolean(
+    user?.isSupervisor || 
+    user?.course === 'M.Pharm' || 
+    user?.courseType === 'M.Pharm' || 
+    user?.designation === 'M.Pharm Supervisor'
+  );
   const isStudent = !isSuperAdmin && !isLabAdmin && !isStoreAdmin;
 
   function AppRoutes() {
@@ -232,12 +239,13 @@ function App() {
                         isSuperAdmin ? <SuperAdminDashboard /> :
                         isStoreAdmin ? <StoreManagerDashboard /> :
                         isPhD ? <PhDResearchDashboard /> :
+                        isMPharmSupervisor ? <MPharmSupervisorDashboard /> :
                         isLabAdmin ? <LabAdminDashboard /> :
                         <StudentDashboard />
                       }
                     />
                     <Route path='labs' element={isSuperAdmin ? <SuperAdminDashboard /> : <Navigate to='/' replace />} />
-                    <Route path='inventory' element={isLabAdmin ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
+                    <Route path='inventory' element={isMPharmSupervisor ? <MPharmSupervisorDashboard /> : isLabAdmin ? <LabAdminDashboard /> : <Navigate to='/' replace />} />
                     <Route path='analytics' element={isLabAdmin ? <LabAnalyticsPage /> : <Navigate to='/' replace />} />
                     <Route path='transactions' element={isLabAdmin ? <LabTransactionsPage /> : <Navigate to='/' replace />} />
                     <Route path='lab/experiments' element={isLabAdmin ? <LabExperimentsPage /> : <Navigate to='/' replace />} />
@@ -252,7 +260,7 @@ function App() {
                     <Route path='store/inventory' element={isStoreAdmin ? <StoreInventory /> : <Navigate to='/' replace />} />
                     <Route path='store/tracking' element={isStoreAdmin ? <StoreTracking /> : <Navigate to='/' replace />} />
                     <Route path='store/lowstock' element={isStoreAdmin ? <StoreAlerts /> : <Navigate to='/' replace />} />
-                    <Route path='store/overview' element={isStoreAdmin ? <StoreStockOverview /> : <Navigate to='/' replace />} />
+                    <Route path='store/overview' element={isStoreAdmin ? <Navigate to='/store/dashboard' replace /> : <Navigate to='/' replace />} />
                     <Route path='store/requests' element={isStoreAdmin ? <StoreRequests /> : <Navigate to='/' replace />} />
                     <Route path='store/history' element={isStoreAdmin ? <StoreHistory /> : <Navigate to='/' replace />} />
                     <Route path='store/reports' element={isStoreAdmin ? <StoreReports /> : <Navigate to='/' replace />} />

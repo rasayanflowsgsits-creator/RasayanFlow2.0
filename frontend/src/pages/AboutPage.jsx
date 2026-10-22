@@ -221,6 +221,63 @@ const ROLE_MANUALS = {
     ],
     workflowFlowchart: ['PhD Scholar Login', 'Submit Direct Store Request', 'Store Manager Approves', 'Receive Receipt (REC-XXXX) & Pickup']
   },
+  mpharm_supervisor: {
+    id: 'mpharm_supervisor',
+    title: 'M.Pharm Faculty Supervisor & Lab In-Charge Operational Manual',
+    roleName: 'M.Pharm Faculty Supervisor',
+    badge: 'Post-Graduate Laboratory Governance & Thesis Requisition Authority',
+    icon: FlaskConical,
+    overview: 'As an M.Pharm Faculty Supervisor, you oversee post-graduate curriculum practicals, evaluate independent thesis chemical requisitions, verify CAS safety standards, and requisition bulk replenishment stock from the Central Store.',
+    features: [
+      'Two-Phase Post-Graduate Laboratory Management (Sem 1 & 2 Curriculum Practical Labs; Sem 3 & 4 Independent Thesis Requisition Portal)',
+      'Direct Requisition of High-Purity & Analytical Grade Chemicals from Central Store Manager with REC-XXXX codes',
+      'Evaluation & Approval of Student Thesis Chemical Requisitions with CAS Number verification',
+      'Real-time Lab Chemical Stock Consumption & Student Allocation Tracking',
+      'Departmental Audit History & Stock Reconciliation with Year/Month (2026-2056) Archiving and PDF/CSV Exports'
+    ],
+    useCases: [
+      {
+        title: 'Use Case 1: Curriculum Practical Execution (Sem 1 & 2)',
+        desc: 'Review practical syllabus experiments (e.g. Liposomal Drug Delivery, UV-Vis Spectral Estimation), unlock chemicals for student groups, and issue reagents during practical sessions.'
+      },
+      {
+        title: 'Use Case 2: Approving Thesis Requisitions (Sem 3 & 4)',
+        desc: 'Review non-catalog thesis chemical requests submitted by Sem 3 & 4 scholars, verify CAS numbers and proposed quantities, and approve direct transfer or indent from Central Store.'
+      },
+      {
+        title: 'Use Case 3: Bulk Store Replenishment',
+        desc: 'Submit Store Requests for bulk analytical reagents to the Central Store Manager and verify receipt upon store approval.'
+      }
+    ],
+    handlingSteps: [
+      {
+        step: 1,
+        title: 'Supervisor Dashboard Navigation',
+        desc: 'Access your dedicated M.Pharm Lab Dashboard to view your assigned laboratory, active stock valuation, pending student requisitions, and store status.'
+      },
+      {
+        step: 2,
+        title: 'Curriculum Practical Setup & Student Borrow Approvals',
+        desc: 'In Year 1 (Sem 1 & 2), manage practical experiments, verify student group requirements, and approve chemical borrow requests in real-time.'
+      },
+      {
+        step: 3,
+        title: 'Thesis Research Request Review & Store Routing',
+        desc: 'In Year 2 (Sem 3 & 4), inspect independent student thesis requisitions with custom quantities and CAS numbers, approving stock from lab reserve or forwarding store indents.'
+      },
+      {
+        step: 4,
+        title: 'Requisitioning Central Store Stock',
+        desc: 'Navigate to Store Requests to place bulk chemical replenishment orders with the Central Store Manager and track delivery with Store Receipt Codes.'
+      },
+      {
+        step: 5,
+        title: 'Audit Archiving & Export',
+        desc: 'Use Lab History to review received store shipments and student chemical disbursements with filterable year/month logs and instant PDF/CSV reporting.'
+      }
+    ],
+    workflowFlowchart: ['Supervisor Login', 'Monitor Lab Inventory', 'Approve Student Practicals & Thesis Indents', 'Requisition Store Stock', 'Export Audit Reports']
+  },
   mpharm_scholar: {
     id: 'mpharm_scholar',
     title: 'M.Pharm Scholar System Manual',
@@ -385,7 +442,18 @@ export default function AboutPage() {
       return 'store_manager';
     }
 
-    // 3. Lab Admin / Technician
+    // 3. M.Pharm Faculty Supervisor (check before general lab_admin)
+    const isMPharmSupervisor = Boolean(
+      user.isSupervisor ||
+      user.designation === 'M.Pharm Supervisor' ||
+      (course === 'M.Pharm' && (rawRole === 'lab_admin' || rawRole === 'labadmin' || rawRole === 'technician')) ||
+      (user?.name || '').includes('Supervisor')
+    );
+    if (isMPharmSupervisor) {
+      return 'mpharm_supervisor';
+    }
+
+    // 4. Lab Admin / Technician
     if (rawRole === 'lab_admin' || rawRole === 'labadmin' || rawRole === 'technician') {
       return 'lab_admin';
     }

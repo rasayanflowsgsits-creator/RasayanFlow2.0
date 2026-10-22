@@ -27,6 +27,7 @@ const createLab = asyncHandler(async (req, res) => {
   }
 
   const isPhDLab = courseType === 'PhD' || courseType === 'PhD Research';
+  const isMPharmLab = courseType === 'M.Pharm';
   const effectiveYear = isPhDLab ? '' : (year || '');
   const effectiveSemester = isPhDLab ? '' : (semester || '');
 
@@ -58,6 +59,7 @@ const createLab = asyncHandler(async (req, res) => {
       existingAdmin.semester = effectiveSemester;
       existingAdmin.isApproved = true;
       existingAdmin.isPhD = isPhDLab;
+      existingAdmin.isSupervisor = isMPharmLab;
       if (adminName && adminName.trim()) existingAdmin.name = adminName.trim();
       if (adminPassword && adminPassword.trim()) {
         existingAdmin.password = adminPassword.trim();
@@ -85,6 +87,7 @@ const createLab = asyncHandler(async (req, res) => {
       existingUser.semester = effectiveSemester;
       existingUser.isApproved = true;
       existingUser.isPhD = isPhDLab;
+      existingUser.isSupervisor = isMPharmLab;
       if (adminName && adminName.trim()) existingUser.name = adminName.trim();
       if (adminPassword && adminPassword.trim()) {
         existingUser.password = adminPassword.trim();
@@ -103,6 +106,7 @@ const createLab = asyncHandler(async (req, res) => {
         role: isPhDLab ? 'student' : 'labAdmin',
         isApproved: true,
         isPhD: isPhDLab,
+        isSupervisor: isMPharmLab,
         labId: lab._id,
         labName: lab.labName,
         labCode: lab.labCode,
@@ -415,6 +419,21 @@ const getMatchingLabs = asyncHandler(async (req, res) => {
       const labCourse = (lab.courseType || '').toLowerCase().trim();
       const matchesLabId = req.user?.labId && String(lab._id) === String(req.user.labId);
       return labCourse === 'phd' || labCourse === 'phd research' || matchesLabId;
+    }
+
+    // For M.Pharm scholars and students
+    const isMPharm = reqCourse === 'm.pharm' || reqCourse === 'mpharm' || req.user?.course === 'M.Pharm';
+    if (isMPharm) {
+      const labCourse = (lab.courseType || '').toLowerCase().trim();
+      const matchesCourse = labCourse === 'm.pharm' || labCourse.includes('m.pharm') || labCourse.includes('mpharm');
+      const matchesLabId = req.user?.labId && String(lab._id) === String(req.user.labId);
+      if (!matchesCourse && !matchesLabId) return false;
+
+      const labYr = lab.year ? String(lab.year).replace(/\D/g, '') : '';
+      const labSem = lab.semester ? String(lab.semester).replace(/\D/g, '') : '';
+      if (reqYr && labYr && labYr !== reqYr) return false;
+      if (reqSem && labSem && labSem !== reqSem) return false;
+      return true;
     }
 
     // 1. Course type must match exactly
