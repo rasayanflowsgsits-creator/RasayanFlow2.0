@@ -105,6 +105,51 @@ export default function StoreTracking() {
   const [filterStatus, setFilterStatus] = useState('All');
   const [viewTarget, setViewTarget] = useState(null);
 
+  // Stock Overview search & filter state
+  const [stockSearch, setStockSearch] = useState('');
+  const [stockStatusFilter, setStockStatusFilter] = useState('All');
+  const [stockPage, setStockPage] = useState(1);
+  const CARDS_PER_PAGE = 30;
+
+  useEffect(() => {
+    setStockPage(1);
+  }, [stockSearch, stockStatusFilter]);
+
+  const filteredStockInventory = useMemo(() => {
+    return inventory.filter((chem) => {
+      const q = stockSearch.trim().toLowerCase();
+      if (q) {
+        const name = (chem['Chemical Name'] || chem.name || '').toLowerCase();
+        const id = (chem['Chemical ID'] || chem.chemicalId || '').toLowerCase();
+        const cas = (chem['CAS Number'] || chem.cas || '').toLowerCase();
+        const grade = (chem.Grade || chem.grade || '').toLowerCase();
+        const formula = (chem['Molecular Formula'] || chem.formula || '').toLowerCase();
+        if (!name.includes(q) && !id.includes(q) && !cas.includes(q) && !grade.includes(q) && !formula.includes(q)) {
+          return false;
+        }
+      }
+
+      if (stockStatusFilter !== 'All') {
+        const receivedQty = Number(chem['Received Quantity'] || chem.receivedQty || chem['Available Quantity'] || chem.availableQty || 0);
+        const availableQty = Number(chem['Available Quantity'] || chem.availableQty || 0);
+        const percentage = receivedQty > 0 ? (availableQty / receivedQty) * 100 : 0;
+        
+        if (stockStatusFilter === 'In Stock' && percentage < 50) return false;
+        if (stockStatusFilter === 'Low Stock' && (percentage < 25 || percentage >= 50)) return false;
+        if (stockStatusFilter === 'Critical' && (percentage <= 0 || percentage >= 25)) return false;
+        if (stockStatusFilter === 'Out of Stock' && (availableQty > 0 || receivedQty === 0)) return false;
+      }
+
+      return true;
+    });
+  }, [inventory, stockSearch, stockStatusFilter]);
+
+  const totalStockPages = Math.ceil(filteredStockInventory.length / CARDS_PER_PAGE) || 1;
+  const paginatedStockInventory = useMemo(() => {
+    const start = (stockPage - 1) * CARDS_PER_PAGE;
+    return filteredStockInventory.slice(start, start + CARDS_PER_PAGE);
+  }, [filteredStockInventory, stockPage]);
+
   const fetchTrackingData = async () => {
     setLoading(true);
     setError('');
@@ -432,91 +477,199 @@ export default function StoreTracking() {
         )}
       </Card>
 
-      {/* FIX 5: STOCK OVERVIEW CARDS SECTION */}
-      <div className="mt-8">
-        <div className="mb-4">
-          <h2 className="text-lg font-black text-[#2e3d19] dark:text-[#eef4e8]">Chemical Stock Overview</h2>
-          <p className="text-xs font-bold text-[#71805a] dark:text-[#a5b48b]">Visual stock levels for all tracked chemicals</p>
+      {/* STOCK OVERVIEW CARDS SECTION */}
+      <div className="mt-10 pt-6 border-t border-[#e3e9d8] dark:border-[#343b2b]">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-black text-[#2e3d19] dark:text-[#eef4e8]">Chemical Stock Overview</h2>
+            <p className="text-xs font-bold text-[#71805a] dark:text-[#a5b48b]">Visual stock levels for all tracked chemicals</p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Search Input for Chemical Stock Overview */}
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#556b2f] dark:text-[#a8be8a]" size={15} />
+              <Input
+                className="pl-9 pr-8 text-xs font-bold w-full rounded-xl"
+                placeholder="Search stock by name, ID, CAS..."
+                value={stockSearch}
+                onChange={(e) => setStockSearch(e.target.value)}
+              />
+              {stockSearch && (
+                <button
+                  type="button"
+                  onClick={() => setStockSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Quick Status Filter Dropdown */}
+            <select
+              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-[#2e3d19] focus:border-[#556b2f] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              value={stockStatusFilter}
+              onChange={(e) => setStockStatusFilter(e.target.value)}
+            >
+              <option value="All">All Stock Levels</option>
+              <option value="In Stock">In Stock (&gt;50%)</option>
+              <option value="Low Stock">Low Stock (25-50%)</option>
+              <option value="Critical">Critical (&lt;25%)</option>
+              <option value="Out of Stock">Out of Stock</option>
+            </select>
+          </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {inventory.map((chem) => {
-            const receivedQty = Number(chem['Received Quantity'] || chem.receivedQty || chem['Available Quantity'] || chem.availableQty || 0);
-            const availableQty = Number(chem['Available Quantity'] || chem.availableQty || 0);
-            const packStr = chem['Pack Size'] || chem.packSize || '';
-            const packData = parsePackSize(packStr);
-
-            const percentage = receivedQty > 0 ? safeRound((availableQty / receivedQty) * 100) : 0;
-            const totalBase = safeRound(receivedQty * packData.baseValue);
-            const availableBase = safeRound(availableQty * packData.baseValue);
-            const usedBase = safeRound(Math.max(receivedQty - availableQty, 0) * packData.baseValue);
-
-            // Progress bar color rules:
-            // > 50%: green, 25-50%: yellow, < 25%: red, 0%: dark red
-            let barColor = 'bg-emerald-500';
-            if (percentage <= 0) barColor = 'bg-rose-950';
-            else if (percentage < 25) barColor = 'bg-rose-500';
-            else if (percentage < 50) barColor = 'bg-amber-500';
-
-            return (
-              <Card key={chem.id || chem._id || chem['Chemical ID'] || chem['Chemical Name']}>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-start">
-                    <div className="min-w-0 flex-1">
-                      <h4 className="text-sm font-black text-[#2e3d19] dark:text-[#eef4e8] truncate" title={chem['Chemical Name'] || chem.name}>
-                        {chem['Chemical Name'] || chem.name}
-                      </h4>
-                      <span className="font-mono text-[10px] font-bold text-[#71805a] dark:text-[#a5b48b] block">
-                        ID: {chem['Chemical ID'] || chem.chemicalId || 'N/A'}
-                      </span>
-                    </div>
-                    <span className="px-2 py-0.5 rounded bg-[#5c6e46] text-white text-[10px] font-black uppercase shrink-0">
-                      {chem.Grade || chem.grade || 'LR'}
-                    </span>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[11px] font-black">
-                      <span className="text-[#5c6e46] dark:text-[#a8be8a]">Available Stock Ratio</span>
-                      <span className="text-[#37412a] dark:text-[#e4e9d8]">{percentage}%</span>
-                    </div>
-                    <div className="w-full h-2.5 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden p-0.5">
-                      <div
-                        className={`h-full rounded-full transition-all duration-300 ${barColor}`}
-                        style={{ width: `${Math.min(Math.max(percentage, 0), 100)}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* 3 Values Below Bar */}
-                  <div className="grid grid-cols-3 gap-1 pt-2 border-t border-[#e4eeb5] dark:border-[#38432a] text-center">
-                    <div className="bg-[#f4f6ee] dark:bg-[#1a1d16] p-1.5 rounded-lg">
-                      <span className="text-[9px] font-black uppercase text-[#71805a] dark:text-[#a5b48b] block">Total</span>
-                      <span className="text-[11px] font-extrabold text-[#2e3d19] dark:text-[#eef4e8]">
-                        {totalBase.toLocaleString('en-IN')} {packData.baseUnit}
-                      </span>
-                    </div>
-
-                    <div className="bg-[#f4f6ee] dark:bg-[#1a1d16] p-1.5 rounded-lg">
-                      <span className="text-[9px] font-black uppercase text-[#71805a] dark:text-[#a5b48b] block">Available</span>
-                      <span className="text-[11px] font-extrabold text-emerald-700 dark:text-emerald-400">
-                        {availableBase.toLocaleString('en-IN')} {packData.baseUnit}
-                      </span>
-                    </div>
-
-                    <div className="bg-[#f4f6ee] dark:bg-[#1a1d16] p-1.5 rounded-lg">
-                      <span className="text-[9px] font-black uppercase text-[#71805a] dark:text-[#a5b48b] block">Used</span>
-                      <span className="text-[11px] font-extrabold text-amber-700 dark:text-amber-400">
-                        {usedBase.toLocaleString('en-IN')} {packData.baseUnit}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
+        {/* Counter and Active Search Reset */}
+        <div className="mb-4 flex items-center justify-between px-1 text-xs font-bold text-[#556b2f] dark:text-[#a8be8a]">
+          <span>
+            Showing {filteredStockInventory.length} of {inventory.length} chemicals
+            {stockSearch ? <span className="ml-1 text-slate-500 font-normal">matching "{stockSearch}"</span> : null}
+          </span>
+          {stockSearch || stockStatusFilter !== 'All' ? (
+            <button
+              onClick={() => {
+                setStockSearch('');
+                setStockStatusFilter('All');
+              }}
+              className="text-xs font-bold text-[#556b2f] hover:underline dark:text-[#a8be8a]"
+            >
+              Reset Filters
+            </button>
+          ) : null}
         </div>
+
+        {filteredStockInventory.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-[#cfd8bd] bg-[#f9faef]/60 p-8 text-center text-xs font-bold text-[#71805a] dark:border-[#4e5d35] dark:bg-[#1a1d16] dark:text-[#c5d0b5]">
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-200">No chemicals match your search</p>
+            <p className="mt-1 text-xs text-slate-500">
+              No chemical found matching &ldquo;{stockSearch}&rdquo;. Try searching by another name, ID, or CAS number.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3 text-xs font-bold"
+              onClick={() => {
+                setStockSearch('');
+                setStockStatusFilter('All');
+              }}
+            >
+              Clear Search
+            </Button>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {paginatedStockInventory.map((chem) => {
+              const receivedQty = Number(chem['Received Quantity'] || chem.receivedQty || chem['Available Quantity'] || chem.availableQty || 0);
+              const availableQty = Number(chem['Available Quantity'] || chem.availableQty || 0);
+              const packStr = chem['Pack Size'] || chem.packSize || '';
+              const packData = parsePackSize(packStr);
+
+              const percentage = receivedQty > 0 ? safeRound((availableQty / receivedQty) * 100) : 0;
+              const totalBase = safeRound(receivedQty * packData.baseValue);
+              const availableBase = safeRound(availableQty * packData.baseValue);
+              const usedBase = safeRound(Math.max(receivedQty - availableQty, 0) * packData.baseValue);
+
+              // Progress bar color rules:
+              // > 50%: green, 25-50%: yellow, < 25%: red, 0%: dark red
+              let barColor = 'bg-emerald-500';
+              if (percentage <= 0) barColor = 'bg-rose-950';
+              else if (percentage < 25) barColor = 'bg-rose-500';
+              else if (percentage < 50) barColor = 'bg-amber-500';
+
+              return (
+                <Card key={chem.id || chem._id || chem['Chemical ID'] || chem['Chemical Name']}>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-sm font-black text-[#2e3d19] dark:text-[#eef4e8] truncate" title={chem['Chemical Name'] || chem.name}>
+                          {chem['Chemical Name'] || chem.name}
+                        </h4>
+                        <span className="font-mono text-[10px] font-bold text-[#71805a] dark:text-[#a5b48b] block">
+                          ID: {chem['Chemical ID'] || chem.chemicalId || 'N/A'}
+                        </span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded bg-[#5c6e46] text-white text-[10px] font-black uppercase shrink-0">
+                        {chem.Grade || chem.grade || 'LR'}
+                      </span>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[11px] font-black">
+                        <span className="text-[#5c6e46] dark:text-[#a8be8a]">Available Stock Ratio</span>
+                        <span className="text-[#37412a] dark:text-[#e4e9d8]">{percentage}%</span>
+                      </div>
+                      <div className="w-full h-2.5 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden p-0.5">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${barColor}`}
+                          style={{ width: `${Math.min(Math.max(percentage, 0), 100)}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* 3 Values Below Bar */}
+                    <div className="grid grid-cols-3 gap-1 pt-2 border-t border-[#e4eeb5] dark:border-[#38432a] text-center">
+                      <div className="bg-[#f4f6ee] dark:bg-[#1a1d16] p-1.5 rounded-lg">
+                        <span className="text-[9px] font-black uppercase text-[#71805a] dark:text-[#a5b48b] block">Total</span>
+                        <span className="text-[11px] font-extrabold text-[#2e3d19] dark:text-[#eef4e8]">
+                          {totalBase.toLocaleString('en-IN')} {packData.baseUnit}
+                        </span>
+                      </div>
+
+                      <div className="bg-[#f4f6ee] dark:bg-[#1a1d16] p-1.5 rounded-lg">
+                        <span className="text-[9px] font-black uppercase text-[#71805a] dark:text-[#a5b48b] block">Available</span>
+                        <span className="text-[11px] font-extrabold text-emerald-700 dark:text-emerald-400">
+                          {availableBase.toLocaleString('en-IN')} {packData.baseUnit}
+                        </span>
+                      </div>
+
+                      <div className="bg-[#f4f6ee] dark:bg-[#1a1d16] p-1.5 rounded-lg">
+                        <span className="text-[9px] font-black uppercase text-[#71805a] dark:text-[#a5b48b] block">Used</span>
+                        <span className="text-[11px] font-extrabold text-amber-700 dark:text-amber-400">
+                          {usedBase.toLocaleString('en-IN')} {packData.baseUnit}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Pagination controls for 900+ chemicals */}
+        {totalStockPages > 1 && (
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 px-2 text-xs font-bold text-[#556b2f] dark:text-[#a8be8a]">
+            <span>
+              Page {stockPage} of {totalStockPages} ({filteredStockInventory.length} chemicals)
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={stockPage <= 1}
+                onClick={() => setStockPage((p) => Math.max(1, p - 1))}
+                className="px-3 py-1 text-xs font-bold"
+              >
+                Previous
+              </Button>
+              <span className="px-2 text-xs font-extrabold text-[#2e3d19] dark:text-[#eef4e8]">
+                {stockPage} / {totalStockPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={stockPage >= totalStockPages}
+                onClick={() => setStockPage((p) => Math.min(totalStockPages, p + 1))}
+                className="px-3 py-1 text-xs font-bold"
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* DETAIL MODAL FOR HISTORICAL RECORD */}

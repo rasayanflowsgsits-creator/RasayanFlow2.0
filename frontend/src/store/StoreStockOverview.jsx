@@ -1,5 +1,7 @@
+import { Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import Card from '../components/ui/Card';
+import Input from '../components/ui/Input';
 import api from '../services/api';
 import { toFrontendChemical, toFrontendHistory } from '../utils/storeMapper';
 import useAppStore from './appStore';
@@ -81,6 +83,7 @@ export default function StoreStockOverview() {
   const [chemicals, setChemicals] = useState([]);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
   const setToast = useAppStore((state) => state.setToast);
 
   useEffect(() => {
@@ -150,6 +153,18 @@ export default function StoreStockOverview() {
       .filter(Boolean);
   }, [approvedByChemical, chemicals]);
 
+  const filteredOverviewChemicals = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return overviewChemicals;
+    return overviewChemicals.filter((chemical) => {
+      const name = (chemical['Chemical Name'] || chemical.name || '').toLowerCase();
+      const id = (chemical['Chemical ID'] || chemical.chemicalId || '').toLowerCase();
+      const grade = (chemical['Grade'] || chemical.grade || '').toLowerCase();
+      const cas = (chemical['CAS Number'] || chemical.cas || '').toLowerCase();
+      return name.includes(q) || id.includes(q) || grade.includes(q) || cas.includes(q);
+    });
+  }, [overviewChemicals, search]);
+
   const totalIssued = overviewChemicals.reduce((sum, chemical) => sum + Number(chemical.overview?.approvedIssuedBase || 0), 0);
   const totalApprovals = Array.from(approvedByChemical.values()).reduce((sum, item) => sum + item.approvals, 0);
 
@@ -160,7 +175,30 @@ export default function StoreStockOverview() {
           <p className='font-medium text-slate-500 dark:text-slate-400'>Loading stock overview...</p>
         </div>
       ) : overviewChemicals.length > 0 ? (
-        <Card title='Chemical Stock Overview' subtitle='Live tracking of available vs used stock from approved requests'>
+        <Card
+          title='Chemical Stock Overview'
+          subtitle='Live tracking of available vs used stock from approved requests'
+          action={
+            <div className='relative w-full sm:w-64'>
+              <Search className='absolute left-3 top-1/2 -translate-y-1/2 text-[#556b2f] dark:text-[#a8be8a]' size={15} />
+              <Input
+                className='w-full rounded-xl pl-9 pr-8 text-xs font-bold'
+                placeholder='Search stock by name, ID, CAS...'
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              {search && (
+                <button
+                  type='button'
+                  onClick={() => setSearch('')}
+                  className='absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          }
+        >
           <div className='mb-4 grid gap-3 text-sm font-medium text-[#71805a] dark:text-[#c5d0b5] sm:grid-cols-3'>
             <div className='rounded-xl bg-[#f7f8f1] p-3 dark:bg-[#28301f]'>
               <p className='text-xs uppercase'>Affected Chemicals</p>
@@ -175,11 +213,20 @@ export default function StoreStockOverview() {
               <p className='mt-1 text-xl font-semibold text-[#3c4e23] dark:text-[#eef4e8]'>{totalIssued.toLocaleString()}</p>
             </div>
           </div>
-          <div className='grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3'>
-            {overviewChemicals.map((chemical) => (
-              <StockOverviewCard key={chemical.id || chemical['Chemical ID']} chemical={chemical} />
-            ))}
-          </div>
+          {filteredOverviewChemicals.length === 0 ? (
+            <div className='rounded-xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700'>
+              <p className='text-xs font-bold text-slate-500'>No chemicals match &ldquo;{search}&rdquo;</p>
+              <button onClick={() => setSearch('')} className='mt-2 text-xs font-bold text-[#556b2f] hover:underline'>
+                Clear Search
+              </button>
+            </div>
+          ) : (
+            <div className='grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3'>
+              {filteredOverviewChemicals.map((chemical) => (
+                <StockOverviewCard key={chemical.id || chemical['Chemical ID']} chemical={chemical} />
+              ))}
+            </div>
+          )}
         </Card>
       ) : (
         <div className='rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center dark:border-slate-700 dark:bg-[#1a1d16]'>
