@@ -6,25 +6,28 @@ const seedStoreManager = async () => {
     return;
   }
   try {
-    const email = 'storemanagersgsits@gmail.com';
-    let user = await User.findOne({ email });
+    const storeAccounts = [
+      { email: 'storemanagersgsits@gmail.com', password: 'store@1234', name: 'Central Store Manager' },
+      { email: 'store@pharm.edu', password: 'Password@2026', name: 'Store Admin' }
+    ];
 
-    if (!user) {
-      user = await User.create({
-        name: 'Store Manager',
-        email: email,
-        password: 'store@1234',
-        role: 'store_admin',
-        isApproved: true,
-      });
-      console.log(`✅ Created new store manager: ${email}`);
-    } else if (user.role !== 'store_admin') {
-      user.role = 'store_admin';
-      user.isApproved = true;
-      await user.save();
-      console.log(`✅ Updated existing store manager: ${email}`);
-    } else {
-      console.log(`✅ Store manager already exists: ${email}`);
+    for (const acc of storeAccounts) {
+      let user = await User.findOne({ email: acc.email });
+      if (!user) {
+        user = await User.create({
+          name: acc.name,
+          email: acc.email,
+          password: acc.password,
+          role: 'store_admin',
+          isApproved: true,
+        });
+        console.log(`✅ Created store manager: ${acc.email}`);
+      } else if (user.role !== 'store_admin') {
+        user.role = 'store_admin';
+        user.isApproved = true;
+        await user.save();
+        console.log(`✅ Updated store manager role: ${acc.email}`);
+      }
     }
   } catch (error) {
     console.error('❌ Error seeding storeManager:', error.message);
